@@ -27,6 +27,10 @@ class Entry extends CI_Controller {
         $this->load->view('home');
     }
 
+    public function output_upload(){
+        $this->load->view('output_upload');
+    }
+
     public function admin(){
         $this->load->view('admin');
     }

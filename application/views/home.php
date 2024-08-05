@@ -3,11 +3,8 @@
 
 <div class="container">
     <div class="dashboard">
-        <div class="profile-section">
-            <img src="..\assets\user.png" alt="Profile Picture">
-            <h5><strong>John Colson</strong></h5>
-            <p>BSIS - 1</p>
-        </div>
+        <?php $this->load->view('profile_info') ?>
+
         <div class="nav-btns">
             <button class="btn btn-outline-secondary btn-custom">Dashboard</button>
             <button class="btn btn-secondary btn-custom">Overview</button>
