@@ -1,25 +1,5 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login Form</title>
-  <link rel="stylesheet" href="../assets/bootstrap.4.5.2.min.css">
-  <style>
-    .login-form {
-      width: 100%;
-      max-width: 380px;
-      margin: 50px auto;
-      padding: 15px;
-      border-radius: 5px;
-      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    }
-    .login-form .form-control {
-      margin-bottom: 10px;
-    }
-  </style>
-</head>
-<body>
+<?php $this->load->view('header') ?>
+
   <div class="container">
     <div class="login-form">
       <form>
@@ -37,8 +17,5 @@
     </div>
   </div>
 
-  <script src="../assets/jquery-3.5.1.slim.min.js"></script>
-  <script src="../assets/popper.min.js"></script>
-  <script src="../assets/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+  <?php $this->load->view('footer') ?>
+

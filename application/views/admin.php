@@ -1,55 +1,5 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Panel</title>
-  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-  <style>
-    body {
-      display: flex;
-    }
-    .sidebar {
-      position: fixed;
-      top: 0;
-      bottom: 0;
-      left: 0;
-      width: 250px;
-      background-color: #343a40;
-      padding-top: 20px;
-      transition: all 0.3s;
-    }
-    .sidebar.collapsed {
-      width: 0;
-      overflow: hidden;
-    }
-    .sidebar a {
-      padding: 10px 15px;
-      text-decoration: none;
-      font-size: 18px;
-      color: #ffffff;
-      display: block;
-    }
-    .sidebar a:hover {
-      background-color: #007bff;
-      color: #ffffff;
-    }
-    .content {
-      margin-left: 250px;
-      padding: 20px;
-      transition: margin-left 0.3s;
-      flex-grow: 1;
-    }
-    .content.collapsed {
-      margin-left: 0;
-    }
-    .navbar-custom {
-      background-color: #007bff;
-      transition: margin-left 0.3s;
-    }
-  </style>
-</head>
-<body>
+<?php $this->load->view('header') ?>
+
   <div class="sidebar" id="sidebar">
     <h4 class="text-center text-light">Admin Panel</h4>
     <a href="#dashboard">Dashboard</a>
@@ -86,16 +36,6 @@
     </div>
   </div>
 
-  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
-  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-  <script>
-    $(document).ready(function() {
-      $('#sidebarToggle').on('click', function() {
-        $('#sidebar').toggleClass('collapsed');
-        $('#content').toggleClass('collapsed');
-      });
-    });
-  </script>
-</body>
-</html>
+
+<?php $this->load->view('footer') ?>
+
