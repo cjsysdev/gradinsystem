@@ -31,6 +31,10 @@ class Entry extends CI_Controller {
         $this->load->view('output_upload');
     }
 
+    public function add_inputs(){
+        $this->load->view('add_inputs');
+    }
+
     public function admin(){
         $this->load->view('admin');
     }
