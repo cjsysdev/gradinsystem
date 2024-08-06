@@ -55,8 +55,11 @@ $route['translate_uri_dashes'] = FALSE;
 
 $route['welcome'] = 'welcome';
 $route['login'] = 'main/login';
+$route['logout'] = 'main/logout';
 $route['input_submit'] = 'main/input_submit';
 $route['login_page'] = 'main/';
 $route['signup'] = 'main/signup';
 $route['signup_submit'] = 'main/signup_submit';
 $route['student_info'] = 'main/student_info';
+$route['home'] = 'main/home';
+$route['output_upload'] = 'main/output_upload';

@@ -8,7 +8,7 @@ class Main extends CI_Controller
     {
         parent::__construct();
         $this->load->model(['accounts', 'inputs', 'student_master']);
-        $this->load->helper(['url_helper']);
+        $this->load->helper(['url']);
         $this->load->library(['session']);
     }
 
@@ -67,9 +67,17 @@ class Main extends CI_Controller
             $this->session->set_userdata($session_data);
 
             var_dump($this->session->userdata);
+
+            redirect('output_upload');
         } else {
             echo 'asdf';
         }
+    }
+
+    public function logout()
+    {
+        $this->session->unset_userdata($this->session->userdata);
+        redirect();
     }
 
     public function signup_submit()

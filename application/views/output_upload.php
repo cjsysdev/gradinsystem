@@ -10,7 +10,7 @@
             <h6 class="card-subtitle text-body-secondary">CC102 : Computer Programming 1</h6>
             <p class="card-text">1B : Lec - 8:00 - 9:00</p>
         </div>
-        <form class="p-2" action="" method="POST" >
+        <form class="p-2" action="" method="POST">
             <div class="category-btns row">
                 <div class="col-12 form-section p-2">
                     <label for="activities-score" class="form-label">Activity Score</label>
