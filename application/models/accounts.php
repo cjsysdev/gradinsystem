@@ -9,7 +9,7 @@ class accounts extends MY_Model
 
     public function __construct()
     {
-        $this->timestamps = FALSE;
+        $this->timestamps = TRUE;
         parent::__construct();
     }
     
