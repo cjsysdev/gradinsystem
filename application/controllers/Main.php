@@ -53,7 +53,16 @@ class Main extends CI_Controller
 
     public function output_upload()
     {
-        $this->load->view('output_upload');
+        $output = $this->outputs->where([
+            'student_id'    => $_SESSION['student_id'],
+            'input_id'      => $_SESSION['input_id']
+        ])->get();
+
+        if (!$output) {
+            $output = ['input_id' => FALSE];
+        }
+
+        $this->load->view('output_upload',  $output);
     }
 
     public function add_inputs()
@@ -132,7 +141,7 @@ class Main extends CI_Controller
 
         if (!$this->upload->do_upload('photo-upload')) {
             $error = array('error' => $this->upload->display_errors());
-            var_dump($error);
+            redirect('output_upload');
         } else {
             $upload_data = $this->upload->data();
             $score = $this->input->post('score');
