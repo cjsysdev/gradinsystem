@@ -6,13 +6,13 @@
       <a href="/gradingsystem" class="btn btn-outline-secondary col m-2">Login</a>
       <a href="signup" class="btn btn-outline-secondary col m-2">Register</a>
     </div>
-    <form>
+    <form action="login" method="POST">
       <h4 class="text-center mb-4">Login</h4>
       <div class="form-group">
-        <input type="text" class="form-control" placeholder="Username" required>
+        <input type="text" class="form-control" placeholder="Username" name="username" required>
       </div>
       <div class="form-group">
-        <input type="password" class="form-control" placeholder="Password" required>
+        <input type="password" class="form-control" placeholder="Password" name="password" required>
       </div>
       <div class="form-group">
         <button type="submit" class="btn btn-success btn-block">Login</button>

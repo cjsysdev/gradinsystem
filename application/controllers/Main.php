@@ -7,8 +7,9 @@ class Main extends CI_Controller
     public function __construct()
     {
         parent::__construct();
-        $this->load->model(['accounts', 'inputs']);
+        $this->load->model(['accounts', 'inputs', 'student_master']);
         $this->load->helper(['url_helper']);
+        $this->load->library(['session']);
     }
 
     public function index()
@@ -49,15 +50,26 @@ class Main extends CI_Controller
     public function login()
     {
         $post = $this->input->post();
-        $user = $this->accounts->get(['username' => $post['username']]);
+        $user = $this->accounts->with_student()->get(['username' => $post['username']]);
 
         if ($user && $user->password == $post['password']) {
-            echo 'login true';
+
+            $session_data = [
+                'account_id' => $user->account_id,
+                'student_id' => $user->student_id,
+                'student_no' => $user->student->student_no,
+                'lastname' => $user->student->lastname,
+                'firstname' => $user->student->firstname,
+                'course' => $user->student->course,
+                'current_year' => $user->student->current_year,
+            ];
+
+            $this->session->set_userdata($session_data);
+
+            var_dump($this->session->userdata);
         } else {
             echo 'asdf';
         }
-
-        var_dump($user, $post);
     }
 
     public function signup_submit()
