@@ -1,12 +1,12 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-class Entry extends CI_Controller {
+class Main extends CI_Controller {
 
     public function __construct()
     {
         parent::__construct();
-        $this->load->model('accounts');  
+        $this->load->model(['accounts', 'inputs']);  
         $this->load->helper(['url_helper']);      
     }
 
@@ -50,6 +50,10 @@ class Entry extends CI_Controller {
         }
 
         var_dump($user, $post);
+    }
+
+    public function input_submit(){
+        $this->inputs->insert($this->input->post());
     }
 
 }
