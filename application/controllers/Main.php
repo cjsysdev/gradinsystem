@@ -14,6 +14,25 @@ class Main extends CI_Controller
 
     public function index()
     {
+        $input_res = $this->inputs->where('status', 'active')->with_type()->with_subject()->get();
+
+        if ($input_res) {
+            $data = [
+                'input_id' => $input_res->input_id,
+                'description' => $input_res->description,
+                'max_score' => $input_res->max_score,
+                'type' => $input_res->type->type,
+                'subject_code' => $input_res->subject->subject_code,
+                'room' => $input_res->subject->room,
+                'subject_title' => $input_res->subject->description,
+                'section' => $input_res->subject->section,
+                'year_level' => $input_res->subject->year_level,
+                'schedule' => $input_res->subject->schedule
+            ];
+
+            $this->session->set_userdata($data);
+        }
+
         $this->load->view('login');
     }
 
@@ -96,5 +115,32 @@ class Main extends CI_Controller
     public function input_submit()
     {
         $this->inputs->insert($this->input->post());
+    }
+
+    public function upload_activity()
+    {
+        $config['upload_path']          = './uploads/';
+        $config['allowed_types']        = 'gif|jpg|jpeg|png';
+        $config['max_size']             = 2048; // 2MB
+        $config['encrypt_name']         = TRUE; // Encrypt the file name for security
+
+        $this->upload->initialize($config);
+
+        if (!$this->upload->do_upload('photo-upload')) {
+            $error = array('error' => $this->upload->display_errors());
+
+            // Load the view and pass the error
+            $this->load->view('upload_form', $error);
+        } else {
+            $upload_data = $this->upload->data();
+            $activity_score = $this->input->post('activities-score');
+
+            // Here you can save the $activity_score and $upload_data['file_name'] to the database if needed
+
+            $data = array('upload_data' => $upload_data);
+
+            // Load the success view and pass the upload data
+            $this->load->view('upload_success', $data);
+        }
     }
 }

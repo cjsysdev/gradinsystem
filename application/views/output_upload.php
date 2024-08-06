@@ -6,9 +6,9 @@
         <?php $this->load->view('profile_info') ?>
         <div class="card-body p-1 text-center">
             <!-- <h5 class="card-title mb-0">Activity title</h5> -->
-            <span class="badge badge-secondary mb-2">Activity</span>
-            <h6 class="card-subtitle text-body-secondary">CC102 : Computer Programming 1</h6>
-            <p class="card-text">1B : Lec - 8:00 - 9:00</p>
+            <span class="badge badge-secondary mb-2"><?= $this->session->type, ' ',  $this->session->input_id ?></span>
+            <h6 class="card-subtitle text-body-secondary"><?= $this->session->subject_title ?></h6>
+            <p class="card-text m-0"><?= $this->session->year_level, $this->session->section, ' : ', $this->session->schedule ?></p>
         </div>
         <form class="p-2" action="" method="POST">
             <div class="category-btns row">
