@@ -27,10 +27,13 @@ class Main extends CI_Controller
                 'subject_title' => $input_res->subject->description,
                 'section' => $input_res->subject->section,
                 'year_level' => $input_res->subject->year_level,
-                'schedule' => $input_res->subject->schedule
+                'schedule' => $input_res->subject->schedule,
+                'no_active' => FALSE,
             ];
 
             $this->session->set_userdata($data);
+        } else {
+            $this->session->set_userdata(['no_active' => TRUE]);
         }
 
         $this->load->view('login');
@@ -55,7 +58,7 @@ class Main extends CI_Controller
     {
         $output = $this->outputs->where([
             'student_id'    => $_SESSION['student_id'],
-            'input_id'      => $_SESSION['input_id']
+            'input_id'      => $_SESSION['input_id'] ?? NULL
         ])->get();
 
         if (!$output) {
@@ -98,7 +101,8 @@ class Main extends CI_Controller
 
             redirect('output_upload');
         } else {
-            echo 'asdf';
+            $this->session->set_flashdata('error', 'Login Error');
+            redirect();
         }
     }
 
@@ -111,15 +115,53 @@ class Main extends CI_Controller
     public function signup_submit()
     {
         $input = $this->input->post();
-        var_dump($input);
 
-        $data = [
+        $acc_data = [
             'username' => $input['username'],
             'password' => $input['password']
         ];
 
-        $this->accounts->insert($data);
+        $student = [
+            'lastname' => $input['lastname'],
+            'firstname' => $input['firstname'],
+            'gender' => $input['gender'],
+        ];
+
+        $this->db->trans_start(); // Start transaction
+
+        try {
+            $this->accounts->insert($acc_data);
+            $this->student_master->insert($student);
+            $this->db->trans_complete(); // Complete the transaction
+
+            if ($this->db->trans_status() === FALSE) {
+                // If the transaction failed
+                throw new Exception('Transaction failed');
+            }
+
+            redirect();
+        } catch (Exception $e) {
+            $this->db->trans_rollback(); // Rollback transaction
+            $this->session->set_flashdata('error', 'Signup Error');
+
+            redirect('signup');
+            if ($e->getCode() == 1062) {
+                $this->session->set_flashdata('error', 'Signup Error');
+
+                redirect('signup');
+                // Handle duplicate entry error
+                echo 'Error: Duplicate entry for key.';
+            } else {
+                $this->session->set_flashdata('error', 'Signup Error');
+                redirect('signup');
+                echo 'Error: ' . $e->getMessage();
+            }
+        }
+
+        $this->session->set_flashdata('error', 'Signup Error');
+        redirect('signup');
     }
+
 
     public function input_submit()
     {

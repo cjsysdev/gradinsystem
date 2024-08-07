@@ -9,7 +9,7 @@ class student_master extends MY_Model
 
     public function __construct()
     {
-        $this->timestamps = TRUE;
+        $this->timestamps = FALSE;
         $this->has_one['accounts'] = array(
             'foreign_model' => 'accounts',
             'foreign_table' => 'accounts',

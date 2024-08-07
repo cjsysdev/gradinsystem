@@ -8,6 +8,11 @@
     </div>
     <form action="login" method="POST">
       <h4 class="text-center mb-4">Login</h4>
+      <?php if ($this->session->flashdata('error')) : ?>
+        <div class="alert alert-danger">
+          <?php echo $this->session->flashdata('error'); ?>
+        </div>
+      <?php endif; ?>
       <div class="form-group">
         <input type="text" class="form-control" placeholder="Username" name="username" required>
       </div>

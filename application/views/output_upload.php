@@ -4,7 +4,11 @@
 <div class="container">
     <div class="dashboard">
         <?php $this->load->view('profile_info') ?>
-        <?php if (!$input_id) : ?>
+        <?php if ($_SESSION['no_active']) : ?>
+            <div class="text-center">
+                <span class="badge badge-danger mb-2 p-2">No active inputs</span>
+            </div>
+        <?php elseif (!$input_id) : ?>
 
             <div class="card-body p-1 text-center">
                 <span class="badge badge-secondary mb-2"><?= $input_id ?? NULL ?></span>
@@ -16,7 +20,7 @@
                 <div class="category-btns row">
                     <div class="col-12 form-section p-2">
                         <label for="activities-score" class="form-label">Activity Score</label>
-                        <input type="number" class="form-control" min="1" max="<?= $_SESSION['max_score'] ?>" onKeyPress="if(this.value.length==2) return false" placeholder="Enter Score" id="activities-score" name="score" />
+                        <input type="number" class="form-control" min="1" max="<?= $_SESSION['max_score'] ?? NULL ?>" onKeyPress="if(this.value.length==2) return false" placeholder="Enter Score" id="activities-score" name="score" />
                     </div>
                     <div class="col-12 form-section p-2">
                         <label for="photo-upload" class="form-label">Upload Activity</label>
