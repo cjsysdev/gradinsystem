@@ -12,6 +12,10 @@
         <div class="alert alert-danger">
           <?php echo $this->session->flashdata('error'); ?>
         </div>
+      <?php elseif ($this->session->flashdata('success')) : ?>
+        <div class="alert alert-success">
+          <?php echo $this->session->flashdata('success'); ?>
+        </div>
       <?php endif; ?>
       <div class="form-group">
         <input type="text" class="form-control" name="username" placeholder="Username" required>

@@ -112,26 +112,42 @@ class Main extends CI_Controller
         redirect();
     }
 
+    function generate_random_numbers($count = 10, $min = 1, $max = 9)
+    {
+        $random_numbers = '';
+        for ($i = 0; $i < $count; $i++) {
+            $random_numbers .= rand($min, $max);
+        }
+        return $random_numbers;
+    }
+
     public function signup_submit()
     {
         $input = $this->input->post();
 
-        $acc_data = [
-            'username' => $input['username'],
-            'password' => $input['password']
-        ];
-
         $student = [
-            'lastname' => $input['lastname'],
-            'firstname' => $input['firstname'],
+            'student_no' => $this->generate_random_numbers(),
+            'lastname' => strtoupper($input['lastname']),
+            'firstname' => strtoupper($input['firstname']),
             'gender' => $input['gender'],
+            'course' => 'BSIS',
+            'current_year' => '1'
         ];
 
         $this->db->trans_start(); // Start transaction
 
         try {
-            $this->accounts->insert($acc_data);
             $this->student_master->insert($student);
+            $trans_no = ($this->student_master->where('student_no', $student['student_no'])->get()->trans_no);
+
+            $acc_data = [
+                'student_id' => $trans_no,
+                'username' => $input['username'],
+                'password' => $input['password']
+            ];
+
+            $this->accounts->insert($acc_data);
+
             $this->db->trans_complete(); // Complete the transaction
 
             if ($this->db->trans_status() === FALSE) {
@@ -139,6 +155,7 @@ class Main extends CI_Controller
                 throw new Exception('Transaction failed');
             }
 
+            $this->session->set_flashdata('success', 'Signup Successful');
             redirect();
         } catch (Exception $e) {
             $this->db->trans_rollback(); // Rollback transaction
