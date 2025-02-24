@@ -8,7 +8,7 @@
             <h6 class="card-subtitle text-body-secondary m-2"><?= $lastname ?>, <?= $firstname ?></h6>
             <h6 class="card-subtitle text-body-secondary"><?= $course ?> - <?= $current_year ?></h6>
         </div>
-        <a href="login" class="btn btn-outline-secondary col m-2">Back</a>
+        <a href="/gradingSystem" class="btn btn-outline-secondary col m-2">Back</a>
     </div>
 </div>
 

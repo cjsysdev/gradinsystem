@@ -81,7 +81,7 @@ class Main extends CI_Controller
         $time = date('H:i:s');
         $class = $this->class_schedule->class_today($day);
         $student_id = $this->session->student_id;
-        $attendance_record = $this->attendance->get_student_attendance(238);
+        $attendance_record = $this->attendance->get_student_attendance($student_id);
 
         if (!$class) {
             $this->session->set_flashdata('error', 'No available class');
@@ -143,8 +143,6 @@ class Main extends CI_Controller
 
             $this->session->set_userdata($session_data);
 
-            var_dump($this->session->userdata);
-
             redirect('attendance');
         } else {
             $this->session->set_flashdata('error', 'Login Error');
@@ -174,6 +172,13 @@ class Main extends CI_Controller
             'lastname' => $input['lastname'],
             'firstname' => $input['firstname']
         ])->get();
+
+
+        if (!$student) {
+            $this->session->set_flashdata('error', 'Student not found');
+            redirect('find_id');
+        }
+
         $this->load->view('student_details', $student);
     }
 

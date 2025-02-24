@@ -16,7 +16,7 @@
         <div class="card-body p-1 text-center">
             <h6 class="card-subtitle text-body-secondary mb-3">Attendance Record</h6>
             <?php foreach ($record as $row): ?>
-                <p class="card-text m-0"><?= $row["class_code"], " " , $row["date"]?></p>
+                <p class="card-text m-0"><?= $row["class_code"], $row["type"], " ", $row["date"] ?></p>
             <?php endforeach; ?>
         </div>
     </div>

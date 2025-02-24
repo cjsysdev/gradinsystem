@@ -11,7 +11,7 @@
       <h4 class="text-center mb-4">Login</h4>
       <?php if ($this->session->flashdata('error')) : ?>
         <div class="alert alert-danger">
-          <?php echo $this->session->flashdata('error'); ?>
+          <?= $this->session->flashdata('error'); ?>
         </div>
       <?php endif; ?>
       <div class="form-group">
