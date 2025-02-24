@@ -64,3 +64,4 @@ $route['student_info'] = 'main/student_info';
 $route['home'] = 'main/home';
 $route['output_upload'] = 'main/output_upload';
 $route['upload_activity'] = 'main/upload_activity';
+$route['attendance'] = 'main/attendance_main';

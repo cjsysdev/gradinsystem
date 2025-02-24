@@ -24,7 +24,7 @@
                     </div>
                     <div class="col-12 form-section p-2">
                         <label for="photo-upload" class="form-label">Upload Activity</label>
-                        <input type="file" class="form-control" id="photo-upload" name="photo-upload" accept="image/*" capture="camera">
+                        <input type="file" class="form-control" id="photo-upload" name="photo-upload" accept="capture=camera,image/*">
                     </div>
                 </div>
                 <div class="total-section pt-3">

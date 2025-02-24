@@ -7,7 +7,7 @@ class Main extends CI_Controller
     public function __construct()
     {
         parent::__construct();
-        $this->load->model(['accounts', 'inputs', 'student_master', 'outputs']);
+        $this->load->model(['accounts', 'inputs', 'student_master', 'outputs', 'class_schedule', 'attendance']);
         $this->load->helper(['url']);
         $this->load->library(['session', 'upload']);
     }
@@ -68,6 +68,30 @@ class Main extends CI_Controller
         $this->load->view('output_upload',  $output);
     }
 
+    public function attendance_main()
+    {
+
+        $day = date('D');
+        $dmy = date('d M Y');
+        $time = date('H:i:s');
+        $class = $this->class_schedule->class_today($day, $time);
+        date_default_timezone_set('Asia/Manila');
+        $student_id = $this->session->student_id;
+
+        $check_student = $this->attendance->where(['student_id' => $student_id, 'schedule_id' => $class['schedule_id']])->get();
+
+        if (!$check_student) {
+            $this->attendance->insert_data(
+                [
+                    'schedule_id' => $class['schedule_id'],
+                    'student_id' => $student_id,
+                    'status' => "present"
+                ]
+            );
+        }
+        $this->load->view('attendance_view',  $class);
+    }
+
     public function add_inputs()
     {
         $this->load->view('add_inputs');
@@ -99,7 +123,7 @@ class Main extends CI_Controller
 
             var_dump($this->session->userdata);
 
-            redirect('output_upload');
+            redirect('attendance');
         } else {
             $this->session->set_flashdata('error', 'Login Error');
             redirect();
