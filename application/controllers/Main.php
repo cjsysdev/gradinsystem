@@ -78,10 +78,8 @@ class Main extends CI_Controller
 
         date_default_timezone_set('Asia/Manila');
         $day = date('D');
-        $time = date('H:i:s');
         $class = $this->class_schedule->class_today($day);
         $student_id = $this->session->student_id;
-        $attendance_record = $this->attendance->get_student_attendance($student_id);
 
         if (!$class) {
             $this->session->set_flashdata('error', 'No available class');
@@ -101,10 +99,9 @@ class Main extends CI_Controller
                     'status' => "present"
                 ]
             );
-            $class["status"] =  "Present";
-        } else {
-            $class["status"] = "Duplicated";
         }
+
+        $attendance_record = $this->attendance->get_student_attendance($student_id);
 
         $data = [
             "class" => $class,

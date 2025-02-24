@@ -10,7 +10,6 @@
             <p class="card-text m-0"><?= $class["section"], ' ', $class["day"], ' : ', $class["time_start"], '-', $class["time_end"] ?></p>
             <p class="card-text m-0 mt-3" id="txt"></p>
             <div id="txt"></div>
-            <!-- <span class="badge badge-light mb-3"><?= $class["status"] ?></span> -->
         </div>
         <hr>
         <div class="card-body p-1 text-center">
