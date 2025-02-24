@@ -132,4 +132,4 @@
     </style>
 </head>
 
-<body>
+<body onload="startTime()">

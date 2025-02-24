@@ -19,13 +19,13 @@ class class_schedule extends MY_Model
         parent::__construct();
     }
 
-    public function class_today($day, $time)
+    public function class_today($day)
     {
         $query = $this->db->query("SELECT * FROM class_schedule 
         JOIN classes ON class_schedule.class_id = classes.class_id 
         WHERE day LIKE '%$day%' 
-        AND time_start >= '$time' ");
+        AND CURTIME() BETWEEN time_start AND time_end ");
 
-        return $query->row_array();
+        return $query->row_array() ?? false;
     }
 }

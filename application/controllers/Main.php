@@ -39,6 +39,11 @@ class Main extends CI_Controller
         $this->load->view('login');
     }
 
+    public function find_id()
+    {
+        $this->load->view('find_id');
+    }
+
     public function signup()
     {
         $this->load->view('signup');
@@ -71,14 +76,22 @@ class Main extends CI_Controller
     public function attendance_main()
     {
 
-        $day = date('D');
-        $dmy = date('d M Y');
-        $time = date('H:i:s');
-        $class = $this->class_schedule->class_today($day, $time);
         date_default_timezone_set('Asia/Manila');
+        $day = date('D');
+        $time = date('H:i:s');
+        $class = $this->class_schedule->class_today($day);
         $student_id = $this->session->student_id;
+        $attendance_record = $this->attendance->get_student_attendance(238);
 
-        $check_student = $this->attendance->where(['student_id' => $student_id, 'schedule_id' => $class['schedule_id']])->get();
+        if (!$class) {
+            $this->session->set_flashdata('error', 'No available class');
+            redirect();
+        }
+
+        $check_student = $this->attendance->where([
+            'student_id' => $student_id,
+            'schedule_id' => $class['schedule_id']
+        ])->get();
 
         if (!$check_student) {
             $this->attendance->insert_data(
@@ -88,8 +101,17 @@ class Main extends CI_Controller
                     'status' => "present"
                 ]
             );
+            $class["status"] =  "Present";
+        } else {
+            $class["status"] = "Duplicated";
         }
-        $this->load->view('attendance_view',  $class);
+
+        $data = [
+            "class" => $class,
+            "record" => $attendance_record
+        ];
+
+        $this->load->view('attendance_view', $data);
     }
 
     public function add_inputs()
@@ -143,6 +165,16 @@ class Main extends CI_Controller
             $random_numbers .= rand($min, $max);
         }
         return $random_numbers;
+    }
+
+    public function get_id()
+    {
+        $input = $this->input->post();
+        $student = $this->student_master->where([
+            'lastname' => $input['lastname'],
+            'firstname' => $input['firstname']
+        ])->get();
+        $this->load->view('student_details', $student);
     }
 
     public function signup_submit()

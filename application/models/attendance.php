@@ -29,4 +29,15 @@ class attendance extends MY_Model
     {
         return $this->db->insert('attendance', $data); // Insert data into the 'attendance' table
     }
+
+    public function get_student_attendance($id)
+    {
+        $query = $this->db->query("SELECT c.class_code, c.class_name, cs.type, sm.lastname, sm.firstname, a.date 
+                FROM attendance a
+                JOIN student_master sm ON a.student_id = sm.trans_no
+                JOIN class_schedule cs ON a.schedule_id = cs.schedule_id
+                JOIN classes c ON cs.class_id = c.class_id WHERE student_id = 238");
+
+        return $query->result_array();
+    }
 }
