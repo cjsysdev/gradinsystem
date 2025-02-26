@@ -78,27 +78,28 @@ class Main extends CI_Controller
 
         date_default_timezone_set('Asia/Manila');
         $day = date('D');
+        $date = date('Y-m-d');
         $class = $this->class_schedule->class_today($day);
         $student_id = $this->session->student_id;
 
         if (!$class) {
             $this->session->set_flashdata('error', 'No available class');
-            redirect();
-        }
+        } else {
+            $check_student = $this->attendance->where([
+                'student_id' => $student_id,
+                'schedule_id' => $class['schedule_id'],
+                'date like' => "$date%"
+            ])->get();
 
-        $check_student = $this->attendance->where([
-            'student_id' => $student_id,
-            'schedule_id' => $class['schedule_id']
-        ])->get();
-
-        if (!$check_student) {
-            $this->attendance->insert_data(
-                [
-                    'schedule_id' => $class['schedule_id'],
-                    'student_id' => $student_id,
-                    'status' => "present"
-                ]
-            );
+            if (!$check_student) {
+                $this->attendance->insert_data(
+                    [
+                        'schedule_id' => $class['schedule_id'],
+                        'student_id' => $student_id,
+                        'status' => "present"
+                    ]
+                );
+            }
         }
 
         $attendance_record = $this->attendance->get_student_attendance($student_id);
@@ -169,7 +170,6 @@ class Main extends CI_Controller
             'lastname' => $input['lastname'],
             'firstname' => $input['firstname']
         ])->get();
-
 
         if (!$student) {
             $this->session->set_flashdata('error', 'Student not found');

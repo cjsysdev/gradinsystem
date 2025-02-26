@@ -1,19 +1,30 @@
 <?php $this->load->view('header') ?>
 
-
 <div class="container">
     <div class="dashboard">
         <?php $this->load->view('profile_info') ?>
-        <div class="card-body p-1 text-center">
-            <span class="badge badge-primary mb-3"><?= $class["class_code"], ' ', $class["type"] ?? NULL ?></span>
-            <h6 class="card-subtitle text-body-secondary"><?= $class["class_name"], ' ', $class["type"] ?></h6>
-            <p class="card-text m-0"><?= $class["section"], ' ', $class["day"], ' : ', $class["time_start"], '-', $class["time_end"] ?></p>
-            <p class="card-text m-0 mt-3" id="txt"></p>
-            <div id="txt"></div>
-        </div>
+        <?php if ($class): ?>
+            <div class="card-body p-1 text-center">
+                <h5><span class="badge badge-primary"><?= $class["class_code"], ' ', $class["type"] ?? NULL ?></span></h5>
+                <h6 class="card-subtitle text-body-secondary"><?= $class["class_name"], ' ', $class["type"] ?></h6>
+                <p class="card-text m-0"><?= $class["section"], ' ', $class["day"], ' : ', $class["time_start"], '-', $class["time_end"] ?></p>
+                <p class="card-text m-0 mt-3" id="txt"></p>
+                <div id="txt"></div>
+            </div>
+            <hr>
+            <div class="card-body p-1 text-center">
+                <h5> <span class="badge badge-danger">Lab Activity</span></h5>
+                <img src="./uploads/FUNCTION_TEMPERATURES.jpg" alt="Lab activity" style="width:300px;height:120px;">
+                <!-- <a href="./uploads/Storage_engine.pdf" download="Storage_engine.pdf" src="./uploads/Storage_engine.pdf">Download Here</a> -->
+            </div>
+        <?php else: ?>
+            <div class="alert alert-danger">
+                <?= $this->session->flashdata('error'); ?>
+            </div>
+        <?php endif; ?>
         <hr>
         <div class="card-body p-1 text-center">
-            <h6 class="card-subtitle text-body-secondary mb-3">Attendance Record</h6>
+            <h5 class="card-subtitle text-body-secondary"><span class="badge badge-primary">Attendance Record </span></h5>
             <?php foreach ($record as $row): ?>
                 <p class="card-text m-0"><?= $row["class_code"], $row["type"], " ", $row["date"] ?></p>
             <?php endforeach; ?>
