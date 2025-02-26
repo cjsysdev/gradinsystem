@@ -36,7 +36,8 @@ class attendance extends MY_Model
                 FROM attendance a
                 JOIN student_master sm ON a.student_id = sm.trans_no
                 JOIN class_schedule cs ON a.schedule_id = cs.schedule_id
-                JOIN classes c ON cs.class_id = c.class_id WHERE student_id = $id");
+                JOIN classes c ON cs.class_id = c.class_id WHERE student_id = $id
+                order by date desc");
 
         return $query->result_array();
     }

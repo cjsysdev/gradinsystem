@@ -4,7 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel</title>
+    <title>CMS</title>
+    <link rel="icon" href="<?= base_url('./assets/logo.png') ?>" type="image/png">
     <link rel="stylesheet" href="assets/bootstrap.4.5.2.min.css">
     <style>
         body {

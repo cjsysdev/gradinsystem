@@ -92,11 +92,14 @@ class Main extends CI_Controller
             ])->get();
 
             if (!$check_student) {
+                $client_ip = $this->input->ip_address();
+
                 $this->attendance->insert_data(
                     [
                         'schedule_id' => $class['schedule_id'],
                         'student_id' => $student_id,
-                        'status' => "present"
+                        'status' => "present",
+                        'ip_address' =>  $client_ip
                     ]
                 );
             }
