@@ -5,7 +5,7 @@
     <div class="form-group row">
       <a href="/gradingsystem" class="btn btn-outline-secondary col m-2">Login</a>
       <!-- <a href="signup" class="btn btn-outline-secondary col m-2">Register</a> -->
-      <a href="find_id" class="btn btn-outline-secondary col m-2">Find ID</a>
+      <a href="find_id" class="btn btn-outline-success col m-2">Find ID</a>
     </div>
     <form action="login" method="POST">
       <h4 class="text-center mb-4">Login</h4>

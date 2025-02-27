@@ -7,14 +7,14 @@ class Main extends CI_Controller
     public function __construct()
     {
         parent::__construct();
-        $this->load->model(['accounts', 'inputs', 'student_master', 'outputs', 'class_schedule', 'attendance']);
+        $this->load->model(['accounts', 'assessments', 'student_master', 'outputs', 'class_schedule', 'attendance']);
         $this->load->helper(['url']);
         $this->load->library(['session', 'upload']);
     }
 
     public function index()
     {
-        $input_res = $this->inputs->where('status', 'active')->with_type()->with_subject()->get();
+        $input_res = $this->assessments->where('status', 'active')->with_type()->with_subject()->get();
 
         if ($input_res) {
             $data = [
@@ -243,7 +243,7 @@ class Main extends CI_Controller
 
     public function input_submit()
     {
-        $this->inputs->insert($this->input->post());
+        $this->assessment->insert($this->input->post());
     }
 
     public function upload_activity()
@@ -277,5 +277,10 @@ class Main extends CI_Controller
 
             redirect('output_upload');
         }
+    }
+
+    public function assessment_view()
+    {
+        $this->load->view('assessment_view');
     }
 }

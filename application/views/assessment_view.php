@@ -1,0 +1,65 @@
+<?php $this->load->view('header') ?>
+
+<style>
+  textarea {
+    width: 100%;
+    min-height: 50px;
+    font-family: monospace;
+    font-size: 14px;
+    padding: 10px;
+    box-sizing: border-box;
+    resize: none;
+    /* Disable manual resizing */
+    overflow: hidden;
+    /* Hide scrollbars */
+  }
+</style>
+<link rel="stylesheet" href="assets/highlights/atom-one-light.min.css">
+<div class="container">
+  <div class="dashboard">
+    <?php $this->load->view('profile_info') ?>
+    <textarea id="codeInput" placeholder="Enter your code here..."></textarea>
+    <pre><code id="highlightedCode" class="language-c"></code></pre>
+    <div class="form-group">
+      <button type="submit" class="btn btn-success btn-block">Submit</button>
+    </div>
+    <script src="assets/highlights/11.7.0-highlight.min.js"></script>
+    <script>
+      // Function to auto-adjust textarea height
+      function autoAdjustTextarea(textarea) {
+        textarea.style.height = "auto"; // Reset height to auto
+        textarea.style.height = textarea.scrollHeight + "px"; // Set height to scroll height
+      }
+
+      // Function to update the highlighted code
+      function updateHighlightedCode() {
+        const codeInput = document.getElementById("codeInput").value;
+        const highlightedCodeElement = document.getElementById("highlightedCode");
+
+        // Set the raw code as the inner text of the <code> element
+        highlightedCodeElement.textContent = codeInput;
+
+        // Apply syntax highlighting
+        hljs.highlightElement(highlightedCodeElement);
+      }
+
+      // Get the textarea element
+      const textarea = document.getElementById("codeInput");
+
+      // Add event listeners
+      textarea.addEventListener("input", () => {
+        autoAdjustTextarea(textarea); // Adjust textarea height
+        updateHighlightedCode(); // Update highlighted code
+      });
+
+      // Initialize with some example code
+      textarea.value = `#include <stdio.h>
+      int main() {
+        return 0;
+      }
+      `;
+      autoAdjustTextarea(textarea); // Adjust height initially
+      updateHighlightedCode(); // Highlight the initial code
+    </script>
+  </div>
+</div>
