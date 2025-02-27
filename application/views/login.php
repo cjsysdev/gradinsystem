@@ -1,6 +1,6 @@
 <?php $this->load->view('header') ?>
 
-<div class="container">
+<div class="container mt-5">
   <div class="login-form">
     <div class="form-group row">
       <a href="/gradingsystem" class="btn btn-outline-secondary col m-2">Login</a>

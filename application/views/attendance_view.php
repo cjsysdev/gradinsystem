@@ -1,37 +1,5 @@
 <?php $this->load->view('header') ?>
 
-<style>
-    body {
-        font-family: Arial, sans-serif;
-    }
-
-    table {
-        width: 75%;
-        border-collapse: collapse;
-        margin: 15px auto;
-        font-size: small;
-    }
-
-    th,
-    td {
-        border: 1px solid #ddd;
-        padding: 7.5px;
-        text-align: left;
-    }
-
-    th {
-        background-color: #f2f2f2;
-    }
-
-    tr:nth-child(even) {
-        background-color: #f9f9f9;
-    }
-
-    tr:hover {
-        background-color: #f1f1f1;
-    }
-</style>
-
 <div class="container">
     <div class="dashboard">
         <?php $this->load->view('profile_info') ?>
@@ -77,7 +45,7 @@
             }
 
             ?>
-            <table>
+            <table class="table table-striped table-bordered table-hover table-sm mt-3">
                 <tbody>
                     <?php foreach ($record as $row):
                         $formatted = convert_datetime($row["date"]);
