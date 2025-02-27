@@ -11,6 +11,9 @@
     <link rel="stylesheet" href="assets/highlights/atom-one-light.min.css">
     <!-- fontawesome -->
     <link rel="stylesheet" href="<?= base_url('./assets/fontawesome/css/all.min.css') ?>" />
+    <!-- CodeMirror CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/dracula.min.css" />
     <style>
         body {
             display: flex;

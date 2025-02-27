@@ -281,6 +281,6 @@ class Main extends CI_Controller
 
     public function assessment_view()
     {
-        $this->load->view('assessment_view');
+        $this->load->view('assessment_view_code');
     }
 }
