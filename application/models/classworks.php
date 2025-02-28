@@ -1,11 +1,11 @@
 <?php
 defined('BASEPATH') or exit('No direct script access allowed');
 
-class outputs extends MY_Model
+class classworks extends MY_Model
 {
-    public $table = 'outputs';
-    public $primary_key = 'output_id';
-    public $protected = array('output_id');
+    public $table = 'classworks';
+    public $primary_key = 'classwork_id';
+    public $protected = array('classwork_id');
     public $timestamps = TRUE;
 
     public function __construct()
@@ -17,11 +17,11 @@ class outputs extends MY_Model
             'foreign_key' => 'trans_no',
             'local_key' => 'student_id'
         );
-        $this->has_many['inputs'] =  array(
-            'foreign_model' => 'inputs',
-            'foreign_table' => 'inputs',
-            'foreign_key' => 'input_id',
-            'local_key' => 'input_id'
+        $this->has_many['assessments'] =  array(
+            'foreign_model' => 'assessments',
+            'foreign_table' => 'assessments',
+            'foreign_key' => 'assessment_id',
+            'local_key' => 'assessment_id'
         );
         parent::__construct();
     }

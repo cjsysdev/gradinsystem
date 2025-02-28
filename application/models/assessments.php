@@ -4,8 +4,8 @@ defined('BASEPATH') or exit('No direct script access allowed');
 class assessments extends MY_Model
 {
     public $table = 'assessments';
-    public $primary_key = 'input_id';
-    public $protected = array('input_id');
+    public $primary_key = 'assessment_id';
+    public $protected = array('assessment_id');
     public $timestamps = TRUE;
 
     public function __construct()
@@ -17,11 +17,11 @@ class assessments extends MY_Model
             'foreign_key' => 'iotype_id',
             'local_key' => 'iotype_id'
         );
-        $this->has_one['subject'] =  array(
-            'foreign_model' => 'subject',
-            'foreign_table' => 'subject',
-            'foreign_key' => 'subject_id',
-            'local_key' => 'subject_id'
+        $this->has_one['class_schedule'] =  array(
+            'foreign_model' => 'class_schedule',
+            'foreign_table' => 'class_schedule',
+            'foreign_key' => 'schedule_id',
+            'local_key' => 'schedule_id'
         );
         parent::__construct();
     }

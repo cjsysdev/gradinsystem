@@ -7,34 +7,34 @@ class Main extends CI_Controller
     public function __construct()
     {
         parent::__construct();
-        $this->load->model(['accounts', 'assessments', 'student_master', 'outputs', 'class_schedule', 'attendance']);
+        $this->load->model(['accounts', 'assessments', 'student_master', 'classworks', 'class_schedule', 'attendance']);
         $this->load->helper(['url']);
         $this->load->library(['session', 'upload']);
     }
 
     public function index()
     {
-        $input_res = $this->assessments->where('status', 'active')->with_type()->with_subject()->get();
+        // $input_res = $this->assessments->where('status', 'active')->with_type()->with_class_schedule()->get();
 
-        if ($input_res) {
-            $data = [
-                'input_id' => $input_res->input_id,
-                'description' => $input_res->description,
-                'max_score' => $input_res->max_score,
-                'type' => $input_res->type->type,
-                'subject_code' => $input_res->subject->subject_code,
-                'room' => $input_res->subject->room,
-                'subject_title' => $input_res->subject->description,
-                'section' => $input_res->subject->section,
-                'year_level' => $input_res->subject->year_level,
-                'schedule' => $input_res->subject->schedule,
-                'no_active' => FALSE,
-            ];
+        // if ($input_res) {
+        //     $data = [
+        //         'input_id' => $input_res->input_id,
+        //         'description' => $input_res->description,
+        //         'max_score' => $input_res->max_score,
+        //         'type' => $input_res->type->type,
+        //         'subject_code' => $input_res->subject->subject_code,
+        //         'room' => $input_res->subject->room,
+        //         'subject_title' => $input_res->subject->description,
+        //         'section' => $input_res->subject->section,
+        //         'year_level' => $input_res->subject->year_level,
+        //         'schedule' => $input_res->subject->schedule,
+        //         'no_active' => FALSE,
+        //     ];
 
-            $this->session->set_userdata($data);
-        } else {
-            $this->session->set_userdata(['no_active' => TRUE]);
-        }
+        //     $this->session->set_userdata($data);
+        // } else {
+        //     $this->session->set_userdata(['no_active' => TRUE]);
+        // }
 
         $this->load->view('login');
     }
