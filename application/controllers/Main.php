@@ -283,4 +283,9 @@ class Main extends CI_Controller
     {
         $this->load->view('assessment_view_code');
     }
+
+    public function classwork()
+    {
+        $this->load->view('classwork');
+    }
 }

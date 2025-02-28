@@ -67,3 +67,5 @@ $route['output_upload'] = 'main/output_upload';
 $route['upload_activity'] = 'main/upload_activity';
 $route['attendance'] = 'main/attendance_main';
 $route['assessment_view'] = 'main/assessment_view';
+$route['classwork'] = 'main/classwork';
+

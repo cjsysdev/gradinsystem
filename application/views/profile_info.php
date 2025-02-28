@@ -1,4 +1,4 @@
-<div class="row profile-section text-center m-3">
+<div class="row profile-section text-center mt-3">
 	<!-- <div class="col">
 	<img src="..\assets\user.png" alt="Profile Picture" />
 	</div> -->
@@ -12,3 +12,5 @@
 </div>
 
 <hr>
+
+<?php $this->load->view('nav_bar'); ?>

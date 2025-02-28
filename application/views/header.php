@@ -12,8 +12,7 @@
     <!-- fontawesome -->
     <link rel="stylesheet" href="<?= base_url('./assets/fontawesome/css/all.min.css') ?>" />
     <!-- CodeMirror CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/dracula.min.css" />
+    <link rel="stylesheet" href="./assets/codemirror.min.css" />
 </head>
 
 <body onload="startTime()">

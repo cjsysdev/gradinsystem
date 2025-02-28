@@ -1,4 +1,22 @@
 <?php $this->load->view('header') ?>
+<style>
+  /* Default font size */
+  .CodeMirror {
+    font-size: 14px;
+  }
+
+  /* Increase font size on smaller screens */
+  @media (max-width: 600px) {
+    .CodeMirror {
+      font-size: 16px;
+    }
+  }
+
+  /* Disable touch actions */
+  .CodeMirror {
+    touch-action: manipulation;
+  }
+</style>
 
 <div class="container">
   <div class="dashboard">
@@ -6,12 +24,12 @@
     <textarea id="code-editor" style=" overflow: hidden;"></textarea>
 
     <div class="form-group mt-2">
-      <button type="submit" class="btn btn-outline-success btn-block">Save</button>
+      <button type="submit" class="btn btn-info btn-block">Save</button>
     </div>
 
     <!-- CodeMirror JavaScript -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/clike/clike.min.js"></script>
+    <script src="./assets/codemirror.min.js"></script>
+    <script src="./assets/clike.min.js"></script>
 
     <script>
       // Initialize CodeMirror
