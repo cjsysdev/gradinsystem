@@ -7,7 +7,7 @@ class Main extends CI_Controller
     public function __construct()
     {
         parent::__construct();
-        $this->load->model(['accounts', 'assessments', 'student_master', 'classworks', 'class_schedule', 'attendance']);
+        $this->load->model(['accounts', 'assessments', 'student_master', 'classworks', 'class_schedule', 'attendance', 'class_student']);
         $this->load->helper(['url']);
         $this->load->library(['session', 'upload']);
     }
@@ -82,6 +82,7 @@ class Main extends CI_Controller
                 );
             }
         }
+
 
         $attendance_record = $this->attendance->get_student_attendance($student_id);
 
@@ -257,9 +258,9 @@ class Main extends CI_Controller
         }
     }
 
-    public function assessment_view()
+    public function student_submissions()
     {
-        $this->load->view('assessment_view_code');
+        $this->load->view('student_submissions');
     }
 
     public function view($classwork_id)
@@ -285,10 +286,19 @@ class Main extends CI_Controller
 
     public function classwork()
     {
-        $assessments = $this->assessments->as_array()->get_all();
+
+        $assessments = $this->assessments->get_students_assessments(
+            $this->session->student_id,
+            "2C"
+        );
+
+        $submmitted = $this->assessments->get_submmited_assessments(
+            $this->session->student_id
+        );
 
         $data = [
             'assessments' => $assessments,
+            'submitted' => $submmitted
         ];
 
         $this->load->view('classwork', $data);
@@ -309,9 +319,9 @@ class Main extends CI_Controller
         if (!$value) {
             $this->classworks->insert($post);
             $this->session->set_flashdata('success', 'Classwork submitted successfully');
+        } else {
+            $this->session->set_flashdata('warning', 'Classwork already submitted');
         }
-
-        $this->session->set_flashdata('warning', 'Classwork already submitted');
 
         redirect('classwork');
     }

@@ -26,10 +26,67 @@ class assessments extends MY_Model
         parent::__construct();
     }
 
-    public function get_students_assessments()
+    public function get_students_assessments($student_id, $section)
     {
-        $query = $this->db->query('SELECT * FROM gradingsystem.classworks c 
-JOIN assessments a ON a.assessment_id = c.assessment_id WHERE ');
+        $sql = "
+            SELECT 
+                a.assessment_id,
+                a.title,
+                a.description,
+                a.max_score,
+                a.created_at,
+                a.due,
+                cs.section
+            FROM 
+                assessments a
+            LEFT JOIN 
+                classworks c 
+                ON a.assessment_id = c.assessment_id 
+                AND c.student_id = ?
+            JOIN 
+                class_schedule cs
+                ON a.schedule_id = cs.schedule_id
+            WHERE 
+                c.classwork_id IS NULL AND cs.section = ?
+        ";
+
+        $query = $this->db->query($sql, [$student_id, $section]);
+
+        if ($query === false) {
+            $error = $this->db->error();
+            log_message('error', 'Database error: ' . $error['message']);
+            return []; // Return an empty array or handle the error as needed
+        }
+
+        return $query->result_array();
+    }
+
+    public function get_submmited_assessments($student_id)
+    {
+        $sql = "
+            SELECT 
+                a.assessment_id,
+                a.title,
+                a.description,
+                a.max_score,
+                a.created_at,
+                a.due
+            FROM 
+                assessments a
+			JOIN 
+                classworks c 
+                ON a.assessment_id = c.assessment_id 
+			WHERE 
+				c.student_id = ?;";
+
+        $query = $this->db->query($sql, [$student_id]);
+
+        if ($query === false) {
+            $error = $this->db->error();
+            log_message('error', 'Database error: ' . $error['message']);
+            return []; // Return an empty array or handle the error as needed
+        }
+
         return $query->result_array();
     }
 }

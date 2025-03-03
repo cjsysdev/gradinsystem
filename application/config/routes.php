@@ -69,3 +69,4 @@ $route['attendance'] = 'main/attendance_main';
 $route['assessment/(:num)'] = 'main/view/$1';
 $route['classwork'] = 'main/classwork';
 $route['submit_classwork'] = 'main/submit_classwork';
+$route['student_submissions'] = 'main/student_submissions';

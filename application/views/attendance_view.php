@@ -5,10 +5,10 @@
         <?php $this->load->view('profile_info') ?>
         <?php if ($class): ?>
             <div class="card-body p-1 text-center">
-                <h5> <span class="badge badge-danger">SQL INSERT</span></h5>
+                <!-- <h5> <span class="badge badge-danger">SQL INSERT</span></h5> -->
                 <!-- <p>Create your own function, choose any operators or formulas based on your preference</p> -->
-                <p>Understand the different types of MySQL insert statements. Learn the syntax and use cases for each insert method.</p>
-                <a class="btn alert-secondary" href="./uploads/INSERT_INTO.pdf" download="INSERT_INTO.pdf" src="./uploads/INSERT_INTO.pdf"><i class="fa fa-download" aria-hidden="true" style="margin-right: 10px"> </i>Download</a>
+                <!-- <p>Understand the different types of MySQL insert statements. Learn the syntax and use cases for each insert method.</p> -->
+                <!-- <a class="btn alert-secondary" href="./uploads/INSERT_INTO.pdf" download="INSERT_INTO.pdf" src="./uploads/INSERT_INTO.pdf"><i class="fa fa-download" aria-hidden="true" style="margin-right: 10px"> </i>Download</a> -->
                 <!-- <img src="./uploads/INSERT_INTO.jpg" alt="Lab activity" style="width:300px;height:120px;"> -->
                 <!-- <a href="./uploads/CP2_Riddle.pdf" download="CP2_Riddle.pdf" src="./uploads/CP2_Riddle.pdf">Download Here</a> -->
             </div>
@@ -53,16 +53,22 @@
         let h = today.getHours();
         let m = today.getMinutes();
         let s = today.getSeconds();
+        const ampm = h >= 12 ? 'PM' : 'AM'; // Determine AM or PM
+
+        // Convert to 12-hour format
+        h = h % 12;
+        h = h ? h : 12; // Handle midnight (0 hours)
+
         m = checkTime(m);
         s = checkTime(s);
-        document.getElementById('txt').innerHTML = h + ":" + m + ":" + s;
+        document.getElementById('txt').innerHTML = h + ":" + m + ":" + s + " " + ampm;
         setTimeout(startTime, 1000);
     }
 
     function checkTime(i) {
         if (i < 10) {
-            i = "0" + i
-        }; // add zero in front of numbers < 10
+            i = "0" + i; // Add zero in front of numbers < 10
+        }
         return i;
     }
 </script>

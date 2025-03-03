@@ -3,7 +3,7 @@
 function convert_datetime_string($datetime)
 {
     $date = new DateTime($datetime);
-    return  $date->format('D - M j');
+    return  $date->format('D. M j');
 }
 
 function convert_datetime($datetime)

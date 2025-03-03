@@ -17,16 +17,7 @@
   <div class="dashboard">
     <?php $this->load->view('profile_info') ?>
 
-    <?php
-    // Retrieve the classwork ID from the query parameter
-    $classwork_id = $_GET['id'] ?? null;
-    var_dump($classwork_id);
-    if ($classwork_id) {
-      echo "<p>Submitting for Classwork ID: $classwork_id</p>";
-    }
-    ?>
-
-    <textarea id="codeInput" placeholder="Enter your code here..." spellcheck="false"></textarea>
+    <textarea id="codeInput" placeholder="Enter your code here..." spellcheck="false"><?= $classwork['given'] ?></textarea>
     <pre><code id="highlightedCode" class="language-c"></code></pre>
     <div class="form-group">
       <button type="submit" class="btn btn-success btn-block">Submit</button>
