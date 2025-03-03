@@ -284,8 +284,20 @@ class Main extends CI_Controller
         $this->load->view('assessment_view_code');
     }
 
+    function convert_datetime($datetime)
+    {
+        $date = new DateTime($datetime);
+        return  $date->format('D - M j');
+    }
+
     public function classwork()
     {
-        $this->load->view('classwork');
+        $assessments = $this->assessments->as_array()->get_all();
+
+        // var_dump($assessments);
+
+        $data = ['assessments' => $assessments];
+
+        $this->load->view('classwork', $data);
     }
 }

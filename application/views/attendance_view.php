@@ -29,21 +29,6 @@
         <div class="card-body p-1 text-center">
             <h5 class="card-subtitle text-body-secondary"><span class="badge badge-secondary">Attendance Record </span></h5>
             <?php
-            function convert_datetime($datetime)
-            {
-                $date = new DateTime($datetime);
-                return [
-                    'date' => $date->format('D M j'),
-                    'time' => $date->format('h:i A')
-                ];
-            }
-
-            function convert_time($time)
-            {
-                $newtime = new DateTime($time);
-                return $newtime->format('h:i A');
-            }
-
             ?>
             <table class="table table-striped table-bordered table-hover table-sm mt-3">
                 <tbody>

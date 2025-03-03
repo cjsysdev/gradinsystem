@@ -7,7 +7,7 @@
 		<!-- <p><?= $this->session->course, ' - ', $this->session->current_year ?></p> -->
 	</div>
 	<div class="col text-center">
-		<a href="logout" class="btn btn-outline-danger">Logout</a>
+		<a href="logout" class="btn btn-outline-dark">Logout</a>
 	</div>
 </div>
 
