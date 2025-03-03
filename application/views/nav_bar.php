@@ -1,4 +1,4 @@
 <div class="form-group row">
-	<a href="attendance" class="btn btn-outline-secondary col m-2">Stream</a>
-	<a href="classwork" class="btn btn-outline-success col m-2">Classwork</a>
+	<a href="<?= base_url('attendance') ?>" class="btn btn-outline-secondary col m-2">Stream</a>
+	<a href="<?= base_url('classwork') ?>" class="btn btn-outline-success col m-2">Classwork</a>
 </div>

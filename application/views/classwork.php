@@ -4,15 +4,26 @@
     <?php $this->load->view('profile_info') ?>
     <div class="row justify-content-center">
       <div class="col-md-8">
+        <?php if ($this->session->flashdata('success')) : ?>
+          <div class="alert alert-success">
+            <?= $this->session->flashdata('success'); ?>
+          </div>
+        <?php endif; ?>
+
+        <?php if ($this->session->flashdata('warning')) : ?>
+          <div class="alert alert-warning">
+            <?= $this->session->flashdata('warning'); ?>
+          </div>
+        <?php endif; ?>
 
         <?php foreach ($assessments as $row) : ?>
           <div class="card mb-3 shadow-sm">
             <div class="card-body">
               <h3 class="card-title mb-1"><?= $row['title'] ?></h3>
-              <p class="card-text mb-1" style="font-size: small;"> <span class="text-secondary"><?= convert_datetime_string($row['due']) ?> • Not Submitted</span></p>
-              <hr>
-              <p class="card-text mb-3"><?= $row['description'] ?></p>
-              <a href="assessment_view" class="btn btn-info">Submit</a>
+              <p class="card-text mb-1" style="font-size: small;"> <span class="text-secondary"><?= convert_datetime_string($row['due']) ?>
+                  <hr>
+                  <p class="card-text mb-3"><?= $row['description'] ?></p>
+                  <a href="<?= base_url('assessment/' . $row['assessment_id']) ?>" class="btn btn-info">Submit</a>
             </div>
           </div>
         <?php endforeach; ?>

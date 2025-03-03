@@ -12,16 +12,26 @@
     border: none;
   }
 </style>
-<link rel="stylesheet" href="assets/highlights/atom-one-light.min.css">
+<link rel="stylesheet" href="<? base_url('assets/highlights/atom-one-light.min.css') ?>">
 <div class="container">
   <div class="dashboard">
     <?php $this->load->view('profile_info') ?>
+
+    <?php
+    // Retrieve the classwork ID from the query parameter
+    $classwork_id = $_GET['id'] ?? null;
+    var_dump($classwork_id);
+    if ($classwork_id) {
+      echo "<p>Submitting for Classwork ID: $classwork_id</p>";
+    }
+    ?>
+
     <textarea id="codeInput" placeholder="Enter your code here..." spellcheck="false"></textarea>
     <pre><code id="highlightedCode" class="language-c"></code></pre>
     <div class="form-group">
       <button type="submit" class="btn btn-success btn-block">Submit</button>
     </div>
-    <script src="assets/highlights/11.7.0-highlight.min.js"></script>
+    <script src="<?= base_url('assets/highlights/11.7.0-highlight.min.js') ?>"></script>
     <script>
       function autoAdjustTextarea(textarea) {
         textarea.style.height = "auto"; // Reset height to auto

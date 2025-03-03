@@ -21,15 +21,19 @@
 <div class="container">
   <div class="dashboard">
     <?php $this->load->view('profile_info') ?>
-    <textarea id="code-editor" style=" overflow: hidden;"></textarea>
 
-    <div class="form-group mt-2">
-      <button type="submit" class="btn btn-info btn-block">Save</button>
+    <div class="form-group">
+      <form action="<?= base_url('submit_classwork') ?>" method="POST">
+        <textarea id="code-editor" name="code" style=" overflow: hidden;"></textarea>
+        <input type="text" name="assessment_id" value="<?= $classwork['assessment_id'] ?>" hidden>
+        <input type="text" name="student_id" value="<?= $this->session->student_id ?>" hidden>
+        <button type="submit" class="btn btn-info btn-block mt-3">Save</button>
+      </form>
     </div>
 
     <!-- CodeMirror JavaScript -->
-    <script src="./assets/codemirror.min.js"></script>
-    <script src="./assets/clike.min.js"></script>
+    <script src="<?= base_url('./assets/codemirror.min.js ?>') ?> "></script>
+    <script src="<?= base_url('./assets/clike.min.js') ?>"></script>
 
     <script>
       // Initialize CodeMirror

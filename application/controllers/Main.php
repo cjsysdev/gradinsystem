@@ -14,28 +14,6 @@ class Main extends CI_Controller
 
     public function index()
     {
-        // $input_res = $this->assessments->where('status', 'active')->with_type()->with_class_schedule()->get();
-
-        // if ($input_res) {
-        //     $data = [
-        //         'input_id' => $input_res->input_id,
-        //         'description' => $input_res->description,
-        //         'max_score' => $input_res->max_score,
-        //         'type' => $input_res->type->type,
-        //         'subject_code' => $input_res->subject->subject_code,
-        //         'room' => $input_res->subject->room,
-        //         'subject_title' => $input_res->subject->description,
-        //         'section' => $input_res->subject->section,
-        //         'year_level' => $input_res->subject->year_level,
-        //         'schedule' => $input_res->subject->schedule,
-        //         'no_active' => FALSE,
-        //     ];
-
-        //     $this->session->set_userdata($data);
-        // } else {
-        //     $this->session->set_userdata(['no_active' => TRUE]);
-        // }
-
         $this->load->view('login');
     }
 
@@ -284,6 +262,21 @@ class Main extends CI_Controller
         $this->load->view('assessment_view_code');
     }
 
+    public function view($classwork_id)
+    {
+        $classwork = $this->assessments->as_array()->get($classwork_id);
+
+        if (!$classwork) {
+            show_404();
+        }
+
+        $data = [
+            'classwork' =>  $classwork
+        ];
+
+        $this->load->view('assessment_view_code', $data);
+    }
+
     function convert_datetime($datetime)
     {
         $date = new DateTime($datetime);
@@ -294,10 +287,32 @@ class Main extends CI_Controller
     {
         $assessments = $this->assessments->as_array()->get_all();
 
-        // var_dump($assessments);
-
-        $data = ['assessments' => $assessments];
+        $data = [
+            'assessments' => $assessments,
+        ];
 
         $this->load->view('classwork', $data);
+    }
+
+    public function submit_classwork()
+    {
+
+        $post = $this->input->post();
+        $value = $this->classworks->where(
+            [
+                'student_id' =>
+                $this->session->student_id,
+                'created_at like' => '2025-03-03%'
+            ]
+        )->get();
+
+        if (!$value) {
+            $this->classworks->insert($post);
+            $this->session->set_flashdata('success', 'Classwork submitted successfully');
+        }
+
+        $this->session->set_flashdata('warning', 'Classwork already submitted');
+
+        redirect('classwork');
     }
 }

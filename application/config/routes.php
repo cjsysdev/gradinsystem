@@ -66,6 +66,6 @@ $route['input_submit'] = 'main/input_submit';
 $route['output_upload'] = 'main/output_upload';
 $route['upload_activity'] = 'main/upload_activity';
 $route['attendance'] = 'main/attendance_main';
-$route['assessment_view'] = 'main/assessment_view';
+$route['assessment/(:num)'] = 'main/view/$1';
 $route['classwork'] = 'main/classwork';
-
+$route['submit_classwork'] = 'main/submit_classwork';

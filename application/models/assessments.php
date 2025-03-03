@@ -25,4 +25,11 @@ class assessments extends MY_Model
         );
         parent::__construct();
     }
+
+    public function get_students_assessments()
+    {
+        $query = $this->db->query('SELECT * FROM gradingsystem.classworks c 
+JOIN assessments a ON a.assessment_id = c.assessment_id WHERE ');
+        return $query->result_array();
+    }
 }
