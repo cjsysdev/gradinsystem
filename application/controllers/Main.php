@@ -256,7 +256,7 @@ class Main extends CI_Controller
         $data = [
             'classwork' =>  $submission
         ];
-        
+
         $this->load->view('student_submission', $data);
     }
 
@@ -329,5 +329,11 @@ class Main extends CI_Controller
         $schedule_id = 1;
         $section = "1C";
         $this->attendance->start_class($schedule_id, $section, get_date_today());
+    }
+
+    public function view_score()
+    {
+        $number["random"] = randomizeNumber(5.0, 7.5);
+        $this->load->view('view_score', $number);
     }
 }

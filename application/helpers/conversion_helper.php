@@ -67,3 +67,14 @@ function footerToast()
 
     return $template;
 }
+
+function randomizeNumber($min, $max)
+{
+    $min = (float)$min;
+    $max = (float)$max;
+
+    $randomNumber = $min + (mt_rand() / mt_getrandmax()) * ($max - $min);
+    $randomNumber = round($randomNumber, 2);
+
+    return $randomNumber;
+}
