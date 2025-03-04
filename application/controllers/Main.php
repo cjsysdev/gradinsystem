@@ -136,15 +136,6 @@ class Main extends CI_Controller
         redirect();
     }
 
-    function generate_random_numbers($count = 10, $min = 1, $max = 9)
-    {
-        $random_numbers = '';
-        for ($i = 0; $i < $count; $i++) {
-            $random_numbers .= rand($min, $max);
-        }
-        return $random_numbers;
-    }
-
     public function get_id()
     {
         $input = $this->input->post();
@@ -166,7 +157,7 @@ class Main extends CI_Controller
         $input = $this->input->post();
 
         $student = [
-            'student_no' => $this->generate_random_numbers(),
+            'student_no' => generate_random_numbers(),
             'lastname' => strtoupper($input['lastname']),
             'firstname' => strtoupper($input['firstname']),
             'gender' => $input['gender'],
@@ -278,26 +269,28 @@ class Main extends CI_Controller
         $this->load->view('assessment_view_code', $data);
     }
 
-    function convert_datetime($datetime)
-    {
-        $date = new DateTime($datetime);
-        return  $date->format('D - M j');
-    }
-
     public function classwork()
     {
 
-        $assessments = $this->assessments->get_students_assessments(
-            $this->session->student_id,
-            "2C"
+        $student_id = $this->session->student_id;
+        $student = $this->class_student->where('student_id', $student_id)->get();
+
+        if (!$student) {
+            $this->session->set_flashdata('error', 'Student section not found');
+            redirect('attendance');
+        }
+
+        $missing = $this->assessments->get_students_assessments(
+            $student_id,
+            $student->section
         );
 
         $submmitted = $this->assessments->get_submmited_assessments(
-            $this->session->student_id
+            $student_id
         );
 
         $data = [
-            'assessments' => $assessments,
+            'assessments' => $missing,
             'submitted' => $submmitted
         ];
 
@@ -310,9 +303,8 @@ class Main extends CI_Controller
         $post = $this->input->post();
         $value = $this->classworks->where(
             [
-                'student_id' =>
-                $this->session->student_id,
-                'created_at like' => '2025-03-03%'
+                'student_id' => $this->session->student_id,
+                'assessment_id' => $post['assessment_id']
             ]
         )->get();
 
@@ -324,5 +316,12 @@ class Main extends CI_Controller
         }
 
         redirect('classwork');
+    }
+
+    public function start_class()
+    {
+        $schedule_id = 1;
+        $section = "1C";
+        $this->attendance->start_class($schedule_id, $section, get_date_today());
     }
 }

@@ -41,4 +41,33 @@ class attendance extends MY_Model
 
         return $query->result_array();
     }
+
+    public function start_class($schedule_id, $section, $date)
+    {
+
+        $check_duplicate_query = $this->db->query(" SELECT * FROM attendance WHERE schedule_id = $schedule_id AND date like '$date%' ");
+
+        if ($check_duplicate_query->row() === null) {
+            $sql = "
+            INSERT INTO attendance (schedule_id, student_id, status)
+                    SELECT 
+                        ?, 
+                        student_id, 
+                        'absent'
+                    FROM class_student
+                    WHERE class_id = ?;
+            ";
+
+            $query = $this->db->query($sql, [$schedule_id, $section]);
+
+            if ($query === false) {
+                $error = $this->db->error();
+            }
+
+            return false;
+        };
+
+
+        return true;
+    }
 }

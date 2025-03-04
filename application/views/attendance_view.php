@@ -3,6 +3,11 @@
 <div class="container">
     <div class="dashboard">
         <?php $this->load->view('profile_info') ?>
+        <?php if ($this->session->flashdata('error')) : ?>
+            <div class="alert alert-danger">
+                <?= $this->session->flashdata('error'); ?>
+            </div>
+        <?php endif; ?>
         <?php if ($class): ?>
             <div class="card-body p-1 text-center">
                 <!-- <h5> <span class="badge badge-danger">SQL INSERT</span></h5> -->

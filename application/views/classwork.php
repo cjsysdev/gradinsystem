@@ -3,7 +3,7 @@
   <div class="dashboard">
     <?php $this->load->view('profile_info') ?>
     <div class="row justify-content-center">
-      <div class="col-md-8">
+      <div class="col">
         <?php if ($this->session->flashdata('success')) : ?>
           <div class="alert alert-success">
             <?= $this->session->flashdata('success'); ?>

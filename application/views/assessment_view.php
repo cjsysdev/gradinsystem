@@ -16,7 +16,6 @@
 <div class="container">
   <div class="dashboard">
     <?php $this->load->view('profile_info') ?>
-
     <textarea id="codeInput" placeholder="Enter your code here..." spellcheck="false"><?= $classwork['given'] ?></textarea>
     <pre><code id="highlightedCode" class="language-c"></code></pre>
     <div class="form-group">

@@ -70,3 +70,5 @@ $route['assessment/(:num)'] = 'main/view/$1';
 $route['classwork'] = 'main/classwork';
 $route['submit_classwork'] = 'main/submit_classwork';
 $route['student_submissions'] = 'main/student_submissions';
+$route['start_class'] = 'main/start_class';
+
