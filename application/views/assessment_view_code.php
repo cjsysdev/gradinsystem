@@ -21,13 +21,21 @@
 <div class="container">
   <div class="dashboard">
     <?php $this->load->view('profile_info') ?>
+    <p><?= $classwork["description"] ?></p>
 
     <div class="form-group">
-      <form id="code" action="<?= base_url('submit_classwork') ?>" method="POST">
-        <textarea id="code-editor" name="code" style=" overflow: hidden;"><?= $classwork['given'] ?></textarea>
+      <form id="code-form" action="<?= base_url('submit_classwork') ?>" method="POST">
+        <textarea id="code-editor" name="code" style=" overflow: hidden;" oninput="saveText()"></textarea>
         <input type="text" name="assessment_id" value="<?= $classwork['assessment_id'] ?>" hidden>
         <input type="text" name="student_id" value="<?= $this->session->student_id ?>" hidden>
-        <button type="button" class="btn btn-info btn-block mt-3" data-toggle="modal" data-target="#confirmationModal">Save</button>
+        <div class="row mt-3">
+          <div class="col p-1">
+            <button class="btn btn-outline-info btn-block" type="button" onclick="saveText()">Save</button>
+          </div>
+          <div class="col p-1">
+            <button class="btn btn-info btn-block" data-toggle="modal" data-target="#confirmationModal" type="button">Submit</button>
+          </div>
+        </div>
       </form>
     </div>
 
@@ -42,7 +50,7 @@
             </button>
           </div>
           <div class="modal-body">
-            Are you sure you want to save this code?
+            Are you sure you want to submit this code?
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
@@ -53,31 +61,7 @@
     </div>
   </div>
 
-  <!-- Bootstrap 4.5.2 JS (with Popper and jQuery) -->
-  <script src="<?= base_url("/assets/2-jquery-3.5.1.slim.min.js") ?>"></script>
-  <script src="<?= base_url("/assets/4.5.2.bootstrap.bundle.min") ?>"></script>
-
-  <!-- JavaScript to Handle Form Submission -->
-  <script>
-    document.getElementById('confirmSave').addEventListener('click', function() {
-      // Submit the form programmatically
-      document.getElementById('code').submit();
-    });
-  </script>
-
-  <!-- CodeMirror JavaScript -->
-  <script src="<?= base_url('./assets/codemirror.min.js ?>') ?> "></script>
-  <script src="<?= base_url('./assets/clike.min.js') ?>"></script>
-
-  <script>
-    // Initialize CodeMirror
-    const editor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
-      mode: 'text/x-csrc',
-      lineNumbers: true,
-      indentUnit: 4,
-      matchBrackets: true,
-      autoCloseBrackets: true,
-    });
-  </script>
 </div>
 </div>
+
+<?php $this->load->view('footer') ?>

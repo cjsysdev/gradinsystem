@@ -23,7 +23,7 @@
               <p class="card-text mb-1" style="font-size: small;"> <span class="text-secondary"><?= convert_datetime_string($row['due']) ?> • </span> <span class="text-danger">Missing
                   <hr>
                   <p class="card-text mb-3"><?= $row['description'] ?></p>
-                  <a href="<?= base_url('assessment/' . $row['assessment_id']) ?>" class="btn btn-info">Submit</a>
+                  <a href="<?= base_url('assessment/' . $row['assessment_id']) ?>" class="btn btn-info">Create</a>
             </div>
           </div>
         <?php endforeach; ?>
@@ -35,7 +35,7 @@
               <p class="card-text mb-1" style="font-size: small;"> <span class="text-secondary"><?= convert_datetime_string($row['due'])  ?> • </span> <span class="text-success">Submitted
                   <hr>
                   <p class="card-text mb-3"><?= $row['description'] ?></p>
-                  <a class="btn btn-outline-info">View</a>
+                  <a href="<?= base_url('student_submission/' . $row['classwork_id']) ?>" class="btn btn-outline-info">View</a>
             </div>
           </div>
         <?php endforeach; ?>
@@ -44,4 +44,5 @@
     </div>
   </div>
 </div>
-</div>
+
+<?php $this->load->view('footer') ?>

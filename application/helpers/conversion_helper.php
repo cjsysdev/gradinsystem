@@ -36,3 +36,34 @@ function generate_random_numbers($count = 10, $min = 1, $max = 9)
     }
     return $random_numbers;
 }
+
+function check_flashdata($alert_type)
+{
+    return get_instance()->session->flashdata($alert_type) != NULL;
+}
+
+function headToast($color)
+{
+    $template = <<<HTML
+        <div class="toast-container position-fixed bottom-0 end-0 p-3">
+            <div id='liveToast' class="toast show align-items-center text-bg-{$color} border-0" data-autohide="true" data-animation="true" role="alert">
+                <div class="d-flex">
+                    <div class="toast-body">
+    HTML;
+
+    return $template;
+}
+
+
+function footerToast()
+{
+    $template = <<<HTML
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            </div>
+        </div>
+    HTML;
+
+    return $template;
+}

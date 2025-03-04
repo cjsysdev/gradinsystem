@@ -30,4 +30,4 @@
     }
 </style>
 
-<body onload="startTime()">
+<body >

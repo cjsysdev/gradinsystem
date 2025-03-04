@@ -249,9 +249,15 @@ class Main extends CI_Controller
         }
     }
 
-    public function student_submissions()
+    public function student_submission($classwork_id)
     {
-        $this->load->view('student_submissions');
+        $submission = $this->classworks->as_array()->get($classwork_id);
+
+        $data = [
+            'classwork' =>  $submission
+        ];
+        
+        $this->load->view('student_submission', $data);
     }
 
     public function view($classwork_id)
@@ -312,7 +318,7 @@ class Main extends CI_Controller
             $this->classworks->insert($post);
             $this->session->set_flashdata('success', 'Classwork submitted successfully');
         } else {
-            $this->session->set_flashdata('warning', 'Classwork already submitted');
+            $this->session->set_flashdata('warning', 'NAKA PASS NA LAGE KA!!!!');
         }
 
         redirect('classwork');

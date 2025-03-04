@@ -23,6 +23,12 @@ class assessments extends MY_Model
             'foreign_key' => 'schedule_id',
             'local_key' => 'schedule_id'
         );
+        $this->has_many['classworks'] =  array(
+            'foreign_model' => 'classworks',
+            'foreign_table' => 'classworks',
+            'foreign_key' => 'assessment_id',
+            'local_key' => 'assessment_id'
+        );
         parent::__construct();
     }
 
@@ -64,20 +70,9 @@ class assessments extends MY_Model
     public function get_submmited_assessments($student_id)
     {
         $sql = "
-            SELECT 
-                a.assessment_id,
-                a.title,
-                a.description,
-                a.max_score,
-                a.created_at,
-                a.due
-            FROM 
-                assessments a
-			JOIN 
-                classworks c 
-                ON a.assessment_id = c.assessment_id 
-			WHERE 
-				c.student_id = ?;";
+            SELECT * FROM classworks c 
+            JOIN assessments a ON c.assessment_id = a.assessment_id 
+            WHERE student_id = ? ";
 
         $query = $this->db->query($sql, [$student_id]);
 
