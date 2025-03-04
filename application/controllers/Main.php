@@ -331,9 +331,34 @@ class Main extends CI_Controller
         $this->attendance->start_class($schedule_id, $section, get_date_today());
     }
 
-    public function view_score()
+    public function all_submissions()
     {
-        $number["random"] = randomizeNumber(5.0, 7.5);
-        $this->load->view('view_score', $number);
+        $submissions = $this->classworks->get_all_submissions(4);
+
+        $data = ["submissions" => $submissions];
+
+        $this->load->view('all_submission', $data);
+    }
+
+    public function add_score($classwork_id, $type)
+    {
+
+        switch ($type) {
+            case 1:
+                $score = randomizeNumber(5.0, 7.4);
+                break;
+            case 2:
+                $score = randomizeNumber(7.5, 8.9);
+                break;
+            case 3:
+                $score = randomizeNumber(9.0, 10.0);
+                break;
+            default:
+                $score = null;
+                break;
+        }
+
+        $update = $this->classworks->add_score($classwork_id, $score);
+        redirect('all_submissions');
     }
 }
