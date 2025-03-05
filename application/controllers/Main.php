@@ -333,7 +333,7 @@ class Main extends CI_Controller
 
     public function all_submissions()
     {
-        $submissions = $this->classworks->get_all_submissions(4);
+        $submissions = $this->classworks->get_all_submissions(7);
 
         $data = ["submissions" => $submissions];
 
@@ -348,10 +348,16 @@ class Main extends CI_Controller
                 $score = randomizeNumber(5.0, 7.4);
                 break;
             case 2:
-                $score = randomizeNumber(7.5, 8.9);
+                $score = randomizeNumber(7.5, 7.9);
                 break;
             case 3:
-                $score = randomizeNumber(9.0, 10.0);
+                $score = randomizeNumber(8.0, 8.9);
+                break;
+            case 4:
+                $score = randomizeNumber(9.0, 9.4);
+                break;
+            case 5:
+                $score = randomizeNumber(9.5, 10.0);
                 break;
             default:
                 $score = null;
