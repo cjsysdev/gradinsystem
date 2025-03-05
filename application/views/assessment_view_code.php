@@ -64,4 +64,28 @@
 </div>
 </div>
 
+
+<!-- JavaScript to Handle Form Submission -->
+<script>
+  document.getElementById('confirmSave').addEventListener('click', function() {
+    document.getElementById('code-form').submit();
+  });
+</script>
+
+<script>
+  window.onload = function() {
+    const savedText = localStorage.getItem('textboxValue');
+
+    if (savedText) {
+      editor.setValue(savedText);
+    }
+  };
+
+  function saveText() {
+    const textboxValue = editor.getValue();
+    localStorage.setItem('textboxValue', textboxValue);
+    alert('Text saved!');
+  }
+</script>
+
 <?php $this->load->view('footer') ?>
