@@ -4,8 +4,9 @@ defined('BASEPATH') or exit('No direct script access allowed');
 class attendance extends MY_Model
 {
     public $table = 'attendance';
-    public $primary_key = 'attendance';
+    public $primary_key = 'attendance_id';
     public $protected = array('attendance_id');
+    public $fillable = array('status');
 
     public function __construct()
     {
@@ -55,7 +56,7 @@ class attendance extends MY_Model
                         student_id, 
                         'absent'
                     FROM class_student
-                    WHERE class_id = ?;
+                    WHERE section = ?;
             ";
 
             $query = $this->db->query($sql, [$schedule_id, $section]);
@@ -69,5 +70,22 @@ class attendance extends MY_Model
 
 
         return true;
+    }
+
+    public function update_status($status, $ip_address, $student_id, $date)
+    {
+        return $this->db
+            ->set([
+                'status' => $status,
+                'ip_address' => $ip_address,
+                'date' => $date . ' ' . date('H:i:s')
+            ])
+            ->where([
+                'student_id' =>  $student_id,
+                'date(date)' => $date,
+                'status' => 'absent'
+            ])
+            ->from('attendance')
+            ->update();
     }
 }

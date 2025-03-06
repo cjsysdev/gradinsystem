@@ -6,11 +6,11 @@ class classworks extends MY_Model
     public $table = 'classworks';
     public $primary_key = 'classwork_id';
     public $protected = array('classwork_id');
-    public $timestamps = TRUE;
+    public $timestamps = FALSE;
 
     public function __construct()
     {
-        $this->timestamps = TRUE;
+        $this->timestamps = FALSE;
         $this->has_many['student'] =  array(
             'foreign_model' => 'student_master',
             'foreign_table' => 'student_master',

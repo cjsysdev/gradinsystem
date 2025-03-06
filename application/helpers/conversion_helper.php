@@ -74,7 +74,7 @@ function randomizeNumber($min, $max)
     $max = (float)$max;
 
     $randomNumber = $min + (mt_rand() / mt_getrandmax()) * ($max - $min);
-    $randomNumber = round($randomNumber, 2);
+    $randomNumber = round($randomNumber, 1);
 
     return $randomNumber;
 }
