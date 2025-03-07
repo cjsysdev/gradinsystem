@@ -23,7 +23,7 @@
               <h3 class="card-title mb-1"><?= $row['title'] ?></h3>
               <p class="card-text mb-1" style="font-size: small;"> <span class="text-secondary"><?= convert_datetime_string($row['due']) ?> • </span> <span class="text-danger">Missing
                   <hr>
-                  <p class="card-text mb-3"><?= $row['description'] ?></p>
+                  <p class="card-text mb-3 text-truncate"><?= $row['description'] ?></p>
                   <a href="<?= base_url('assessment/' . $row['assessment_id']) ?>" class="btn btn-info">Create</a>
             </div>
           </div>
@@ -35,7 +35,7 @@
               <h3 class="card-title mb-1"><?= $row['title'] ?></h3>
               <p class="card-text mb-1" style="font-size: small;"> <span class="text-secondary"><?= convert_datetime_string($row['due'])  ?> • </span> <span class="text-success">Submitted
                   <hr>
-                  <p class="card-text mb-3"><?= $row['description'] ?></p>
+                  <p class="card-text mb-3 text-truncate"><?= $row['description'] ?></p>
                   <a href="<?= base_url('student_submission/' . $row['classwork_id']) ?>" class="btn btn-outline-info">View</a>
                   <!-- <a type="button" class="btn btn-outline-link">Score</a> -->
             </div>

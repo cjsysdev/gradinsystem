@@ -5,15 +5,6 @@
         <?php $this->load->view('profile_info') ?>
         <?php if ($class): ?>
             <div class="card-body p-1 text-center">
-                <!-- <h5> <span class="badge badge-danger">SQL INSERT</span></h5> -->
-                <!-- <p>Create your own function, choose any operators or formulas based on your preference</p> -->
-                <!-- <p>Understand the different types of MySQL insert statements. Learn the syntax and use cases for each insert method.</p> -->
-                <!-- <a class="btn alert-secondary" href="./uploads/INSERT_INTO.pdf" download="INSERT_INTO.pdf" src="./uploads/INSERT_INTO.pdf"><i class="fa fa-download" aria-hidden="true" style="margin-right: 10px"> </i>Download</a> -->
-                <!-- <img src="./uploads/INSERT_INTO.jpg" alt="Lab activity" style="width:300px;height:120px;"> -->
-                <!-- <a href="./uploads/CP2_Riddle.pdf" download="CP2_Riddle.pdf" src="./uploads/CP2_Riddle.pdf">Download Here</a> -->
-            </div>
-            <hr>
-            <div class="card-body p-1 text-center">
                 <h5><span class="badge badge-secondary mb-1"><?= $class["class_code"], ' ', $class["type"] ?? NULL ?></span></h5>
                 <h6 class="card-subtitle text-body-secondary"><?= $class["class_name"], ' ', $class["type"] ?></h6>
                 <p class="card-text m-0"><?= $class["section"], ' ', $class["day"], ' : ', convert_time($class["time_start"]), '-', convert_time($class["time_end"]) ?></p>

@@ -37,6 +37,11 @@ class Main extends CI_Controller
         $this->load->view('home');
     }
 
+    public function assessment_view()
+    {
+        $this->load->view('assessment_view');
+    }
+
     public function output_upload()
     {
         $output = $this->outputs->where([

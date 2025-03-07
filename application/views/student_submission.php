@@ -57,26 +57,33 @@
   <div class="dashboard">
     <?php $this->load->view('profile_info') ?>
 
-    <div class="form-group">
-      <textarea id="code-editor" name="code" style=" overflow: hidden;">
+    <pre><code id="highlightedCode" class="language-c"><?= $classwork['code'] ?></code></pre>
+
+    <!-- <textarea id="code-editor" name="code" style=" overflow: hidden;">
     <?= $classwork['code'] ?>
-    </textarea>
-      <?php if ($classwork['score'] !== NULL): ?>
-        <button type="button" class="btn btn-info btn-block mt-3" onclick="view_score()">View score</button>
-      <?php endif; ?>
-    </div>
-
-    <!-- CodeMirror JavaScript -->
-    <script src="<?= base_url('./assets/codemirror.min.js ?>') ?> "></script>
-    <script src="<?= base_url('./assets/clike.min.js') ?>"></script>
-
-    <script>
-      // Start animation when page loads
-      function view_score() {
-        animateNumber(<?= $classwork['score'] ?>, 2500);
-      }
-    </script>
+    </textarea> -->
+    <?php if ($classwork['score'] !== NULL): ?>
+      <!-- <button type="button" class="btn btn-info btn-block mt-3" onclick="view_score()">View score</button> -->
+    <?php endif; ?>
   </div>
+
+  <script src="<?= base_url('assets/highlights/11.7.0-highlight.min.js') ?>"></script>
+
+  <script>
+    hljs.highlightAll();
+  </script>
+
+  <!-- CodeMirror JavaScript -->
+  <script src="<?= base_url('./assets/codemirror.min.js ?>') ?> "></script>
+  <script src="<?= base_url('./assets/clike.min.js') ?>"></script>
+
+  <script>
+    // Start animation when page loads
+    function view_score() {
+      animateNumber(<?= $classwork['score'] ?>, 2500);
+    }
+  </script>
+</div>
 </div>
 
 <?php $this->load->view('footer');

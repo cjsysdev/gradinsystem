@@ -25,6 +25,9 @@
 
     <div class="form-group">
       <form id="code-form" action="<?= base_url('submit_classwork') ?>" method="POST">
+        <?php if ($classwork['given'] !== null): ?>
+          <pre><code id="highlightedCode" class="language-c"><?= $classwork['given'] ?></code></pre>
+        <?php endif; ?>
         <textarea id="code-editor" name="code" style=" overflow: hidden;" oninput="saveText()"></textarea>
         <input type="text" name="assessment_id" value="<?= $classwork['assessment_id'] ?>" hidden>
         <input type="text" name="student_id" value="<?= $this->session->student_id ?>" hidden>
@@ -65,6 +68,12 @@
 </div>
 
 
+<script src="<?= base_url('assets/highlights/11.7.0-highlight.min.js') ?>"></script>
+
+<script>
+  hljs.highlightAll();
+</script>
+
 <!-- JavaScript to Handle Form Submission -->
 <script>
   document.getElementById('confirmSave').addEventListener('click', function() {
@@ -73,19 +82,38 @@
 </script>
 
 <script>
-  window.onload = function() {
-    const savedText = localStorage.getItem('textboxValue');
-
-    if (savedText) {
-      editor.setValue(savedText);
-    }
-  };
+  function getTodayDate() {
+    const today = new Date();
+    return today.toISOString().split('T')[0]; // Returns date as 'YYYY-MM-DD'
+  }
 
   function saveText() {
     const textboxValue = editor.getValue();
-    localStorage.setItem('textboxValue', textboxValue);
-    alert('Text saved!');
+    const today = getTodayDate();
+
+    const storageData = {
+      date: today,
+      text: textboxValue,
+    };
+    localStorage.setItem('textboxValue', JSON.stringify(storageData));
+    alert('Text saved for today!');
   }
+
+  window.onload = function() {
+    const savedData = localStorage.getItem('textboxValue');
+
+    if (savedData) {
+      const parsedData = JSON.parse(savedData);
+      const today = getTodayDate();
+
+      if (parsedData.date === today) {
+        editor.setValue(parsedData.text);
+      } else {
+        localStorage.removeItem('textboxValue');
+        console.log('Cleared old data from localStorage.');
+      }
+    }
+  };
 </script>
 
 <?php $this->load->view('footer') ?>

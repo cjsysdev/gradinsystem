@@ -3,9 +3,6 @@
 <script src="<?= base_url("/assets/bootstrap.bundle.min.js") ?>"></script>
 
 <script src="<?= base_url("assets/highlights/11.7.0-highlight.min.js") ?> "></script>
-<script>
-    hljs.highlightAll();
-</script>
 
 <!-- Bootstrap 4.5.2 JS (with Popper and jQuery) -->
 <script src="<?= base_url("/assets/2-jquery-3.5.1.slim.min.js") ?>"></script>
@@ -25,7 +22,6 @@
         autoCloseBrackets: true,
     });
 </script>
-
 
 <script>
     function animateNumber(finalNumber, duration = 2000) {

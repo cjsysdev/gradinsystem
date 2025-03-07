@@ -73,3 +73,4 @@ $route['student_submission/(:num)'] = 'main/student_submission/$1';
 $route['start_class'] = 'main/start_class';
 $route['all_submissions'] = 'main/all_submissions';
 $route['add_score/(:num)/(:num)'] = 'main/add_score/$1/$2';
+$route['assessment_view'] = 'main/assessment_view';
