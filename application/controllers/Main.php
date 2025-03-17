@@ -10,6 +10,7 @@ class Main extends CI_Controller
         $this->load->model(['accounts', 'assessments', 'student_master', 'classworks', 'class_schedule', 'attendance', 'class_student']);
         $this->load->helper(['url']);
         $this->load->library(['session', 'upload']);
+        $this->is_offline = !isset($_SESSION['online']);
     }
 
     public function index()
@@ -34,16 +35,35 @@ class Main extends CI_Controller
 
     public function home()
     {
+        if ($this->is_offline) redirect();
         $this->load->view('home');
     }
 
     public function assessment_view()
     {
+        if ($this->is_offline) redirect();
         $this->load->view('assessment_view');
+    }
+
+    public function add_inputs()
+    {
+        $this->load->view('add_inputs');
+    }
+
+    public function admin()
+    {
+        $this->load->view('admin');
+    }
+
+    public function output_upload()
+    {
+        if ($this->is_offline) redirect();
+        $this->load->view('output_upload');
     }
 
     public function attendance_main()
     {
+        if ($this->is_offline) redirect();
         date_default_timezone_set('Asia/Manila');
 
         $day = date('D');
@@ -93,16 +113,6 @@ class Main extends CI_Controller
         }
     }
 
-    public function add_inputs()
-    {
-        $this->load->view('add_inputs');
-    }
-
-    public function admin()
-    {
-        $this->load->view('admin');
-    }
-
     public function login()
     {
         $post = $this->input->post();
@@ -118,7 +128,8 @@ class Main extends CI_Controller
                 'firstname' => $user->student->firstname,
                 'course' => $user->student->course,
                 'current_year' => $user->student->current_year,
-                'role' => $user->role
+                'role' => $user->role,
+                'online' => true
             ];
 
             $this->session->set_userdata($session_data);
@@ -185,7 +196,7 @@ class Main extends CI_Controller
 
     public function classwork()
     {
-
+        if ($this->is_offline) redirect();
         $student_id = $this->session->student_id;
         $student = $this->class_student->where('student_id', $student_id)->get();
 
@@ -275,13 +286,6 @@ class Main extends CI_Controller
         $update = $this->classworks->add_score($classwork_id, $score);
         redirect('all_submissions');
     }
-
-    public function output_upload()
-    {
-        $this->load->view('output_upload');
-    }
-
-
 
     public function upload_activity()
     {
