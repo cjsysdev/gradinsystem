@@ -42,20 +42,6 @@ class Main extends CI_Controller
         $this->load->view('assessment_view');
     }
 
-    public function output_upload()
-    {
-        $output = $this->outputs->where([
-            'student_id'    => $_SESSION['student_id'],
-            'input_id'      => $_SESSION['input_id'] ?? NULL
-        ])->get();
-
-        if (!$output) {
-            $output = ['input_id' => FALSE];
-        }
-
-        $this->load->view('output_upload',  $output);
-    }
-
     public function attendance_main()
     {
         date_default_timezone_set('Asia/Manila');
@@ -288,5 +274,39 @@ class Main extends CI_Controller
 
         $update = $this->classworks->add_score($classwork_id, $score);
         redirect('all_submissions');
+    }
+
+    public function output_upload()
+    {
+        $this->load->view('output_upload');
+    }
+
+
+
+    public function upload_activity()
+    {
+
+        $filename = $this->class_student->get(
+            ['student_id' =>
+            $this->session->student_id]
+        )->section . "-MID-PT-" . $this->session->lastname;
+
+        $config['upload_path']          = './uploads/outputs';
+        $config['allowed_types']        = 'pdf|doc|docx|gif|jpg|jpeg|png';
+        $config['max_size']             = 51200; // 50MB
+        $config['file_name']            = $filename;
+
+        $this->upload->initialize($config);
+
+
+        if (!$this->upload->do_upload('photo-upload')) {
+            $error = array('error' => $this->upload->display_errors());
+            $this->session->set_flashdata('error', $this->upload->display_errors());
+            redirect('output_upload');
+        } else {
+            $this->upload->data();
+            $this->session->set_flashdata('success', 'Upload Successful');
+            redirect('output_upload');
+        }
     }
 }
