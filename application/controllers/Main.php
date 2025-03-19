@@ -179,7 +179,7 @@ class Main extends CI_Controller
         $this->load->view('student_submission', $data);
     }
 
-    public function view($classwork_id)
+    public function assessment_view_code($classwork_id)
     {
         $classwork = $this->assessments->as_array()->get($classwork_id);
 
@@ -243,13 +243,6 @@ class Main extends CI_Controller
         redirect('classwork');
     }
 
-    public function start_class()
-    {
-        $schedule_id = 1;
-        $section = "1C";
-        $this->attendance->start_class($schedule_id, $section, get_date_today());
-    }
-
     public function all_submissions()
     {
         $submissions = $this->classworks->get_all_submissions(10);
@@ -296,7 +289,7 @@ class Main extends CI_Controller
         )->section . "-MID-PT-" . $this->session->lastname;
 
         $config['upload_path']          = './uploads/outputs';
-        $config['allowed_types']        = 'pdf|doc|docx|gif|jpg|jpeg|png';
+        $config['allowed_types']        = '*';
         $config['max_size']             = 51200; // 50MB
         $config['file_name']            = $filename;
 
