@@ -13,6 +13,11 @@ class Main extends CI_Controller
         $this->is_offline = !isset($_SESSION['online']);
     }
 
+    public function test()
+    {
+        $this->load->view('test');
+    }
+
     public function index()
     {
         $this->load->view('login');
@@ -87,7 +92,7 @@ class Main extends CI_Controller
             "class" => $class,
             "record" => $attendance_record
         ];
-
+        
         $this->load->view('attendance_view', $data);
     }
 
