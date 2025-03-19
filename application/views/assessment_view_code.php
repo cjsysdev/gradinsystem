@@ -1,3 +1,9 @@
+<?php
+if ($classwork['iotype_id'] === '4') {
+  redirect("quiz/" . $classwork['assessment_id']);
+}
+?>
+
 <?php $this->load->view('header') ?>
 <style>
   /* Default font size */
@@ -22,7 +28,6 @@
   <div class="dashboard">
     <?php $this->load->view('profile_info') ?>
     <p><?= $classwork["description"] ?></p>
-
     <div class="form-group">
       <form id="code-form" action="<?= base_url('submit_classwork') ?>" method="POST">
         <?php if ($classwork['given'] !== null): ?>

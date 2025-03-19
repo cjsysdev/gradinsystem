@@ -50,7 +50,8 @@
         <?php $this->load->view('profile_info') ?>
         <div class="card " style="border: none;">
             <div class="card-body p-0">
-                <form action="<?= site_url('quiz/submit') ?>" method="post">
+                <?php $assessment_id = (explode('/', uri_string())[1]) ?>
+                <form action="<?= site_url('quiz/submit/' . $assessment_id) ?>" method="post">
                     <?php foreach ($questions as $index => $question): ?>
                         <div class="mb-4">
                             <div class="question-block">

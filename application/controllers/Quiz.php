@@ -15,35 +15,24 @@ class Quiz extends CI_Controller
 
     public function index()
     {
-        // Load the JSON file
-        $json = file_get_contents('uploads/103.json');
+        $json = file_get_contents('uploads/105.json');
         $allQuestions = json_decode($json, true);
 
-        // Shuffle the questions randomly
         shuffle($allQuestions);
-
-        // Limit the number of questions to 15
         $questions = array_slice($allQuestions, 0, 15);
 
-        // Store shuffled and limited questions in session to retain order for submission
         $this->session->set_userdata('shuffled_questions', $questions);
 
-        // Pass the shuffled and limited questions to the view
         $data['questions'] = $questions;
 
-        // Load the quiz view
         $this->load->view('quiz_view', $data);
     }
 
-    public function submit()
+    public function submit($assessment_id)
     {
-        // Retrieve shuffled and limited questions from session
         $questions = $this->session->userdata('shuffled_questions');
-
-        // Get user answers
         $userAnswers = $this->input->post('answers');
 
-        // Calculate the score
         $score = 0;
         $results = [];
 
@@ -55,7 +44,6 @@ class Quiz extends CI_Controller
                 $score++;
             }
 
-            // Store results for each question
             $results[] = [
                 'question' => $question['question'],
                 'user_answer' => $userAnswer,
@@ -64,12 +52,26 @@ class Quiz extends CI_Controller
             ];
         }
 
-        // Pass the score, results, and total questions to the result view
         $data['score'] = $score;
         $data['total'] = count($questions);
         $data['results'] = $results;
 
-        // Load the result view
+        $value = $this->classworks->where(
+            [
+                'student_id' => $this->session->student_id,
+                'assessment_id' => $assessment_id
+            ]
+        )->get();
+
+        if (!$value) {
+            $this->classworks->insert([
+                'student_id' => $this->session->student_id,
+                'assessment_id' => $assessment_id,
+                'score' => $score,
+                'code' => json_encode($data['results'], JSON_PRETTY_PRINT)
+            ]);
+        }
+
         $this->load->view('quiz_result', $data);
     }
 }
