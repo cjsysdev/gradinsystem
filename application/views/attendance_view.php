@@ -3,6 +3,7 @@
 <div class="container">
     <div class="dashboard">
         <?php $this->load->view('profile_info') ?>
+        <a class="btn alert-primary btn-block mb-3" href="./uploads/105_reviewer.pdf" download="105_reviewer.pdf" src="./uploads/105_reviewer.pdf"><i class="fa fa-download" aria-hidden="true" style="margin-right: 10px"> </i>Download CC105 - Midterm Reviewer</a>
         <?php if ($class): ?>
             <div class="card-body p-1 text-center">
                 <h5><span class="badge badge-secondary mb-1"><?= $class["class_code"], ' ', $class["type"] ?? NULL ?></span></h5>
