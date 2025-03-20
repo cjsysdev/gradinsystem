@@ -25,16 +25,24 @@ class Quiz extends CI_Controller
         if ($value) redirect('attendance');
 
         if ($this->is_offline) redirect();
-        $json = file_get_contents('uploads/105.json');
-        $allQuestions = json_decode($json, true);
 
-        shuffle($allQuestions);
-        $questions = array_slice($allQuestions, 0, 50);
+        if (!$this->session->userdata('shuffled_questions')) {
+            $json = file_get_contents('uploads/dummy.json');
+            $allQuestions = json_decode($json, true);
 
-        $this->session->set_userdata('shuffled_questions', $questions);
+            shuffle($allQuestions);
+            $questions = array_slice($allQuestions, 0, 50);
+
+            foreach ($questions as &$question) {
+                shuffle($question['choices']);
+            }
+            unset($question);
+            $this->session->set_userdata('shuffled_questions', $questions);
+        } else {
+            $questions = $this->session->userdata('shuffled_questions');
+        }
 
         $data['questions'] = $questions;
-
         $this->load->view('quiz_view', $data);
     }
 
@@ -83,5 +91,11 @@ class Quiz extends CI_Controller
         }
 
         $this->load->view('quiz_result', $data);
+    }
+
+    public function check_session()
+    {
+        header('Content-Type: application/json');
+        echo json_encode(['logged_in' => isset($_SESSION['online'])]);
     }
 }

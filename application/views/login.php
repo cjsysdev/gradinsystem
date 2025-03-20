@@ -27,4 +27,30 @@
   </div>
 </div>
 
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    fetch('<?= site_url('quiz/check_session') ?>', {
+        method: 'GET'
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (!data.logged_in) {
+          console.log('User not logged in, clearing localStorage');
+          clearLocalStorage();
+        }
+      })
+      .catch(error => console.error('Session check failed:', error));
+  });
+
+  // Define clearLocalStorage function
+  function clearLocalStorage() {
+    // Assuming 10 questions max; adjust if needed
+    for (let i = 0; i < 50; i++) {
+      localStorage.removeItem(`quiz_answer_${i}`);
+    }
+    // Optionally clear all localStorage if other keys exist
+    localStorage.clear();
+  }
+</script>
+
 <?php $this->load->view('footer') ?>

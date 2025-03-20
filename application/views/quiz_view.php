@@ -133,7 +133,7 @@
                 </form>
                 <div class="warning-overlay" id="warningOverlay">
                     <h2>Warning!</h2>
-                    <p>Please return to the quiz. Switching tabs is not allowed.</p>
+                    <p>Please return to the exam. Switching tabs is not allowed.</p>
                 </div>
             </div>
         </div>
@@ -186,6 +186,9 @@
         }
 
         // Save and load answers (from previous implementation)
+
+        console.log(localStorage);
+
         const radioButtons = document.querySelectorAll('.form-check-input');
         radioButtons.forEach(radio => {
             radio.addEventListener('change', function() {
@@ -247,15 +250,6 @@
         document.addEventListener('contextmenu', e => e.preventDefault());
         document.addEventListener('copy', e => e.preventDefault());
         document.addEventListener('paste', e => e.preventDefault());
-
-        // Time limit (e.g., 10 minutes for 10 questions)
-        const timeLimit = 10 * 60 * 100; // 10 minutes in milliseconds
-        setTimeout(function() {
-            if (quizStarted) {
-                alert('Time’s up! Submitting your quiz now.');
-                form.submit();
-            }
-        }, timeLimit);
 
         // Form submission
         form.addEventListener('submit', function(e) {
