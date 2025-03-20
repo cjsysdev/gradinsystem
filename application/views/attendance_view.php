@@ -67,7 +67,7 @@
     <div class="dashboard">
         <?php $this->load->view('profile_info') ?>
         <?php
-        $course = isset($this->class_student->get(['student_id' => $this->session->student_id])->class_id);
+        $course = $this->class_student->get(['student_id' => $this->session->student_id])->class_id ?? '1';
         if ($course === '1')
             $desc = '105';
         else
@@ -88,11 +88,6 @@
             </div>
         <?php endif; ?>
         <hr>
-        <div class="card-body p-1 text-center">
-            <h5 class="card-subtitle text-body-secondary"><span class="badge badge-secondary">Attendance Record </span></h5>
-            <?php
-            ?>
-        </div>
         <div class="container mt-4 mb-5 p-0">
             <div id="calendar"></div>
         </div>
@@ -137,12 +132,11 @@
         var formattedEvents = events.map(function(event) {
             return {
                 date: moment(event.date).format('YYYY-MM-DD'),
-                title: event.class_name + ' (' + event.type + ')',
-                description: 'Instructor: ' + event.firstname + ' ' + event.lastname
+                title: event.type,
+                datetime: event.date
             };
         });
 
-        // Explicitly define days of the week
         var daysOfTheWeek = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
         $('#calendar').clndr({
@@ -154,7 +148,7 @@
                     if (target.events.length) {
                         var eventsHtml = '';
                         target.events.forEach(function(event) {
-                            eventsHtml += '<div><strong>' + event.title + '</strong><br>' + event.description + '</div>';
+                            eventsHtml += ' ' + event.title + ' ' + event.datetime;
                         });
                         alert(eventsHtml);
                     }

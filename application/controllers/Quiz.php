@@ -16,7 +16,7 @@ class Quiz extends CI_Controller
     public function index()
     {
         if ($this->is_offline) redirect();
-        $json = file_get_contents('uploads/103.json');
+        $json = file_get_contents('uploads/105.json');
         $allQuestions = json_decode($json, true);
 
         shuffle($allQuestions);

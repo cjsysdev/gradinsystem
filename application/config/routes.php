@@ -75,6 +75,5 @@ $route['start_class'] = 'main/start_class';
 $route['all_submissions'] = 'main/all_submissions';
 $route['add_score/(:num)/(:num)'] = 'main/add_score/$1/$2';
 $route['assessment_view'] = 'main/assessment_view';
-$route['attendance_calendar'] = 'main/attendance_calendar';
 $route['quiz/(:num)'] = 'quiz/index/$1';
 $route['quiz/submit/(:num)'] = 'quiz/submit/$1';

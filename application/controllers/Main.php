@@ -312,34 +312,4 @@ class Main extends CI_Controller
             redirect('output_upload');
         }
     }
-
-    public function attendance_calendar()
-    {
-        // Sample data
-        $data = array(
-            array(
-                'class_code' => 'CC105',
-                'class_name' => 'INFORMATION MANAGEMENT',
-                'type' => 'LAB',
-                'lastname' => 'CEPADA',
-                'firstname' => 'CHERYLYN',
-                'date' => '2025-03-07 08:38:09'
-            ),
-            array(
-                'class_code' => 'CC103',
-                'class_name' => 'COMPUTER PROGRAMMING 2',
-                'type' => 'LAB',
-                'lastname' => 'CEPADA',
-                'firstname' => 'CHERYLYN',
-                'date' => '2025-03-06 07:50:21'
-            ),
-            // Add more data as needed
-        );
-
-        // Convert the data to JSON
-        $data['events'] = json_encode($data);
-
-        // Load the view
-        $this->load->view('schedule_view', $data);
-    }
 }
