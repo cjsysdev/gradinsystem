@@ -13,14 +13,23 @@ class Quiz extends CI_Controller
         $this->is_offline = !isset($_SESSION['online']);
     }
 
-    public function index()
+    public function index($assessment_id)
     {
+        $value = $this->classworks->where(
+            [
+                'student_id' => $this->session->student_id,
+                'assessment_id' => $assessment_id
+            ]
+        )->get();
+
+        if ($value) redirect('attendance');
+
         if ($this->is_offline) redirect();
         $json = file_get_contents('uploads/105.json');
         $allQuestions = json_decode($json, true);
 
         shuffle($allQuestions);
-        $questions = array_slice($allQuestions, 0, 10);
+        $questions = array_slice($allQuestions, 0, 50);
 
         $this->session->set_userdata('shuffled_questions', $questions);
 
