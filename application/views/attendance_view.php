@@ -1,9 +1,79 @@
 <?php $this->load->view('header') ?>
 
+
+<script src="<?= base_url("/assets/jquery-3.5.1.slim.min.js") ?> "></script>
+<script src="<?= base_url("/assets/underscore-min.js") ?> "></script>
+<script src="<?= base_url("/assets/moment.min.js") ?> "></script>
+<script src="<?= base_url("/assets/clndr.min.js") ?> "></script>
+
+<style>
+    #calendar {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .day.event {
+        background-color: #ffe0b2;
+    }
+
+    .day.today {
+        background-color: #e0f7fa;
+    }
+
+    .day.adjacent-month {
+        color: #ccc;
+    }
+
+    .clndr-previous-button,
+    .clndr-next-button {
+        cursor: pointer;
+    }
+
+    /* Ensure consistent sizing and alignment */
+    .days-of-the-week,
+    .days {
+        display: flex;
+        /* Use flexbox for consistent column widths */
+        flex-wrap: wrap;
+    }
+
+    .days-of-the-week .col,
+    .days .col {
+        flex: 1 0 calc(100% / 7 - 4px);
+        /* Equal width for 7 columns, accounting for margin */
+        max-width: calc(100% / 7 - 4px);
+        /* Prevent overflow */
+        padding: 5px;
+        text-align: center;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        margin: 2px;
+        box-sizing: border-box;
+        /* Include padding/border in width calculation */
+        min-height: 40px;
+        /* Ensure day cells have enough height */
+    }
+
+    .days-of-the-week .col {
+        font-weight: bold;
+        border: none;
+        /* No border for day names */
+        background-color: #f8f9fa;
+        /* Light background for clarity */
+    }
+</style>
+
 <div class="container">
     <div class="dashboard">
         <?php $this->load->view('profile_info') ?>
-        <a class="btn alert-primary btn-block mb-3" href="./uploads/105_reviewer.pdf" download="105_reviewer.pdf" src="./uploads/105_reviewer.pdf"><i class="fa fa-download" aria-hidden="true" style="margin-right: 10px"> </i>Download CC105 - Midterm Reviewer</a>
+        <?php
+        $course = isset($this->class_student->get(['student_id' => $this->session->student_id])->class_id);
+        if ($course === '1')
+            $desc = '105';
+        else
+            $desc = '103';
+        ?>
+        <a class="btn alert-primary btn-block mb-3" href="./uploads/<?= $desc ?>_reviewer.pdf" download="<?= $desc ?>_reviewer.pdf" src="./uploads/<?= $desc ?>_reviewer.pdf"><i class="fa fa-download" aria-hidden="true" style="margin-right: 10px"> </i>Download CC<?= $desc ?> - Midterm Reviewer</a>
         <?php if ($class): ?>
             <div class="card-body p-1 text-center">
                 <h5><span class="badge badge-secondary mb-1"><?= $class["class_code"], ' ', $class["type"] ?? NULL ?></span></h5>
@@ -22,22 +92,80 @@
             <h5 class="card-subtitle text-body-secondary"><span class="badge badge-secondary">Attendance Record </span></h5>
             <?php
             ?>
-            <table class="table table-striped table-bordered table-hover table-sm mt-3">
-                <tbody>
-                    <?php foreach ($record as $row):
-                        $formatted = convert_datetime($row["date"]);
-                    ?>
-                        <tr>
-                            <td><?= $row["type"] ?></td>
-                            <td><?= $formatted['date'] ?></td>
-                            <td><?= $formatted['time'] ?></td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
+        </div>
+        <div class="container mt-4 mb-5 p-0">
+            <div id="calendar"></div>
         </div>
     </div>
 </div>
+
+
+<script id="calendar-template" type="text/template">
+    <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center p-3">
+                <div class="clndr-previous-button btn btn-sm btn-outline-secondary"><</div>
+                <div class="month h4 mb-0 text-center flex-grow-1"><%= month %> <%= year %></div>
+                <div class="clndr-next-button btn btn-sm btn-outline-secondary">></div>
+            </div>
+            <div class="card-body p-3">
+                <div class="days-of-the-week mb-3">
+                    <% _.each(daysOfTheWeek, function(day) { %>
+                        <div class="col"><%= day %></div>
+                    <% }); %>
+                </div>
+                <div class="days">
+                    <% _.each(days, function(day) { %>
+                        <div class="col day <%= day.classes %>"><%= day.day %></div>
+                    <% }); %>
+                </div>
+            </div>
+        </div>
+        
+    </script>
+
+<script type="text/javascript">
+    $(document).ready(function() {
+        // Set week to start on Sunday (0) or Monday (1) as desired
+        moment.locale('en', {
+            week: {
+                dow: 0 // Sunday start
+            }
+        });
+
+        var events = <?= $events ?>;
+
+        var formattedEvents = events.map(function(event) {
+            return {
+                date: moment(event.date).format('YYYY-MM-DD'),
+                title: event.class_name + ' (' + event.type + ')',
+                description: 'Instructor: ' + event.firstname + ' ' + event.lastname
+            };
+        });
+
+        // Explicitly define days of the week
+        var daysOfTheWeek = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+        $('#calendar').clndr({
+            template: $('#calendar-template').html(),
+            events: formattedEvents,
+            daysOfTheWeek: daysOfTheWeek,
+            clickEvents: {
+                click: function(target) {
+                    if (target.events.length) {
+                        var eventsHtml = '';
+                        target.events.forEach(function(event) {
+                            eventsHtml += '<div><strong>' + event.title + '</strong><br>' + event.description + '</div>';
+                        });
+                        alert(eventsHtml);
+                    }
+                }
+            },
+            adjacentDaysChangeMonth: true,
+            forceSixRows: true,
+            startWithMonth: moment('2025-03-01')
+        });
+    });
+</script>
 
 <script>
     window.onload = function startTime() {
@@ -64,5 +192,3 @@
         return i;
     }
 </script>
-
-<?php $this->load->view('footer') ?>

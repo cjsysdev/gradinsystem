@@ -72,7 +72,7 @@ class assessments extends MY_Model
         $sql = "
             SELECT * FROM classworks c 
             JOIN assessments a ON c.assessment_id = a.assessment_id 
-            WHERE student_id = ? ";
+            WHERE student_id = ? ORDER BY c.created_at DESC";
 
         $query = $this->db->query($sql, [$student_id]);
 

@@ -26,7 +26,7 @@
             <div class="category-btns row">
                 <div class="col-12 form-section p-2">
                     <label for="photo-upload" class="form-label">Upload Midterm Project</label>
-                    <input type="file" class="form-control" id="photo-upload" name="photo-upload" accept="*">
+                    <input type="file" class="form-control" id="photo-upload" name="photo-upload" accept="*/*">
                 </div>
             </div>
             <div class="total-section pt-3">
