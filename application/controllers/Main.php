@@ -135,12 +135,14 @@ class Main extends CI_Controller
                 'course' => $user->student->course,
                 'current_year' => $user->student->current_year,
                 'role' => $user->role,
-                'online' => true
+                'online' => true,
+                'exam_term' => true,
+                'exam_review' => false
             ];
 
             $this->session->set_userdata($session_data);
 
-            redirect('attendance');
+            redirect('classwork');
         } else {
             $this->session->set_flashdata('error', 'Login Error');
             redirect();

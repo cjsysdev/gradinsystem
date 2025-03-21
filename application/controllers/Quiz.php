@@ -22,12 +22,15 @@ class Quiz extends CI_Controller
             ]
         )->get();
 
+        $course = $this->class_student->get(['student_id' => $this->session->student_id])->class_id ?? '1';
+        $desc = ($course === '1') ? '105' : '103';
+
         if ($value) redirect('attendance');
 
         if ($this->is_offline) redirect();
 
         if (!$this->session->userdata('shuffled_questions')) {
-            $json = file_get_contents('uploads/dummy.json');
+            $json = file_get_contents("uploads/dummy.json");
             $allQuestions = json_decode($json, true);
 
             shuffle($allQuestions);

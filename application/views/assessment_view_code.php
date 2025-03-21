@@ -1,5 +1,5 @@
 <?php
-if ($classwork['iotype_id'] === '4') {
+if ($classwork['iotype_id'] == '4' || $classwork['iotype_id'] == '3') {
   redirect("quiz/" . $classwork['assessment_id']);
 }
 ?>

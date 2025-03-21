@@ -76,10 +76,34 @@
         /* Prevents interaction while blurred */
         transition: filter 0.3s ease;
     }
+
+    .timer {
+        font-size: 24px;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 20px;
+    }
 </style>
 <div class="container mt-3 mb-5">
     <div class="dashboard">
-        <?php $this->load->view('profile_info') ?>
+        <div class="container">
+            <div class="row profile-section text-center mt-3">
+                <div class="col">
+                    <h3 class="m-0"><strong><?= $this->session->lastname, ', ',  $this->session->firstname ?></strong></h3>
+                </div>
+            </div>
+        </div>
+
+        <hr>
+        <div class="timer" id="timer">
+            <div class="card-header bg-secondary text-white">
+                <h2 class="card-title text-center m-0"><span id="time"><strong>00:00:00</strong></span></h2>
+            </div>
+        </div>
+
+        <div class="text-center mb-3">
+            <button id="scrollToBottomBtn" class="btn btn-outline-secondary btn-block">Go to Bottom</button>
+        </div>
         <div class="card" style="border: none;">
             <div class="card-body p-0">
                 <?php $assessment_id = (explode('/', uri_string())[1]) ?>
@@ -120,14 +144,14 @@
                     <div class="navigation-buttons mt-4">
                         <div class="row">
                             <div class="col-6">
-                                <button type="button" class="btn btn-secondary btn-block" id="prevBtn" disabled>Previous</button>
+                                <button type="button" class="btn btn-outline-secondary btn-block" id="prevBtn" hidden>Previous</button>
                             </div>
                             <div class="col-6">
-                                <button type="button" class="btn btn-primary btn-block" id="nextBtn">Next</button>
+                                <button type="button" class="btn btn-secondary btn-block" id="nextBtn">Next</button>
                             </div>
                         </div>
                         <div class="text-center mt-3">
-                            <button type="submit" class="btn btn-info btn-block" id="submitBtn" style="display: none;">Submit</button>
+                            <button type="submit" class="btn btn-success btn-block" id="submitBtn" style="display: none;">Submit</button>
                         </div>
                     </div>
                 </form>
@@ -139,7 +163,6 @@
         </div>
     </div>
 </div>
-
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const groups = document.getElementsByClassName('question-group');
@@ -148,9 +171,12 @@
         const submitBtn = document.getElementById('submitBtn');
         const form = document.getElementById('quizForm');
         const warningOverlay = document.getElementById('warningOverlay');
+        const timerElement = document.getElementById('time');
+        const scrollToBottomBtn = document.getElementById('scrollToBottomBtn');
         let currentGroup = 0;
         let blurCount = 0;
         let quizStarted = false;
+        let totalTime = 60 * 75; // 30 minutes in seconds
 
         // Fullscreen mode
         function enterFullscreen() {
@@ -166,6 +192,7 @@
             }
             document.body.classList.add('locked');
             quizStarted = true;
+            console.log('Quiz started, fullscreen mode entered.');
         }
 
         // Update display
@@ -175,13 +202,24 @@
             }
             groups[currentGroup].classList.add('active');
 
-            prevBtn.disabled = (currentGroup === 0);
+            prevBtn.hidden = (currentGroup === 0);
             if (groups.length === 1) {
                 nextBtn.style.display = 'none';
                 submitBtn.style.display = 'block';
             } else {
                 nextBtn.style.display = (currentGroup < groups.length - 1) ? 'block' : 'none';
                 submitBtn.style.display = (currentGroup === groups.length - 1) ? 'block' : 'none';
+            }
+        }
+
+        // Check if all questions are answered
+        function checkAllAnswered() {
+            const allAnswered = Array.from(document.querySelectorAll('.form-check-input'))
+                .filter(input => input.checked).length === <?= $totalQuestions ?>;
+            if (allAnswered) {
+                submitBtn.style.display = 'block';
+            } else {
+                submitBtn.style.display = 'none';
             }
         }
 
@@ -196,6 +234,7 @@
                 const questionIndex = this.dataset.question;
                 const answer = this.value;
                 localStorage.setItem(`quiz_answer_${questionIndex}`, answer);
+                checkAllAnswered(); // Check if all questions are answered
             });
         });
 
@@ -223,7 +262,19 @@
             if (currentGroup < groups.length - 1) {
                 currentGroup++;
                 updateDisplay();
+                window.scrollTo({
+                    top: 0,
+                    behavior: 'smooth'
+                }); // Smooth scroll to the top of the page
             }
+        });
+
+        // Scroll to bottom
+        scrollToBottomBtn.addEventListener('click', function() {
+            window.scrollTo({
+                top: document.body.scrollHeight,
+                behavior: 'smooth'
+            });
         });
 
         // Blur detection
@@ -231,6 +282,7 @@
             if (quizStarted) {
                 blurCount++;
                 warningOverlay.style.display = 'block';
+                console.log('Window blurred. Blur count:', blurCount);
                 // Log to hidden input for server-side tracking
                 let blurInput = document.createElement('input');
                 blurInput.type = 'hidden';
@@ -243,6 +295,7 @@
         window.addEventListener('focus', function() {
             if (quizStarted) {
                 warningOverlay.style.display = 'none';
+                console.log('Window focused.');
             }
         });
 
@@ -254,15 +307,39 @@
         // Form submission
         form.addEventListener('submit', function(e) {
             if (navigator.onLine) {
-                for (let i = 0; i < <?php echo $totalQuestions; ?>; i++) {
+                for (let i = 0; i < <?= $totalQuestions; ?>; i++) {
                     localStorage.removeItem(`quiz_answer_${i}`);
                 }
             }
         });
 
+        // Timer
+        function startTimer(duration, display) {
+            let timer = duration,
+                hours, minutes, seconds;
+            setInterval(function() {
+                hours = parseInt(timer / 3600, 10);
+                minutes = parseInt((timer % 3600) / 60, 10);
+                seconds = parseInt(timer % 60, 10);
+
+                hours = hours < 10 ? "0" + hours : hours;
+                minutes = minutes < 10 ? "0" + minutes : minutes;
+                seconds = seconds < 10 ? "0" + seconds : seconds;
+
+                display.textContent = hours + ":" + minutes + ":" + seconds;
+
+                if (--timer < 0) {
+                    timer = 0;
+                    form.submit(); // Auto-submit the form when time is up
+                }
+            }, 1000);
+        }
+
         // Initial setup
         loadSavedAnswers();
         updateDisplay();
+        startTimer(totalTime, timerElement);
+        checkAllAnswered(); // Initial check to see if all questions are already answered
     });
 </script>
 
