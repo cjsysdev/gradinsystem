@@ -97,7 +97,7 @@
         <hr>
         <div class="timer" id="timer">
             <div class="card-header bg-secondary text-white">
-                <h2 class="card-title text-center m-0"><span id="time"><strong>00:00:00</strong></span></h2>
+                <h2 class="card-title text-center m-0"><span><strong id="time">00:00:00</strong></span></h2>
             </div>
         </div>
 
@@ -176,7 +176,7 @@
         let currentGroup = 0;
         let blurCount = 0;
         let quizStarted = false;
-        let totalTime = 60 * 75; // 30 minutes in seconds
+        let totalTime = 60 * 90; // 90 minutes in seconds
 
         // Fullscreen mode
         function enterFullscreen() {
@@ -254,6 +254,10 @@
             if (currentGroup > 0) {
                 currentGroup--;
                 updateDisplay();
+                window.scrollTo({
+                    top: 0,
+                    behavior: 'smooth'
+                }); // Smooth scroll to the top of the page
             }
         });
 
@@ -317,7 +321,7 @@
         function startTimer(duration, display) {
             let timer = duration,
                 hours, minutes, seconds;
-            setInterval(function() {
+            const interval = setInterval(function() {
                 hours = parseInt(timer / 3600, 10);
                 minutes = parseInt((timer % 3600) / 60, 10);
                 seconds = parseInt(timer % 60, 10);
@@ -329,15 +333,25 @@
                 display.textContent = hours + ":" + minutes + ":" + seconds;
 
                 if (--timer < 0) {
-                    timer = 0;
+                    clearInterval(interval);
                     form.submit(); // Auto-submit the form when time is up
                 }
+
+                // Save the remaining time to localStorage
+                localStorage.setItem('remainingTime', timer);
             }, 1000);
         }
 
         // Initial setup
         loadSavedAnswers();
         updateDisplay();
+
+        // Retrieve the remaining time from localStorage
+        const savedTime = localStorage.getItem('remainingTime');
+        if (savedTime) {
+            totalTime = parseInt(savedTime, 10);
+        }
+
         startTimer(totalTime, timerElement);
         checkAllAnswered(); // Initial check to see if all questions are already answered
     });

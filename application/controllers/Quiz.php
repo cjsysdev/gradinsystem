@@ -30,7 +30,7 @@ class Quiz extends CI_Controller
         if ($this->is_offline) redirect();
 
         if (!$this->session->userdata('shuffled_questions')) {
-            $json = file_get_contents("uploads/dummy.json");
+            $json = file_get_contents("uploads/$desc.json");
             $allQuestions = json_decode($json, true);
 
             shuffle($allQuestions);
