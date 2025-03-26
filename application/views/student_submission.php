@@ -62,6 +62,23 @@
     background: rgba(0, 0, 0, 0.2);
     /* Slight gray overlay */
   }
+
+  /* Custom scrollbar styling for highlightedCode */
+  #highlightedCode::-webkit-scrollbar {
+    width: 12px;
+  }
+
+  #highlightedCode::-webkit-scrollbar-track {
+    background: #f1f1f1;
+  }
+
+  #highlightedCode::-webkit-scrollbar-thumb {
+    background: #888;
+  }
+
+  #highlightedCode::-webkit-scrollbar-thumb:hover {
+    background: #555;
+  }
 </style>
 
 <div class="container">
@@ -109,5 +126,4 @@
 </div>
 </div>
 
-<?php $this->load->view('footer');
-?>
+<?php $this->load->view('footer') ?>
