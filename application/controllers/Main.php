@@ -136,13 +136,13 @@ class Main extends CI_Controller
                 'current_year' => $user->student->current_year,
                 'role' => $user->role,
                 'online' => true,
-                'exam_term' => true,
+                'exam_term' => false,
                 'exam_review' => false
             ];
 
             $this->session->set_userdata($session_data);
 
-            redirect('classwork');
+            redirect('attendance');
         } else {
             $this->session->set_flashdata('error', 'Login Error');
             redirect();
@@ -178,7 +178,7 @@ class Main extends CI_Controller
 
     public function student_submission($classwork_id)
     {
-        $submission = $this->classworks->as_array()->get($classwork_id);
+        $submission = $this->classworks->with_assessments()->as_array()->get($classwork_id);
 
         $data = [
             'classwork' =>  $submission

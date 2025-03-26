@@ -55,7 +55,6 @@ class assessments extends MY_Model
                 ON a.schedule_id = cs.schedule_id
             WHERE 
                 c.classwork_id IS NULL AND cs.section = ?
-                AND a.iotype_id = 3
         ";
 
         $query = $this->db->query($sql, [$student_id, $section]);

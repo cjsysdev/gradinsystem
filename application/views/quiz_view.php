@@ -310,6 +310,11 @@
 
         // Form submission
         form.addEventListener('submit', function(e) {
+            if (!navigator.onLine) {
+                e.preventDefault();
+                alert('You are not connected to the internet. Please check your local connection and try again.');
+                return;
+            }
             if (navigator.onLine) {
                 for (let i = 0; i < <?= $totalQuestions; ?>; i++) {
                     localStorage.removeItem(`quiz_answer_${i}`);

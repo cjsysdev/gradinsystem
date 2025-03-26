@@ -16,10 +16,21 @@
   .CodeMirror {
     touch-action: manipulation;
   }
-</style>
 
+  .correct {
+    color: green;
+  }
 
-<style>
+  .incorrect {
+    color: red;
+  }
+
+  .btn-block {
+    width: 100%;
+    padding: 15px;
+    font-size: 18px;
+  }
+
   .number-overlay {
     position: fixed;
     top: 50%;
@@ -56,12 +67,24 @@
 <div class="container">
   <div class="dashboard">
     <?php $this->load->view('profile_info') ?>
+    <?php if ($classwork['assessments'][0]->iotype_id == 3): ?>
+      <div class="card-body">
+        <?php foreach (json_decode($classwork['code'], true) as $index => $result): ?>
+          <div class="mb-4">
+            <p class="fw-bold"><b>Question <?= $index + 1 ?>: </b><?= $result['question'] ?></p>
+            <p>Your answer: <span class="<?= $result['is_correct'] ? 'correct' : 'incorrect' ?>"><?= $result['user_answer'] ?></span></p>
+            <p>Correct answer: <?= $result['correct_answer'] ?></p>
+          </div>
+          <hr>
+        <?php endforeach; ?>
+        <div class="text-center">
+          <a href="<?= site_url('attendance') ?>" class="btn btn-outline-dark btn-block">Exit</a>
+        </div>
+      </div>
+    <?php else: ?>
+      <pre><code id="highlightedCode" class="language-c"><?= $classwork['code'] ?></code></pre>
+    <?php endif; ?>
 
-    <pre><code id="highlightedCode" class="language-c"><?= $classwork['code'] ?></code></pre>
-
-    <!-- <textarea id="code-editor" name="code" style=" overflow: hidden;">
-    <?= $classwork['code'] ?>
-    </textarea> -->
     <?php if ($classwork['score'] !== NULL): ?>
       <!-- <button type="button" class="btn btn-info btn-block mt-3" onclick="view_score()">View score</button> -->
     <?php endif; ?>
