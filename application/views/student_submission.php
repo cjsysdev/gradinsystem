@@ -88,7 +88,7 @@
       <div class="card-body">
         <?php foreach (json_decode($classwork['code'], true) as $index => $result): ?>
           <div class="mb-4">
-            <p class="fw-bold"><b>Question <?= $index + 1 ?>: </b><?= $result['question'] ?></p>
+            <p class="fw-bold"><b>Question <?= $index + 1 ?>: </b><?= nl2br(htmlspecialchars($result['question'])) ?></p>
             <p>Your answer: <span class="<?= $result['is_correct'] ? 'correct' : 'incorrect' ?>"><?= $result['user_answer'] ?></span></p>
             <p>Correct answer: <?= $result['correct_answer'] ?></p>
           </div>
