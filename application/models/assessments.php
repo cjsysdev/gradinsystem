@@ -68,7 +68,7 @@ class assessments extends MY_Model
         return $query->result_array();
     }
 
-    public function get_submmited_assessments($student_id)
+    public function get_submitted_assessments($student_id)
     {
         $sql = "
             SELECT * FROM classworks c 

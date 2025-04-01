@@ -53,32 +53,45 @@ $route['default_controller'] = 'main';
 $route['404_override'] = '';
 $route['translate_uri_dashes'] = FALSE;
 
-$route['welcome'] = 'welcome';
-$route['test'] = 'main/test';
-$route['login'] = 'main/login';
-$route['logout'] = 'main/logout';
-$route['signup'] = 'main/signup';
-$route['signup_submit'] = 'main/signup_submit';
-$route['find_id'] = 'main/find_id';
-$route['get_id'] = 'main/get_id';
-$route['home'] = 'main/home';
-$route['student_info'] = 'main/student_info';
-$route['input_submit'] = 'main/input_submit';
-$route['output_upload'] = 'main/output_upload';
-$route['upload_activity'] = 'main/upload_activity';
-$route['attendance'] = 'main/attendance_main';
-$route['assessment/(:num)'] = 'main/assessment_view_code/$1';
-$route['classwork'] = 'main/classwork';
-$route['submit_classwork'] = 'main/submit_classwork';
-$route['student_submission/(:num)'] = 'main/student_submission/$1';
-$route['start_class'] = 'main/start_class';
-$route['all_submissions'] = 'main/all_submissions';
-$route['add_score/(:num)/(:num)'] = 'main/add_score/$1/$2';
-$route['assessment_view'] = 'main/assessment_view';
-$route['quiz/(:num)'] = 'quiz/index/$1';
-$route['quiz/submit/(:num)'] = 'quiz/submit/$1';
-$route['quiz/check_session'] = 'quiz/check_session';
-$route['grades'] = 'main/grades';
-$route['section_grades/(:any)'] = 'main/sectionGrades/$1';
+// Authentication Routes
+$route['login'] = 'AuthenticationController/login';
+$route['logout'] = 'AuthenticationController/logout';
+
+// Student Routes
+$route['student_info'] = 'StudentController/student_info';
+$route['find_id'] = 'StudentController/find_id';
+$route['get_id'] = 'StudentController/get_id';
+
+// Grades Routes
+$route['grades'] = 'GradesController/grades';
+$route['section_grades/(:any)'] = 'GradesController/sectionGrades/$1';
+
+// Attendance Routes
+$route['attendance'] = 'AttendanceController/attendance_main';
+
+// Classwork Routes
+$route['classwork'] = 'ClassworkController/classwork';
+$route['submit_classwork'] = 'ClassworkController/submit_classwork';
+$route['student_submission/(:num)'] = 'ClassworkController/student_submission/$1';
+$route['start_class'] = 'ClassworkController/start_class';
+$route['all_submissions'] = 'ClassworkController/all_submissions';
+$route['add_score/(:num)/(:num)'] = 'ClassworkController/add_score/$1/$2';
+
+// Assessment Routes
+$route['assessment/(:num)'] = 'AssessmentController/assessment_view_code/$1';
+$route['assessment_view'] = 'AssessmentController/assessment_view';
+
+// Quiz Routes
+$route['quiz/(:num)'] = 'QuizController/index/$1';
+$route['quiz/submit/(:num)'] = 'QuizController/submit/$1';
+$route['quiz/check_session'] = 'QuizController/check_session';
+
+// Miscellaneous Routes
+$route['test'] = 'Main/test';
+$route['signup'] = 'Main/signup';
+$route['signup_submit'] = 'Main/signup_submit';
+$route['input_submit'] = 'Main/input_submit';
+$route['output_upload'] = 'Main/output_upload';
+$route['upload_activity'] = 'Main/upload_activity';
 
 

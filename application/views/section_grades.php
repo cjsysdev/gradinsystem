@@ -98,8 +98,6 @@
     </tr>
 </table>
 
-<h4>Section Grades for <?= $section ?> (<?= ucfirst($term) ?> Term)</h4>
-
 <table class="table table-bordered">
     <thead>
         <tr>
