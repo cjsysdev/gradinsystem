@@ -356,10 +356,9 @@ class Main extends CI_Controller
         $this->load->view('home', $data);
     }
 
-    public function sectionGrades()
+    public function sectionGrades($section)
     {
         $term = 'midterm'; // Example term
-        $section = '1B'; // Example section
 
         // Fetch grades for all students in the section
         $grades = $this->classworks->getGradesBySection($term, $section);
@@ -377,20 +376,50 @@ class Main extends CI_Controller
                     'section' => $grade['section'],
                     'midterm_total_grade' => 0,
                     'grade_point' => 0,
+                    'has_iotype_2' => false,
+                    'has_iotype_3' => false,
+                    'is_incomplete' => false, // Flag to track incomplete grades
                 ];
             }
 
-            // Calculate the midterm total grade
-            $studentsGrades[$studentId]['midterm_total_grade'] += $grade['percentage'] * ($grade['iotype_percentage'] / 100);
+            // Check for iotype_id = 2 and iotype_id = 3
+            if ($grade['iotype_id'] == 2) {
+                $studentsGrades[$studentId]['has_iotype_2'] = true;
+                if (is_null($grade['total_score']) || is_null($grade['percentage'])) {
+                    $studentsGrades[$studentId]['is_incomplete'] = true;
+                }
+            }
+            if ($grade['iotype_id'] == 3) {
+                $studentsGrades[$studentId]['has_iotype_3'] = true;
+                if (is_null($grade['total_score']) || is_null($grade['percentage'])) {
+                    $studentsGrades[$studentId]['is_incomplete'] = true;
+                }
+            }
 
-            // Calculate the grade point using the helper function
-            $studentsGrades[$studentId]['grade_point'] = convertPercentageToGradePoint($studentsGrades[$studentId]['midterm_total_grade']);
+            // Calculate the midterm total grade if not incomplete
+            if (!$studentsGrades[$studentId]['is_incomplete']) {
+                $studentsGrades[$studentId]['midterm_total_grade'] += $grade['percentage'] * ($grade['iotype_percentage'] / 100);
+            }
+        }
+
+        // Finalize grades and check for missing or incomplete iotype_id = 2 or iotype_id = 3
+        foreach ($studentsGrades as $studentId => &$student) {
+            if (!$student['has_iotype_2'] || !$student['has_iotype_3'] || $student['is_incomplete']) {
+                $student['midterm_total_grade'] = 'INC';
+                $student['grade_point'] = 'INC';
+            } else {
+                // Calculate the grade point using the helper function
+                $student['grade_point'] = convertPercentageToGradePoint($student['midterm_total_grade']);
+            }
         }
 
         // Pass the data to the view
         $data['studentsGrades'] = $studentsGrades;
         $data['term'] = $term;
         $data['section'] = $section;
+        $data['class_code'] = $grades[0]['class_code'] ?? '';
+        $data['class_name'] = $grades[0]['class_name'] ?? '';
+        $data['schedule'] = $grades[0]['schedule'] ?? '';
 
         $this->load->view('section_grades', $data);
     }

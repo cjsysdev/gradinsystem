@@ -136,6 +136,8 @@ class classworks extends MY_Model
         $query = $this->db->query("
             SELECT 
                 cs.section,
+                class.class_code,
+                class.class_name,
                 c.student_id,
                 sm.firstname,
                 sm.lastname,
@@ -165,6 +167,10 @@ class classworks extends MY_Model
                 class_student cs ON c.student_id = cs.student_id
             JOIN 
                 student_master sm ON cs.student_id = sm.trans_no
+            JOIN 
+                class_schedule sched ON a.schedule_id = sched.schedule_id
+            JOIN 
+                classes class ON class.class_id = sched.class_id
             WHERE 
                 a.term = ?
                 AND cs.section = ?
