@@ -78,3 +78,18 @@ function randomizeNumber($min, $max)
 
     return $randomNumber;
 }
+
+function convertPercentageToGradePoint($percentage)
+{
+    $passingGrade = 60;
+    if ($percentage <= $passingGrade) {
+        // Range 1: 0% to passing grade
+        return 5.0 - (2.0 / $passingGrade) * $percentage;
+    } elseif ($percentage > $passingGrade && $percentage <= 100) {
+        // Range 2: Passing grade to 100%
+        return 3.0 - (2.0 / (100 - $passingGrade)) * ($percentage - $passingGrade);
+    } else {
+        // Invalid percentage (e.g., greater than 100 or less than 0)
+        return null;
+    }
+}

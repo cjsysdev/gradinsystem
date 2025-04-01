@@ -51,4 +51,83 @@ class classworks extends MY_Model
             ->from('classworks')
             ->update();
     }
+
+    public function getActivitiesGrade($term, $iotype, $student_id)
+    {
+        $query = $this->db->query("
+                SELECT 
+                    ROUND(SUM(c.score), 2) AS total_score,
+                    ROUND(SUM(a.max_score), 2) AS total_max_score,
+                    ROUND((SUM(c.score) / SUM(a.max_score)) * 100, 2) AS percentage,
+                    ROUND(
+                        CASE 
+                            WHEN (SUM(c.score) / SUM(a.max_score)) * 100 <= 50 THEN 
+                                5.0 - (2.0 / 50) * ((SUM(c.score) / SUM(a.max_score)) * 100)
+                            WHEN (SUM(c.score) / SUM(a.max_score)) * 100 > 50 THEN 
+                                3.0 - (2.0 / 50) * (((SUM(c.score) / SUM(a.max_score)) * 100) - 50)
+                        END, 
+                        2
+                    ) AS grade_point
+                FROM 
+                    classworks c
+                JOIN 
+                    assessments a ON c.assessment_id = a.assessment_id
+                WHERE 
+                    a.term = '$term'
+                    AND a.iotype_id = $iotype
+                    AND c.student_id = $student_id
+                GROUP BY 
+                    c.student_id
+            ");
+
+        $result = $query->row_array();
+
+        if ($result) {
+            return $result;
+        } else {
+            return null; // or handle the case when no data is found
+        }
+    }
+
+    public function getGradesByIotype($term, $student_id)
+    {
+        $query = $this->db->query("
+            SELECT 
+                a.iotype_id,
+                i.type AS iotype_name,
+                i.percentage AS iotype_percentage,
+                ROUND(SUM(c.score), 2) AS total_score,
+                ROUND(SUM(a.max_score), 2) AS total_max_score,
+                ROUND((SUM(c.score) / SUM(a.max_score)) * 100, 2) AS percentage,
+                ROUND(
+                    CASE 
+                        WHEN (SUM(c.score) / SUM(a.max_score)) * 100 <= 50 THEN 
+                            5.0 - (2.0 / 50) * ((SUM(c.score) / SUM(a.max_score)) * 100)
+                        WHEN (SUM(c.score) / SUM(a.max_score)) * 100 > 50 THEN 
+                            3.0 - (2.0 / 50) * (((SUM(c.score) / SUM(a.max_score)) * 100) - 50)
+                    END, 
+                    2
+                ) AS grade_point,
+                ROUND((SUM(c.score) / SUM(a.max_score)) * i.percentage, 2) AS weighted_grade -- Weighted grade
+            FROM 
+                classworks c
+            JOIN 
+                assessments a ON c.assessment_id = a.assessment_id
+            JOIN 
+                io_type i ON a.iotype_id = i.iotype_id
+            WHERE 
+                a.term = '$term'
+                AND c.student_id = $student_id
+            GROUP BY 
+                a.iotype_id
+        ");
+
+        $result = $query->result_array(); // Return all results grouped by iotype_id
+
+        if ($result) {
+            return $result;
+        } else {
+            return null; // or handle the case when no data is found
+        }
+    }
 }

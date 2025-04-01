@@ -78,3 +78,5 @@ $route['assessment_view'] = 'main/assessment_view';
 $route['quiz/(:num)'] = 'quiz/index/$1';
 $route['quiz/submit/(:num)'] = 'quiz/submit/$1';
 $route['quiz/check_session'] = 'quiz/check_session';
+$route['grades'] = 'main/grades';
+

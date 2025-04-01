@@ -314,4 +314,45 @@ class Main extends CI_Controller
             redirect('output_upload');
         }
     }
+
+    public function grades()
+    {
+        // Fetch grades for Midterm
+        $midtermGrades = $this->classworks->getGradesByIotype(
+            'midterm',
+            $this->session->student_id
+        );
+
+        // Calculate total Midterm grade
+        $midtermTotalGrade = 0;
+        foreach ($midtermGrades as $grade) {
+            $midtermTotalGrade += $grade['percentage'] * ($grade['iotype_percentage'] / 100);
+        }
+
+        // Fetch grades for Final Term (Tentative Final)
+        $finalGrades = $this->classworks->getGradesByIotype(
+            'final',
+            $this->session->student_id
+        );
+
+        // Calculate total Final Term grade
+        $finalTotalGrade = 0;
+
+        if (isset($finalGrades)) {
+            foreach ($finalGrades as $grade) {
+                $finalTotalGrade += $grade['percentage'] * ($grade['iotype_percentage'] / 100);
+            }
+        }
+        // Calculate overall final total grade (50% Midterm + 50% Final Term)
+        $overallFinalGrade = ($midtermTotalGrade * 0.5) + ($finalTotalGrade * 0.5);
+
+        // Pass the data to the view
+        $data['midtermGrades'] = $midtermGrades;
+        $data['midtermTotalGrade'] = round($midtermTotalGrade, 2); // Round to 2 decimal places
+        $data['finalGrades'] = $finalGrades;
+        $data['finalTotalGrade'] = round($finalTotalGrade, 2); // Round to 2 decimal places
+        $data['overallFinalGrade'] = round($overallFinalGrade, 2); // Round to 2 decimal places
+
+        $this->load->view('home', $data);
+    }
 }
