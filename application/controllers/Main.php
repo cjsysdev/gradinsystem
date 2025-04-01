@@ -355,4 +355,43 @@ class Main extends CI_Controller
 
         $this->load->view('home', $data);
     }
+
+    public function sectionGrades()
+    {
+        $term = 'midterm'; // Example term
+        $section = '1B'; // Example section
+
+        // Fetch grades for all students in the section
+        $grades = $this->classworks->getGradesBySection($term, $section);
+
+        // Calculate the Midterm Total Grade and Grade Point for each student
+        $studentsGrades = [];
+        foreach ($grades as $grade) {
+            $studentId = $grade['student_id'];
+
+            if (!isset($studentsGrades[$studentId])) {
+                $studentsGrades[$studentId] = [
+                    'student_id' => $studentId,
+                    'firstname' => $grade['firstname'],
+                    'lastname' => $grade['lastname'],
+                    'section' => $grade['section'],
+                    'midterm_total_grade' => 0,
+                    'grade_point' => 0,
+                ];
+            }
+
+            // Calculate the midterm total grade
+            $studentsGrades[$studentId]['midterm_total_grade'] += $grade['percentage'] * ($grade['iotype_percentage'] / 100);
+
+            // Calculate the grade point using the helper function
+            $studentsGrades[$studentId]['grade_point'] = convertPercentageToGradePoint($studentsGrades[$studentId]['midterm_total_grade']);
+        }
+
+        // Pass the data to the view
+        $data['studentsGrades'] = $studentsGrades;
+        $data['term'] = $term;
+        $data['section'] = $section;
+
+        $this->load->view('section_grades', $data);
+    }
 }

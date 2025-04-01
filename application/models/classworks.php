@@ -130,4 +130,50 @@ class classworks extends MY_Model
             return null; // or handle the case when no data is found
         }
     }
+
+    public function getGradesBySection($term, $section)
+    {
+        $query = $this->db->query("
+            SELECT 
+                cs.section,
+                c.student_id,
+                sm.firstname,
+                sm.lastname,
+                a.iotype_id,
+                i.type AS iotype_name,
+                i.percentage AS iotype_percentage,
+                ROUND(SUM(c.score), 2) AS total_score,
+                ROUND(SUM(a.max_score), 2) AS total_max_score,
+                ROUND((SUM(c.score) / SUM(a.max_score)) * 100, 2) AS percentage,
+                ROUND(
+                    CASE 
+                        WHEN (SUM(c.score) / SUM(a.max_score)) * 100 <= 50 THEN 
+                            5.0 - (2.0 / 50) * ((SUM(c.score) / SUM(a.max_score)) * 100)
+                        WHEN (SUM(c.score) / SUM(a.max_score)) * 100 > 50 THEN 
+                            3.0 - (2.0 / 50) * (((SUM(c.score) / SUM(a.max_score)) * 100) - 50)
+                    END, 
+                    2
+                ) AS grade_point,
+                ROUND((SUM(c.score) / SUM(a.max_score)) * i.percentage, 2) AS weighted_grade
+            FROM 
+                classworks c
+            JOIN 
+                assessments a ON c.assessment_id = a.assessment_id
+            JOIN 
+                io_type i ON a.iotype_id = i.iotype_id
+            JOIN 
+                class_student cs ON c.student_id = cs.student_id
+            JOIN 
+                student_master sm ON cs.student_id = sm.trans_no
+            WHERE 
+                a.term = ?
+                AND cs.section = ?
+            GROUP BY 
+                cs.section, c.student_id, a.iotype_id
+            ORDER BY 
+                cs.section, sm.lastname, sm.firstname;
+        ", [$term, $section]);
+
+        return $query->result_array(); // Return the result as an array of rows
+    }
 }
