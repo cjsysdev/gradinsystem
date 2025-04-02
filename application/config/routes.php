@@ -74,8 +74,8 @@ $route['classwork'] = 'ClassworkController/classwork';
 $route['submit_classwork'] = 'ClassworkController/submit_classwork';
 $route['student_submission/(:num)'] = 'ClassworkController/student_submission/$1';
 $route['start_class'] = 'ClassworkController/start_class';
-$route['all_submissions'] = 'ClassworkController/all_submissions';
-$route['add_score/(:num)/(:num)'] = 'ClassworkController/add_score/$1/$2';
+$route['all_submissions/(:num)'] = 'ClassworkController/all_submissions/$1';
+$route['add_score'] = 'ClassworkController/add_score';
 
 // Assessment Routes
 $route['assessment/(:num)'] = 'AssessmentController/assessment_view_code/$1';

@@ -10,7 +10,7 @@
                 <?php foreach ($midtermGrades as $grade): ?>
                     <div class="alert alert-secondary block text-center">
                         <?= $grade['iotype_name'] ?? 'N/A' ?> (<?= $grade['iotype_percentage'] ?? '0' ?>%)<br>
-                        <?= round($grade['percentage'] ?? 0, 1) . '%' ?>
+                        <?= round($grade['total_score'] ?? 0, 1) . '/' .  round($grade['total_max_score'] ?? 0, 1) ?>
                         (<?= number_format($grade['grade_point'] ?? 0, 1) ?>)
                     </div>
                 <?php endforeach; ?>
@@ -30,7 +30,7 @@
                 <?php foreach ($finalGrades as $grade): ?>
                     <button class="alert alert-light block">
                         <?= $grade['iotype_name'] ?? 'N/A' ?> (<?= $grade['iotype_percentage'] ?? '0' ?>%)<br>
-                        <?= round($grade['percentage'] ?? 0, 1) . '%' ?>
+                        <?= round($grade['total_score'] ?? 0, 1) . '/' .  round($grade['total_max_score'] ?? 0, 1) ?>
                         (<?= number_format($grade['grade_point'] ?? 0, 1) ?>)
                     </button>
                 <?php endforeach; ?>

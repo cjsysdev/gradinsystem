@@ -11,11 +11,16 @@
                             <h3 class="card-title mb-1"><?= $row['classwork_id'] . " - " . $row['lastname'] . ", " . $row['firstname']  ?></h3>
                             <hr>
                             <p class="card-text mb-3"><?= $row['created_at'] ?></p>
-                            <a href="<?= base_url('add_score/' . $row['classwork_id'] . '/1') ?>" type="button" class="btn btn-outline-secondary" name="score" value="good"><i class="fa fa-star" aria-hidden="true"></i></a>
-                            <a href="<?= base_url('add_score/' . $row['classwork_id'] . '/2') ?>" type="button" class="btn btn-outline-secondary" name="score" value="average"><i class="fa fa-star" aria-hidden="true"></i></a>
-                            <a href="<?= base_url('add_score/' . $row['classwork_id'] . '/3') ?>" type="button" class="btn btn-outline-secondary" name="score" value="excellent"><i class="fa fa-star" aria-hidden="true"></i></a>
-                            <a href="<?= base_url('add_score/' . $row['classwork_id'] . '/4') ?>" type="button" class="btn btn-outline-secondary" name="score" value="elite"><i class="fa fa-star" aria-hidden="true"></i></a>
-                            <a href="<?= base_url('add_score/' . $row['classwork_id'] . '/5') ?>" type="button" class="btn btn-outline-secondary" name="score" value="elite"><i class="fa fa-star" aria-hidden="true"></i></a>
+
+                            <!-- Form to submit score -->
+                            <form action="<?= base_url('ClassworkController/add_score') ?>" method="POST">
+                                <input type="hidden" name="classwork_id" value="<?= $row['classwork_id'] ?>">
+                                <input type="hidden" name="student_id" value="<?= $row['trans_no'] ?>">
+                                <div class="input-group mb-3">
+                                    <input type="number" name="score" class="form-control" placeholder="Enter score" min="0" required>
+                                    <button type="submit" class="btn btn-info">Submit</button>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 <?php endforeach; ?>

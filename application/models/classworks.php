@@ -28,7 +28,7 @@ class classworks extends MY_Model
 
     public function get_all_submissions($assessment_id)
     {
-        $sql = "SELECT c.classwork_id, s.firstname, s.lastname, c.code, c.created_at 
+        $sql = "SELECT c.classwork_id, s.trans_no, s.firstname, s.lastname, c.code, c.created_at 
                 FROM gradingsystem.classworks c 
                 JOIN student_master s ON s.trans_no = c.student_id 
                 WHERE assessment_id = ? AND c.score IS NULL OR score =' ' ";
@@ -50,6 +50,13 @@ class classworks extends MY_Model
             ->where('classwork_id', $classwork_id)
             ->from('classworks')
             ->update();
+    }
+
+    public function update_score($classwork_id, $student_id, $score)
+    {
+        $this->db->where('classwork_id', $classwork_id);
+        $this->db->where('student_id', $student_id);
+        $this->db->update('classworks', ['score' => $score]);
     }
 
     public function getActivitiesGrade($term, $iotype, $student_id)

@@ -57,16 +57,35 @@ class ClassworkController extends CI_Controller
         redirect('classwork');
     }
 
-    public function all_submissions()
+    public function all_submissions($assessment_id)
     {
-        $submissions = $this->classworks->get_all_submissions(10);
+        $submissions = $this->classworks->get_all_submissions($assessment_id);
 
         $data = ["submissions" => $submissions];
 
         $this->load->view('all_submission', $data);
     }
 
-    public function add_score($classwork_id, $type)
+    public function add_score()
+    {
+        $classwork_id = $this->input->post('classwork_id');
+        $student_id = $this->input->post('student_id');
+        $score = $this->input->post('score');
+
+        // Validate inputs
+        if (!is_numeric($score) || $score < 0) {
+            $this->session->set_flashdata('error', 'Invalid score.');
+            redirect('all_submissions');
+        }
+
+        // Update the score in the database
+        $this->classworks->update_score($classwork_id, $student_id, $score);
+
+        $this->session->set_flashdata('success', 'Score updated successfully!');
+        redirect('all_submissions/15');
+    }
+
+    public function add_rand_score($classwork_id, $type)
     {
         switch ($type) {
             case 1:

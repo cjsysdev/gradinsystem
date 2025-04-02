@@ -177,7 +177,11 @@
     <div class="card-header d-flex justify-content-between align-items-center">
       <h5 class="mb-0">Your Work</h5>
       <span class="badge badge-success">
-        Turned In
+        <?php if ($classwork['assessments'][0]->max_score == 0)
+          echo 'Turned In';
+        else
+          echo $classwork['score'] . '/' . $classwork['assessments'][0]->max_score;
+        ?>
       </span>
     </div>
     <div class="card-body text-center">
