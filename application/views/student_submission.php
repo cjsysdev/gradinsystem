@@ -1,4 +1,5 @@
 <?php $this->load->view('header') ?>
+
 <style>
   /* Default font size */
   .CodeMirror {
@@ -79,51 +80,180 @@
   #highlightedCode::-webkit-scrollbar-thumb:hover {
     background: #555;
   }
+
+  .submission-container {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    background-color: #f9f9f9;
+    margin-top: 20px;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .submission-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+
+  .submission-header h5 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: bold;
+  }
+
+  .submission-status {
+    font-size: 14px;
+    font-weight: bold;
+    color: <?= $classwork['status'] === 'submitted' ? 'green' : 'red' ?>;
+  }
+
+  .submission-body {
+    margin-top: 10px;
+    text-align: center;
+  }
+
+  .file-preview {
+    display: block;
+    margin: 10px auto;
+    max-width: 100%;
+    height: auto;
+  }
+
+  .file-link {
+    display: inline-block;
+    margin-top: 10px;
+    font-size: 14px;
+    color: #1a73e8;
+    text-decoration: none;
+  }
+
+  .file-link:hover {
+    text-decoration: underline;
+  }
+
+  .submission-actions {
+    margin-top: 20px;
+    text-align: center;
+  }
+
+  .btn-unsubmit {
+    background-color: #d93025;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+
+  .btn-unsubmit:hover {
+    background-color: #a61b1b;
+  }
+
+  .due-date {
+    font-size: 12px;
+    color: #666;
+    margin-top: 10px;
+    text-align: center;
+  }
+
+  pre {
+    background-color: #f1f1f1;
+    padding: 10px;
+    border-radius: 4px;
+    overflow-x: auto;
+  }
 </style>
 
 <div class="container">
-  <div class="dashboard">
-    <?php $this->load->view('profile_info') ?>
-    <?php if ($classwork['assessments'][0]->iotype_id == 3): ?>
-      <div class="card-body">
-        <?php foreach (json_decode($classwork['code'], true) as $index => $result): ?>
-          <div class="mb-4">
-            <p class="fw-bold"><b>Question <?= $index + 1 ?>: </b><?= nl2br(htmlspecialchars($result['question'])) ?></p>
-            <p>Your answer: <span class="<?= $result['is_correct'] ? 'correct' : 'incorrect' ?>"><?= $result['user_answer'] ?></span></p>
-            <p>Correct answer: <?= $result['correct_answer'] ?></p>
-          </div>
-          <hr>
-        <?php endforeach; ?>
-        <div class="text-center">
-          <a href="<?= site_url('attendance') ?>" class="btn btn-outline-dark btn-block">Exit</a>
-        </div>
-      </div>
-    <?php else: ?>
-      <pre><code id="highlightedCode" class="language-c"><?= $classwork['code'] ?></code></pre>
-    <?php endif; ?>
 
-    <?php if ($classwork['score'] !== NULL): ?>
-      <!-- <button type="button" class="btn btn-info btn-block mt-3" onclick="view_score()">View score</button> -->
-    <?php endif; ?>
+  <?php $this->load->view('profile_info') ?>
+
+  <div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">Your Work</h5>
+      <span class="badge badge-success">
+        Turned In
+      </span>
+    </div>
+    <div class="card-body text-center">
+      <?php if ($classwork['file_upload']): ?>
+        <!-- Display uploaded file -->
+        <h6>Uploaded File:</h6>
+        <a href="#" class="btn btn-outline-primary" onclick="previewFile('<?= base_url('uploads/classworks/' . $classwork['file_upload']) ?>')">
+          <?= $classwork['file_upload'] ?>
+        </a>
+      <?php elseif ($classwork['code']): ?>
+        <!-- Display submitted code -->
+        <h6>Submitted Code:</h6>
+        <pre class="bg-light p-3 rounded border text-left"><code id="highlightedCode" class="language-c"><?= htmlspecialchars($classwork['code']) ?></code></pre>
+      <?php else: ?>
+        <p class="text-muted">No submission found.</p>
+      <?php endif; ?>
+    </div>
+    <div class="card-footer text-center">
+      <?php if ($classwork['status'] === 'submitted'): ?>
+        <button class="btn btn-secondary" onclick="unsubmitWork()" disabled>Unsubmit</button>
+      <?php endif; ?>
+      <p class="text-muted mt-3">Work cannot be turned in after the due date.</p>
+    </div>
   </div>
+</div>
 
-  <script src="<?= base_url('assets/highlights/11.7.0-highlight.min.js') ?>"></script>
+<!-- Modal for File Preview -->
+<div class="modal fade" id="filePreviewModal" tabindex="-1" aria-labelledby="filePreviewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="filePreviewModalLabel">File Preview</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <iframe id="filePreviewIframe" src="" frameborder="0" style="width: 100%; height: 600px;"></iframe>
+      </div>
+    </div>
+  </div>
+</div>
 
-  <script>
-    hljs.highlightAll();
-  </script>
+<script>
+  function previewFile(fileUrl) {
+    const iframe = document.getElementById('filePreviewIframe');
+    iframe.src = fileUrl;
+    const modal = new bootstrap.Modal(document.getElementById('filePreviewModal'));
+    modal.show();
+  }
 
-  <!-- CodeMirror JavaScript -->
-  <script src="<?= base_url('./assets/codemirror.min.js ?>') ?> "></script>
-  <script src="<?= base_url('./assets/clike.min.js') ?>"></script>
-
-  <script>
-    // Start animation when page loads
-    function view_score() {
-      animateNumber(<?= $classwork['score'] ?>, 2500);
+  function unsubmitWork() {
+    if (confirm('Are you sure you want to unsubmit your work?')) {
+      alert('Your work has been unsubmitted.');
+      // Add logic to handle unsubmission (e.g., AJAX request to update the database)
     }
-  </script>
-</div>
-</div>
+  }
+
+  hljs.highlightAll();
+</script>
+
+<script src="<?= base_url('assets/highlights/11.7.0-highlight.min.js') ?>"></script>
+
+<script>
+  hljs.highlightAll();
+</script>
+
+<!-- CodeMirror JavaScript -->
+<script src="<?= base_url('./assets/codemirror.min.js ?>') ?> "></script>
+<script src="<?= base_url('./assets/clike.min.js') ?>"></script>
+
+<script>
+  // Start animation when page loads
+  function view_score() {
+    animateNumber(<?= $classwork['score'] ?>, 2500);
+  }
+</script>
 
 <?php $this->load->view('footer') ?>

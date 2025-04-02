@@ -60,4 +60,63 @@ class AssessmentController extends CI_Controller
             redirect('output_upload');
         }
     }
+
+    public function submit_classwork()
+    {
+        $post = $this->input->post();
+        $student_id = $this->session->student_id;
+        $assessment_id = $post['assessment_id'];
+
+        // Initialize submission data
+        $submission_data = [
+            'student_id' => $student_id,
+            'assessment_id' => $assessment_id,
+            'status' => 'submitted',
+            'submitted_at' => date('Y-m-d H:i:s'),
+            'created_at' => date('Y-m-d H:i:s') // For new submissions
+        ];
+
+        // Check if a file is uploaded
+        if (!empty($_FILES['file-upload']['name'])) {
+            $filename = $this->class_student->get(['student_id' => $student_id])->section . '-' . $this->session->lastname . '-' . time();
+
+            $config['upload_path'] = './uploads/classworks';
+            $config['allowed_types'] = '*';
+            $config['max_size'] = 51200; // 50MB
+            $config['file_name'] = $filename;
+
+            $this->upload->initialize($config);
+
+            if (!$this->upload->do_upload('file-upload')) {
+                $this->session->set_flashdata('error', $this->upload->display_errors());
+                redirect('classwork');
+            } else {
+                $upload_data = $this->upload->data();
+                $submission_data['file_upload'] = $upload_data['file_name'];
+                $submission_data['code'] = null; // Clear the code field for file submissions
+            }
+        } else {
+            // Handle textarea submission
+            $submission_data['code'] = $post['code'];
+            $submission_data['file_upload'] = null; // Clear the file_upload field for text submissions
+        }
+
+        // Check if a submission already exists
+        $existing_submission = $this->classworks->where([
+            'student_id' => $student_id,
+            'assessment_id' => $assessment_id
+        ])->get();
+
+        if (!$existing_submission) {
+            // Insert new submission
+            $this->classworks->insert($submission_data);
+            $this->session->set_flashdata('success', 'Classwork submitted successfully!');
+        } else {
+            // Update existing submission
+            $this->classworks->update($existing_submission->classwork_id, $submission_data);
+            $this->session->set_flashdata('success', 'Classwork updated successfully!');
+        }
+
+        redirect('classwork');
+    }
 }

@@ -1,7 +1,7 @@
 <?php
 defined('BASEPATH') or exit('No direct script access allowed');
 
-class Quiz extends CI_Controller
+class QuizController extends CI_Controller
 {
 
     public function __construct()
@@ -34,7 +34,7 @@ class Quiz extends CI_Controller
             $allQuestions = json_decode($json, true);
 
             shuffle($allQuestions);
-            $questions = array_slice($allQuestions, 0, 50);
+            $questions = array_slice($allQuestions, 0, 10);
 
             foreach ($questions as &$question) {
                 shuffle($question['choices']);

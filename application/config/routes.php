@@ -80,6 +80,7 @@ $route['add_score/(:num)/(:num)'] = 'ClassworkController/add_score/$1/$2';
 // Assessment Routes
 $route['assessment/(:num)'] = 'AssessmentController/assessment_view_code/$1';
 $route['assessment_view'] = 'AssessmentController/assessment_view';
+$route['upload_activity'] = 'AssessmentController/upload_activity';
 
 // Quiz Routes
 $route['quiz/(:num)'] = 'QuizController/index/$1';
@@ -92,6 +93,3 @@ $route['signup'] = 'Main/signup';
 $route['signup_submit'] = 'Main/signup_submit';
 $route['input_submit'] = 'Main/input_submit';
 $route['output_upload'] = 'Main/output_upload';
-$route['upload_activity'] = 'Main/upload_activity';
-
-

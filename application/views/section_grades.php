@@ -104,7 +104,6 @@
             <th>Student ID</th>
             <th>Firstname</th>
             <th>Lastname</th>
-            <th>Midterm Total Grade</th>
             <th>Grade Point</th>
         </tr>
     </thead>
@@ -115,7 +114,6 @@
                     <td><?= $student['student_id'] ?></td>
                     <td><?= $student['firstname'] ?></td>
                     <td><?= $student['lastname'] ?></td>
-                    <td><?= is_numeric($student['midterm_total_grade']) ? round($student['midterm_total_grade'], 2) . '%' : $student['midterm_total_grade'] ?></td>
                     <td><?= is_numeric($student['grade_point']) ? number_format($student['grade_point'], 2) : $student['grade_point'] ?></td>
                 </tr>
             <?php endforeach; ?>

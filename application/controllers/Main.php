@@ -10,6 +10,11 @@ class Main extends CI_Controller
         $this->load->library(['session', 'upload']);
     }
 
+    public function index()
+    {
+        $this->load->view('login');
+    }
+
     public function test()
     {
         $this->load->view('test');
@@ -39,24 +44,5 @@ class Main extends CI_Controller
     public function output_upload()
     {
         $this->load->view('output_upload');
-    }
-
-    public function upload_activity()
-    {
-        $config['upload_path'] = './uploads/outputs';
-        $config['allowed_types'] = '*';
-        $config['max_size'] = 51200; // 50MB
-        $config['file_name'] = 'activity-' . time();
-
-        $this->upload->initialize($config);
-
-        if (!$this->upload->do_upload('photo-upload')) {
-            $this->session->set_flashdata('error', $this->upload->display_errors());
-            redirect('output_upload');
-        } else {
-            $this->upload->data();
-            $this->session->set_flashdata('success', 'Upload successful!');
-            redirect('output_upload');
-        }
     }
 }

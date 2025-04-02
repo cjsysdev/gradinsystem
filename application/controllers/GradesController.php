@@ -3,8 +3,15 @@ defined('BASEPATH') or exit('No direct script access allowed');
 
 class GradesController extends CI_Controller
 {
+    public function __construct()
+    {
+        parent::__construct();
+        $this->is_offline = !isset($_SESSION['online']);
+    }
+
     public function grades()
     {
+        if ($this->is_offline) redirect();
         $midtermGrades = $this->classworks->getGradesByIotype('midterm', $this->session->student_id);
 
         $midtermTotalGrade = 0;
