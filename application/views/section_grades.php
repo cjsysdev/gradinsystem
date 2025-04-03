@@ -46,6 +46,24 @@
             text-align: center;
             font-size: 16px;
         }
+
+        /* Highlight rows with INC grades */
+        table tbody tr.highlight-inc {
+            background-color: rgb(250, 235, 236) !important;
+            /* Light red */
+        }
+
+        /* Ensure background colors are printed */
+        @media print {
+            table tbody tr.highlight-inc {
+                background-color:rgb(250, 235, 236) !important;
+                /* Light red */
+                -webkit-print-color-adjust: exact;
+                /* For WebKit browsers */
+                print-color-adjust: exact;
+                /* For other browsers */
+            }
+        }
     </style>
 </head>
 
@@ -77,12 +95,10 @@
     <tr>
         <td>Term:</td>
         <td><?= ucfirst($term) ?></td>
-
     </tr>
     <tr>
         <td>Year and Semester</td>
         <td>2nd Semester, S.Y 2024 - 2025</td>
-
     </tr>
     <tr>
         <td>Course Code : </td>
@@ -110,11 +126,11 @@
     <tbody>
         <?php if (!empty($studentsGrades)): ?>
             <?php foreach ($studentsGrades as $student): ?>
-                <tr>
+                <tr class="<?= $student['grade_point'] === 'INC' ? 'highlight-inc' : '' ?>">
                     <td><?= $student['student_id'] ?></td>
                     <td><?= $student['firstname'] ?></td>
                     <td><?= $student['lastname'] ?></td>
-                    <td><?= is_numeric($student['grade_point']) ?  number_format(floor($student['grade_point'] * 10) / 10, 1) : $student['grade_point'] ?></td>
+                    <td><?= is_numeric($student['grade_point']) ? number_format(floor($student['grade_point'] * 10) / 10, 1) : $student['grade_point'] ?></td>
                 </tr>
             <?php endforeach; ?>
         <?php else: ?>
