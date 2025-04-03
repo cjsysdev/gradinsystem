@@ -16,6 +16,7 @@
                             <form action="<?= base_url('ClassworkController/add_score') ?>" method="POST">
                                 <input type="hidden" name="classwork_id" value="<?= $row['classwork_id'] ?>">
                                 <input type="hidden" name="student_id" value="<?= $row['trans_no'] ?>">
+                                <input type="hidden" name="assessment_id" value="<?= explode('/', uri_string())[1] ?>">
                                 <div class="input-group mb-3">
                                     <input type="number" name="score" class="form-control" placeholder="Enter score" min="0" required>
                                     <button type="submit" class="btn btn-info">Submit</button>

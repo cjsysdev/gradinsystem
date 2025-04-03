@@ -82,14 +82,22 @@ function randomizeNumber($min, $max)
 function convertPercentageToGradePoint($percentage)
 {
     $passingGrade = 60;
+
     if ($percentage <= $passingGrade) {
-        // Range 1: 0% to passing grade
-        return 5.0 - (2.0 / $passingGrade) * $percentage;
+        // Range 1: 0% to passing grade (returns 5.0 → 3.0)
+        $gradePoint = 5.0 - (2.0 / $passingGrade) * $percentage;
     } elseif ($percentage > $passingGrade && $percentage <= 100) {
-        // Range 2: Passing grade to 100%
-        return 3.0 - (2.0 / (100 - $passingGrade)) * ($percentage - $passingGrade);
+        // Range 2: Passing grade to 100% (returns 3.0 → 1.0)
+        $gradePoint = 3.0 - (2.0 / (100 - $passingGrade)) * ($percentage - $passingGrade);
     } else {
-        // Invalid percentage (e.g., greater than 100 or less than 0)
+        // Invalid percentage (e.g., >100 or <0)
         return null;
     }
+
+    // Round DOWN to 1 decimal place (e.g., 3.06 → 3.0)
+    $gradePoint = floor($gradePoint * 10) / 10;
+
+    // Return as float (e.g., 3.0) or formatted string (e.g., "3.0")
+    return $gradePoint; // Float (recommended for calculations)
+    // return number_format($gradePoint, 1); // String (for display)
 }

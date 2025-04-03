@@ -31,7 +31,7 @@ class classworks extends MY_Model
         $sql = "SELECT c.classwork_id, s.trans_no, s.firstname, s.lastname, c.code, c.created_at 
                 FROM gradingsystem.classworks c 
                 JOIN student_master s ON s.trans_no = c.student_id 
-                WHERE assessment_id = ? AND c.score IS NULL OR score =' ' ";
+                WHERE assessment_id = ? AND c.score IS NULL ";
 
         $query = $this->db->query($sql, [$assessment_id]);
 

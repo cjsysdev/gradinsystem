@@ -71,6 +71,7 @@ class ClassworkController extends CI_Controller
         $classwork_id = $this->input->post('classwork_id');
         $student_id = $this->input->post('student_id');
         $score = $this->input->post('score');
+        $assessment_id = $this->input->post('assessment_id');
 
         // Validate inputs
         if (!is_numeric($score) || $score < 0) {
@@ -82,7 +83,7 @@ class ClassworkController extends CI_Controller
         $this->classworks->update_score($classwork_id, $student_id, $score);
 
         $this->session->set_flashdata('success', 'Score updated successfully!');
-        redirect('all_submissions/15');
+        redirect("all_submissions/$assessment_id");
     }
 
     public function add_rand_score($classwork_id, $type)

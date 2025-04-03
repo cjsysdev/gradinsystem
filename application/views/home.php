@@ -11,7 +11,7 @@
                     <div class="alert alert-secondary block text-center">
                         <?= $grade['iotype_name'] ?? 'N/A' ?> (<?= $grade['iotype_percentage'] ?? '0' ?>%)<br>
                         <?= round($grade['total_score'] ?? 0, 1) . '/' .  round($grade['total_max_score'] ?? 0, 1) ?>
-                        (<?= number_format($grade['grade_point'] ?? 0, 1) ?>)
+                        (<?= number_format(floor($grade['grade_point'] * 10) / 10, 1) ?>)
                     </div>
                 <?php endforeach; ?>
                 <div class="total-section mt-3">
