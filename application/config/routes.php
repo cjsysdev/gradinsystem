@@ -61,6 +61,9 @@ $route['logout'] = 'AuthenticationController/logout';
 $route['student_info'] = 'StudentController/student_info';
 $route['find_id'] = 'StudentController/find_id';
 $route['get_id'] = 'StudentController/get_id';
+$route['update_account'] = 'StudentController/update_account';
+$route['update_account_form'] = 'StudentController/update_account_form';
+
 
 // Grades Routes
 $route['grades'] = 'GradesController/grades';

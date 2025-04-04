@@ -118,8 +118,8 @@
     <thead>
         <tr>
             <th>Student ID</th>
-            <th>Firstname</th>
             <th>Lastname</th>
+            <th>Firstname</th>
             <th>Grade</th>
         </tr>
     </thead>
@@ -128,8 +128,8 @@
             <?php foreach ($studentsGrades as $student): ?>
                 <tr class="<?= $student['grade_point'] === 'INC' ? 'highlight-inc' : '' ?>">
                     <td><?= $student['student_id'] ?></td>
-                    <td><?= $student['firstname'] ?></td>
                     <td><?= $student['lastname'] ?></td>
+                    <td><?= $student['firstname'] ?></td>
                     <td><?= is_numeric($student['grade_point']) ? number_format(floor($student['grade_point'] * 10) / 10, 1) : $student['grade_point'] ?></td>
                 </tr>
             <?php endforeach; ?>

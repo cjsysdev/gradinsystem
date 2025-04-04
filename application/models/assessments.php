@@ -43,6 +43,7 @@ class assessments extends MY_Model
                 a.max_score,
                 a.created_at,
                 a.due,
+                iot.type,
                 cs.section
             FROM 
                 assessments a
@@ -53,6 +54,9 @@ class assessments extends MY_Model
             JOIN 
                 class_schedule cs
                 ON a.schedule_id = cs.schedule_id
+            JOIN
+                io_type iot
+                ON iot.iotype_id = a.iotype_id
             WHERE 
                 c.classwork_id IS NULL AND cs.section = ?
         ";
@@ -73,6 +77,7 @@ class assessments extends MY_Model
         $sql = "
             SELECT * FROM classworks c 
             JOIN assessments a ON c.assessment_id = a.assessment_id 
+            JOIN io_type iot ON a.iotype_id = iot.iotype_id
             WHERE student_id = ? ORDER BY c.created_at DESC";
 
         $query = $this->db->query($sql, [$student_id]);

@@ -28,4 +28,45 @@ class StudentController extends CI_Controller
     {
         $this->load->view('find_id');
     }
+
+    // New method to update username and password
+    public function update_account()
+    {
+        $input = $this->input->post();
+
+        // Check if the logged-in student is updating their own account
+        if ($this->session->student_id != $input['student_id']) {
+            $this->session->set_flashdata('error', 'You are not authorized to update this account.');
+            redirect('update_account_form');
+        }
+
+        // Validate input
+        if (empty($input['username']) || empty($input['password']) || empty($input['student_id'])) {
+            $this->session->set_flashdata('error', 'All fields are required.');
+            redirect('update_account_form');
+        }
+
+        // Hash the password
+        $hashed_password = $input['password'];
+
+        // Update the account in the database
+        $this->db->where('student_id', $input['student_id']);
+        $this->db->update('accounts', [
+            'username' => $input['username'],
+            'password' => $hashed_password
+        ]);
+
+        if ($this->db->affected_rows() > 0) {
+            $this->session->set_flashdata('success', 'Account updated successfully.');
+        } else {
+            $this->session->set_flashdata('error', 'Failed to update account. Please try again.');
+        }
+
+        redirect('update_account_form');
+    }
+
+    public function update_account_form()
+    {
+        $this->load->view('update_account_form');
+    }
 }

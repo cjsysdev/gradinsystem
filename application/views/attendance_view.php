@@ -158,7 +158,7 @@
             },
             adjacentDaysChangeMonth: true,
             forceSixRows: true,
-            startWithMonth: moment('2025-03-01')
+            startWithMonth: moment()
         });
     });
 </script>

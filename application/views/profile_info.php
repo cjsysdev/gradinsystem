@@ -8,6 +8,7 @@
 			<!-- <p><?= $this->session->course, ' - ', $this->session->current_year ?></p> -->
 		</div>
 		<div class="col text-center">
+			<a href="<?= base_url("update_account_form") ?>" class=" btn btn-outline-dark"><i class="fa fa-user" aria-hidden="true"></i></a>
 			<a href="<?= base_url("logout") ?>" class=" btn btn-outline-dark">Logout</a>
 		</div>
 	</div>
