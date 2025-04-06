@@ -119,4 +119,32 @@ class AssessmentController extends CI_Controller
 
         redirect('classwork');
     }
+
+    public function upload_pdf()
+    {
+        $assessment_id = $this->input->post('assessment_id');
+
+        // Configure upload settings
+        $config['upload_path'] = './uploads/assessments';
+        $config['allowed_types'] = 'pdf';
+        $config['max_size'] = 10240; // 10MB
+        $config['file_name'] = 'assessment_' . $assessment_id . '_given';
+
+        $this->load->library('upload', $config);
+
+        if (!$this->upload->do_upload('pdf_file')) {
+            $this->session->set_flashdata('error', $this->upload->display_errors());
+            redirect('AdminController/manage_assessments');
+        } else {
+            $upload_data = $this->upload->data();
+            $pdf_file_path = 'uploads/assessments/' . $upload_data['file_name'];
+
+            // Update the assessment with the PDF file path
+            $this->db->where('assessment_id', $assessment_id);
+            $this->db->update('assessments', ['pdf_file_path' => $pdf_file_path]);
+
+            $this->session->set_flashdata('success', 'PDF uploaded successfully!');
+            redirect('AdminController/manage_assessments');
+        }
+    }
 }
