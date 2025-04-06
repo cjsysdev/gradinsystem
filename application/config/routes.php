@@ -63,7 +63,7 @@ $route['find_id'] = 'StudentController/find_id';
 $route['get_id'] = 'StudentController/get_id';
 $route['update_account'] = 'StudentController/update_account';
 $route['update_account_form'] = 'StudentController/update_account_form';
-
+$route['student/get-discussion-mode'] = 'StudentController/get_discussion_mode';
 
 // Grades Routes
 $route['grades'] = 'GradesController/grades';
@@ -96,3 +96,7 @@ $route['signup'] = 'Main/signup';
 $route['signup_submit'] = 'Main/signup_submit';
 $route['input_submit'] = 'Main/input_submit';
 $route['output_upload'] = 'Main/output_upload';
+
+// Admin Routes
+$route['dashboard'] = 'AdminController/dashboard';
+

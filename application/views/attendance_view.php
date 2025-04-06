@@ -1,10 +1,10 @@
-<?php $this->load->view('header') ?>
+<?php $this->load->view('header'); ?>
 
 
-<script src="<?= base_url("/assets/jquery-3.5.1.slim.min.js") ?> "></script>
-<script src="<?= base_url("/assets/underscore-min.js") ?> "></script>
-<script src="<?= base_url("/assets/moment.min.js") ?> "></script>
-<script src="<?= base_url("/assets/clndr.min.js") ?> "></script>
+<script src="<?= base_url('/assets/jquery-3.5.1.slim.min.js') ?> "></script>
+<script src="<?= base_url('/assets/underscore-min.js') ?> "></script>
+<script src="<?= base_url('/assets/moment.min.js') ?> "></script>
+<script src="<?= base_url('/assets/clndr.min.js') ?> "></script>
 
 <style>
     #calendar {
@@ -65,28 +65,46 @@
 
 <div class="container">
     <div class="dashboard">
-        <?php $this->load->view('profile_info') ?>
+        <?php $this->load->view('profile_info'); ?>
         <?php
-        $course = $this->class_student->get(['student_id' => $this->session->student_id])->class_id ?? '1';
-        if ($course === '1')
+        $course =
+            $this->class_student->get([
+                'student_id' => $this->session->student_id,
+            ])->class_id ?? '1';
+        if ($course === '1') {
             $desc = '105';
-        else
+        } else {
             $desc = '103';
+        }
         ?>
         <?php if ($this->session->exam_review): ?>
             <a class="btn alert-primary btn-block mb-3" href="./uploads/<?= $desc ?>_reviewer.pdf" download="<?= $desc ?>_reviewer.pdf" src="./uploads/<?= $desc ?>_reviewer.pdf"><i class="fa fa-download" aria-hidden="true" style="margin-right: 10px"> </i>Download CC<?= $desc ?> - Midterm Reviewer</a>
         <?php endif; ?>
         <?php if ($class): ?>
             <div class="card-body p-1 text-center">
-                <h5><span class="badge badge-secondary mb-1"><?= $class["class_code"], ' ', $class["type"] ?? NULL ?></span></h5>
-                <h6 class="card-subtitle text-body-secondary"><?= $class["class_name"], ' ', $class["type"] ?></h6>
-                <p class="card-text m-0"><?= $class["section"], ' ', $class["day"], ' : ', convert_time($class["time_start"]), '-', convert_time($class["time_end"]) ?></p>
+                <h5><span class="badge badge-secondary mb-1"><?= $class[
+    'class_code'
+],
+                    ' ',
+                    $class['type'] ?? null ?></span></h5>
+                <h6 class="card-subtitle text-body-secondary"><?= $class[
+    'class_name'
+],
+                    ' ',
+                    $class['type'] ?></h6>
+                <p class="card-text m-0"><?= $class['section'],
+                    ' ',
+                    $class['day'],
+                    ' : ',
+                    convert_time($class['time_start']),
+                    '-',
+                    convert_time($class['time_end']) ?></p>
                 <p class="card-text m-0 mt-3" id="txt"></p>
                 <div id="txt"></div>
             </div>
         <?php else: ?>
             <div class="alert alert-danger">
-                <?= $this->session->flashdata('error'); ?>
+                <?= $this->session->flashdata('error') ?>
             </div>
         <?php endif; ?>
         <hr>

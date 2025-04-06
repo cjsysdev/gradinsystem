@@ -69,4 +69,24 @@ class StudentController extends CI_Controller
     {
         $this->load->view('update_account_form');
     }
+
+    // Method to get the current discussion mode
+    public function get_discussion_mode()
+    {
+        // Load the database library
+        $this->load->database();
+
+        // Query the database for the discussion mode
+        $query = $this->db->get_where('global_settings', [
+            'setting_key' => 'discussion_mode',
+        ]);
+
+        // Check if the setting exists and return the value
+        if ($query->num_rows() > 0) {
+            $discussion_mode = $query->row()->setting_value === '1';
+            echo json_encode(['discussion_mode' => $discussion_mode]);
+        } else {
+            echo json_encode(['error' => 'Discussion mode setting not found.']);
+        }
+    }
 }
