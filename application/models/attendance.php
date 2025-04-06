@@ -5,24 +5,24 @@ class attendance extends MY_Model
 {
     public $table = 'attendance';
     public $primary_key = 'attendance_id';
-    public $protected = array('attendance_id');
-    public $fillable = array('status');
+    public $protected = ['attendance_id'];
+    public $fillable = ['status'];
 
     public function __construct()
     {
-        $this->timestamps = TRUE;
-        $this->has_many['student'] =  array(
+        $this->timestamps = true;
+        $this->has_many['student'] = [
             'foreign_model' => 'student_master',
             'foreign_table' => 'student_master',
             'foreign_key' => 'trans_no',
-            'local_key' => 'student_id'
-        );
-        $this->has_many['class_schedule'] =  array(
+            'local_key' => 'student_id',
+        ];
+        $this->has_many['class_schedule'] = [
             'foreign_model' => 'class_schedule',
             'foreign_table' => 'class_schedule',
             'foreign_key' => 'schedule_id',
-            'local_key' => 'schedule_id'
-        );
+            'local_key' => 'schedule_id',
+        ];
         parent::__construct();
     }
 
@@ -33,7 +33,8 @@ class attendance extends MY_Model
 
     public function get_student_attendance($id)
     {
-        $query = $this->db->query("SELECT c.class_code, c.class_name, cs.type, sm.lastname, sm.firstname, a.date 
+        $query = $this->db
+            ->query("SELECT c.class_code, c.class_name, cs.type, sm.lastname, sm.firstname, a.date 
                 FROM attendance a
                 JOIN student_master sm ON a.student_id = sm.trans_no
                 JOIN class_schedule cs ON a.schedule_id = cs.schedule_id
@@ -46,8 +47,9 @@ class attendance extends MY_Model
 
     public function start_class($schedule_id, $section, $date)
     {
-
-        $check_duplicate_query = $this->db->query(" SELECT * FROM attendance WHERE schedule_id = $schedule_id AND date like '$date%' ");
+        $check_duplicate_query = $this->db->query(
+            " SELECT * FROM attendance WHERE schedule_id = $schedule_id AND date like '$date%' "
+        );
 
         if ($check_duplicate_query->row() === null) {
             $sql = "
@@ -67,8 +69,7 @@ class attendance extends MY_Model
             }
 
             return false;
-        };
-
+        }
 
         return true;
     }
@@ -79,14 +80,72 @@ class attendance extends MY_Model
             ->set([
                 'status' => $status,
                 'ip_address' => $ip_address,
-                'date' => $date . ' ' . date('H:i:s')
+                'date' => $date . ' ' . date('H:i:s'),
             ])
             ->where([
-                'student_id' =>  $student_id,
+                'student_id' => $student_id,
                 'date(date)' => $date,
-                'status' => 'absent'
+                'status' => 'absent',
             ])
             ->from('attendance')
             ->update();
+    }
+
+    public function getMaxAttendanceDays($section, $start_date, $end_date)
+    {
+        $query = $this->db->query(
+            "
+            SELECT student_id, COUNT(*) as present_days
+            FROM attendance a
+            JOIN class_schedule cs ON a.schedule_id = cs.schedule_id 
+            WHERE cs.section = ? AND status = 'present' AND DATE(a.date) BETWEEN ? AND ?
+            GROUP BY student_id
+            ORDER BY present_days DESC
+            LIMIT 1;
+            ",
+            [$section, $start_date, $end_date]
+        );
+
+        $result = $query->row();
+        return $result ? $result->present_days : 0;
+    }
+
+    public function checkStudentAbsences(
+        $student_id,
+        $section,
+        $start_date,
+        $end_date
+    ) {
+        // Count the student's present days
+        $query = $this->db->query(
+            "
+            SELECT COUNT(*) as present_days
+            FROM attendance
+            WHERE student_id = ? AND status = 'present' AND date BETWEEN ? AND ?
+        ",
+            [$student_id, $start_date, $end_date]
+        );
+
+        $student_present_days = $query->row()->present_days ?? 0;
+
+        // Get the maximum attendance days for the section
+        $max_present_days = $this->getMaxAttendanceDays(
+            $section,
+            $start_date,
+            $end_date
+        );
+
+        // Calculate absences
+        $absent_days = $max_present_days - $student_present_days;
+
+        // Check if the student has been absent for 6 or more days
+        if ($absent_days >= 6) {
+            $this->session->set_flashdata(
+                'error',
+                'You have been absent for 6 or more days.'
+            );
+        }
+
+        return $absent_days;
     }
 }

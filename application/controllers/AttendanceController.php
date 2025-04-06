@@ -38,6 +38,15 @@ class AttendanceController extends CI_Controller
             )
         ) {
             $this->session->set_flashdata('error', 'No available class');
+            // Check for absences
+            $start_date = '2025-04-01'; // Example start date
+            $end_date = $date; // Current date
+            $absences = $this->attendance->checkStudentAbsences(
+                $student_id,
+                $account->section,
+                $start_date,
+                $end_date
+            );
         } else {
             $this->handleStudentAttendance($class, $student_id, $date);
         }
@@ -50,6 +59,7 @@ class AttendanceController extends CI_Controller
             'class' => $class,
             'record' => $attendance_record,
             'events' => json_encode($attendance_record),
+            'absences' => $absences,
         ];
 
         $this->load->view('attendance_view', $data);
