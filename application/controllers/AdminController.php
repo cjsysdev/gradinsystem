@@ -62,6 +62,6 @@ class AdminController extends CI_Controller
         }
 
         // Load the view
-        $this->load->view('all_submission', $data);
+        $this->load->view('admin/all_submission', $data);
     }
 }

@@ -4,6 +4,7 @@
 <div class="container">
     <div class="dashboard">
         <?php $this->load->view('profile_only'); ?>
+        <?php $this->load->view('admin/nav_bar'); ?>
     </div>
     <div class="row mt-3">
         <div class="col text-center">
@@ -21,7 +22,7 @@
             <form action="<?php echo site_url(
                 'AdminController/toggle_discussion_mode'
             ); ?>" method="post">
-                <button type="submit">
+                <button class="btn btn-secondary" type="submit">
                     <?php echo $discussion_mode
                         ? 'Deactivate Discussion Mode'
                         : 'Activate Discussion Mode'; ?>

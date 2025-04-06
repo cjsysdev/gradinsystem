@@ -3,6 +3,7 @@
 <div class="container">
     <div class="dashboard">
         <?php $this->load->view('profile_only'); ?>
+        <?php $this->load->view('admin/nav_bar'); ?>
 
         <!-- Dropdown to select an assessment -->
         <div class="row justify-content-center mt-5">
