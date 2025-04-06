@@ -64,4 +64,27 @@ class AdminController extends CI_Controller
         // Load the view
         $this->load->view('admin/all_submission', $data);
     }
+
+    public function manage_json_files()
+    {
+        $this->load->database();
+
+        if ($this->input->post()) {
+            $assessment_id = $this->input->post('assessment_id');
+            $json_file_path = $this->input->post('json_file_path');
+
+            $this->db->replace('assessment_files', [
+                'assessment_id' => $assessment_id,
+                'json_file_path' => $json_file_path
+            ]);
+
+            $this->session->set_flashdata('success', 'JSON file path updated successfully.');
+            redirect('AdminController/manage_json_files');
+        }
+
+        $data['assessments'] = $this->db->get('assessments')->result_array();
+        $data['json_files'] = $this->db->get('assessment_files')->result_array();
+
+        $this->load->view('manage_json_files', $data);
+    }
 }

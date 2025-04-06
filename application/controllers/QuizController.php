@@ -15,6 +15,19 @@ class QuizController extends CI_Controller
 
     public function index($assessment_id)
     {
+        // Fetch the JSON file path for the given assessment_id
+        $this->load->database();
+        $query = $this->db->get_where('assessment_files', ['assessment_id' => $assessment_id]);
+        $fileRecord = $query->row();
+
+        if (!$fileRecord) {
+            show_error('JSON file for this assessment is not configured.', 404);
+            return;
+        }
+
+        $jsonFilePath = $fileRecord->json_file_path;
+
+        // Check if the student has already taken the quiz
         $value = $this->classworks->where(
             [
                 'student_id' => $this->session->student_id,
@@ -22,15 +35,18 @@ class QuizController extends CI_Controller
             ]
         )->get();
 
-        $course = $this->class_student->get(['student_id' => $this->session->student_id])->class_id ?? '1';
-        $desc = ($course === '1') ? '105' : '103';
-
         if ($value) redirect('attendance');
 
         if ($this->is_offline) redirect();
 
+        // Load and shuffle questions from the JSON file
         if (!$this->session->userdata('shuffled_questions')) {
-            $json = file_get_contents("uploads/$desc.json");
+            if (!file_exists($jsonFilePath)) {
+                show_error('The JSON file does not exist.', 404);
+                return;
+            }
+
+            $json = file_get_contents($jsonFilePath);
             $allQuestions = json_decode($json, true);
 
             shuffle($allQuestions);
@@ -40,6 +56,7 @@ class QuizController extends CI_Controller
                 shuffle($question['choices']);
             }
             unset($question);
+
             $this->session->set_userdata('shuffled_questions', $questions);
         } else {
             $questions = $this->session->userdata('shuffled_questions');

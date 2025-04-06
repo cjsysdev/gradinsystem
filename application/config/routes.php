@@ -98,5 +98,6 @@ $route['output_upload'] = 'Main/output_upload';
 
 // Admin Routes
 $route['dashboard'] = 'AdminController/dashboard';
+$route['manage_json_files'] = 'AdminController/manage_json_files';
 $route['all_submissions/(:num)'] = 'AdminController/all_submissions/$1';
 
