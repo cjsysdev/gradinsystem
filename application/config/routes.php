@@ -77,7 +77,6 @@ $route['classwork'] = 'ClassworkController/classwork';
 $route['submit_classwork'] = 'ClassworkController/submit_classwork';
 $route['student_submission/(:num)'] = 'ClassworkController/student_submission/$1';
 $route['start_class'] = 'ClassworkController/start_class';
-$route['all_submissions/(:num)'] = 'ClassworkController/all_submissions/$1';
 $route['add_score'] = 'ClassworkController/add_score';
 
 // Assessment Routes
@@ -99,4 +98,5 @@ $route['output_upload'] = 'Main/output_upload';
 
 // Admin Routes
 $route['dashboard'] = 'AdminController/dashboard';
+$route['all_submissions/(:num)'] = 'AdminController/all_submissions/$1';
 

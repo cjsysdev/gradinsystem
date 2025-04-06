@@ -57,15 +57,6 @@ class ClassworkController extends CI_Controller
         redirect('classwork');
     }
 
-    public function all_submissions($assessment_id)
-    {
-        $submissions = $this->classworks->get_all_submissions($assessment_id);
-
-        $data = ["submissions" => $submissions];
-
-        $this->load->view('all_submission', $data);
-    }
-
     public function add_score()
     {
         $classwork_id = $this->input->post('classwork_id');

@@ -44,4 +44,24 @@ class AdminController extends CI_Controller
         // Redirect back to the dashboard
         redirect('dashboard');
     }
+
+    public function all_submissions($assessment_id = null)
+    {
+        // Fetch all assessments for the dropdown
+        $data['assessments'] = $this->assessments->as_array()->get_all();
+
+        // Fetch submissions for the selected assessment
+        if ($assessment_id) {
+            $data['submissions'] = $this->classworks->get_all_submissions(
+                $assessment_id
+            );
+            $data['selected_assessment_id'] = $assessment_id;
+        } else {
+            $data['submissions'] = [];
+            $data['selected_assessment_id'] = null;
+        }
+
+        // Load the view
+        $this->load->view('all_submission', $data);
+    }
 }
