@@ -5,22 +5,6 @@ if ($classwork['iotype_id'] == '4' || $classwork['iotype_id'] == '3') {
 
 <?php $this->load->view('header'); ?>
 
-<style>
-    @media (max-width: 576px) {
-        .modal-dialog {
-            max-width: 100%;
-            margin: 0;
-        }
-        .modal-content {
-            height: 100vh;
-        }
-        .modal-body {
-            height: calc(100vh - 120px); /* Adjust for header and footer */
-            overflow-y: auto;
-        }
-    }
-</style>
-
 <div class="container">
     <?php $this->load->view('profile_info'); ?>
 
@@ -33,51 +17,49 @@ if ($classwork['iotype_id'] == '4' || $classwork['iotype_id'] == '3') {
             <p><?= $classwork['description'] ?></p>
 
             <form id="submission-form" action="<?= base_url(
-                'AssessmentController/submit_classwork'
-            ) ?>" method="POST" enctype="multipart/form-data">
-                <input type="hidden" name="assessment_id" value="<?= $classwork[
-                    'assessment_id'
-                ] ?>">
+                                                    'AssessmentController/submit_classwork'
+                                                ) ?>" method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="assessment_id" value="<?= $classwork['assessment_id'] ?>">
                 <input type="hidden" name="student_id" value="<?= $this->session
-                    ->student_id ?>">
+                                                                    ->student_id ?>">
 
                 <!-- filepath: c:\xampp\htdocs\gradingsystem\application\views\assessment_view.php -->
                 <?php if (!empty($classwork['pdf_file_path'])): ?>
-                <!-- Button to open the PDF in a modal -->
-                <button type="button" class="btn btn-outline-secondary btn-block mb-3" data-bs-toggle="modal" data-bs-target="#pdfModal">
-                    View Given PDF
-                </button>
+                    <!-- Button to open the PDF in a modal -->
+                    <button type="button" class="btn btn-outline-secondary btn-block mb-3" data-bs-toggle="modal" data-bs-target="#pdfModal">
+                        View Given PDF
+                    </button>
 
-                <!-- Modal to display the PDF -->
-                <div class="modal fade" id="pdfModal" tabindex="-1" aria-labelledby="pdfModalLabel" aria-hidden="true">
-                    <div class="modal-dialog modal-xl">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="pdfModalLabel">Given PDF</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
-                                    <span aria-hidden="true">&times;</span>
-</button>
-                            </div>
-                            <div class="modal-body">
-                                <iframe src="<?= base_url(
-                                    $classwork['pdf_file_path']
-                                ) ?>" width="100%" height="600px" style="border: none;"></iframe>
-                            </div>
-                            <div class="modal-footer">
-                                <!-- Download Button -->
-                                <a href="<?= base_url(
-                                    $classwork['pdf_file_path']
-                                ) ?>" class="btn btn-primary" download>
-                                    Download PDF
-                                </a>
-                                <!-- Close Button -->
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <!-- Modal to display the PDF -->
+                    <div class="modal fade" id="pdfModal" tabindex="-1" aria-labelledby="pdfModalLabel" aria-hidden="true">
+                        <div class="modal-dialog modal-xl">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="pdfModalLabel">Given PDF</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                                <div class="modal-body">
+                                    <iframe src="<?= base_url(
+                                                        $classwork['pdf_file_path']
+                                                    ) ?>" width="100%" height="600px" style="border: none;"></iframe>
+                                </div>
+                                <div class="modal-footer">
+                                    <!-- Download Button -->
+                                    <a href="<?= base_url(
+                                                    $classwork['pdf_file_path']
+                                                ) ?>" class="btn btn-primary" download>
+                                        Download PDF
+                                    </a>
+                                    <!-- Close Button -->
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
                 <?php else: ?>
-                <p>No given PDF file uploaded for this classwork.</p>
+                    <p>No given PDF file uploaded for this classwork.</p>
                 <?php endif; ?>
 
                 <!-- Other assessment details -->
@@ -142,38 +124,38 @@ if ($classwork['iotype_id'] == '4' || $classwork['iotype_id'] == '3') {
 </div>
 
 <script>
-function setSubmissionType(type) {
-    const codeInputSection = document.getElementById('code-input-section');
-    const fileUploadSection = document.getElementById('file-upload-section');
-    const selectedSubmissionType = document.getElementById('selectedSubmissionType');
+    function setSubmissionType(type) {
+        const codeInputSection = document.getElementById('code-input-section');
+        const fileUploadSection = document.getElementById('file-upload-section');
+        const selectedSubmissionType = document.getElementById('selectedSubmissionType');
 
-    if (type === 'code') {
-        codeInputSection.style.display = 'block';
-        fileUploadSection.style.display = 'none';
-        selectedSubmissionType.textContent = 'Input Code';
-    } else if (type === 'file') {
-        codeInputSection.style.display = 'none';
-        fileUploadSection.style.display = 'block';
-        selectedSubmissionType.textContent = 'Upload File';
+        if (type === 'code') {
+            codeInputSection.style.display = 'block';
+            fileUploadSection.style.display = 'none';
+            selectedSubmissionType.textContent = 'Input Code';
+        } else if (type === 'file') {
+            codeInputSection.style.display = 'none';
+            fileUploadSection.style.display = 'block';
+            selectedSubmissionType.textContent = 'Upload File';
+        }
     }
-}
 
-function confirmSubmission() {
-    const codeEditor = document.getElementById('code-editor').value.trim();
-    const fileUpload = document.getElementById('file-upload').value;
+    function confirmSubmission() {
+        const codeEditor = document.getElementById('code-editor').value.trim();
+        const fileUpload = document.getElementById('file-upload').value;
 
-    // if (!codeEditor || !fileUpload) {
-    //   alert('Please enter code or upload a file before submitting.');
-    //   return;
-    // }
+        // if (!codeEditor || !fileUpload) {
+        //   alert('Please enter code or upload a file before submitting.');
+        //   return;
+        // }
 
-    const modal = new bootstrap.Modal(document.getElementById('submissionModal'));
-    modal.show();
-}
+        const modal = new bootstrap.Modal(document.getElementById('submissionModal'));
+        modal.show();
+    }
 
-function submitForm() {
-    document.getElementById('submission-form').submit();
-}
+    function submitForm() {
+        document.getElementById('submission-form').submit();
+    }
 </script>
 
 <?php $this->load->view('footer'); ?>

@@ -110,6 +110,21 @@ class attendance extends MY_Model
         return $result ? $result->present_days : 0;
     }
 
+    public function get_present_days($student_id, $section, $start_date, $end_date)
+    {
+        $query = $this->db->query(
+            "
+            SELECT COUNT(*) as present_days
+            FROM attendance a
+            JOIN class_schedule cs ON a.schedule_id = cs.schedule_id 
+            WHERE cs.section = ? AND student_id = ? AND status = 'present' AND DATE(a.date) BETWEEN ? AND ?
+        ",
+            [$section, $student_id, $start_date, $end_date]
+        );
+
+        return $query->row()->present_days ?? 0;
+    }
+
     public function checkStudentAbsences(
         $student_id,
         $section,
@@ -120,13 +135,13 @@ class attendance extends MY_Model
         $query = $this->db->query(
             "
             SELECT COUNT(*) as present_days
-            FROM attendance
-            WHERE student_id = ? AND status = 'present' AND date BETWEEN ? AND ?
+            FROM attendance a
+            WHERE student_id = ? AND status = 'present' AND date(a.date) BETWEEN ? AND ?
         ",
             [$student_id, $start_date, $end_date]
         );
 
-        $student_present_days = $query->row()->present_days ?? 0;
+        $student_present_days = $query->row()->present_days;
 
         // Get the maximum attendance days for the section
         $max_present_days = $this->getMaxAttendanceDays(
@@ -136,7 +151,7 @@ class attendance extends MY_Model
         );
 
         // Calculate absences
-        $absent_days = $max_present_days - $student_present_days;
+        $absent_days = (int)$max_present_days - (int)$student_present_days;
 
         // Check if the student has been absent for 6 or more days
         if ($absent_days >= 6) {

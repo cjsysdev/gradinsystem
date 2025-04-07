@@ -48,7 +48,8 @@ class AdminController extends CI_Controller
     public function all_submissions($assessment_id = null)
     {
         // Fetch all assessments for the dropdown
-        $data['assessments'] = $this->assessments->as_array()->get_all();
+        $data['assessments'] = $this->assessments->order_by('created_at', 'DESC')->order_by('iotype_id', 'DESC')
+            ->with_class_schedule()->as_array()->get_all();
 
         // Fetch submissions for the selected assessment
         if ($assessment_id) {

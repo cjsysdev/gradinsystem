@@ -34,7 +34,7 @@
         <!-- Assessments and Submitted Cards -->
         <div id="cards-container">
           <?php foreach ($assessments as $row) : ?>
-            <div class="card mb-4 shadow-sm assessment-card">
+            <div class="card mb-4 assessment-card">
               <div class="card-header">
                 <div class="d-flex justify-content-between align-items-center">
                   <h4 class="card-title mb-1"><?= $row['title'] ?></h4>
@@ -54,7 +54,7 @@
           <?php endforeach; ?>
 
           <?php foreach ($submitted as $row) : ?>
-            <div class="card mb-4 shadow-sm submitted-card">
+            <div class="card mb-4 submitted-card">
               <div class="card-header">
                 <div class="d-flex justify-content-between align-items-center">
                   <h4 class="card-title mb-1"><?= $row['title'] ?></h4>

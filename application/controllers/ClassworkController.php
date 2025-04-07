@@ -77,23 +77,20 @@ class ClassworkController extends CI_Controller
         redirect("all_submissions/$assessment_id");
     }
 
-    public function add_rand_score($classwork_id, $type)
+    public function add_rand_score($classwork_id, $type, $assessment_id)
     {
         switch ($type) {
             case 1:
                 $score = randomizeNumber(5.0, 7.4);
                 break;
             case 2:
-                $score = randomizeNumber(7.5, 7.9);
+                $score = randomizeNumber(6.0, 7.5);
                 break;
             case 3:
                 $score = randomizeNumber(8.0, 8.9);
                 break;
             case 4:
-                $score = randomizeNumber(9.0, 9.4);
-                break;
-            case 5:
-                $score = randomizeNumber(9.5, 10.0);
+                $score = randomizeNumber(9.0, 9.9);
                 break;
             default:
                 $score = null;
@@ -101,7 +98,7 @@ class ClassworkController extends CI_Controller
         }
 
         $this->classworks->add_score($classwork_id, $score);
-        redirect('all_submissions');
+        redirect("all_submissions/$assessment_id");
     }
 
     public function student_submission($classwork_id)

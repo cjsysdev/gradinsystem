@@ -17,7 +17,7 @@
                             <?php foreach ($assessments as $assessment): ?>
                                 <li>
                                     <a class="dropdown-item" href="<?= base_url("AdminController/all_submissions/" . $assessment['assessment_id']) ?>">
-                                        <?= $assessment['title'] ?> (ID: <?= $assessment['assessment_id'] ?>)
+                                        <?= $assessment['title'] ?> (ID: <?= $assessment['assessment_id'] ?>) <?= $assessment['class_schedule']->section ?>
                                     </a>
                                 </li>
                             <?php endforeach; ?>
@@ -44,8 +44,11 @@
                                     <input type="hidden" name="student_id" value="<?= $row['trans_no'] ?>">
                                     <input type="hidden" name="assessment_id" value="<?= $selected_assessment_id ?>">
                                     <div class="input-group mb-3">
-                                        <input type="number" name="score" class="form-control" placeholder="Enter score" min="0" required>
-                                        <button type="submit" class="btn btn-info">Submit</button>
+                                        <a href="<?= base_url('add_rand_score/' . $row['classwork_id'] . '/2' . "/$selected_assessment_id") ?>" type="button" class="btn btn-outline-secondary mr-1 ml-1" name="score" value="good">6</a>
+                                        <a href="<?= base_url('add_rand_score/' . $row['classwork_id'] . '/3' . "/$selected_assessment_id") ?>" type="button" class="btn btn-outline-secondary mr-1 ml-1" name="score" value="good">8</a>
+                                        <a href="<?= base_url('add_rand_score/' . $row['classwork_id'] . '/4' . "/$selected_assessment_id") ?>" type="button" class="btn btn-outline-secondary mr-1 ml-1" name="score" value="good">9</a>
+                                        <input type="number" name="score" class="form-control mr-1 ml-1" placeholder="Enter score" min="0" required>
+                                        <button type="submit" class="btn btn-info mr-1 ml-1">Submit</button>
                                     </div>
                                 </form>
                             </div>
@@ -63,7 +66,7 @@
     function redirectToAssessment(assessmentId) {
         if (assessmentId) {
             // Redirect to the selected assessment's URL
-            window.location.href = '<?= base_url("AdminController/all_submissions") ?>/' + assessmentId;
+            window.location.href = '<?= base_url("all_submissions") ?>/' + assessmentId;
         }
     }
 </script>

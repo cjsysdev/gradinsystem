@@ -82,23 +82,19 @@
         <?php endif; ?>
         <?php if ($class): ?>
             <div class="card-body p-1 text-center">
-                <h5><span class="badge badge-secondary mb-1"><?= $class[
-    'class_code'
-],
-                    ' ',
-                    $class['type'] ?? null ?></span></h5>
-                <h6 class="card-subtitle text-body-secondary"><?= $class[
-    'class_name'
-],
-                    ' ',
-                    $class['type'] ?></h6>
+                <h5><span class="badge badge-secondary mb-1"><?= $class['class_code'],
+                                                                ' ',
+                                                                $class['type'] ?? null ?></span></h5>
+                <h6 class="card-subtitle text-body-secondary"><?= $class['class_name'],
+                                                                ' ',
+                                                                $class['type'] ?></h6>
                 <p class="card-text m-0"><?= $class['section'],
-                    ' ',
-                    $class['day'],
-                    ' : ',
-                    convert_time($class['time_start']),
-                    '-',
-                    convert_time($class['time_end']) ?></p>
+                                            ' ',
+                                            $class['day'],
+                                            ' : ',
+                                            convert_time($class['time_start']),
+                                            '-',
+                                            convert_time($class['time_end']) ?></p>
                 <p class="card-text m-0 mt-3" id="txt"></p>
                 <div id="txt"></div>
             </div>
@@ -108,7 +104,17 @@
             </div>
         <?php endif; ?>
         <hr>
-        <div class="container mt-4 mb-5 p-0">
+
+        <div class="row m-1">
+            <div class="col alert alert-success mr-2">
+                <strong><?= $present ?> Present Sessions</strong>
+            </div>
+            <div class="col alert alert-secondary">
+                <strong><?= $absences ?> Missed Sessions</strong>
+            </div>
+        </div>
+
+        <div class="container mt-1 mb-5 p-0">
             <div id="calendar"></div>
         </div>
     </div>
