@@ -201,7 +201,7 @@
     </div>
     <div class="card-footer text-center">
       <?php if ($classwork['status'] === 'submitted'): ?>
-        <button class="btn btn-secondary" onclick="unsubmitWork()" disabled>Unsubmit</button>
+        <button class="btn btn-outline-secondary btn-block" onclick="unsubmitWork(<?= $classwork['classwork_id'] ?>)">Unsubmit</button>
       <?php endif; ?>
       <p class="text-muted mt-3">Work cannot be turned in after the due date.</p>
     </div>
@@ -233,10 +233,32 @@
     modal.show();
   }
 
-  function unsubmitWork() {
+  function unsubmitWork(classworkId) {
     if (confirm('Are you sure you want to unsubmit your work?')) {
-      alert('Your work has been unsubmitted.');
-      // Add logic to handle unsubmission (e.g., AJAX request to update the database)
+      // Send an AJAX request to delete the classwork
+      fetch('<?= base_url('ClassworkController/unsubmit_work') ?>', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: JSON.stringify({
+            classwork_id: classworkId
+          })
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            alert('Your work has been unsubmitted.');
+            window.location.href = '<?= base_url('classwork') ?>';
+          } else {
+            alert('Failed to unsubmit your work. Please try again.');
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          alert('An error occurred. Please try again.');
+        });
     }
   }
 

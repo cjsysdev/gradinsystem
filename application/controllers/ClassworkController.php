@@ -111,4 +111,27 @@ class ClassworkController extends CI_Controller
 
         $this->load->view('student_submission', $data);
     }
+
+    public function unsubmit_work()
+    {
+        // Get the JSON input
+        $input = json_decode(file_get_contents('php://input'), true);
+
+        // Validate the input
+        if (!isset($input['classwork_id'])) {
+            echo json_encode(['success' => false, 'message' => 'Invalid request.']);
+            return;
+        }
+
+        $classwork_id = $input['classwork_id'];
+
+        $this->db->where('classwork_id', $classwork_id);
+        $deleted = $this->db->delete('classworks');
+
+        if ($deleted) {
+            echo json_encode(['success' => true, 'message' => 'Classwork unsubmitted successfully.']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Failed to unsubmit classwork.']);
+        }
+    }
 }

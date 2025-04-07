@@ -37,6 +37,10 @@
                                 <h3 class="card-title mb-1"><?= $row['classwork_id'] . " - " . $row['lastname'] . ", " . $row['firstname'] ?></h3>
                                 <hr>
                                 <p class="card-text mb-3"><?= $row['created_at'] ?></p>
+                                <!-- Button to open modal -->
+                                <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#viewSubmissionModal" onclick="loadSubmission(<?= htmlspecialchars(json_encode($row['code']), ENT_QUOTES, 'UTF-8') ?>, '<?= $row['file_upload'] ?>')">
+                                    View Submission
+                                </button>
 
                                 <!-- Form to submit score -->
                                 <form action="<?= base_url('ClassworkController/add_score') ?>" method="POST">
@@ -62,11 +66,45 @@
     </div>
 </div>
 
+<!-- Modal for viewing submission -->
+<div class="modal fade" id="viewSubmissionModal" tabindex="-1" aria-labelledby="viewSubmissionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="viewSubmissionModalLabel">Submission</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Content will be dynamically loaded -->
+                <div id="submissionContent" class="text-left">
+                    <p>Loading submission...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
-    function redirectToAssessment(assessmentId) {
-        if (assessmentId) {
-            // Redirect to the selected assessment's URL
-            window.location.href = '<?= base_url("all_submissions") ?>/' + assessmentId;
+    function loadSubmission(code, fileUpload) {
+        const submissionContent = document.getElementById('submissionContent');
+
+        if (fileUpload && fileUpload !== 'null') {
+            // Display PDF file in an iframe
+            submissionContent.innerHTML = `
+                <iframe src="<?= base_url('uploads/classworks/') ?>${fileUpload}" width="100%" height="600px" style="border: none;"></iframe>
+            `;
+        } else if (code && code !== 'null') {
+            // Display code in a preformatted block
+            submissionContent.innerHTML = `
+                <label for="code-viewer" class="form-label">Submitted Code:</label>
+                <pre id="code-viewer" style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; border: 1px solid #ddd;">${code}</pre>
+            `;
+        } else {
+            // No submission available
+            submissionContent.innerHTML = `<p class="text-danger">No submission available.</p>`;
         }
     }
 </script>

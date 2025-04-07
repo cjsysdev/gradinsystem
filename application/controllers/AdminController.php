@@ -61,7 +61,6 @@ class AdminController extends CI_Controller
             $data['submissions'] = [];
             $data['selected_assessment_id'] = null;
         }
-
         // Load the view
         $this->load->view('admin/all_submission', $data);
     }

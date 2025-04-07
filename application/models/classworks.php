@@ -28,7 +28,7 @@ class classworks extends MY_Model
 
     public function get_all_submissions($assessment_id)
     {
-        $sql = "SELECT c.classwork_id, s.trans_no, s.firstname, s.lastname, c.code, c.created_at 
+        $sql = "SELECT c.classwork_id, s.trans_no, s.firstname, s.lastname, c.code, c.file_upload, c.created_at 
                 FROM gradingsystem.classworks c 
                 JOIN student_master s ON s.trans_no = c.student_id 
                 WHERE assessment_id = ? AND c.score IS NULL ";
