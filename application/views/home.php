@@ -30,7 +30,7 @@
             <?php endif; ?>
         </div>
 
-        <div class="category-btns mt-4">
+        <!-- <div class="category-btns mt-4">
             <?php if (!empty($finalGrades)): ?>
                 <h4 class="text-center">Final Term Grades</h4>
                 <?php foreach ($finalGrades as $grade): ?>
@@ -54,7 +54,7 @@
             <?php else: ?>
                 <p style="text-align: center;">No grades available for Final Term.</p>
             <?php endif; ?>
-        </div>
+        </div> -->
 
         <?php if (!empty($finalGrades)): ?>
             <div class="total-section mt-4">

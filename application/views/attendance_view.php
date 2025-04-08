@@ -77,6 +77,8 @@
             $desc = '103';
         }
         ?>
+        <!-- <a class="btn alert-primary btn-block mb-3" href="./uploads/CP2_recursion.pdf" download="CP2_recursion.pdf.pdf" src="./uploads/CP2_recursion"><i class="fa fa-download" aria-hidden="true" style="margin-right: 10px"> </i>Download Recursion</a> -->
+
         <?php if ($this->session->exam_review): ?>
             <a class="btn alert-primary btn-block mb-3" href="./uploads/<?= $desc ?>_reviewer.pdf" download="<?= $desc ?>_reviewer.pdf" src="./uploads/<?= $desc ?>_reviewer.pdf"><i class="fa fa-download" aria-hidden="true" style="margin-right: 10px"> </i>Download CC<?= $desc ?> - Midterm Reviewer</a>
         <?php endif; ?>
