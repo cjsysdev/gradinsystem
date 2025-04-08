@@ -189,4 +189,33 @@ class classworks extends MY_Model
 
         return $query->result_array(); // Return the result as an array of rows
     }
+
+    public function get_submissions_by_student($student_id)
+    {
+        $sql = "
+            SELECT 
+                c.*, 
+                a.title, 
+                s.firstname, 
+                s.lastname 
+            FROM 
+                classworks c
+            JOIN 
+                assessments a 
+            ON 
+                c.assessment_id = a.assessment_id
+            JOIN 
+                student_master s 
+            ON 
+                c.student_id = s.trans_no
+            WHERE 
+                c.student_id = ?
+            ORDER BY 
+                c.created_at DESC
+        ";
+
+        $query = $this->db->query($sql, [$student_id]);
+
+        return $query->result_array();
+    }
 }

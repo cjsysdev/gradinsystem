@@ -87,4 +87,52 @@ class AdminController extends CI_Controller
 
         $this->load->view('manage_json_files', $data);
     }
+
+    public function view_student_submissions($student_id = null)
+    {
+        // Check if a student ID is provided
+        if (!$student_id) {
+            $this->session->set_flashdata('error', 'No student selected.');
+            redirect('AdminController/dashboard');
+        }
+
+        // Fetch student details
+        $data['student'] = $this->accounts->as_array()->get(['student_id' => $student_id]);
+
+        if (!$data['student']) {
+            $this->session->set_flashdata('error', 'Student not found.');
+            redirect('AdminController/dashboard');
+        }
+
+        // Fetch all submitted classworks for the student
+        $data['submissions'] = $this->classworks->get_submissions_by_student($student_id);
+
+        // Load the view
+        $this->load->view('admin/student_submissions', $data);
+    }
+
+    public function student_submissions()
+    {
+        $search = $this->input->get('search');
+
+        if ($search) {
+            // Search for the student in the student_master table
+            $this->db->like('firstname', $search);
+            $this->db->or_like('lastname', $search);
+            $student = $this->db->get('student_master')->row_array();
+
+            if ($student) {
+                // Fetch submissions for the found student
+                $data['submissions'] = $this->classworks->get_submissions_by_student($student['trans_no']);
+            } else {
+                $data['submissions'] = [];
+                $this->session->set_flashdata('error', 'No student found with the given name.');
+            }
+        } else {
+            $data['submissions'] = [];
+        }
+
+        // Load the view
+        $this->load->view('admin/student_submissions', $data);
+    }
 }
