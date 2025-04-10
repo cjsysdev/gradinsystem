@@ -10,9 +10,6 @@ class AdminController extends CI_Controller
 
     public function dashboard()
     {
-        // Load the database library
-        $this->load->database();
-
         // Get the current discussion mode from the database
         $query = $this->db->get_where('global_settings', [
             'setting_key' => 'discussion_mode',

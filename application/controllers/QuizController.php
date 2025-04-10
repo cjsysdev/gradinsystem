@@ -50,7 +50,7 @@ class QuizController extends CI_Controller
             $allQuestions = json_decode($json, true);
 
             shuffle($allQuestions);
-            $questions = array_slice($allQuestions, 0, 15);
+            $questions = array_slice($allQuestions, 0, 10);
 
             foreach ($questions as &$question) {
                 shuffle($question['choices']);

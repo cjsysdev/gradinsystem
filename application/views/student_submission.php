@@ -201,7 +201,7 @@
     </div>
     <div class="card-footer text-center">
       <?php if ($classwork['status'] === 'submitted'): ?>
-        <button class="btn btn-outline-secondary btn-block" onclick="unsubmitWork(<?= $classwork['classwork_id'] ?>)">Unsubmit</button>
+        <button class="btn btn-outline-secondary btn-block" onclick="unsubmitWork(<?= $classwork['classwork_id'] ?>)" disabled>Unsubmit</button>
       <?php endif; ?>
       <p class="text-muted mt-3">Work cannot be turned in after the due date.</p>
     </div>

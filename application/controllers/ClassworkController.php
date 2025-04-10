@@ -90,7 +90,7 @@ class ClassworkController extends CI_Controller
                 $score = randomizeNumber(8.0, 8.9);
                 break;
             case 4:
-                $score = randomizeNumber(9.0, 9.9);
+                $score = randomizeNumber(9.5, 9.9);
                 break;
             default:
                 $score = null;
