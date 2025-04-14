@@ -80,17 +80,23 @@ class ClassworkController extends CI_Controller
     public function add_rand_score($classwork_id, $type, $assessment_id)
     {
         switch ($type) {
-            case 1:
-                $score = randomizeNumber(5.0, 7.4);
+            case 5:
+                $score = randomizeNumber(5.0, 6.9);
                 break;
-            case 2:
-                $score = randomizeNumber(6.0, 7.5);
+            case 6:
+                $score = randomizeNumber(6.0, 6.9);
                 break;
-            case 3:
+            case 7:
+                $score = randomizeNumber(7.0, 7.9);
+                break;
+            case 8:
                 $score = randomizeNumber(8.0, 8.9);
                 break;
-            case 4:
-                $score = randomizeNumber(9.5, 9.9);
+            case 9:
+                $score = randomizeNumber(9.0, 9.9);
+                break;
+            case 10:
+                $score = 10;
                 break;
             default:
                 $score = null;

@@ -136,7 +136,8 @@ class attendance extends MY_Model
             "
             SELECT COUNT(*) as present_days
             FROM attendance a
-            WHERE student_id = ? AND status = 'present' AND date(a.date) BETWEEN ? AND ?
+            WHERE student_id = ? AND status = 'present' 
+            AND date(a.date) BETWEEN ? AND ?
         ",
             [$student_id, $start_date, $end_date]
         );
