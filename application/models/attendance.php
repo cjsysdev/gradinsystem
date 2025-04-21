@@ -164,4 +164,36 @@ class attendance extends MY_Model
 
         return $absent_days;
     }
+
+    public function get_attendance_by_section($section_id, $start_date)
+    {
+        $sql = "
+            SELECT 
+                a.attendance_date, 
+                s.student_id, 
+                s.firstname, 
+                s.lastname, 
+                sec.section_name 
+            FROM 
+                attendance a
+            JOIN 
+                student_master s 
+            ON 
+                a.student_id = s.student_id
+            JOIN 
+                sections sec 
+            ON 
+                s.section_id = sec.section_id
+            WHERE 
+                s.section_id = ? 
+            AND 
+                a.attendance_date >= ?
+            ORDER BY 
+                a.attendance_date ASC, s.lastname ASC
+        ";
+
+        $query = $this->db->query($sql, [$section_id, $start_date]);
+
+        return $query->result_array();
+    }
 }

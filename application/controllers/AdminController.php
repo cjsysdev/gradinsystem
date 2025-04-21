@@ -132,4 +132,27 @@ class AdminController extends CI_Controller
         // Load the view
         $this->load->view('admin/student_submissions', $data);
     }
+
+    public function view_attendance()
+    {
+        $section_id = $this->input->get('section_id');
+        $start_date = $this->input->get('start_date');
+
+        // Fetch all sections for the dropdown
+        $data['sections'] = $this->accounts->as_array()->get_all();
+
+        // Fetch attendance data if section and date are provided
+        if ($section_id && $start_date) {
+            $data['attendance'] = $this->attendance->get_attendance_by_section($section_id, $start_date);
+            $data['selected_section_id'] = $section_id;
+            $data['start_date'] = $start_date;
+        } else {
+            $data['attendance'] = [];
+            $data['selected_section_id'] = null;
+            $data['start_date'] = null;
+        }
+
+        // Load the view
+        $this->load->view('admin/view_attendance', $data);
+    }
 }
