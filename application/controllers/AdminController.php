@@ -155,4 +155,42 @@ class AdminController extends CI_Controller
         // Load the view
         $this->load->view('admin/view_attendance', $data);
     }
+
+    public function active_participation($assessment_id = null)
+    {
+        $section_id = $this->input->get('section_id');
+        $date = $this->input->get('date') ?? date('Y-m-d');
+
+        // Fetch all sections for the dropdown
+        $this->db->distinct();
+        $this->db->select('section');
+        $data['sections'] = $this->db->get('class_schedule')->result_array();
+
+        // Fetch present students if section and date are provided
+        if ($section_id) {
+            $this->load->model('attendance');
+            $data['students'] = $this->attendance->get_present_students($section_id, $date);
+            $data['selected_section_id'] = $section_id;
+            $data['date'] = $date;
+        } else {
+            $data['students'] = [];
+            $data['selected_section_id'] = null;
+            $data['date'] = $date;
+        }
+
+        // Pass the assessment ID for scoring
+        $data['assessment_id'] = $assessment_id;
+
+        // Load the view
+        $this->load->view('admin/active_participation', $data);
+    }
+
+    public function check_new_submissions_by_assessment($assessment_id)
+    {
+        // Fetch the latest submissions for the assessment
+        $submissions = $this->classworks->get_all_submissions($assessment_id);
+
+        // Return the data as JSON
+        echo json_encode($submissions);
+    }
 }

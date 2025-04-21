@@ -19,6 +19,8 @@ class QuizController extends CI_Controller
         $this->load->database();
         $query = $this->db->get_where('assessment_files', ['assessment_id' => $assessment_id]);
         $fileRecord = $query->row();
+        $query_max_items = $this->assessments->get($assessment_id)->max_score;
+        $data['max_items'] = $query_max_items;
 
         if (!$fileRecord) {
             show_error('JSON file for this assessment is not configured.', 404);
@@ -50,7 +52,7 @@ class QuizController extends CI_Controller
             $allQuestions = json_decode($json, true);
 
             shuffle($allQuestions);
-            $questions = array_slice($allQuestions, 0, 10);
+            $questions = array_slice($allQuestions, 0, (int)$query_max_items ?? 10);
 
             foreach ($questions as &$question) {
                 shuffle($question['choices']);

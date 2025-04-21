@@ -196,4 +196,30 @@ class attendance extends MY_Model
 
         return $query->result_array();
     }
+
+    public function get_present_students($section_id, $date)
+    {
+        $sql = "
+            SELECT 
+                s.trans_no, 
+                s.firstname, 
+                s.lastname 
+            FROM 
+                attendance a
+            JOIN 
+                student_master s 
+            ON 
+                a.student_id = s.trans_no
+            WHERE 
+                a.schedule_id = ? 
+            AND 
+                a.status = 'present' 
+            AND 
+                DATE(a.date) = ?
+        ";
+
+        $query = $this->db->query($sql, [$section_id, $date]);
+
+        return $query->result_array();
+    }
 }

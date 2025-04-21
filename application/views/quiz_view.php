@@ -176,7 +176,7 @@
         let currentGroup = 0;
         let blurCount = 0;
         let quizStarted = false;
-        let totalTime = 60 * 15; // 90 minutes in seconds
+        let totalTime = 60 * <?= (int) $max_items ?>; // 90 minutes in seconds
 
         // Fullscreen mode
         function enterFullscreen() {
