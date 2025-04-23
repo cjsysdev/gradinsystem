@@ -61,6 +61,26 @@
         background-color: #f8f9fa;
         /* Light background for clarity */
     }
+
+    #redOverlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(255, 0, 0, 0.8);
+        color: white;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+    }
+
+    .overlay-text {
+        font-size: 2rem;
+        font-weight: bold;
+        text-align: center;
+    }
 </style>
 
 <div class="container">
@@ -122,6 +142,11 @@
     </div>
 </div>
 
+<?php if (isset($show_red_overlay) && $show_red_overlay): ?>
+    <div id="redOverlay">
+        <div class="overlay-text">Subject to Re-admission</div>
+    </div>
+<?php endif; ?>
 
 <script id="calendar-template" type="text/template">
     <div class="card">

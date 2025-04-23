@@ -194,7 +194,7 @@
             .catch(error => console.error('Error fetching submissions:', error));
     }
 
-    setInterval(checkNewSubmissions, 3000);
+    // setInterval(checkNewSubmissions, 10000);
 </script>
 
 <?php $this->load->view('footer') ?>

@@ -15,30 +15,42 @@
         </div>
     </form>
 
+    <?= var_dump($classworks) ?>
+
     <?php if (!empty($submissions)): ?>
         <h2><?= $submissions[0]['firstname'] . ' ' . $submissions[0]['lastname'] ?></h2>
         <table class="table table-bordered">
             <thead>
                 <tr>
-                    <th>Classwork ID</th>
                     <th>Assessment Title</th>
                     <th>Submission Date</th>
                     <th>Score</th>
+                    <th>Status</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
-                <?php foreach ($submissions as $submission): ?>
+                <?php foreach ($classworks as $classwork): ?>
                     <tr>
-                        <td><?= $submission['classwork_id'] ?></td>
-                        <td><?= $submission['title'] ?></td>
-                        <td><?= date('Y-m-d H:i:s', strtotime($submission['created_at'])) ?></td>
-                        <td><?= $submission['score'] ?? 'Not Graded' ?></td>
+                        <td><?= $classwork['title'] ?></td>
+                        <td><?= $classwork['created_at'] ? date('Y-m-d H:i:s', strtotime($classwork['created_at'])) : 'N/A' ?></td>
+                        <td><?= $classwork['score'] !== null ? $classwork['score'] : 'Not Graded' ?></td>
+                        <td><?= $classwork['status'] === 'missing' ? '<span class="text-danger">Missing</span>' : '<span class="text-success">Submitted</span>' ?></td>
                         <td>
-                            <!-- Button to open modal -->
-                            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#viewSubmissionModal" onclick="loadSubmission(<?= htmlspecialchars(json_encode($submission['code']), ENT_QUOTES, 'UTF-8') ?>, '<?= $submission['file_upload'] ?>')">
-                                View
-                            </button>
+                            <?php if ($classwork['score'] === null && $classwork['status'] !== 'missing'): ?>
+                                <!-- Form to add score -->
+                                <form action="<?= base_url('ClassworkController/add_score') ?>" method="POST" class="d-inline">
+                                    <input type="hidden" name="classwork_id" value="<?= $classwork['classwork_id'] ?>">
+                                    <input type="hidden" name="assessment_id" value="<?= $classwork['assessment_id'] ?>">
+                                    <input type="hidden" name="student_id" value="<?= $student['student_id'] ?>">
+                                    <input type="number" name="score" class="form-control d-inline w-25" placeholder="Enter score" min="0" required>
+                                    <button type="submit" class="btn btn-info btn-sm">Add Score</button>
+                                </form>
+                            <?php elseif ($classwork['status'] === 'missing'): ?>
+                                <span class="text-muted">No actions available</span>
+                            <?php else: ?>
+                                <span class="text-muted">Graded</span>
+                            <?php endif; ?>
                         </td>
                     </tr>
                 <?php endforeach; ?>

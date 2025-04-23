@@ -101,8 +101,36 @@ class AdminController extends CI_Controller
             redirect('AdminController/dashboard');
         }
 
-        // Fetch all submitted classworks for the student
-        $data['submissions'] = $this->classworks->get_submissions_by_student($student_id);
+        // Fetch all classworks (submitted and missing) for the student
+        $this->load->model('classworks');
+        $this->load->model('assessments');
+        $submitted_classworks = $this->classworks->get_submissions_by_student($student_id);
+        $all_assessments = $this->assessments->get_all_assessments();
+
+        // Merge submitted classworks with missing ones
+        $classworks = [];
+        foreach ($all_assessments as $assessment) {
+            $found = false;
+            foreach ($submitted_classworks as $submission) {
+                if ($submission['assessment_id'] == $assessment['assessment_id']) {
+                    $classworks[] = $submission;
+                    $found = true;
+                    break;
+                }
+            }
+            if (!$found) {
+                $classworks[] = [
+                    'assessment_id' => $assessment['assessment_id'],
+                    'title' => $assessment['title'],
+                    'classwork_id' => null,
+                    'score' => null,
+                    'created_at' => null,
+                    'status' => 'missing',
+                ];
+            }
+        }
+
+        $data['classworks'] = $classworks;
 
         // Load the view
         $this->load->view('admin/student_submissions', $data);

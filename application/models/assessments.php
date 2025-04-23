@@ -59,6 +59,8 @@ class assessments extends MY_Model
                 ON iot.iotype_id = a.iotype_id
             WHERE 
                 c.classwork_id IS NULL AND cs.section = ?
+            ORDER BY 
+                a.created_at DESC
         ";
 
         $query = $this->db->query($sql, [$student_id, $section]);
