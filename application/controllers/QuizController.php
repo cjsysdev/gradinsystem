@@ -17,12 +17,14 @@ class QuizController extends CI_Controller
     {
         // Fetch the JSON file path for the given assessment_id
         $this->load->database();
-        $query = $this->db->get_where('assessment_files', ['assessment_id' => $assessment_id]);
+        $query = $this->db->get_where('assessment_files', ['assessment_id' => $assessment_id, 'status' => 1]);
         $fileRecord = $query->row();
         $query_max_items = $this->assessments->get($assessment_id)->max_score;
         $data['max_items'] = $query_max_items;
 
         if (!$fileRecord) {
+            $this->session->set_flashdata('warning', 'Quiz Inactive');
+            redirect('attendance');
             show_error('JSON file for this assessment is not configured.', 404);
             return;
         }

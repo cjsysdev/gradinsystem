@@ -117,7 +117,8 @@ class attendance extends MY_Model
             SELECT COUNT(*) as present_days
             FROM attendance a
             JOIN class_schedule cs ON a.schedule_id = cs.schedule_id 
-            WHERE cs.section = ? AND student_id = ? AND status = 'present' AND DATE(a.date) BETWEEN ? AND ?
+            WHERE cs.section = ? AND student_id = ? AND (status = 'present' OR status = 'excuse')
+            AND DATE(a.date) BETWEEN ? AND ?
         ",
             [$section, $student_id, $start_date, $end_date]
         );
@@ -157,8 +158,8 @@ class attendance extends MY_Model
         // Check if the student has been absent for 6 or more days
         if ($absent_days >= 6) {
             $this->session->set_flashdata(
-                'error',
-                'You have been absent for 6 or more days.'
+                'warning',
+                'You have been absent for 6 or more sessions. Please process your re-admission accourdingly'
             );
         }
 

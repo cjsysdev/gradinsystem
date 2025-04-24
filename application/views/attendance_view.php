@@ -84,6 +84,7 @@
 </style>
 
 <div class="container">
+
     <div class="dashboard">
         <?php $this->load->view('profile_info'); ?>
         <?php
@@ -97,6 +98,13 @@
             $desc = '103';
         }
         ?>
+
+        <?php if ($this->session->flashdata('warning') !== NULL): ?>
+            <div class="alert alert-warning">
+                <?= $this->session->flashdata('warning') ?>
+            </div>
+        <?php endif; ?>
+
         <!-- <a class="btn alert-primary btn-block mb-3" href="./uploads/MySQL_ORDER_BY.pptx" download="MySQL_ORDER_BY.pptx" src="./uploads/MySQL_ORDER_BY"><i class="fa fa-download" aria-hidden="true" style="margin-right: 10px"> </i>Download MY_SQL ORDER BY</a> -->
 
         <?php if ($this->session->exam_review): ?>
