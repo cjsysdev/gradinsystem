@@ -5,7 +5,7 @@
 		</div>
 		<div class="col">
 			<h6 class="m-0"><strong><?= $this->session->lastname, ', ',  $this->session->firstname ?></strong></h6>
-			<p><?= $this->session->student_id ?> - <?= $this->session->student_no ?></p>
+			<p style="font-size: 11px;"><?= $this->session->student_id ?> - <?= $this->session->student_no ?></p>
 		</div>
 		<div class="col text-center">
 			<!-- <a href="<?= base_url("update_account_form") ?>" class=" btn btn-outline-dark"><i class="fa fa-user" aria-hidden="true"></i></a> -->

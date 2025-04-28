@@ -81,7 +81,7 @@ class AssessmentController extends CI_Controller
             $filename = $this->class_student->get(['student_id' => $student_id])->section . '-' . $this->session->lastname . '-' . time();
 
             $config['upload_path'] = './uploads/classworks';
-            $config['allowed_types'] = '*';
+            $config['allowed_types'] = 'jpg|jpeg|png'; // Restrict to image types
             $config['max_size'] = 51200; // 50MB
             $config['file_name'] = $filename;
 
@@ -92,6 +92,23 @@ class AssessmentController extends CI_Controller
                 redirect('classwork');
             } else {
                 $upload_data = $this->upload->data();
+                $uploaded_file_path = $upload_data['full_path'];
+
+                // Compress the uploaded image
+                $config['image_library'] = 'gd2';
+                $config['source_image'] = $uploaded_file_path;
+                $config['quality'] = '70%'; // Adjust quality to reduce size
+                $config['maintain_ratio'] = TRUE;
+                $config['width'] = 1024; // Resize width
+                $config['height'] = 768; // Resize height
+
+                $this->load->library('image_lib', $config);
+
+                if (!$this->image_lib->resize()) {
+                    $this->session->set_flashdata('error', $this->image_lib->display_errors());
+                    redirect('classwork');
+                }
+
                 $submission_data['file_upload'] = $upload_data['file_name'];
                 $submission_data['code'] = null; // Clear the code field for file submissions
             }
