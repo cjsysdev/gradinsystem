@@ -105,7 +105,7 @@
             </div>
         <?php endif; ?>
 
-        <!-- <a class="btn alert-primary btn-block mb-3" href="./uploads/MySQL_ORDER_BY.pptx" download="MySQL_ORDER_BY.pptx" src="./uploads/MySQL_ORDER_BY"><i class="fa fa-download" aria-hidden="true" style="margin-right: 10px"> </i>Download MY_SQL ORDER BY</a> -->
+        <!-- <a class="btn alert-primary btn-block mb-3" href="./uploads/mysql_sheets.pdf" download="mysql_sheets.pdf" src="./uploads/mysql_sheets"><i class="fa fa-download" aria-hidden="true" style="margin-right: 10px"> </i>Download MY_SQL CHEAT SHEET</a> -->
 
         <?php if ($this->session->exam_review): ?>
             <a class="btn alert-primary btn-block mb-3" href="./uploads/<?= $desc ?>_reviewer.pdf" download="<?= $desc ?>_reviewer.pdf" src="./uploads/<?= $desc ?>_reviewer.pdf"><i class="fa fa-download" aria-hidden="true" style="margin-right: 10px"> </i>Download CC<?= $desc ?> - Midterm Reviewer</a>
@@ -153,6 +153,7 @@
 <?php if (isset($show_red_overlay) && $show_red_overlay): ?>
     <div id="redOverlay">
         <div class="overlay-text">Subject to Re-admission</div>
+        <input type="text">
     </div>
 <?php endif; ?>
 

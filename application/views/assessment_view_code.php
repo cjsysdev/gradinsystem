@@ -26,8 +26,8 @@ if ($classwork['iotype_id'] == '4' || $classwork['iotype_id'] == '3') {
                 <!-- filepath: c:\xampp\htdocs\gradingsystem\application\views\assessment_view.php -->
                 <?php if (!empty($classwork['pdf_file_path'])): ?>
                     <!-- Button to open the PDF in a modal -->
-                    <button type="button" class="btn btn-outline-secondary btn-block mb-3" data-bs-toggle="modal" data-bs-target="#pdfModal">
-                        View Given PDF
+                    <button type="button" class="btn btn-success btn-block mb-3" data-bs-toggle="modal" data-bs-target="#pdfModal">
+                        View Given File
                     </button>
 
                     <!-- Modal to display the PDF -->
@@ -50,7 +50,7 @@ if ($classwork['iotype_id'] == '4' || $classwork['iotype_id'] == '3') {
                                     <a href="<?= base_url(
                                                     $classwork['pdf_file_path']
                                                 ) ?>" class="btn btn-primary" download>
-                                        Download PDF
+                                        Download
                                     </a>
                                     <!-- Close Button -->
                                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
