@@ -153,7 +153,6 @@
 <?php if (isset($show_red_overlay) && $show_red_overlay): ?>
     <div id="redOverlay">
         <div class="overlay-text">Subject to Re-admission</div>
-        <input type="text">
     </div>
 <?php endif; ?>
 

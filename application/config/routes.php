@@ -68,6 +68,7 @@ $route['student/get-discussion-mode'] = 'StudentController/get_discussion_mode';
 // Grades Routes
 $route['grades'] = 'GradesController/grades';
 $route['section_grades/(:any)'] = 'GradesController/sectionGrades/$1';
+$route['sectionFinalGrades/(:any)'] = 'GradesController/sectionFinalGrades/$1';
 
 // Attendance Routes
 $route['attendance'] = 'AttendanceController/attendance_main';
