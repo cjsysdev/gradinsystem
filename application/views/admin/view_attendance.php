@@ -1,7 +1,10 @@
 <?php $this->load->view('header'); ?>
 
 <div class="container">
-    <h1>View Attendance</h1>
+    <?php
+    $this->load->view('profile_only');
+    $this->load->view('admin/nav_bar');
+    ?>
 
     <!-- Filter Form -->
     <form method="GET" action="<?= base_url('AdminController/view_attendance') ?>" class="mb-4">
@@ -10,13 +13,11 @@
                 <label for="section_id" class="form-label">Select Section</label>
                 <select name="section_id" id="section_id" class="form-control">
                     <option value="">-- Select Section --</option>
-                    <option value="1C">1C</option>
-
-                    <!-- <?php foreach ($sections as $section): ?>
-                        <option value="<?= $section['section_id'] ?>" <?= isset($selected_section_id) && $selected_section_id == $section['section_id'] ? 'selected' : '' ?>>
-                            <?= $section['section_name'] ?>
+                    <?php foreach ($sections as $section): ?>
+                        <option value="<?= $section['section'] ?>" <?= isset($selected_section_id) && $selected_section_id == $section['section'] ? 'selected' : '' ?>>
+                            <?= $section['section'] ?>
                         </option>
-                    <?php endforeach; ?> -->
+                    <?php endforeach; ?>
                 </select>
             </div>
             <div class="col-md-4">
@@ -30,24 +31,26 @@
     </form>
 
     <?php if (!empty($attendance)): ?>
-        <table class="table table-bordered">
+        <table class="table table-bordered mb-5">
             <thead>
                 <tr>
-                    <th>Date</th>
                     <th>Student ID</th>
-                    <th>Firstname</th>
                     <th>Lastname</th>
+                    <th>Firstname</th>
                     <th>Section</th>
+                    <th>Present</th>
+                    <th>Absents</th>
                 </tr>
             </thead>
             <tbody>
                 <?php foreach ($attendance as $record): ?>
                     <tr>
-                        <td><?= date('Y-m-d', strtotime($record['attendance_date'])) ?></td>
                         <td><?= $record['student_id'] ?></td>
-                        <td><?= $record['firstname'] ?></td>
                         <td><?= $record['lastname'] ?></td>
-                        <td><?= $record['section_name'] ?></td>
+                        <td><?= $record['firstname'] ?></td>
+                        <td><?= $record['section'] ?></td>
+                        <td><?= $record['present'] / 2 ?></td>
+                        <td><?= $record['absents'] / 2 ?></td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>

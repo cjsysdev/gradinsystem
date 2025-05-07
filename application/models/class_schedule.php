@@ -28,4 +28,12 @@ class class_schedule extends MY_Model
 
         return $query->row_array() ?? false;
     }
+
+    public function get_sections()
+    {
+        $sql = "SELECT distinct(section) FROM class_schedule";
+        $query = $this->db->query($sql);
+
+        return $query->result_array();
+    }
 }

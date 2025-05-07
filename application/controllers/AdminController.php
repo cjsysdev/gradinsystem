@@ -167,7 +167,7 @@ class AdminController extends CI_Controller
         $start_date = $this->input->get('start_date');
 
         // Fetch all sections for the dropdown
-        $data['sections'] = $this->accounts->as_array()->get_all();
+        $data['sections'] = $this->class_schedule->get_sections();
 
         // Fetch attendance data if section and date are provided
         if ($section_id && $start_date) {
@@ -179,6 +179,7 @@ class AdminController extends CI_Controller
             $data['selected_section_id'] = null;
             $data['start_date'] = null;
         }
+
 
         // Load the view
         $this->load->view('admin/view_attendance', $data);

@@ -170,27 +170,26 @@ class attendance extends MY_Model
     {
         $sql = "
             SELECT 
-                a.attendance_date, 
-                s.student_id, 
-                s.firstname, 
+                s.trans_no AS student_id, 
                 s.lastname, 
-                sec.section_name 
+                s.firstname, 
+                sec.section, 
+                SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END) AS present,
+                SUM(CASE WHEN a.status = 'absent' THEN 1 ELSE 0 END) AS absents
             FROM 
                 attendance a
             JOIN 
-                student_master s 
-            ON 
-                a.student_id = s.student_id
+                student_master s ON a.student_id = s.trans_no
             JOIN 
-                sections sec 
-            ON 
-                s.section_id = sec.section_id
+                class_student sec ON s.trans_no = sec.student_id
             WHERE 
-                s.section_id = ? 
+                sec.section = ? 
             AND 
-                a.attendance_date >= ?
+                a.date >= ?
+            GROUP BY 
+                s.trans_no, s.lastname, s.firstname, sec.section
             ORDER BY 
-                a.attendance_date ASC, s.lastname ASC
+                s.lastname ASC;
         ";
 
         $query = $this->db->query($sql, [$section_id, $start_date]);
