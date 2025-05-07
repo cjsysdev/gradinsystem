@@ -15,10 +15,8 @@
         </div>
     </form>
 
-    <?= var_dump($classworks) ?>
-
     <?php if (!empty($submissions)): ?>
-        <h2><?= $submissions[0]['firstname'] . ' ' . $submissions[0]['lastname'] ?></h2>
+        <h2><?= $submissions[0]['firstname'] . ' ' . $submissions[0]['lastname'] . ' - ' . $submissions[0]['student_id'] ?></h2>
         <table class="table table-bordered">
             <thead>
                 <tr>
@@ -30,7 +28,7 @@
                 </tr>
             </thead>
             <tbody>
-                <?php foreach ($classworks as $classwork): ?>
+                <?php foreach ($submissions as $classwork): ?>
                     <tr>
                         <td><?= $classwork['title'] ?></td>
                         <td><?= $classwork['created_at'] ? date('Y-m-d H:i:s', strtotime($classwork['created_at'])) : 'N/A' ?></td>
@@ -42,7 +40,7 @@
                                 <form action="<?= base_url('ClassworkController/add_score') ?>" method="POST" class="d-inline">
                                     <input type="hidden" name="classwork_id" value="<?= $classwork['classwork_id'] ?>">
                                     <input type="hidden" name="assessment_id" value="<?= $classwork['assessment_id'] ?>">
-                                    <input type="hidden" name="student_id" value="<?= $student['student_id'] ?>">
+                                    <input type="hidden" name="student_id" value="<?= $classwork['student_id'] ?>">
                                     <input type="number" name="score" class="form-control d-inline w-25" placeholder="Enter score" min="0" required>
                                     <button type="submit" class="btn btn-info btn-sm">Add Score</button>
                                 </form>
