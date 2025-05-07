@@ -98,6 +98,7 @@ class GradesController extends CI_Controller
 
         $this->load->view('section_grades', $data);
     }
+
     public function sectionFinalGrades($section)
     {
         if ($this->is_offline) redirect();
@@ -163,7 +164,7 @@ class GradesController extends CI_Controller
                 $student['tentative_final_grade'] = 'INC';
                 $student['final_grade'] = 'INC';
             } else {
-                $student['final_grade'] = round(($student['midterm_grade'] * 0.5) + ($student['tentative_final_grade'] * 0.5), 2);
+                $student['final_grade'] = convertPercentageToGradePoint(round(($student['midterm_grade'] * 0.5) + ($student['tentative_final_grade'] * 0.5), 2));
             }
         }
 
