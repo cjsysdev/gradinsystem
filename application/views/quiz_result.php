@@ -18,6 +18,18 @@
     }
 </style>
 
+<?php
+$query = $this->db->query("
+    SELECT student_id, score 
+    FROM gradingsystem.classworks 
+    WHERE assessment_id = $assessment_id 
+    ORDER BY score DESC 
+    LIMIT 10
+");
+$top_students = $query->result_array();
+?>
+
+
 <div class="container mt-3">
     <?php $this->load->view('profile_info') ?>
     <div class="card" style="border: none">
@@ -29,8 +41,8 @@
                 <h1 class="card-title text-center"><strong><?= $score ?></strong> out of <strong><?= $total ?></strong></h1>
             </div>
             <div class="card-body">
-                <?php $midterm = true;
-                if (!$midterm): ?>
+                <?php $exam = true;
+                if (!$exam): ?>
                     <?php foreach ($results as $index => $result): ?>
                         <div class="mb-4">
                             <p class="fw-bold"><b>Question <?= $index + 1 ?>: </b><?= nl2br(htmlspecialchars($result['question'])) ?></p>
@@ -45,6 +57,31 @@
                 </div>
             </div>
         </div>
+        <?php if (!empty($top_students)): ?>
+            <div class="mt-4">
+                <h3 class="text-center">Top 10 Students</h3>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Student ID</th>
+                            <th>Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($top_students as $index => $student): ?>
+                            <tr>
+                                <td><?= $index + 1 ?></td>
+                                <td><?= htmlspecialchars($student['student_id']) ?></td>
+                                <td><?= htmlspecialchars($student['score']) ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php else: ?>
+            <p class="text-center mt-4">No classwork submissions found for this assessment.</p>
+        <?php endif; ?>
     </div>
 </div>
 

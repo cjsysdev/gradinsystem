@@ -114,6 +114,7 @@ class QuizController extends CI_Controller
             ]);
         }
 
+        $data['assessment_id'] = $assessment_id;
         $this->load->view('quiz_result', $data);
     }
 

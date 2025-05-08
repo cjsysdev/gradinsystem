@@ -180,8 +180,6 @@ class AdminController extends CI_Controller
             $data['start_date'] = null;
         }
 
-
-        // Load the view
         $this->load->view('admin/view_attendance', $data);
     }
 

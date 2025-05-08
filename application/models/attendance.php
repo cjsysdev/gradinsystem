@@ -175,7 +175,8 @@ class attendance extends MY_Model
                 s.firstname, 
                 sec.section, 
                 SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END) AS present,
-                SUM(CASE WHEN a.status = 'absent' THEN 1 ELSE 0 END) AS absents
+                SUM(CASE WHEN a.status = 'absent' THEN 1 ELSE 0 END) AS absents,
+                GROUP_CONCAT(DISTINCT DATE(a.date) ORDER BY a.date ASC SEPARATOR ', ') AS absence_dates
             FROM 
                 attendance a
             JOIN 
@@ -186,14 +187,15 @@ class attendance extends MY_Model
                 sec.section = ? 
             AND 
                 a.date >= ?
+            AND 
+                a.status = 'absent'
             GROUP BY 
                 s.trans_no, s.lastname, s.firstname, sec.section
             ORDER BY 
-                s.lastname ASC;
+                absents DESC;
         ";
 
         $query = $this->db->query($sql, [$section_id, $start_date]);
-
         return $query->result_array();
     }
 

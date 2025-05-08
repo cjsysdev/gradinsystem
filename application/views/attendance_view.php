@@ -137,10 +137,10 @@
 
         <div class="row m-1">
             <div class="col alert alert-success mr-2">
-                <strong><?= $present ?> Present Sessions</strong>
+                <strong><?= $present / 2 ?> Present Sessions</strong>
             </div>
             <div class="col alert alert-secondary">
-                <strong><?= $absences ?> Missed Sessions</strong>
+                <strong><?= $absences / 2 ?> Missed Sessions</strong>
             </div>
         </div>
 

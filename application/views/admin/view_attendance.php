@@ -31,15 +31,14 @@
     </form>
 
     <?php if (!empty($attendance)): ?>
-        <table class="table table-bordered mb-5">
+        <table class="table table-bordered">
             <thead>
                 <tr>
                     <th>Student ID</th>
                     <th>Lastname</th>
                     <th>Firstname</th>
-                    <th>Section</th>
-                    <th>Present</th>
                     <th>Absents</th>
+                    <th>Absence Dates</th>
                 </tr>
             </thead>
             <tbody>
@@ -48,9 +47,16 @@
                         <td><?= $record['student_id'] ?></td>
                         <td><?= $record['lastname'] ?></td>
                         <td><?= $record['firstname'] ?></td>
-                        <td><?= $record['section'] ?></td>
-                        <td><?= $record['present'] / 2 ?></td>
                         <td><?= $record['absents'] / 2 ?></td>
+                        <td>
+                            <?php
+                            $dates = explode(', ', $record['absence_dates']);
+                            $formatted_dates = array_map(function ($date) {
+                                return date('m-d', strtotime($date));
+                            }, $dates);
+                            echo implode(', ', $formatted_dates);
+                            ?>
+                        </td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>

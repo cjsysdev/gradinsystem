@@ -41,7 +41,7 @@
                   <span class="badge badge-danger">Missing</span>
                 </div>
                 <p class="card-text mb-1" style="font-size: small;">
-                  <span class="text-secondary"><?= convert_datetime_string($row['due']) ?> • <span><?= $row['type'] ?></span>
+                  <span class="text-secondary"><?= convert_datetime_string($row['due']) ?> • <span><?= $row['type'] ?> • <?= $row['assessment_id'] ?></span>
                 </p>
               </div>
               <div class="card-body">

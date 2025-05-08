@@ -23,33 +23,37 @@ if ($classwork['iotype_id'] == '4' || $classwork['iotype_id'] == '3') {
                 <input type="hidden" name="student_id" value="<?= $this->session
                                                                     ->student_id ?>">
 
-                <!-- filepath: c:\xampp\htdocs\gradingsystem\application\views\assessment_view.php -->
+                <!-- filepath: c:\wamp64\www\gradingSystem\application\views\assessment_view_code.php -->
                 <?php if (!empty($classwork['pdf_file_path'])): ?>
-                    <!-- Button to open the PDF in a modal -->
-                    <button type="button" class="btn btn-success btn-block mb-3" data-bs-toggle="modal" data-bs-target="#pdfModal">
+                    <!-- Button to open the file in a modal -->
+                    <button type="button" class="btn btn-success btn-block mb-3" data-bs-toggle="modal" data-bs-target="#fileModal">
                         View Given File
                     </button>
 
-                    <!-- Modal to display the PDF -->
-                    <div class="modal fade" id="pdfModal" tabindex="-1" aria-labelledby="pdfModalLabel" aria-hidden="true">
+                    <!-- Modal to display the file -->
+                    <div class="modal fade" id="fileModal" tabindex="-1" aria-labelledby="fileModalLabel" aria-hidden="true">
                         <div class="modal-dialog modal-xl">
                             <div class="modal-content">
                                 <div class="modal-header">
-                                    <h5 class="modal-title" id="pdfModalLabel">Given PDF</h5>
+                                    <h5 class="modal-title" id="fileModalLabel">Given File</h5>
                                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
                                         <span aria-hidden="true">&times;</span>
                                     </button>
                                 </div>
                                 <div class="modal-body">
-                                    <iframe src="<?= base_url(
-                                                        $classwork['pdf_file_path']
-                                                    ) ?>" width="100%" height="600px" style="border: none;"></iframe>
+                                    <?php
+                                    $file_extension = pathinfo($classwork['pdf_file_path'], PATHINFO_EXTENSION);
+                                    if (in_array($file_extension, ['pdf', 'txt', 'c', 'sql', 'php', 'html', 'js', 'css'])): ?>
+                                        <!-- Display file content in an iframe for supported file types -->
+                                        <iframe src="<?= base_url($classwork['pdf_file_path']) ?>" width="100%" height="600px" style="border: none;"></iframe>
+                                    <?php else: ?>
+                                        <!-- Display a message for unsupported file types -->
+                                        <p>This file type cannot be previewed. Please download it to view.</p>
+                                    <?php endif; ?>
                                 </div>
                                 <div class="modal-footer">
                                     <!-- Download Button -->
-                                    <a href="<?= base_url(
-                                                    $classwork['pdf_file_path']
-                                                ) ?>" class="btn btn-primary" download>
+                                    <a href="<?= base_url($classwork['pdf_file_path']) ?>" class="btn btn-primary" download>
                                         Download
                                     </a>
                                     <!-- Close Button -->
@@ -59,7 +63,7 @@ if ($classwork['iotype_id'] == '4' || $classwork['iotype_id'] == '3') {
                         </div>
                     </div>
                 <?php else: ?>
-                    <p>No given PDF file uploaded for this classwork.</p>
+                    <p style="color: gray;">No given file uploaded for this classwork.</p>
                 <?php endif; ?>
 
                 <!-- Other assessment details -->
