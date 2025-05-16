@@ -100,7 +100,7 @@ class AssessmentController extends CI_Controller
                     // Compress the uploaded image
                     $config['image_library'] = 'gd2';
                     $config['source_image'] = $uploaded_file_path;
-                    $config['quality'] = '70%'; // Adjust quality to reduce size
+                    $config['quality'] = '50%'; // Adjust quality to reduce size
                     $config['maintain_ratio'] = TRUE;
                     $config['width'] = 1024; // Resize width
                     $config['height'] = 768; // Resize height

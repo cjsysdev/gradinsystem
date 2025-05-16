@@ -175,7 +175,7 @@
 
   <div class="card shadow-sm">
     <div class="card-header d-flex justify-content-between align-items-center">
-      <h5 class="mb-0">Your Work</h5>
+      <h5 class="mb-0">Your Work - <?= $classwork['classwork_id'] ?></h5>
       <span class="badge badge-success">
         <?php if ($classwork['assessments'][0]->max_score == 0 || true)
           echo 'Turned In';
@@ -191,6 +191,53 @@
         <a href="#" class="btn btn-outline-primary" onclick="previewFile('<?= base_url('uploads/classworks/' . $classwork['file_upload']) ?>')">
           <?= $classwork['file_upload'] ?>
         </a>
+      <?php elseif ($classwork['assessments'][0]->iotype_id == 4): ?>
+        <?php
+        $assessment_id = $classwork['assessment_id'];
+        $query = $this->db->query("
+                    SELECT student_id, score 
+                    FROM gradingsystem.classworks 
+                    WHERE assessment_id = {$classwork['assessment_id']} 
+                    ORDER BY score DESC 
+                    LIMIT 10
+                ");
+        $top_students = $query->result_array();
+        ?>
+
+        <?php if (isset($classwork['code'])): ?>
+          <?php foreach (json_decode($classwork['code'], true) as $index => $result): ?>
+            <div class="mb-4 text-left">
+              <p class="fw-bold"><b>Question <?= $index + 1 ?>: </b><?= nl2br(htmlspecialchars($result['question'])) ?></p>
+              <p>Your answer: <span class="<?= $result['is_correct'] ? 'correct' : 'incorrect' ?>"><?= $result['user_answer'] ?></span></p>
+              <p>Correct answer: <?= $result['correct_answer'] ?></p>
+            </div>
+            <hr>
+          <?php endforeach; ?>
+        <?php endif; ?>
+
+        <?php if (!empty($top_students)): ?>
+          <div class="mt-4">
+            <h3 class="text-center">Top 10 Students</h3>
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Student ID</th>
+                  <th>Score</th>
+                </tr>
+              </thead>
+              <tbody>
+                <?php foreach ($top_students as $index => $student): ?>
+                  <tr>
+                    <td><?= $index + 1 ?></td>
+                    <td><?= htmlspecialchars($student['student_id']) ?></td>
+                    <td><?= htmlspecialchars($student['score']) ?></td>
+                  </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
+        <?php endif; ?>
       <?php elseif ($classwork['code']): ?>
         <!-- Display submitted code -->
         <h6>Submitted Code:</h6>

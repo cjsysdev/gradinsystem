@@ -41,7 +41,7 @@ $top_students = $query->result_array();
                 <h1 class="card-title text-center"><strong><?= $score ?></strong> out of <strong><?= $total ?></strong></h1>
             </div>
             <div class="card-body">
-                <?php $exam = true;
+                <?php $exam = false;
                 if (!$exam): ?>
                     <?php foreach ($results as $index => $result): ?>
                         <div class="mb-4">

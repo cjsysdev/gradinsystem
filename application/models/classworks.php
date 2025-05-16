@@ -211,7 +211,7 @@ class classworks extends MY_Model
             WHERE 
                 c.student_id = ?
             ORDER BY 
-                c.created_at DESC
+                c.created_at ASC, c.submitted_at ASC
         ";
 
         $query = $this->db->query($sql, [$student_id]);
