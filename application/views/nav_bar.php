@@ -5,13 +5,18 @@
             <a href="<?= base_url('attendance') ?>" class="btn btn-outline-secondary col m-2">Stream</a>
             <a href="<?= base_url('classwork') ?>" class="btn btn-outline-success col m-2">Classwork</a>
             <!-- <a href="<?= base_url('output_upload') ?>" class="btn btn-outline-secondary col m-2">Project</a> -->
-            <?php if (!in_array($this->session->student_id, [999])): ?>
-                <a href="<?= base_url('grades') ?>" class="btn btn-outline-secondary col m-2">Grades</a>
-            <?php endif; ?>
+            <a href="<?= base_url('grades') ?>" class="btn btn-outline-secondary col m-2">Grades</a>
         </div>
     <?php else: ?>
         <div class="form-group row">
-            <a href="<?= base_url('classwork') ?>" class="btn btn-outline-success col m-2">Midterm Exam</a>
+            <a href="<?= base_url('classwork') ?>" class="btn btn-outline-success col m-2">Exam</a>
+            <?php
+            $not_cleared = ($this->class_student->where(['is_cleared' => NULL])->as_array()->fields('student_id')->get_all());
+            $not_cleared = array_column($not_cleared, 'student_id');
+            ?>
+            <?php if (!in_array($this->session->student_id, $not_cleared)): ?>
+                <a href="<?= base_url('grades') ?>" class="btn btn-outline-secondary col m-2">Grades</a>
+            <?php endif; ?>
         </div>
     <?php endif; ?>
 </div>

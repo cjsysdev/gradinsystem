@@ -53,23 +53,25 @@
             </div>
           <?php endforeach; ?>
 
-          <?php foreach ($submitted as $row) : ?>
-            <div class="card mb-4 submitted-card">
-              <div class="card-header">
-                <div class="d-flex justify-content-between align-items-center">
-                  <h4 class="card-title mb-1"><?= $row['title'] ?></h4>
-                  <span class="badge badge-success">Submitted</span>
+          <?php if (!$this->session->exam_term): ?>
+            <?php foreach ($submitted as $row) : ?>
+              <div class="card mb-4 submitted-card">
+                <div class="card-header">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <h4 class="card-title mb-1"><?= $row['title'] ?></h4>
+                    <span class="badge badge-success">Submitted</span>
+                  </div>
+                  <p class="card-text mb-1" style="font-size: small;">
+                    <span class="text-secondary"><?= convert_datetime_string($row['due']) ?> • <span><?= $row['type'] ?></span>
+                  </p>
                 </div>
-                <p class="card-text mb-1" style="font-size: small;">
-                  <span class="text-secondary"><?= convert_datetime_string($row['due']) ?> • <span><?= $row['type'] ?></span>
-                </p>
+                <div class="card-body">
+                  <p class="card-text mb-3 text-truncate"><?= $row['description'] ?></p>
+                  <a href="<?= base_url('student_submission/' . $row['classwork_id']) ?>" class="btn btn-outline-info btn-block">View</a>
+                </div>
               </div>
-              <div class="card-body">
-                <p class="card-text mb-3 text-truncate"><?= $row['description'] ?></p>
-                <a href="<?= base_url('student_submission/' . $row['classwork_id']) ?>" class="btn btn-outline-info btn-block">View</a>
-              </div>
-            </div>
-          <?php endforeach; ?>
+            <?php endforeach; ?>
+          <?php endif; ?>
         </div>
       </div>
     </div>

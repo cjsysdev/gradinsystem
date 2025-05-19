@@ -19,7 +19,7 @@ class AuthenticationController extends CI_Controller
                 'current_year' => $user->student->current_year,
                 'role' => $user->role,
                 'online' => true,
-                'exam_term' => false,
+                'exam_term' => true,
                 'exam_review' => false
             ];
 
