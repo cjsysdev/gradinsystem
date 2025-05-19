@@ -220,4 +220,21 @@ class AdminController extends CI_Controller
         // Return the data as JSON
         echo json_encode($submissions);
     }
+
+    public function uncleared_students($section)
+    {
+        $this->load->model('class_student');
+        $data['students'] = $this->class_student->get_uncleared_students_by_section($section);
+        $data['section'] = $section;
+
+        // var_dump($data);
+        $this->load->view('admin/uncleared_students', $data);
+    }
+
+    public function clear_student($id, $section)
+    {
+        $this->load->model('class_student');
+        $this->class_student->clear_student($id);
+        redirect('AdminController/uncleared_students/' . $section);
+    }
 }
