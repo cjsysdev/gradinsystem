@@ -118,8 +118,8 @@
     <thead>
         <tr>
             <th>Student ID</th>
-            <!-- <th>Lastname</th> -->
-            <!-- <th>Firstname</th> -->
+            <th>Lastname</th>
+            <th>Firstname</th>
             <th>Midterm</th>
             <th>Tentative</th>
             <th>Final</th>
@@ -130,8 +130,8 @@
             <?php foreach ($studentsGrades as $student): ?>
                 <tr class="<?= $student['final_grade'] === 'INC' ? 'highlight-inc' : '' ?>">
                     <td><?= $student['student_id'] ?></td>
-                    <!-- <td><?= $student['lastname'] ?></td> -->
-                    <!-- <td><?= $student['firstname'] ?></td> -->
+                    <td><?= $student['lastname'] ?></td>
+                    <td><?= $student['firstname'] ?></td>
                     <td><?= is_numeric($student['midterm_grade']) ? number_format(convertPercentageToGradePoint(floor($student['midterm_grade'] * 10) / 10), 1) : $student['midterm_grade'] ?></td>
                     <td><?= is_numeric($student['tentative_final_grade']) ? number_format(convertPercentageToGradePoint(floor($student['tentative_final_grade'] * 10) / 10), 1) : $student['tentative_final_grade'] ?></td>
                     <td><?= is_numeric($student['final_grade']) ? number_format(floor($student['final_grade'] * 10) / 10, 1) : $student['final_grade'] ?></td>

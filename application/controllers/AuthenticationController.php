@@ -7,6 +7,7 @@ class AuthenticationController extends CI_Controller
     {
         $post = $this->input->post();
         $user = $this->accounts->with_student()->get(['username' => $post['username']]);
+        $section = $this->class_student->get(['student_id' => $user->student_id]);
 
         if ($user && $user->password == $post['password']) {
             $session_data = [
@@ -17,6 +18,7 @@ class AuthenticationController extends CI_Controller
                 'firstname' => $user->student->firstname,
                 'course' => $user->student->course,
                 'current_year' => $user->student->current_year,
+                'section' => $section->section,
                 'role' => $user->role,
                 'online' => true,
                 'exam_term' => true,

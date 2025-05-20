@@ -92,7 +92,7 @@
                     <h3 class="m-0"><strong><?= $this->session->lastname, ', ',  $this->session->firstname ?></strong></h3>
                 </div>
             </div>
-        </div>
+        </div>att
 
         <hr>
         <div class="timer" id="timer">

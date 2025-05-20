@@ -37,9 +37,16 @@ $top_students = $query->result_array();
             <button id="showScoreBtn" class="btn btn-primary btn-block">Show Score</button>
         </div>
         <div id="scoreSection" style="display: none;">
-            <div class="card-header bg-info text-white">
-                <h1 class="card-title text-center"><strong><?= $score ?></strong> out of <strong><?= $total ?></strong></h1>
-            </div>
+            <?php
+            $not_cleared = ($this->class_student->where(['is_cleared' => NULL])->as_array()->fields('student_id')->get_all());
+            $not_cleared = array_column($not_cleared, 'student_id');
+            ?>
+            <?php if (!in_array($this->session->student_id, $not_cleared)): ?>
+                <div class="card-header bg-info text-white">
+                    <h1 class="card-title text-center"><strong><?= $score ?></strong> out of <strong><?= $total ?></strong></h1>
+                </div>
+            <?php endif; ?>
+
             <div class="card-body">
                 <?php if (!$this->session->exam_term): ?>
                     <?php foreach ($results as $index => $result): ?>

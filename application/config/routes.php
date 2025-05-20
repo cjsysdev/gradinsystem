@@ -106,3 +106,4 @@ $route['student_submissions/(:num)'] = 'AdminController/view_student_submissions
 $route['view_attendance'] = 'AdminController/view_attendance';
 $route['active_participation/(:num)'] = 'AdminController/active_participation/$1';
 $route['admin/check_new_submissions_by_assessment/(:num)'] = 'AdminController/check_new_submissions_by_assessment/$1';
+$route['uncleared_students/(:any)'] = 'AdminController/uncleared_students/$1';

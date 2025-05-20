@@ -30,7 +30,7 @@
                             <td class="text-center"><?= htmlspecialchars($student['section']) ?></td>
                             <td class="text-center">
                                 <a href="<?= site_url('AdminController/clear_student/' . $student['id'] . '/' . urlencode($section)) ?>" class="btn btn-success btn-sm">
-                                    Mark as Cleared
+                                    <i class="fa fa-check" aria-hidden="true"></i>
                                 </a>
                             </td>
                         </tr>
