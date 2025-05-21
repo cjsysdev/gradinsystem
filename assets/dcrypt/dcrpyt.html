@@ -2,7 +2,7 @@
 <html>
 	<head>
 		<title>Decrypt Quiz Submission</title>
-		<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+		<script src="crypto-js.min.js"></script>
 	</head>
 	<body>
 		<h2>Decrypt Quiz Submission</h2>
@@ -37,14 +37,30 @@
 							encrypted,
 							password
 						).toString(CryptoJS.enc.Utf8);
-						output.textContent = decrypted
-							? JSON.stringify(JSON.parse(decrypted), null, 2)
-							: "Wrong password or invalid file.";
+						if (decrypted) {
+							const results = JSON.parse(decrypted);
+							const correctCount = countCorrectAnswers(results);
+							output.textContent =
+								"Correct answers: " +
+								correctCount +
+								" out of " +
+								results.length +
+								"\n\n" +
+								JSON.stringify(results, null, 2);
+						} else {
+							output.textContent = "Wrong password or invalid file.";
+						}
 					} catch (err) {
 						output.textContent = "Error: " + err;
 					}
 				};
 				reader.readAsText(fileInput.files[0]);
+			}
+
+			// Add this function after decryptFile
+			function countCorrectAnswers(results) {
+				if (!Array.isArray(results)) return 0;
+				return results.filter((item) => item.is_correct === true).length;
 			}
 		</script>
 	</body>
