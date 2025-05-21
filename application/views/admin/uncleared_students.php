@@ -11,8 +11,8 @@
         <table class="table table-bordered table-hover align-middle">
             <thead class="table-info">
                 <tr class="text-center">
-                    <th>ID</th>
-                    <th>Student No</th>
+                    <!-- <th>ID</th> -->
+                    <th>No</th>
                     <th>Lastname</th>
                     <th>Firstname</th>
                     <th>Section</th>
@@ -23,7 +23,7 @@
                 <?php if (!empty($students)): ?>
                     <?php foreach ($students as $student): ?>
                         <tr>
-                            <td class="text-center"><?= $student['id'] ?></td>
+                            <!-- <td class="text-center"><?= $student['id'] ?></td> -->
                             <td class="text-center"><?= $student['student_id'] ?? $student['trans_no'] ?></td>
                             <td><?= htmlspecialchars($student['lastname']) ?></td>
                             <td><?= htmlspecialchars($student['firstname']) ?></td>

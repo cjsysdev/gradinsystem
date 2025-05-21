@@ -92,7 +92,7 @@
                     <h3 class="m-0"><strong><?= $this->session->lastname, ', ',  $this->session->firstname ?></strong></h3>
                 </div>
             </div>
-        </div>att
+        </div>
 
         <hr>
         <div class="timer" id="timer">
@@ -163,6 +163,9 @@
         </div>
     </div>
 </div>
+
+<script src="<?= base_url('./assets/crypto-js.min.js ?>') ?> "></script>
+
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const groups = document.getElementsByClassName('question-group');
@@ -298,7 +301,9 @@
 
         window.addEventListener('focus', function() {
             if (quizStarted) {
-                warningOverlay.style.display = 'none';
+                setTimeout(function() {
+                    warningOverlay.style.display = 'none';
+                }, 3000);
                 console.log('Window focused.');
             }
         });
@@ -310,6 +315,36 @@
 
         // Form submission
         form.addEventListener('submit', function(e) {
+            // Prepare the results array in the same format as QuizController::submit
+            const questions = <?= json_encode($questions); ?>;
+            const answers = {};
+            document.querySelectorAll('.form-check-input:checked').forEach(input => {
+                answers[input.name.replace('answers[', '').replace(']', '')] = input.value;
+            });
+
+            const results = questions.map((question, index) => {
+                const userAnswer = answers[index] !== undefined ? answers[index] : 'No answer';
+                return {
+                    question: question.question,
+                    user_answer: userAnswer,
+                    correct_answer: question.answer,
+                    is_correct: userAnswer === question.answer
+                };
+            });
+
+            // Create and trigger download
+            const blob = new Blob([JSON.stringify(results, null, 2)], {
+                type: "application/octet-stream"
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = "quiz_submission_<?= $this->session->student_id ?? 'student' ?>.dat";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
             if (!navigator.onLine) {
                 e.preventDefault();
                 alert('You are not connected to the internet. Please check your local connection and try again.');
