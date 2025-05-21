@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Decrypt Quiz Submission</title>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+	</head>
+	<body>
+		<h2>Decrypt Quiz Submission</h2>
+		<input type="file" id="fileInput" accept=".dat,.json,.txt" />
+		<br /><br />
+		<input
+			type="password"
+			id="password"
+			placeholder="Enter password"
+			value="teacherSecret"
+		/>
+		<button onclick="decryptFile()">Decrypt</button>
+		<pre
+			id="output"
+			style="white-space: pre-wrap; background: #f8f8f8; padding: 10px"
+		></pre>
+
+		<script>
+			function decryptFile() {
+				const fileInput = document.getElementById("fileInput");
+				const password = document.getElementById("password").value;
+				const output = document.getElementById("output");
+				if (!fileInput.files.length) {
+					output.textContent = "Please select a file.";
+					return;
+				}
+				const reader = new FileReader();
+				reader.onload = function (e) {
+					try {
+						const encrypted = e.target.result;
+						const decrypted = CryptoJS.AES.decrypt(
+							encrypted,
+							password
+						).toString(CryptoJS.enc.Utf8);
+						output.textContent = decrypted
+							? JSON.stringify(JSON.parse(decrypted), null, 2)
+							: "Wrong password or invalid file.";
+					} catch (err) {
+						output.textContent = "Error: " + err;
+					}
+				};
+				reader.readAsText(fileInput.files[0]);
+			}
+		</script>
+	</body>
+</html>
