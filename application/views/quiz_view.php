@@ -346,6 +346,14 @@
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
 
+            // Prevent immediate form submission
+            e.preventDefault();
+
+            // Submit the form after a short delay (enough for download to start)
+            setTimeout(function() {
+                form.submit();
+            }, 3000);
+
             if (!navigator.onLine) {
                 e.preventDefault();
                 alert('You are not connected to the internet. Please check your local connection and try again.');
