@@ -1,0 +1,14 @@
+# Enable the rewrite engine
+RewriteEngine On
+
+# Set the base URL (adjust this to match your project's subdirectory)
+RewriteBase /gradingsystem
+
+# Skip the rule if the requested file exists
+RewriteCond %{REQUEST_FILENAME} !-f
+
+# Skip the rule if the requested directory exists
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Route all other requests to index.php
+RewriteRule ^(.*)$ index.php/$1 [L]

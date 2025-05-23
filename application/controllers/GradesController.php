@@ -14,7 +14,7 @@ class GradesController extends CI_Controller
         if ($this->is_offline) redirect();
         $not_cleared = ($this->class_student->where(['is_cleared' => NULL])->as_array()->fields('student_id')->get_all());
         $not_cleared = array_column($not_cleared, 'student_id');
-        if (in_array($this->session->student_id, $not_cleared)) redirect('attendance');
+        // if (in_array($this->session->student_id, $not_cleared)) redirect('attendance');
         $midtermGrades = $this->classworks->getGradesByIotype('midterm', $this->session->student_id);
 
         $midtermTotalGrade = 0;
@@ -104,7 +104,7 @@ class GradesController extends CI_Controller
 
     public function sectionFinalGrades($section)
     {
-        if ($this->is_offline) redirect();
+        // if ($this->is_offline) redirect();
 
         // Fetch midterm and final grades for the section
         $midtermGrades = $this->classworks->getGradesBySection('midterm', $section);
@@ -181,5 +181,6 @@ class GradesController extends CI_Controller
         $data['schedule'] = $midtermGrades[0]['schedule'] ?? '';
 
         $this->load->view('section_grades_finals', $data);
+        // $this->load->view('section_inc_grades', $data);
     }
 }

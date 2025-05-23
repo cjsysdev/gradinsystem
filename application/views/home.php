@@ -7,7 +7,7 @@
         <div class="category-btns">
             <h4 class="text-center">Midterm Grades</h4>
             <?php if (!empty($midtermGrades)): ?>
-                <!-- <?php foreach ($midtermGrades as $grade): ?>
+                <?php foreach ($midtermGrades as $grade): ?>
                     <div class="alert alert-secondary block text-center">
                         <?= $grade['iotype_name'] ?? 'N/A' ?> (<?= $grade['iotype_percentage'] ?? '0' ?>%)<br>
                         <div class="progress m-2">
@@ -16,7 +16,7 @@
                         <?= round($grade['total_score'] ?? 0, 1) . '/' .  round($grade['total_max_score'] ?? 0, 1) ?>
                         (<?= number_format(floor($grade['grade_point'] * 10) / 10, 1) ?>)
                     </div>
-                <?php endforeach; ?> -->
+                <?php endforeach; ?>
                 <div class="total-section mt-3">
                     <div class="alert alert-info block text-center">
                         Total Midterm Grade:

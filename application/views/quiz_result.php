@@ -48,7 +48,7 @@ $top_students = $query->result_array();
             <?php endif; ?>
 
             <div class="card-body">
-                <?php if (!$this->session->exam_term): ?>
+                <?php if (!$this->session->exam_term && false): ?>
                     <?php foreach ($results as $index => $result): ?>
                         <div class="mb-4">
                             <p class="fw-bold"><b>Question <?= $index + 1 ?>: </b><?= nl2br(htmlspecialchars($result['question'])) ?></p>
