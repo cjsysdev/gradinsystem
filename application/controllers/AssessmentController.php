@@ -116,10 +116,21 @@ class AssessmentController extends CI_Controller
                 $submission_data['file_upload'] = $upload_data['file_name'];
                 $submission_data['code'] = null; // Clear the code field for file submissions
             }
+        } elseif (!empty($post['code'])) {
+            // Handle textarea submission: save code as a text file and store filename
+            $section = $this->class_student->get(['student_id' => $student_id])->section;
+            $filename = $section . '-' . $this->session->lastname . '-' . time() . '.txt';
+            $upload_path = './uploads/classworks/';
+            if (!is_dir($upload_path)) {
+                mkdir($upload_path, 0777, true);
+            }
+            file_put_contents($upload_path . $filename, $post['code']);
+            $submission_data['file_upload'] = $filename;
+            $submission_data['code'] = null; // Optionally clear the code field
         } else {
-            // Handle textarea submission
-            $submission_data['code'] = $post['code'];
-            $submission_data['file_upload'] = null; // Clear the file_upload field for text submissions
+            // No file or code submitted
+            $this->session->set_flashdata('error', 'Please enter code or upload a file before submitting.');
+            redirect('classwork');
         }
 
         // Check if a submission already exists

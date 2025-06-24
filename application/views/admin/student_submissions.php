@@ -23,6 +23,7 @@
                     <th>Assessment Title</th>
                     <th>Submission Date</th>
                     <th>Score</th>
+                    <th>Max</th>
                     <th>Status</th>
                     <th>Actions</th>
                 </tr>
@@ -33,6 +34,7 @@
                         <td><?= $classwork['title'] ?></td>
                         <td><?= $classwork['created_at'] ? date('Y-m-d H:i:s', strtotime($classwork['created_at'])) : 'N/A' ?></td>
                         <td><?= $classwork['score'] !== null ? $classwork['score'] : 'Not Graded' ?></td>
+                        <td><?= $classwork['max_score'] ?></td>
                         <td><?= $classwork['status'] === 'missing' ? '<span class="text-danger">Missing</span>' : '<span class="text-success">Submitted</span>' ?></td>
                         <td>
                             <?php if ($classwork['score'] === null && $classwork['status'] !== 'missing'): ?>

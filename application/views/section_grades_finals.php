@@ -110,7 +110,7 @@
     </tr>
     <tr>
         <td>Section : </td>
-        <td><?= $section ?></td>
+        <td><?= strtoupper($section) ?></td>
     </tr>
 </table>
 

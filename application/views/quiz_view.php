@@ -303,7 +303,7 @@
             if (quizStarted) {
                 setTimeout(function() {
                     warningOverlay.style.display = 'none';
-                }, 5000);
+                }, 60000);
                 console.log('Window focused.');
             }
         });
