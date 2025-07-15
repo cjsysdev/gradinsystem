@@ -4,7 +4,7 @@
     <title>CARMEN MUNICIPAL COLLEGE - GRADE SUBMISSION FORM (FINALS)</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: Calibri, sans-serif;
             margin: 20px;
         }
 
@@ -15,7 +15,7 @@
 
         .header h1 {
             margin: 0;
-            font-size: 18px;
+            font-size: 11px;
         }
 
         .header p {
@@ -26,7 +26,7 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
         }
 
         table,
@@ -37,7 +37,7 @@
 
         th,
         td {
-            padding: 8px;
+            padding: 3px;
             text-align: left;
         }
 
@@ -67,80 +67,58 @@
     </style>
 </head>
 
-<div class="header">
-    <h1>CARMEN MUNICIPAL COLLEGE</h1>
-    <p>Poblacion Norte, Carmen, Bohol</p>
+<div style="margin-top: 20px; margin-bottom: 0; font-size:16px;">
+    <b>Course Code:</b> <?= $class_code ?><br>
+    <b>Course Title:</b> <?= $class_name ?><br>
+    <b>Section:</b> <?= strtoupper($section) ?><br>
+    <?php if (isset($schedule)): ?>
+        <b>Schedule:</b> <?= $schedule ?><br>
+    <?php endif; ?>
 </div>
 
-<table>
-    <tr>
-        <td>Form No.:</td>
-        <td>GSF-CS-2023-002</td>
-    </tr>
-    <tr>
-        <td>Revision No.:</td>
-        <td>Rev. 1</td>
-    </tr>
-    <tr>
-        <td>Effective Date:</td>
-        <td>3-Jul-24</td>
-    </tr>
-    <tr>
-        <td>Related Process:</td>
-        <td></td>
-    </tr>
-    <tr>
-        <td colspan="2" class="form-title">GRADE SUBMISSION FORM (FINALS)</td>
-    </tr>
-    <tr>
-        <td>Term:</td>
-        <td>Final</td>
-    </tr>
-    <tr>
-        <td>Year and Semester</td>
-        <td>2nd Semester, S.Y 2024 - 2025</td>
-    </tr>
-    <tr>
-        <td>Course Code : </td>
-        <td><?= $class_code ?></td>
-    </tr>
-    <tr>
-        <td>Course Title : </td>
-        <td><?= $class_name ?></td>
-    </tr>
-    <tr>
-        <td>Section : </td>
-        <td><?= strtoupper($section) ?></td>
-    </tr>
-</table>
-
-<table class="table table-bordered">
+<table class="inc-table" style="margin-top: 10px;">
     <thead>
         <tr>
-            <th>Student ID</th>
-            <th>Lastname</th>
-            <th>Firstname</th>
-            <th>Midterm</th>
-            <th>Tentative</th>
-            <th>Final</th>
+            <th style="width:50px;">ID No.</th>
+            <th style="width:350px;">Student Name <span style="font-weight:normal;">(Lastname, First name M.I)</span></th>
+            <th style="width:80px;">Grade</th>
         </tr>
     </thead>
     <tbody>
-        <?php if (!empty($studentsGrades)): ?>
-            <?php foreach ($studentsGrades as $student): ?>
-                <tr class="<?= $student['final_grade'] === 'INC' ? 'highlight-inc' : '' ?>">
-                    <td><?= $student['student_id'] ?></td>
-                    <td><?= $student['lastname'] ?></td>
-                    <td><?= $student['firstname'] ?></td>
-                    <td><?= is_numeric($student['midterm_grade']) ? number_format(convertPercentageToGradePoint(floor($student['midterm_grade'] * 10) / 10), 1) : $student['midterm_grade'] ?></td>
-                    <td><?= is_numeric($student['tentative_final_grade']) ? number_format(convertPercentageToGradePoint(floor($student['tentative_final_grade'] * 10) / 10), 1) : $student['tentative_final_grade'] ?></td>
-                    <td><?= is_numeric($student['final_grade']) ? number_format(floor($student['final_grade'] * 10) / 10, 1) : $student['final_grade'] ?></td>
+        <?php
+        $i = 1;
+        if (!empty($studentsGrades)):
+            foreach ($studentsGrades as $student): ?>
+                <tr>
+                    <td><?= $i++ ?></td>
+                    <td style="text-align:left;font-weight:bold;">
+                        <?= strtoupper($student['lastname']) ?>, <?= strtoupper($student['firstname']) ?>
+                        <?php if (!empty($student['middlename'])): ?>
+                            <?= strtoupper(substr($student['middlename'], 0, 1)) ?>.
+                        <?php endif; ?>
+                    </td>
+                    <td style="font-weight:bold;">
+                        <?php
+                        // Always show one decimal place for numeric grades
+                        if (is_numeric($student['final_grade'])) {
+                            echo number_format($student['final_grade'], 1);
+                        } else {
+                            echo htmlspecialchars($student['final_grade']);
+                        }
+                        ?>
+                    </td>
                 </tr>
-            <?php endforeach; ?>
-        <?php else: ?>
+            <?php endforeach;
+        else: ?>
             <tr>
-                <td colspan="6" class="text-center">No grades available for this section.</td>
+                <td colspan="3" class="text-center">No student grades available for this section.</td>
             </tr>
         <?php endif; ?>
     </tbody>
 </table>
+
+<div class="prepared">
+    Prepared By:<br><br>
+    <span class="faculty" style="font-weight:bold;">Criscel Jay F. Nayve</span><br>
+    Faculty
+</div>
