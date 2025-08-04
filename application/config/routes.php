@@ -64,6 +64,8 @@ $route['get_id'] = 'StudentController/get_id';
 $route['update_account'] = 'StudentController/update_account';
 $route['update_account_form'] = 'StudentController/update_account_form';
 $route['student/get-discussion-mode'] = 'StudentController/get_discussion_mode';
+$route['student/add_section'] = 'StudentController/add_section';
+$route['student/section'] = 'StudentController/section';
 
 // Grades Routes
 $route['grades'] = 'GradesController/grades';

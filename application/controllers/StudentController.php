@@ -89,4 +89,42 @@ class StudentController extends CI_Controller
             echo json_encode(['error' => 'Discussion mode setting not found.']);
         }
     }
+
+    public function add_section()
+    {
+        date_default_timezone_set('Asia/Manila');
+
+        $day = date('D');
+
+        $class = $this->class_schedule->class_today($day);
+
+        if (!$class) {
+            $this->session->set_flashdata('error', 'No class found for today.');
+            // redirect('attendance');
+        }
+
+        $data = [
+            'class' => $class ?? [],
+        ];
+
+        // This method can be used to redirect students to a section addition page
+        $this->load->view('add_section', $data);
+    }
+
+    public function section()
+    {
+        $post = $this->input->post();
+        $id = $this->session->student_id;
+
+        if (empty($post['section'])) {
+            $this->session->set_flashdata('error', 'Section cannot be empty.');
+            redirect('student/add_section');
+        } else {
+            // Add the section to the class_student model
+            $this->class_student->add_section($id, $post['section']);
+            // Set a success message
+            $this->session->set_flashdata('success', 'Section added successfully.');
+            redirect('attendance');
+        }
+    }
 }

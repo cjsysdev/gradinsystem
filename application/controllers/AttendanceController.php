@@ -11,6 +11,13 @@ class AttendanceController extends CI_Controller
 
     public function attendance_main()
     {
+        $section = $this->class_student->get(['student_id' => $this->session->student_id]);
+
+        if ($section->section == null && $this->session->role != 'admin') {
+            $this->session->set_flashdata('error', 'Please add your section first.');
+            redirect('student/add_section');
+        }
+
         if ($this->is_offline) {
             redirect();
         }

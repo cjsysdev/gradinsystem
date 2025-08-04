@@ -36,4 +36,11 @@ class class_student extends MY_Model
             ->where('id', $id)
             ->update($this->table, ['is_cleared' => 1]);
     }
+
+    public function add_section($id, $section)
+    {
+        return $this->db
+            ->where('student_id', $id)
+            ->update($this->table, ['section' => $section]);
+    }
 }

@@ -24,7 +24,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 |
 */
 $config['base_url'] = 'http://'.$_SERVER['SERVER_ADDR'].':'.$_SERVER['SERVER_PORT'].'/gradingsystem';
-
+// $config['base_url'] = 'http://localhost/gradingsystem'; // Change this to your actual base URL if needed
 /*
 |--------------------------------------------------------------------------
 | Index File

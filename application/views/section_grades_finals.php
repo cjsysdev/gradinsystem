@@ -89,7 +89,7 @@
         $i = 1;
         if (!empty($studentsGrades)):
             foreach ($studentsGrades as $student): ?>
-                <tr>
+                <tr<?php if (strtoupper($student['final_grade']) === 'INC') echo ' class="highlight-inc"'; ?>>
                     <td><?= $i++ ?></td>
                     <td style="text-align:left;font-weight:bold;">
                         <?= strtoupper($student['lastname']) ?>, <?= strtoupper($student['firstname']) ?>
@@ -107,13 +107,13 @@
                         }
                         ?>
                     </td>
-                </tr>
-            <?php endforeach;
+                    </tr>
+                <?php endforeach;
         else: ?>
-            <tr>
-                <td colspan="3" class="text-center">No student grades available for this section.</td>
-            </tr>
-        <?php endif; ?>
+                <tr>
+                    <td colspan="3" class="text-center">No student grades available for this section.</td>
+                </tr>
+            <?php endif; ?>
     </tbody>
 </table>
 

@@ -174,6 +174,13 @@ class GradesController extends CI_Controller
             }
         }
 
+        // Sort students by final_grade descending (numeric grades only, INC at the bottom)
+        usort($studentsGrades, function ($a, $b) {
+            $gradeA = is_numeric($a['final_grade']) ? floatval($a['final_grade']) : 999;
+            $gradeB = is_numeric($b['final_grade']) ? floatval($b['final_grade']) : 999;
+            return $gradeA <=> $gradeB;
+        });
+
         $data['studentsGrades'] = $studentsGrades;
         $data['section'] = $section;
         $data['class_code'] = $midtermGrades[0]['class_code'] ?? '';
