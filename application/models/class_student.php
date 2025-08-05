@@ -43,4 +43,11 @@ class class_student extends MY_Model
             ->where('student_id', $id)
             ->update($this->table, ['section' => $section]);
     }
+
+    public function update_class($id, $class)
+    {
+        return $this->db
+            ->where('student_id', $id)
+            ->update($this->table, ['class_id' => $class]);
+    }
 }

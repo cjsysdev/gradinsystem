@@ -21,8 +21,8 @@
 <?php endif; ?>
 
 <div class="container mt-5">
-    <div class="login-form">
-        <form action="<?= base_url('student/section') ?>" method="POST">
+    <div class="add-section-form">
+        <form id="sectionForm" action="<?= base_url('student/section') ?>" method="POST" onsubmit="return checkPassword()">
             <h4 class="text-center mb-4">Add Section</h4>
             <?php if ($this->session->flashdata('error')) : ?>
                 <div class="alert alert-danger">
@@ -32,11 +32,30 @@
             <div class="form-group">
                 <input type="text" class="form-control" placeholder="Section" name="section" value="<?= $class['section'] ?? NULL ?>" required>
             </div>
+            <!-- <div class="form-group">
+                <input type="password" class="form-control" placeholder="Enter Password to Confirm" id="confirmPassword" required>
+            </div> -->
+            <div class="form-group">
+                <input type="text" class="form-control" placeholder="class_id" name="class_id" value="<?= $class['class_id'] ?? NULL ?>" hidden>
+            </div>
             <div class="form-group">
                 <button type="submit" class="btn btn-success btn-block">Add Section</button>
             </div>
         </form>
     </div>
 </div>
+
+<!-- <script>
+    function checkPassword() {
+        const password = document.getElementById("confirmPassword").value;
+        const requiredPassword = "cmc2025"; // change this as needed
+
+        if (password !== requiredPassword) {
+            alert("Incorrect password. Please try again.");
+            return false;
+        }
+        return true;
+    }
+</script> -->
 
 <?php $this->load->view('footer') ?>

@@ -122,6 +122,7 @@ class StudentController extends CI_Controller
         } else {
             // Add the section to the class_student model
             $this->class_student->add_section($id, $post['section']);
+            $this->class_student->update_class($id, $post['class_id']);
             // Set a success message
             $this->session->set_flashdata('success', 'Section added successfully.');
             redirect('attendance');

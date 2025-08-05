@@ -26,15 +26,15 @@ class classworks extends MY_Model
         parent::__construct();
     }
 
-    public function get_all_submissions($assessment_id)
+    public function get_all_submissions($assessment_id, $term)
     {
         $sql = "SELECT c.classwork_id, s.trans_no, s.firstname, s.lastname, c.code, c.file_upload, c.created_at 
-                FROM gradingsystem.classworks c 
+                FROM classworks c 
                 JOIN student_master s ON s.trans_no = c.student_id 
                 JOIN assessments a ON a.assessment_id = c.assessment_id 
-                WHERE c.score IS NULL AND a.term = 'final' ";
+                WHERE c.score IS NULL  AND a.assessment_id = ? AND a.term = ?";
 
-        $query = $this->db->query($sql, [$assessment_id]);
+        $query = $this->db->query($sql, [$assessment_id, $term]);
 
         if ($query === false) {
             $error = $this->db->error();
