@@ -6,7 +6,7 @@ class attendance extends MY_Model
     public $table = 'attendance';
     public $primary_key = 'attendance_id';
     public $protected = ['attendance_id'];
-    public $fillable = ['status'];
+    public $fillable = ['status', 'schedule_id', 'student_id', 'ip_address', 'date'];
 
     public function __construct()
     {

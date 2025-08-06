@@ -25,7 +25,7 @@ class AttendanceController extends CI_Controller
 
         $day = date('D');
         $date = date('Y-m-d');
-        $start_date = '2025-04-01'; // Example start date
+        $start_date = '2025-08-01'; // Example start date
 
         $class = $this->class_schedule->class_today($day);
         $student_id = $this->session->student_id;
@@ -117,6 +117,14 @@ class AttendanceController extends CI_Controller
                 $student_id,
                 $date
             );
+        } else if (!$check_student) {
+            $this->attendance->insert_data([
+                'schedule_id' => $class['schedule_id'],
+                'student_id' => $student_id,
+                'status' => 'present',
+                'ip_address' => $this->input->ip_address(),
+                'date' => $date . ' ' . date('H:i:s'),
+            ]);
         }
     }
 }
