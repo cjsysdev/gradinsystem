@@ -75,6 +75,8 @@ class AttendanceController extends CI_Controller
             'show_red_overlay' => $absences >= 50,
         ];
 
+        //sample
+
         $this->load->view('attendance_view', $data);
     }
 
