@@ -32,7 +32,7 @@
                             <?php foreach ($assessments as $assessment): ?>
                                 <li>
                                     <a class="dropdown-item" href="<?= base_url("AdminController/all_submissions/" . $assessment['assessment_id']) ?>">
-                                        <?= $assessment['title'] ?> (ID: <?= $assessment['assessment_id'] ?>) <?= $assessment['class_schedule']->section ?>
+                                        <?= $assessment['title'] ?> (ID: <?= $assessment['assessment_id'] ?>) <?= $assessment['class_schedule']->section ?? "" ?>
                                     </a>
                                 </li>
                             <?php endforeach; ?>
@@ -64,13 +64,12 @@
                                     <input type="hidden" name="assessment_id" value="<?= $selected_assessment_id ?>">
                                     <div class="input-group mb-3">
                                         <a href="<?= base_url('add_rand_score/' . $row['classwork_id'] . '/5' . "/$selected_assessment_id") ?>" type="button" class="btn btn-outline-secondary mr-1 ml-1" name="score" value="good">Late</a>
+                                        <input type="decimal" name="score" class="form-control mr-1 ml-1" placeholder="Enter score" min="0" required>
                                         <a href="<?= base_url('add_rand_score/' . $row['classwork_id'] . '/6' . "/$selected_assessment_id") ?>" type="button" class="btn btn-outline-secondary mr-1 ml-1" name="score" value="good">6</a>
                                         <a href="<?= base_url('add_rand_score/' . $row['classwork_id'] . '/7' . "/$selected_assessment_id") ?>" type="button" class="btn btn-outline-secondary mr-1 ml-1" name="score" value="good">7</a>
                                         <a href="<?= base_url('add_rand_score/' . $row['classwork_id'] . '/8' . "/$selected_assessment_id") ?>" type="button" class="btn btn-outline-secondary mr-1 ml-1" name="score" value="good">8</a>
                                         <a href="<?= base_url('add_rand_score/' . $row['classwork_id'] . '/9' . "/$selected_assessment_id") ?>" type="button" class="btn btn-outline-secondary mr-1 ml-1" name="score" value="good">9</a>
-                                        <a href="<?= base_url('add_rand_score/' . $row['classwork_id'] . '/10' . "/$selected_assessment_id") ?>" type="button" class="btn btn-outline-secondary mr-1 ml-1" name="score" value="good">10</a>
-                                        <input type="number" name="score" class="form-control mr-1 ml-1" placeholder="Enter score" min="0" required>
-                                        <button type="submit" class="btn btn-info mr-1 ml-1">Submit</button>
+                                        <a href="<?= base_url('add_rand_score/' . $row['classwork_id'] . '/10' . "/$selected_assessment_id") ?>" type="button" class="btn btn-outline-secondary mr-1 ml-1" name="score" value="good">10</a><button type="submit" class="btn btn-info mr-1 ml-1">Submit</button>
                                     </div>
                                 </form>
                             </div>

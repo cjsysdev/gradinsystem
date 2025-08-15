@@ -21,7 +21,7 @@
 <?php
 $query = $this->db->query("
     SELECT student_id, score 
-    FROM gradingsystem.classworks 
+    FROM classworks 
     WHERE assessment_id = $assessment_id 
     ORDER BY score DESC 
     LIMIT 10
@@ -37,14 +37,15 @@ $top_students = $query->result_array();
             <button id="showScoreBtn" class="btn btn-primary btn-block">Show Score</button>
         </div>
         <div id="scoreSection" style="display: none;">
+            <div class="card-header bg-info text-white">
+                <h1 class="card-title text-center"><strong><?= $score ?></strong> out of <strong><?= $total ?></strong></h1>
+            </div>
             <?php
             $not_cleared = ($this->class_student->where(['is_cleared' => NULL])->as_array()->fields('student_id')->get_all());
             $not_cleared = array_column($not_cleared, 'student_id');
             ?>
             <?php if (!in_array($this->session->student_id, $not_cleared)): ?>
-                <div class="card-header bg-info text-white">
-                    <h1 class="card-title text-center"><strong><?= $score ?></strong> out of <strong><?= $total ?></strong></h1>
-                </div>
+                <!-- Score here -->
             <?php endif; ?>
 
             <div class="card-body">

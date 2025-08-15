@@ -14,6 +14,9 @@ class AttendanceController extends CI_Controller
         $section = $this->class_student->get(['student_id' => $this->session->student_id]);
 
         if ($section->section == null && $this->session->role != 'admin') {
+            if ($this->is_offline) {
+                redirect();
+            }
             $this->session->set_flashdata('error', 'Please add your section first.');
             redirect('student/add_section');
         }
@@ -72,10 +75,10 @@ class AttendanceController extends CI_Controller
                 $start_date,
                 $date
             ),
-            'show_red_overlay' => $absences >= 50,
+            'show_red_overlay' => $absences >= 10,
         ];
 
-        //sample
+        // var_dump($data);
 
         $this->load->view('attendance_view', $data);
     }
@@ -128,5 +131,60 @@ class AttendanceController extends CI_Controller
                 'date' => $date . ' ' . date('H:i:s'),
             ]);
         }
+    }
+
+    public function attendance_visualizer()
+    {
+        // Get all available class schedules
+        $class_schedules = $this->class_schedule->as_array()->get_all();
+
+        // If no schedule is selected, show selection form
+        if (!$this->input->post('schedule_id')) {
+            $data = [
+                'class_schedules' => $class_schedules,
+                'class' => null,
+                'record' => []
+            ];
+            return $this->load->view('attendance_visualizer', $data);
+        }
+
+        // Get selected schedule
+        $schedule_id = $this->input->post('schedule_id');
+        $class = $this->class_schedule->get(['schedule_id' => $schedule_id]);
+        $date = date('Y-m-d');
+
+        // Get all students in the section
+        $students = $this->class_student->get_students_with_names_by_section($class['section']);
+
+        // Get today's attendance for the schedule
+        $attendance = $this->attendance->where([
+            'schedule_id' => $class['schedule_id'],
+            'date(date)' => $date
+        ])->as_array()->get_all();
+
+        // Map attendance status to students
+        $attendance_map = [];
+        foreach ($attendance as $att) {
+            $attendance_map[$att['student_id']] = $att['status'];
+        }
+
+        // Prepare record for view
+        $record = [];
+        foreach ($students as $student) {
+            $record[] = [
+                'student_id' => $student['student_id'],
+                // 'lastname' => $student['lastname'],
+                // 'firstname' => $student['firstname'],
+                'status' => $attendance_map[$student['student_id']] ?? 'absent'
+            ];
+        }
+
+        $data = [
+            'class_schedules' => $class_schedules,
+            'class' => $class,
+            'record' => $record
+        ];
+
+        $this->load->view('attendance_visualizer', $data);
     }
 }

@@ -123,7 +123,7 @@ class attendance extends MY_Model
             [$section, $student_id, $start_date, $end_date]
         );
 
-        return $query->row()->present_days ?? 0;
+        return (int)$query->row()->present_days ?? 0;
     }
 
     public function checkStudentAbsences(

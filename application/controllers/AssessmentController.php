@@ -6,6 +6,7 @@ class AssessmentController extends CI_Controller
     public function __construct()
     {
         parent::__construct();
+        date_default_timezone_set('Asia/Manila');
         $this->load->model(['assessments', 'classworks']);
         $this->load->helper(['url']);
         $this->load->library(['session']);

@@ -26,7 +26,7 @@
                     </div>
                 </div>
             <?php else: ?>
-                <p>No grades available for Midterm.</p>
+                <p class="text-center">No grades available for Midterm.</p>
             <?php endif; ?>
         </div>
 

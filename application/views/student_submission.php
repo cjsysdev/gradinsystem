@@ -169,6 +169,13 @@
   }
 </style>
 
+<?php
+$date = new DateTime($classwork['created_at']);
+$dateStr = $date->format('Y-m-d H:i:s');
+$date->modify('+1 week');
+$date_a_week = $date->format('Y-m-d');
+?>
+
 <div class="container">
 
   <?php $this->load->view('profile_info') ?>
@@ -177,7 +184,7 @@
     <div class="card-header d-flex justify-content-between align-items-center">
       <h5 class="mb-0">Your Work - <?= $classwork['classwork_id'] ?></h5>
       <span class="badge badge-success">
-        <?php if ($classwork['assessments'][0]->max_score == 0 || true)
+        <?php if ($classwork['assessments'][0]->max_score == 0)
           echo 'Turned In';
         else
           echo $classwork['score'] . '/' . $classwork['assessments'][0]->max_score;
@@ -196,7 +203,7 @@
         $assessment_id = $classwork['assessment_id'];
         $query = $this->db->query("
                     SELECT student_id, score 
-                    FROM gradingsystem.classworks 
+                    FROM classworks 
                     WHERE assessment_id = {$classwork['assessment_id']} 
                     ORDER BY score DESC 
                     LIMIT 10
@@ -204,7 +211,7 @@
         $top_students = $query->result_array();
         ?>
 
-        <?php if (isset($classwork['code'])): ?>
+        <?php if (isset($classwork['code']) &&  date('Y-m-d') ==  $date_a_week): ?>
           <?php foreach (json_decode($classwork['code'], true) as $index => $result): ?>
             <div class="mb-4 text-left">
               <p class="fw-bold"><b>Question <?= $index + 1 ?>: </b><?= nl2br(htmlspecialchars($result['question'])) ?></p>

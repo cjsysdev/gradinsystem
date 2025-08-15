@@ -74,6 +74,7 @@ $route['sectionFinalGrades/(:any)'] = 'GradesController/sectionFinalGrades/$1';
 
 // Attendance Routes
 $route['attendance'] = 'AttendanceController/attendance_main';
+$route['attendance_visualizer'] = 'AttendanceController/attendance_visualizer';
 
 // Classwork Routes
 $route['classwork'] = 'ClassworkController/classwork';

@@ -15,8 +15,7 @@ class GradesController extends CI_Controller
         $not_cleared = ($this->class_student->where(['is_cleared' => NULL])->as_array()->fields('student_id')->get_all());
         $not_cleared = array_column($not_cleared, 'student_id');
         // if (in_array($this->session->student_id, $not_cleared)) redirect('attendance');
-        $midtermGrades = $this->classworks->getGradesByIotype('midterm', $this->session->student_id);
-
+        $midtermGrades = $this->classworks->getGradesByIotype('midterm', $this->session->student_id) ?? [];
         $midtermTotalGrade = 0;
         foreach ($midtermGrades as $grade) {
             $midtermTotalGrade += $grade['percentage'] * ($grade['iotype_percentage'] / 100);
