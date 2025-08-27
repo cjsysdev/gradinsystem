@@ -143,7 +143,24 @@
                 <strong><?= $absences / 2 ?> Missed Sessions</strong>
             </div>
         </div>
-
+        <?php if (!empty($absences_dates)): ?>
+            <h4 class="text-center">Absences</h4>
+        <?php endif; ?>
+        <?php foreach ($absences_dates as $absence): ?>
+            <div class="row m-1">
+                <div class="col alert alert-secondary">
+                    <strong>
+                        <?= htmlspecialchars($absence['type']) ?>
+                        <?= date('l, F j, Y', strtotime($absence['date'])) ?>
+                    </strong>
+                </div>
+                <form method="post" action="<?= base_url('add_reason') ?>" class="d-flex">
+                    <input type="hidden" name="attendance_id" value="<?= $absence['attendance_id'] ?>">
+                    <input type="text" name="reason" class="form-control mr-2" placeholder="Enter reason..." required>
+                    <button type="submit" class="btn btn-success">Add Reason</button>
+                </form>
+            </div>
+        <?php endforeach; ?>
         <div class="container mt-1 mb-5 p-0">
             <div id="calendar"></div>
         </div>

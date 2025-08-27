@@ -46,8 +46,15 @@ class AdminController extends CI_Controller
     {
         // Fetch all assessments for the dropdown
 
+        $day = date('D');
+        $class = $this->class_schedule->class_today($day);
+
         $term = 'midterm';
-        $data['assessments'] = $this->assessments->where(['term' => $term])->order_by('schedule_id', 'asc')
+
+        $data['assessments'] = (isset($class['schedule_id'])) ?
+            $this->assessments->where(['term' => $term, 'schedule_id' => $class["schedule_id"]])->order_by('schedule_id', 'asc')
+            ->with_class_schedule()->as_array()->get_all() :
+            $this->assessments->where(['term' => $term])->order_by('schedule_id', 'asc')
             ->with_class_schedule()->as_array()->get_all();
 
         // Fetch submissions for the selected assessment

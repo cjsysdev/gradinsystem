@@ -56,7 +56,6 @@
                                 <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#viewSubmissionModal" onclick="loadSubmission(<?= htmlspecialchars(json_encode($row['code']), ENT_QUOTES, 'UTF-8') ?>, '<?= $row['file_upload'] ?>')">
                                     View Submission
                                 </button>
-
                                 <!-- Form to submit score -->
                                 <form action="<?= base_url('ClassworkController/add_score') ?>" method="POST">
                                     <input type="hidden" name="classwork_id" value="<?= $row['classwork_id'] ?>">
@@ -71,6 +70,7 @@
                                         <a href="<?= base_url('add_rand_score/' . $row['classwork_id'] . '/9' . "/$selected_assessment_id") ?>" type="button" class="btn btn-outline-secondary mr-1 ml-1" name="score" value="good">9</a>
                                         <a href="<?= base_url('add_rand_score/' . $row['classwork_id'] . '/10' . "/$selected_assessment_id") ?>" type="button" class="btn btn-outline-secondary mr-1 ml-1" name="score" value="good">10</a><button type="submit" class="btn btn-info mr-1 ml-1">Submit</button>
                                     </div>
+                                    <iframe src="<?= base_url("uploads/classworks/{$row['file_upload']}") ?>" width="100%" height="600px" style="border: none;"></iframe>
                                 </form>
                             </div>
                         </div>

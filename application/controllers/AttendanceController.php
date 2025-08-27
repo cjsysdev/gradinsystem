@@ -64,11 +64,19 @@ class AttendanceController extends CI_Controller
             $date
         );
 
+        $absences_dates = $this->attendance->get_student_absences(
+            $student_id,
+            $account->section,
+            $start_date,
+            $date
+        );
+
         $data = [
             'class' => $class,
             'record' => $attendance_record,
             'events' => json_encode($attendance_record),
             'absences' => $absences,
+            'absences_dates' => $absences_dates,
             'present' => $this->attendance->get_present_days(
                 $student_id,
                 $account->section,
@@ -77,8 +85,6 @@ class AttendanceController extends CI_Controller
             ),
             'show_red_overlay' => $absences >= 10,
         ];
-
-        // var_dump($data);
 
         $this->load->view('attendance_view', $data);
     }
@@ -186,5 +192,19 @@ class AttendanceController extends CI_Controller
         ];
 
         $this->load->view('attendance_visualizer', $data);
+    }
+
+    public function add_reason()
+    {
+        $attendance_id = $this->input->post('attendance_id');
+        $reason = $this->input->post('reason');
+
+        if ($attendance_id && $reason) {
+            $this->attendance->add_reason($attendance_id, ["reason" => $reason]);
+            $this->session->set_flashdata('success', 'Reason added successfully.');
+        } else {
+            $this->session->set_flashdata('error', 'Failed to add reason.');
+        }
+        redirect('attendance');
     }
 }

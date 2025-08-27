@@ -6,7 +6,7 @@ class attendance extends MY_Model
     public $table = 'attendance';
     public $primary_key = 'attendance_id';
     public $protected = ['attendance_id'];
-    public $fillable = ['status', 'schedule_id', 'student_id', 'ip_address', 'date'];
+    public $fillable = ['status', 'schedule_id', 'student_id', 'ip_address', 'date', 'reason'];
 
     public function __construct()
     {
@@ -166,6 +166,22 @@ class attendance extends MY_Model
         return $absent_days;
     }
 
+    public function get_student_absences($student_id, $section, $start_date, $end_date)
+    {
+        $query = $this->db->query(
+            "
+            SELECT *
+            FROM attendance a
+            JOIN class_schedule cs ON a.schedule_id = cs.schedule_id
+            WHERE cs.section = ? AND a.student_id = ? AND a.status = 'absent' AND a.reason IS NULL
+            AND DATE(a.date) BETWEEN ? AND ?
+        ",
+            [$section, $student_id, $start_date, $end_date]
+        );
+
+        return $query->result_array();
+    }
+
     public function get_attendance_by_section($section_id, $start_date)
     {
         $sql = "
@@ -223,5 +239,11 @@ class attendance extends MY_Model
         $query = $this->db->query($sql, [$section_id, $date]);
 
         return $query->result_array();
+    }
+
+    public function add_reason($attendance_id, $data)
+    {
+        $this->db->where('attendance_id', $attendance_id);
+        return $this->db->update($this->table, $data);
     }
 }
