@@ -15,7 +15,7 @@
                         </button>
                         <div class="card mb-3 shadow-sm mt-2">
                             <div class="card-body">
-                                <h3 id="student_name" class="card-title">lastname, firstname</h3>
+                                <h3 id="student_name" class="card-title text-center">lastname, firstname</h3>
                             </div>
                         </div>
                         <div class="row justify-content-center mt-3">
@@ -152,27 +152,48 @@
                                 ];
                             }, $submissions)) ?>;
 
+        const displayElem = document.getElementById('student_name');
+
         if (students.length > 0) {
-            const randomIndex = Math.floor(Math.random() * students.length);
-            const randomStudent = students[randomIndex];
+            let animationCount = 20; // Total frames
+            let currentFrame = 0;
+            let interval = 50; // Start fast
 
-            // Increment randomized count in DB
-            fetch('<?= base_url('AdminController/increment_randomized_count/') ?>' + randomStudent.classwork_id, {
-                method: 'POST'
-            });
+            function animate() {
+                const randIdx = Math.floor(Math.random() * students.length);
+                const s = students[randIdx];
+                displayElem.innerHTML = `
+                <span style="opacity:0.7;">${s.lastname}, ${s.firstname}</span>
+            `;
+                currentFrame++;
+                // Slow down as we approach the end
+                if (currentFrame > animationCount - 6) interval += 40;
+                if (currentFrame < animationCount) {
+                    setTimeout(animate, interval);
+                } else {
+                    // Final pick
+                    const randomIndex = Math.floor(Math.random() * students.length);
+                    const randomStudent = students[randomIndex];
 
-            // Calculate score: 10 - randomized_count (minimum 1)
-            const score = Math.max(1, 10 - parseInt(randomStudent.randomized_count));
+                    // Increment randomized count in DB
+                    fetch('<?= base_url('AdminController/increment_randomized_count/') ?>' + randomStudent.classwork_id, {
+                        method: 'POST'
+                    });
 
-            document.getElementById('student_name').innerHTML = `
-            ${randomStudent.classwork_id} - ${randomStudent.lastname}, ${randomStudent.firstname}
-            <a href="#" onclick="addScore(${randomStudent.classwork_id}, ${score}); return false;" class="btn btn-outline-secondary btn-sm ml-2" name="score" value="good">
-                SCORE (${score})
-            </a>
-            <span class="badge bg-info ml-2">${parseInt(randomStudent.randomized_count) + 1}</span>
-        `;
+                    // Calculate score: 10 - randomized_count (minimum 1)
+                    const score = Math.max(1, 10 - parseInt(randomStudent.randomized_count));
+
+                    displayElem.innerHTML = `
+                    <b>${randomStudent.lastname}, ${randomStudent.firstname}</b>
+                    <a class="badge bg-secondary m-2 text-white text-center" href="#" onclick="addScore(${randomStudent.classwork_id}, ${score}); return false;" class="btn btn-outline-secondary btn-sm ml-2" name="score" value="good">
+                     ${score}
+                    </a>
+                `;
+                }
+            }
+            animate();
         } else {
-            document.getElementById('student_name').innerText = 'No students available for random selection.';
+            displayElem.innerText = 'No students available for random selection.';
         }
     }
 

@@ -154,10 +154,16 @@
                         <?= date('l, F j, Y', strtotime($absence['date'])) ?>
                     </strong>
                 </div>
-                <form method="post" action="<?= base_url('add_reason') ?>" class="d-flex">
+                <form method="post" action="<?= base_url('add_reason') ?>" class="row align-items-center p-2" style="background:#f8f9fa; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.04); margin-bottom:8px;">
                     <input type="hidden" name="attendance_id" value="<?= $absence['attendance_id'] ?>">
-                    <input type="text" name="reason" class="form-control mr-2" placeholder="Enter reason..." required>
-                    <button type="submit" class="btn btn-success">Add Reason</button>
+                    <div class="col-md-8 col-12 mb-2 mb-md-0">
+                        <input type="text" name="reason" class="form-control" placeholder="Enter reason for absence..." required style="border-radius:6px;">
+                    </div>
+                    <div class="col-md-4 col-12 text-md-right text-center">
+                        <button type="submit" class="btn btn-success btn-block px-4" style="border-radius:6px;">
+                            <i class="fa fa-paper-plane mr-1"></i>
+                        </button>
+                    </div>
                 </form>
             </div>
         <?php endforeach; ?>

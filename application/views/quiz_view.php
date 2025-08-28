@@ -200,7 +200,7 @@
             }
             document.body.classList.add('locked');
             quizStarted = true;
-            console.log('Quiz started, fullscreen mode entered.');
+            // console.log('Quiz started, fullscreen mode entered.');
         }
 
         // Update display
@@ -231,26 +231,22 @@
             }
         }
 
-        // Save and load answers (from previous implementation)
-
-        console.log(localStorage);
-
+        // Save all answers in one object
+        let quizAnswers = JSON.parse(localStorage.getItem('quiz_answers')) || {};
         const radioButtons = document.querySelectorAll('.form-check-input');
         radioButtons.forEach(radio => {
             radio.addEventListener('change', function() {
-                if (!quizStarted) enterFullscreen();
-                const questionIndex = this.dataset.question;
-                const answer = this.value;
-                localStorage.setItem(`quiz_answer_${questionIndex}`, answer);
-                checkAllAnswered(); // Check if all questions are answered
+                quizAnswers[this.dataset.question] = this.value;
+                localStorage.setItem('quiz_answers', JSON.stringify(quizAnswers));
+                checkAllAnswered();
             });
         });
 
         function loadSavedAnswers() {
+            quizAnswers = JSON.parse(localStorage.getItem('quiz_answers')) || {};
             radioButtons.forEach(radio => {
                 const questionIndex = radio.dataset.question;
-                const savedAnswer = localStorage.getItem(`quiz_answer_${questionIndex}`);
-                if (savedAnswer && radio.value === savedAnswer) {
+                if (quizAnswers[questionIndex] && radio.value === quizAnswers[questionIndex]) {
                     radio.checked = true;
                 }
             });
@@ -294,7 +290,7 @@
             if (quizStarted) {
                 blurCount++;
                 warningOverlay.style.display = 'block';
-                console.log('Window blurred. Blur count:', blurCount);
+                // console.log('Window blurred. Blur count:', blurCount);
                 // Log to hidden input for server-side tracking
                 let blurInput = document.createElement('input');
                 blurInput.type = 'hidden';
@@ -309,7 +305,7 @@
                 setTimeout(function() {
                     warningOverlay.style.display = 'none';
                 }, 3000);
-                console.log('Window focused.');
+                // console.log('Window focused.');
             }
         });
 
@@ -365,9 +361,7 @@
                 return;
             }
             if (navigator.onLine) {
-                for (let i = 0; i < <?= $totalQuestions; ?>; i++) {
-                    localStorage.removeItem(`quiz_answer_${i}`);
-                }
+                localStorage.removeItem('quiz_answers');
             }
         });
 
@@ -408,6 +402,10 @@
 
         startTimer(totalTime, timerElement);
         checkAllAnswered(); // Initial check to see if all questions are already answered
+    });
+
+    window.addEventListener('beforeunload', function() {
+        localStorage.setItem('remainingTime', timer);
     });
 </script>
 
