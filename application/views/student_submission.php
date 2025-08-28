@@ -1,6 +1,27 @@
 <?php $this->load->view('header') ?>
 
 <style>
+  body,
+  .container,
+  .card,
+  .card-body,
+  .card-header,
+  .card-footer,
+  pre,
+  code,
+  textarea,
+  input,
+  .submission-container {
+    user-select: none !important;
+  }
+
+  body {
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    user-select: none !important;
+  }
+
   /* Default font size */
   .CodeMirror {
     font-size: 14px;
@@ -172,7 +193,7 @@
 <?php
 $date = new DateTime($classwork['created_at']);
 $dateStr = $date->format('Y-m-d H:i:s');
-$date->modify('+1 week');
+$date->modify('+3 days');
 $date_a_week = $date->format('Y-m-d');
 ?>
 
@@ -211,9 +232,28 @@ $date_a_week = $date->format('Y-m-d');
         $top_students = $query->result_array();
         ?>
 
-        <?php if (isset($classwork['code']) &&  date('Y-m-d') ==  $date_a_week): ?>
+        <?php if (isset($classwork['code']) && date('Y-m-d') >= $date_a_week): ?>
           <?php foreach (json_decode($classwork['code'], true) as $index => $result): ?>
-            <div class="mb-4 text-left">
+            <div class="mb-4 text-left position-relative" style="position:relative;">
+              <!-- Watermark for each question -->
+              <div style="
+                          position: absolute;
+                          top: 40%;
+                          left: 50%;
+                          transform: translate(-50%, -50%);
+                          font-size: 40px;
+                          color: rgba(200,0,0,0.15);
+                          font-weight: bold;
+                          pointer-events: none;
+                          z-index: 10;
+                          text-align: center;
+                          width: 100%;
+                          user-select: none;
+                          opacity: 0.3;
+                        ">
+                <?= $this->session->lastname . ' ' . $this->session->firstname ?? 'Student' ?><br>
+                <?= date('Y-m-d H:i:s') ?>
+              </div>
               <p class="fw-bold"><b>Question <?= $index + 1 ?>: </b><?= nl2br(htmlspecialchars($result['question'])) ?></p>
               <p>Your answer: <span class="<?= $result['is_correct'] ? 'correct' : 'incorrect' ?>"><?= $result['user_answer'] ?></span></p>
               <p>Correct answer: <?= $result['correct_answer'] ?></p>
@@ -337,6 +377,21 @@ $date_a_week = $date->format('Y-m-d');
   function view_score() {
     animateNumber(<?= $classwork['score'] ?>, 2500);
   }
+  // Disable right-click context menu
+  document.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+  });
+
+  // Disable copy, cut, paste keyboard shortcuts
+  document.addEventListener('copy', function(e) {
+    e.preventDefault();
+  });
+  document.addEventListener('cut', function(e) {
+    e.preventDefault();
+  });
+  document.addEventListener('paste', function(e) {
+    e.preventDefault();
+  });
 </script>
 
 <?php $this->load->view('footer') ?>

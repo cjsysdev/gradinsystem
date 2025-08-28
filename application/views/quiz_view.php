@@ -122,6 +122,11 @@
                                 <div class="mb-4">
                                     <div class="question-block">
                                         <strong>Question <?= $i + 1 ?>:</strong> <?= nl2br(htmlspecialchars($questions[$i]['question'])) ?>
+                                        <?php if (!empty($questions[$i]['code'])): ?>
+                                            <pre class="cm-s-default" style="background:#f5f5f5;border:1px solid #ddd;padding:10px;margin-top:8px;">
+                                                <code><?= htmlspecialchars($questions[$i]['code']) ?></code>
+                                            </pre>
+                                        <?php endif; ?>
                                     </div>
                                     <?php foreach ($questions[$i]['choices'] as $choiceIndex => $choice): ?>
                                         <div>
