@@ -140,13 +140,15 @@
         }
     }
 
+
     function randomizeStudent() {
         const students = <?= json_encode(array_map(function ($row) {
                                 return [
                                     'classwork_id' => $row['classwork_id'],
                                     'lastname' => $row['lastname'],
                                     'firstname' => $row['firstname'],
-                                    'student_id' => $row['trans_no']
+                                    'student_id' => $row['trans_no'],
+                                    'randomized_count' => $row['randomized_count'] ?? 0
                                 ];
                             }, $submissions)) ?>;
 
@@ -154,13 +156,76 @@
             const randomIndex = Math.floor(Math.random() * students.length);
             const randomStudent = students[randomIndex];
 
+            // Increment randomized count in DB
+            fetch('<?= base_url('AdminController/increment_randomized_count/') ?>' + randomStudent.classwork_id, {
+                method: 'POST'
+            });
+
+            // Calculate score: 10 - randomized_count (minimum 1)
+            const score = Math.max(1, 10 - parseInt(randomStudent.randomized_count));
+
             document.getElementById('student_name').innerHTML = `
-                    ${randomStudent.classwork_id} - ${randomStudent.lastname}, ${randomStudent.firstname}
-                    <a href="<?= base_url('add_rand_score/') ?>${randomStudent.classwork_id}/10/<?= $selected_assessment_id ?>" type="button" class="btn btn-outline-secondary btn-sm ml-2" name="score" value="good">SCORE</a>
-                `;
+            ${randomStudent.classwork_id} - ${randomStudent.lastname}, ${randomStudent.firstname}
+            <a href="#" onclick="addScore(${randomStudent.classwork_id}, ${score}); return false;" class="btn btn-outline-secondary btn-sm ml-2" name="score" value="good">
+                SCORE (${score})
+            </a>
+            <span class="badge bg-info ml-2">${parseInt(randomStudent.randomized_count) + 1}</span>
+        `;
         } else {
             document.getElementById('student_name').innerText = 'No students available for random selection.';
         }
+    }
+
+    // AJAX call to add score using classworks->add_score
+    function addScore(classwork_id, score) {
+        // Remove any existing alert
+        const oldAlert = document.getElementById('score-alert');
+        if (oldAlert) oldAlert.remove();
+
+        fetch('<?= base_url('AdminController/add_score/') ?>' + classwork_id + '/' + score, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Bootstrap 4 alert
+                const alertDiv = document.createElement('div');
+                alertDiv.id = 'score-alert';
+                alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed';
+                alertDiv.style.top = '20px';
+                alertDiv.style.right = '20px';
+                alertDiv.style.zIndex = '9999';
+                alertDiv.innerHTML = `
+            <strong>Score added!</strong>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        `;
+                document.body.appendChild(alertDiv);
+
+                // Auto-dismiss after 2 seconds
+                setTimeout(() => {
+                    $(alertDiv).alert('close');
+                }, 2000);
+            })
+            .catch(error => {
+                const alertDiv = document.createElement('div');
+                alertDiv.id = 'score-alert';
+                alertDiv.className = 'alert alert-danger alert-dismissible fade show position-fixed';
+                alertDiv.style.top = '20px';
+                alertDiv.style.right = '20px';
+                alertDiv.style.zIndex = '9999';
+                alertDiv.innerHTML = `
+            <strong>Error adding score.</strong>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        `;
+                document.body.appendChild(alertDiv);
+
+                setTimeout(() => {
+                    $(alertDiv).alert('close');
+                }, 2000);
+            });
     }
 
     const assessmentId = <?= json_encode($selected_assessment_id) ?>;
@@ -192,7 +257,6 @@
             })
             .catch(error => console.error('Error fetching submissions:', error));
     }
-
     // setInterval(checkNewSubmissions, 10000);
 </script>
 

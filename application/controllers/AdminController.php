@@ -247,4 +247,18 @@ class AdminController extends CI_Controller
         $this->class_student->clear_student($id);
         redirect('AdminController/uncleared_students/' . $section);
     }
+
+    public function increment_randomized_count($classwork_id)
+    {
+        $this->classworks->set('randomized_count', 'randomized_count+1', FALSE)
+            ->where('classwork_id', $classwork_id)
+            ->update('classwork');
+        echo json_encode(['success' => true]);
+    }
+
+    public function add_score($classwork_id, $score)
+    {
+        $result = $this->classworks->add_score($classwork_id, $score);
+        echo json_encode(['success' => $result]);
+    }
 }

@@ -193,7 +193,7 @@
 <?php
 $date = new DateTime($classwork['created_at']);
 $dateStr = $date->format('Y-m-d H:i:s');
-$date->modify('+3 days');
+$date->modify('-2 days');
 $date_a_week = $date->format('Y-m-d');
 ?>
 
