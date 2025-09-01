@@ -85,6 +85,10 @@ $route['start_class'] = 'ClassworkController/start_class';
 $route['add_score'] = 'ClassworkController/add_score';
 $route['add_rand_score/(:num)/(:num)/(:num)'] = 'ClassworkController/add_rand_score/$1/$2/$3';
 
+// Discussion Routes
+$route['discussion'] = 'DiscussionController/index';
+$route['discussion/structs'] = 'DiscussionController/structs';
+
 // Assessment Routes
 $route['assessment/(:num)'] = 'AssessmentController/assessment_view_code/$1';
 $route['assessment_view'] = 'AssessmentController/assessment_view';

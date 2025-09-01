@@ -1,5 +1,10 @@
 <?php $this->load->view('header') ?>
 
+<!-- Highlight.js CSS -->
+<link rel="stylesheet" href="<?= base_url('assets/highlights/atom-one-light.min.css') ?>">
+<!-- Highlight.js JS -->
+<script src="<?= base_url("assets/highlights/11.7.0-highlight.min.js") ?> "></script>
+
 <style>
     .form-check-label {
         display: block;
@@ -123,9 +128,9 @@
                                     <div class="question-block">
                                         <strong>Question <?= $i + 1 ?>:</strong> <?= nl2br(htmlspecialchars($questions[$i]['question'])) ?>
                                         <?php if (!empty($questions[$i]['code'])): ?>
-                                            <pre class="cm-s-default" style="background:#f5f5f5;border:1px solid #ddd;padding:10px;margin-top:8px;">
-                                                <code><?= htmlspecialchars($questions[$i]['code']) ?></code>
-                                            </pre>
+                                            <pre class="cm-s-default">
+<code class="language-c"><?= htmlspecialchars(ltrim($questions[$i]['code'])) ?></code>
+</pre>
                                         <?php endif; ?>
                                     </div>
                                     <?php foreach ($questions[$i]['choices'] as $choiceIndex => $choice): ?>
@@ -186,6 +191,8 @@
         let quizStarted = false;
         let totalTime = 60 * (<?= (int) $max_items ?> * 1.5);
 
+        hljs.highlightAll();
+
         // Fullscreen mode
         function enterFullscreen() {
             const elem = document.documentElement;
@@ -236,6 +243,7 @@
         const radioButtons = document.querySelectorAll('.form-check-input');
         radioButtons.forEach(radio => {
             radio.addEventListener('change', function() {
+                if (!quizStarted) enterFullscreen();
                 quizAnswers[this.dataset.question] = this.value;
                 localStorage.setItem('quiz_answers', JSON.stringify(quizAnswers));
                 checkAllAnswered();
@@ -402,10 +410,6 @@
 
         startTimer(totalTime, timerElement);
         checkAllAnswered(); // Initial check to see if all questions are already answered
-    });
-
-    window.addEventListener('beforeunload', function() {
-        localStorage.setItem('remainingTime', timer);
     });
 </script>
 
