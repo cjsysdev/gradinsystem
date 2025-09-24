@@ -232,7 +232,7 @@ $date_a_week = $date->format('Y-m-d');
         $top_students = $query->result_array();
         ?>
 
-        <?php if (isset($classwork['code']) && date('Y-m-d') >= $date_a_week): ?>
+        <?php if (isset($classwork['code']) && date('Y-m-d') >= $date_a_week && !$this->session->exam_term): ?>
           <?php foreach (json_decode($classwork['code'], true) as $index => $result): ?>
             <div class="mb-4 text-left position-relative" style="position:relative;">
               <!-- Watermark for each question -->
@@ -358,8 +358,6 @@ $date_a_week = $date->format('Y-m-d');
         });
     }
   }
-
-  hljs.highlightAll();
 </script>
 
 <script src="<?= base_url('assets/highlights/11.7.0-highlight.min.js') ?>"></script>

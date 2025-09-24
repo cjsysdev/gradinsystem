@@ -84,8 +84,9 @@ class GradesController extends CI_Controller
 
         foreach ($studentsGrades as $studentId => &$student) {
             if (!$student['has_iotype_2'] || !$student['has_iotype_3'] || $student['is_incomplete']) {
-                $student['midterm_total_grade'] = 'INC';
-                $student['grade_point'] = 'INC';
+                // $student['midterm_total_grade'] = 'INC';
+                // $student['grade_point'] = 'INC';
+                $student['grade_point'] = convertPercentageToGradePoint($student['midterm_total_grade']);
             } else {
                 $student['grade_point'] = convertPercentageToGradePoint($student['midterm_total_grade']);
             }
@@ -189,5 +190,69 @@ class GradesController extends CI_Controller
 
         $this->load->view('section_grades_finals', $data);
         // $this->load->view('section_inc_grades', $data);
+    }
+
+    public function sectionGradesPerType($section)
+    {
+        $term = 'midterm';
+        $grades = $this->classworks->getGradesBySection($term, $section);
+
+        $studentsGrades = [];
+
+        var_dump($grades);
+        foreach ($grades as $grade) {
+            $studentId = $grade['student_id'];
+
+            if (!isset($studentsGrades[$studentId])) {
+                $studentsGrades[$studentId] = [
+                    'student_id' => $studentId,
+                    'firstname' => $grade['firstname'],
+                    'lastname' => $grade['lastname'],
+                    'section' => $grade['section'],
+                    'midterm_total_grade' => 0,
+                    'grade_point' => 0,
+                    'has_iotype_2' => false,
+                    'has_iotype_3' => false,
+                    'is_incomplete' => false,
+                ];
+            }
+
+
+            if ($grade['iotype_id'] == 2) {
+                $studentsGrades[$studentId]['has_iotype_2'] = true;
+                if (is_null($grade['total_score']) || is_null($grade['percentage'])) {
+                    $studentsGrades[$studentId]['is_incomplete'] = true;
+                }
+            }
+            if ($grade['iotype_id'] == 3) {
+                $studentsGrades[$studentId]['has_iotype_3'] = true;
+                if (is_null($grade['total_score']) || is_null($grade['percentage'])) {
+                    $studentsGrades[$studentId]['is_incomplete'] = true;
+                }
+            }
+
+            if (!$studentsGrades[$studentId]['is_incomplete']) {
+                $studentsGrades[$studentId]['midterm_total_grade'] += $grade['percentage'] * ($grade['iotype_percentage'] / 100);
+            }
+        }
+
+        foreach ($studentsGrades as $studentId => &$student) {
+            if (!$student['has_iotype_2'] || !$student['has_iotype_3'] || $student['is_incomplete']) {
+                // $student['midterm_total_grade'] = 'INC';
+                // $student['grade_point'] = 'INC';
+                $student['grade_point'] = convertPercentageToGradePoint($student['midterm_total_grade']);
+            } else {
+                $student['grade_point'] = convertPercentageToGradePoint($student['midterm_total_grade']);
+            }
+        }
+
+        $data['studentsGrades'] = $studentsGrades;
+        $data['term'] = $term;
+        $data['section'] = $section;
+        $data['class_code'] = $grades[0]['class_code'] ?? '';
+        $data['class_name'] = $grades[0]['class_name'] ?? '';
+        $data['schedule'] = $grades[0]['schedule'] ?? '';
+
+        $this->load->view('section_grades', $data);
     }
 }

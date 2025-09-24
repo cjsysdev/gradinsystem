@@ -2,11 +2,11 @@
     <!-- The navigation bar will be dynamically hidden if discussion mode is activated -->
     <?php if (!$this->session->exam_term): ?>
         <div class="form-group row">
-            <a href="<?= base_url('attendance') ?>" class="btn btn-outline-secondary col m-2">Attendance</a>
-            <a href="<?= base_url('classwork') ?>" class="btn btn-outline-success col m-2">Classwork</a>
+            <a href="<?= base_url('attendance') ?>" class="btn btn-outline-secondary col m-2"><i class="fa fa-check-circle" aria-hidden="true"></i> Attendance</a>
+            <a href="<?= base_url('classwork') ?>" class="btn btn-outline-success col m-2"><i class="fa fa-book" aria-hidden="true"></i> Classwork</a>
             <!-- <a href="<?= base_url('output_upload') ?>" class="btn btn-outline-secondary col m-2">Project</a> -->
-            <a href="<?= base_url('grades') ?>" class="btn btn-outline-secondary col m-2">Grades</a>
-            <a href="<?= base_url('discussion') ?>" class="btn btn-outline-info col m-2">Discussion</a>
+            <a href="<?= base_url('grades') ?>" class="btn btn-outline-secondary col m-2"><i class="fa fa-graduation-cap" aria-hidden="true"></i> Grades</a>
+            <a href="<?= base_url('discussion') ?>" class="btn btn-outline-info col m-2"><i class="fa fa-comments" aria-hidden="true"></i> Discussion</a>
         </div>
     <?php else: ?>
         <div class="form-group row">

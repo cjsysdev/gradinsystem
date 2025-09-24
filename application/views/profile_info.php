@@ -8,7 +8,7 @@
 			<p style="font-size: 11px;"><?= $this->session->student_id ?> - <?= $this->session->student_no ?> - <?= $this->session->section ?></p>
 		</div>
 		<div class="col text-center">
-			<!-- <a href="<?= base_url("update_account_form") ?>" class=" btn btn-outline-dark"><i class="fa fa-user" aria-hidden="true"></i></a> -->
+			<!-- <a title="survey" href="" class=" btn btn-outline-dark"><i class="fa fa-list" aria-hidden="true"></i> Survey</a> -->
 			<a href="<?= base_url("logout") ?>" class=" btn btn-outline-dark">Logout</a>
 		</div>
 	</div>

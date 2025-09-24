@@ -45,7 +45,7 @@
                 </p>
               </div>
               <div class="card-body">
-                <p class="card-text mb-3 text-truncate"><?= $row['description'] ?></p>
+                <p class="card-text mb-3 <?= ($row['iotype_id'] == 3) ? "" : "text-truncate" ?>"><?= $row['description'] ?></p>
                 <a href="<?= base_url('assessment/' . $row['assessment_id']) ?>" class="btn btn-info btn-block">
                   <?= ($row['iotype_id'] == 3) ? "Start Exam" : "Create" ?>
                 </a>

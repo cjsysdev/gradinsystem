@@ -64,10 +64,10 @@
                                     <div class="input-group mb-3">
                                         <a href="<?= base_url('add_rand_score/' . $row['classwork_id'] . '/5' . "/$selected_assessment_id") ?>" type="button" class="btn btn-outline-secondary mr-1 ml-1" name="score" value="good">Late</a>
                                         <input type="decimal" name="score" class="form-control mr-1 ml-1" placeholder="Enter score" min="0" required>
-                                        <a href="<?= base_url('add_rand_score/' . $row['classwork_id'] . '/6' . "/$selected_assessment_id") ?>" type="button" class="btn btn-outline-secondary mr-1 ml-1" name="score" value="good">6</a>
-                                        <a href="<?= base_url('add_rand_score/' . $row['classwork_id'] . '/7' . "/$selected_assessment_id") ?>" type="button" class="btn btn-outline-secondary mr-1 ml-1" name="score" value="good">7</a>
-                                        <a href="<?= base_url('add_rand_score/' . $row['classwork_id'] . '/8' . "/$selected_assessment_id") ?>" type="button" class="btn btn-outline-secondary mr-1 ml-1" name="score" value="good">8</a>
-                                        <a href="<?= base_url('add_rand_score/' . $row['classwork_id'] . '/9' . "/$selected_assessment_id") ?>" type="button" class="btn btn-outline-secondary mr-1 ml-1" name="score" value="good">9</a>
+                                        <!-- <a href="<?= base_url('add_rand_score/' . $row['classwork_id'] . '/6' . "/$selected_assessment_id") ?>" type="button" class="btn btn-outline-secondary mr-1 ml-1" name="score" value="good">6</a> -->
+                                        <!-- <a href="<?= base_url('add_rand_score/' . $row['classwork_id'] . '/7' . "/$selected_assessment_id") ?>" type="button" class="btn btn-outline-secondary mr-1 ml-1" name="score" value="good">7</a> -->
+                                        <!-- <a href="<?= base_url('add_rand_score/' . $row['classwork_id'] . '/8' . "/$selected_assessment_id") ?>" type="button" class="btn btn-outline-secondary mr-1 ml-1" name="score" value="good">8</a> -->
+                                        <!-- <a href="<?= base_url('add_rand_score/' . $row['classwork_id'] . '/9' . "/$selected_assessment_id") ?>" type="button" class="btn btn-outline-secondary mr-1 ml-1" name="score" value="good">9</a> -->
                                         <a href="<?= base_url('add_rand_score/' . $row['classwork_id'] . '/10' . "/$selected_assessment_id") ?>" type="button" class="btn btn-outline-secondary mr-1 ml-1" name="score" value="good">10</a><button type="submit" class="btn btn-info mr-1 ml-1">Submit</button>
                                     </div>
                                     <!-- <iframe src="<?= base_url("uploads/classworks/{$row['file_upload']}") ?>" width="100%" height="600px" style="border: none;"></iframe> -->

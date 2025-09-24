@@ -88,6 +88,7 @@ $route['add_rand_score/(:num)/(:num)/(:num)'] = 'ClassworkController/add_rand_sc
 // Discussion Routes
 $route['discussion'] = 'DiscussionController/index';
 $route['discussion/structs'] = 'DiscussionController/structs';
+$route['discussion/includes'] = 'DiscussionController/includes';
 
 // Assessment Routes
 $route['assessment/(:num)'] = 'AssessmentController/assessment_view_code/$1';
