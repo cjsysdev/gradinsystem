@@ -7,12 +7,13 @@
     $this->load->view('profile_only');
     $this->load->view('admin/nav_bar');
     ?>
-    <!-- Search Form -->
-    <form method="GET" action="<?= base_url('AdminController/student_submissions') ?>" class="mb-4">
+
+    <form id="studentSearchForm" class="mb-4">
         <div class="input-group">
-            <input type="text" name="search" class="form-control" placeholder="Search by Firstname or Lastname" value="<?= $this->input->get('search') ?>">
+            <input type="text" id="studentSearchInput" class="form-control" placeholder="Search by Firstname or Lastname">
             <button type="submit" class="btn btn-primary">Search</button>
         </div>
+        <select id="studentDropdown" name="student_id" class="form-control mt-2" style="display:none;"></select>
     </form>
 
     <?php if (!empty($submissions)): ?>
@@ -44,12 +45,20 @@
                                     <input type="hidden" name="assessment_id" value="<?= $classwork['assessment_id'] ?>">
                                     <input type="hidden" name="student_id" value="<?= $classwork['student_id'] ?>">
                                     <input type="number" name="score" class="form-control d-inline w-25" placeholder="Enter score" min="0" required>
-                                    <button type="submit" class="btn btn-info btn-sm">Add Score</button>
+                                    <button type="submit" class="btn btn-info btn-sm"><i class="fa fa-plus" aria-hidden="true"></i></button>
                                 </form>
+                                <!-- Button to view classwork -->
+                                <button type="button" class="btn btn-outline-primary btn-sm ml-2" onclick="loadSubmission('<?= htmlspecialchars($classwork['code'] ?? '') ?>', '<?= htmlspecialchars($classwork['file_upload'] ?? '') ?>')" data-toggle="modal" data-target="#viewSubmissionModal">
+                                    <i class="fa fa-folder-open" aria-hidden="true"></i>
+                                </button>
                             <?php elseif ($classwork['status'] === 'missing'): ?>
                                 <span class="text-muted">No actions available</span>
                             <?php else: ?>
                                 <span class="text-muted">Graded</span>
+                                <!-- Button to view classwork -->
+                                <button type="button" class="btn btn-outline-primary btn-sm ml-2" onclick="loadSubmission('<?= htmlspecialchars($classwork['code'] ?? '') ?>', '<?= htmlspecialchars($classwork['file_upload'] ?? '') ?>')" data-toggle="modal" data-target="#viewSubmissionModal">
+                                    <i class="fa fa-folder-open" aria-hidden="true"></i>
+                                </button>
                             <?php endif; ?>
                         </td>
                     </tr>
@@ -83,6 +92,40 @@
 </div>
 
 <script>
+    document.getElementById('studentSearchForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const searchVal = document.getElementById('studentSearchInput').value.trim();
+        if (!searchVal) return;
+
+        fetch('<?= base_url('AdminController/search_students?search=') ?>' + encodeURIComponent(searchVal))
+            .then(res => res.json())
+            .then(students => {
+                const dropdown = document.getElementById('studentDropdown');
+                dropdown.innerHTML = '';
+                if (students.length > 0) {
+                    dropdown.style.display = 'block';
+                    students.forEach(student => {
+                        const option = document.createElement('option');
+                        option.value = student.trans_no;
+                        option.textContent = `${student.firstname} ${student.lastname} (${student.trans_no})`;
+                        dropdown.appendChild(option);
+                    });
+                    // If only one student, auto-redirect
+                    if (students.length === 1) {
+                        window.location.href = '<?= base_url('AdminController/student_submissions?student_id=') ?>' + students[0].trans_no;
+                    }
+                } else {
+                    dropdown.style.display = 'none';
+                    alert('No students found.');
+                }
+            });
+    });
+
+    // On dropdown change, reload page with selected student
+    document.getElementById('studentDropdown').addEventListener('change', function() {
+        window.location.href = '<?= base_url('AdminController/student_submissions?student_id=') ?>' + this.value;
+    });
+
     function loadSubmission(code, fileUpload) {
         const submissionContent = document.getElementById('submissionContent');
 

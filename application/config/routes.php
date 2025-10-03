@@ -83,6 +83,7 @@ $route['submit_classwork'] = 'ClassworkController/submit_classwork';
 $route['student_submission/(:num)'] = 'ClassworkController/student_submission/$1';
 $route['start_class'] = 'ClassworkController/start_class';
 $route['add_score'] = 'ClassworkController/add_score';
+$route['error_submission'] = 'ClassworkController/error_submission';
 $route['add_rand_score/(:num)/(:num)/(:num)'] = 'ClassworkController/add_rand_score/$1/$2/$3';
 
 // Discussion Routes

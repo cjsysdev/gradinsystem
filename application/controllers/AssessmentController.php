@@ -43,9 +43,9 @@ class AssessmentController extends CI_Controller
     {
         $filename = $this->class_student->get(
             ['student_id' => $this->session->student_id]
-        )->section . "-MID-PT-" . $this->session->lastname;
+        )->section . $this->session->lastname . time();
 
-        $config['upload_path'] = './uploads/outputs';
+        $config['upload_path'] = './uploads/error_submission';
         $config['allowed_types'] = '*';
         $config['max_size'] = 51200; // 50MB
         $config['file_name'] = $filename;

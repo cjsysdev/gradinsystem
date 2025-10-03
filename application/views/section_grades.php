@@ -56,7 +56,7 @@
         /* Ensure background colors are printed */
         @media print {
             table tbody tr.highlight-inc {
-                background-color:rgb(250, 235, 236) !important;
+                background-color: rgb(250, 235, 236) !important;
                 /* Light red */
                 -webkit-print-color-adjust: exact;
                 /* For WebKit browsers */
@@ -118,8 +118,7 @@
     <thead>
         <tr>
             <th>Student ID</th>
-            <th>Lastname</th>
-            <th>Firstname</th>
+            <th>Student Name (Lastname, First name M.I)</th>
             <th>Grade</th>
         </tr>
     </thead>
@@ -128,8 +127,10 @@
             <?php foreach ($studentsGrades as $student): ?>
                 <tr class="<?= $student['grade_point'] === 'INC' ? 'highlight-inc' : '' ?>">
                     <td><?= $student['student_id'] ?></td>
-                    <td><?= $student['lastname'] ?></td>
-                    <td><?= $student['firstname'] ?></td>
+                    <td><?= $student['lastname'] ?>, <?= $student['firstname'] ?>
+                        <?php if ($student['middlename'] != 'N/A') {
+                            echo $student['middlename'][0] . '.';
+                        } else '' ?></td>
                     <td><?= is_numeric($student['grade_point']) ? number_format(floor($student['grade_point'] * 10) / 10, 1) : $student['grade_point'] ?></td>
                 </tr>
             <?php endforeach; ?>

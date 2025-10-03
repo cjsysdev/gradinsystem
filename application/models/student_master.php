@@ -18,4 +18,11 @@ class student_master extends MY_Model
         );
         parent::__construct();
     }
+
+    public function search_by_name($search)
+    {
+        $this->db->like('firstname', $search);
+        $this->db->or_like('lastname', $search);
+        return $this->db->get('student_master')->result_array();
+    }
 }

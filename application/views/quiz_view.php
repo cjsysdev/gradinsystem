@@ -151,6 +151,12 @@
                         </div>
                     <?php endfor; ?>
 
+                    <div class="progress my-4" style="height: 30px;">
+                        <div id="quizProgressBar" class="progress-bar bg-info" role="progressbar" style="width: 0%; font-size: 18px;">
+                            Page <span id="currentPageNum">1</span> / <span id="totalPageNum"><?= $totalGroups ?></span>
+                        </div>
+                    </div>
+
                     <div class="navigation-buttons mt-4">
                         <div class="row">
                             <div class="col-6">
@@ -193,6 +199,33 @@
 
         hljs.highlightAll();
 
+        function updateDisplay() {
+            for (let i = 0; i < groups.length; i++) {
+                groups[i].classList.remove('active');
+            }
+            groups[currentGroup].classList.add('active');
+
+            prevBtn.hidden = (currentGroup === 0);
+            if (groups.length === 1) {
+                nextBtn.style.display = 'none';
+                submitBtn.style.display = 'block';
+            } else {
+                nextBtn.style.display = (currentGroup < groups.length - 1) ? 'block' : 'none';
+                submitBtn.style.display = (currentGroup === groups.length - 1) ? 'block' : 'none';
+            }
+
+            // Progress bar update
+            const progressBar = document.getElementById('quizProgressBar');
+            const currentPageNum = document.getElementById('currentPageNum');
+            const totalPageNum = document.getElementById('totalPageNum');
+            const percent = Math.round(((currentGroup + 1) / groups.length) * 100);
+
+            progressBar.style.width = percent + '%';
+            progressBar.textContent = `Page ${currentGroup + 1} / ${groups.length}`;
+            currentPageNum.textContent = currentGroup + 1;
+            totalPageNum.textContent = groups.length;
+        }
+
         // Fullscreen mode
         function enterFullscreen() {
             const elem = document.documentElement;
@@ -211,21 +244,21 @@
         }
 
         // Update display
-        function updateDisplay() {
-            for (let i = 0; i < groups.length; i++) {
-                groups[i].classList.remove('active');
-            }
-            groups[currentGroup].classList.add('active');
+        // function updateDisplay() {
+        //     for (let i = 0; i < groups.length; i++) {
+        //         groups[i].classList.remove('active');
+        //     }
+        //     groups[currentGroup].classList.add('active');
 
-            prevBtn.hidden = (currentGroup === 0);
-            if (groups.length === 1) {
-                nextBtn.style.display = 'none';
-                submitBtn.style.display = 'block';
-            } else {
-                nextBtn.style.display = (currentGroup < groups.length - 1) ? 'block' : 'none';
-                submitBtn.style.display = (currentGroup === groups.length - 1) ? 'block' : 'none';
-            }
-        }
+        //     prevBtn.hidden = (currentGroup === 0);
+        //     if (groups.length === 1) {
+        //         nextBtn.style.display = 'none';
+        //         submitBtn.style.display = 'block';
+        //     } else {
+        //         nextBtn.style.display = (currentGroup < groups.length - 1) ? 'block' : 'none';
+        //         submitBtn.style.display = (currentGroup === groups.length - 1) ? 'block' : 'none';
+        //     }
+        // }
 
         // Check if all questions are answered
         function checkAllAnswered() {
@@ -266,10 +299,7 @@
             if (currentGroup > 0) {
                 currentGroup--;
                 updateDisplay();
-                window.scrollTo({
-                    top: 0,
-                    behavior: 'smooth'
-                }); // Smooth scroll to the top of the page
+                window.scrollTo(0, 0); // Instantly jump to top
             }
         });
 
@@ -277,11 +307,8 @@
             e.preventDefault();
             if (currentGroup < groups.length - 1) {
                 currentGroup++;
+                window.scrollTo(0, 0); // Instantly jump to top
                 updateDisplay();
-                window.scrollTo({
-                    top: 0,
-                    behavior: 'smooth'
-                }); // Smooth scroll to the top of the page
             }
         });
 
@@ -289,7 +316,7 @@
         scrollToBottomBtn.addEventListener('click', function() {
             window.scrollTo({
                 top: document.body.scrollHeight,
-                behavior: 'smooth'
+                behavior: 'auto'
             });
         });
 
@@ -312,7 +339,7 @@
             if (quizStarted) {
                 setTimeout(function() {
                     warningOverlay.style.display = 'none';
-                }, 3000);
+                }, 15000);
                 // console.log('Window focused.');
             }
         });

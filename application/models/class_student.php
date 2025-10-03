@@ -67,4 +67,5 @@ class class_student extends MY_Model
             return [];
         }
     }
+
 }

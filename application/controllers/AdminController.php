@@ -148,27 +148,29 @@ class AdminController extends CI_Controller
 
     public function student_submissions()
     {
-        $search = $this->input->get('search');
+        $student_id = $this->input->get('student_id');
+        $data['students'] = $this->student_master->get_all(); // Already correct
 
-        if ($search) {
-            // Search for the student in the student_master table
-            $this->db->like('firstname', $search);
-            $this->db->or_like('lastname', $search);
-            $student = $this->db->get('student_master')->row_array();
-
-            if ($student) {
-                // Fetch submissions for the found student
-                $data['submissions'] = $this->classworks->get_submissions_by_student($student['trans_no']);
-            } else {
-                $data['submissions'] = [];
-                $this->session->set_flashdata('error', 'No student found with the given name.');
-            }
+        if ($student_id) {
+            // Fetch submissions for the selected student
+            $data['submissions'] = $this->classworks->get_submissions_by_student($student_id);
         } else {
             $data['submissions'] = [];
         }
 
         // Load the view
         $this->load->view('admin/student_submissions', $data);
+    }
+
+    public function search_students()
+    {
+        $search = $this->input->get('search');
+        $students = [];
+        if ($search) {
+            $students = $this->student_master->search_by_name($search); // Should return array
+        }
+        header('Content-Type: application/json');
+        echo json_encode($students);
     }
 
     public function view_attendance()

@@ -18,6 +18,7 @@
             <?php if (!in_array($this->session->student_id, $not_cleared)): ?>
                 <a href="<?= base_url('grades') ?>" class="btn btn-outline-secondary col m-2">Grades</a>
             <?php endif; ?>
+            <a href="<?= base_url('grades') ?>" class="btn btn-outline-secondary col m-2">Grades</a>
         </div>
     <?php endif; ?>
 </div>

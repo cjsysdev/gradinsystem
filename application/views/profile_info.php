@@ -5,7 +5,7 @@
 		</div>
 		<div class="col">
 			<h6 class="m-0"><strong><?= $this->session->lastname, ', ',  $this->session->firstname ?></strong></h6>
-			<p style="font-size: 11px;"><?= $this->session->student_id ?> - <?= $this->session->student_no ?> - <?= $this->session->section ?></p>
+			<p style="font-size: 15px;"> <span class="badge badge-info"> <?= $this->session->student_id ?></span> - <?= $this->session->student_no ?> - <?= $this->session->section ?></p>
 		</div>
 		<div class="col text-center">
 			<!-- <a title="survey" href="" class=" btn btn-outline-dark"><i class="fa fa-list" aria-hidden="true"></i> Survey</a> -->

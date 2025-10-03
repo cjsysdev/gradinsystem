@@ -55,6 +55,7 @@ class GradesController extends CI_Controller
                     'student_id' => $studentId,
                     'firstname' => $grade['firstname'],
                     'lastname' => $grade['lastname'],
+                    'middlename' => $grade['middlename'],
                     'section' => $grade['section'],
                     'midterm_total_grade' => 0,
                     'grade_point' => 0,

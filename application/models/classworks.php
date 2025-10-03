@@ -153,6 +153,7 @@ class classworks extends MY_Model
                 sm.trans_no AS student_id,
                 sm.firstname,
                 sm.lastname,
+                sm.middlename,
                 a.iotype_id,
                 i.type AS iotype_name,
                 i.percentage AS iotype_percentage,

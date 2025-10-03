@@ -140,4 +140,9 @@ class ClassworkController extends CI_Controller
             echo json_encode(['success' => false, 'message' => 'Failed to unsubmit classwork.']);
         }
     }
+
+    public function error_submission()
+    {
+        $this->load->view('output_upload');
+    }
 }
