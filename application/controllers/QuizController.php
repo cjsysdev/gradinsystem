@@ -93,6 +93,7 @@ class QuizController extends CI_Controller
 
             $results[] = [
                 'question' => $question['question'],
+                'code' => isset($question['code']) ? $question['code'] : null,
                 'user_answer' => $userAnswer,
                 'correct_answer' => $question['answer'],
                 'is_correct' => $isCorrect
