@@ -22,7 +22,7 @@
                         Total Midterm Grade:
                         <div class="progress m-2">
                             <div class="progress-bar bg-primary" role="progressbar" style="width: <?= $midtermTotalGrade ?? '0' ?>%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
-                        </div> ( <?= number_format(convertPercentageToGradePoint($midtermTotalGrade ?? 0), 1) ?> )
+                        </div> ( <?= convertPercentageToGradePoint($midtermTotalGrade ?? 0) ?> )
                     </div>
                 </div>
             <?php else: ?>
@@ -48,7 +48,7 @@
                         Total Tentative-Final Grade:
                         <div class="progress m-2">
                             <div class="progress-bar bg-primary" role="progressbar" style="width: <?= $midtermTotalGrade ?? '0' ?>%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
-                        </div> ( <?= number_format(convertPercentageToGradePoint($finalTotalGrade ?? 0), 1) ?> )
+                        </div> ( <?= convertPercentageToGradePoint($finalTotalGrade ?? 0) ?> )
                     </div>
                 </div>
             <?php else: ?>
@@ -59,7 +59,7 @@
         <?php if (!empty($finalGrades)): ?>
             <div class="total-section mt-4">
                 <div class="alert alert-primary alert-total alert-block mb-5 text-center">
-                    Overall Final Grade: <?= number_format(convertPercentageToGradePoint($overallFinalGrade) ?? 0, 1) ?>
+                    Overall Final Grade: <?= convertPercentageToGradePoint($overallFinalGrade) ?? 0 ?>
                 </div>
             </div>
         <?php endif; ?>

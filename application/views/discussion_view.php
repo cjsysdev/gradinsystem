@@ -16,7 +16,7 @@
                             <!-- <a href="<?= htmlspecialchars($topic['link']) ?>" target="_self" class="btn btn-outline-info btn-block btn-xl">
                                 Learn More
                             </a> -->
-                            <a href="<?= htmlspecialchars($topic['link']) ?>" target="_blank" class="btn btn-outline-info btn-block btn-xl">
+                            <a href="<?= htmlspecialchars($topic['link']) ?>" class="btn btn-outline-info btn-block btn-xl">
                                 <?= strpos($topic['link'], '.pdf') !== false ? 'Open PDF' : 'Learn More' ?>
                             </a>
                         <?php endif; ?>

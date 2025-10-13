@@ -45,7 +45,7 @@ class GradesController extends CI_Controller
     {
         $term = 'midterm';
         $grades = $this->classworks->getGradesBySection($term, $section);
-
+        
         $studentsGrades = [];
         foreach ($grades as $grade) {
             $studentId = $grade['student_id'];
@@ -57,6 +57,9 @@ class GradesController extends CI_Controller
                     'lastname' => $grade['lastname'],
                     'middlename' => $grade['middlename'],
                     'section' => $grade['section'],
+                    'present' => $grade['present'],
+                    'absent' => $grade['absences'],
+                    'late' => $grade['lates'],
                     'midterm_total_grade' => 0,
                     'grade_point' => 0,
                     'has_iotype_2' => false,
@@ -85,8 +88,8 @@ class GradesController extends CI_Controller
 
         foreach ($studentsGrades as $studentId => &$student) {
             if (!$student['has_iotype_2'] || !$student['has_iotype_3'] || $student['is_incomplete']) {
-                // $student['midterm_total_grade'] = 'INC';
-                // $student['grade_point'] = 'INC';
+                $student['midterm_total_grade'] = 'INC';
+                $student['grade_point'] = 'INC';
                 $student['grade_point'] = convertPercentageToGradePoint($student['midterm_total_grade']);
             } else {
                 $student['grade_point'] = convertPercentageToGradePoint($student['midterm_total_grade']);

@@ -69,7 +69,7 @@ $route['student/section'] = 'StudentController/section';
 
 // Grades Routes
 $route['grades'] = 'GradesController/grades';
-$route['section_grades/(:any)'] = 'GradesController/sectionGrades/$1';
+$route['sectiongrades/(:any)'] = 'GradesController/sectionGrades/$1';
 $route['sectionFinalGrades/(:any)'] = 'GradesController/sectionFinalGrades/$1';
 
 // Attendance Routes

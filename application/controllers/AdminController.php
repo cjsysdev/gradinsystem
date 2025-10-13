@@ -52,16 +52,15 @@ class AdminController extends CI_Controller
         $term = 'midterm';
 
         $data['assessments'] = (isset($class['schedule_id'])) ?
-            $this->assessments->where(['term' => $term, 'schedule_id' => $class["schedule_id"]])->order_by('schedule_id', 'asc')
+            $this->assessments->where(['schedule_id' => $class["schedule_id"]])->order_by('schedule_id', 'asc')
             ->with_class_schedule()->as_array()->get_all() :
-            $this->assessments->where(['term' => $term])->order_by('schedule_id', 'asc')
+            $this->assessments->order_by('schedule_id', 'asc')
             ->with_class_schedule()->as_array()->get_all();
 
         // Fetch submissions for the selected assessment
         if ($assessment_id) {
             $data['submissions'] = $this->classworks->get_all_submissions(
-                $assessment_id,
-                $term
+                $assessment_id
             );
             $data['selected_assessment_id'] = $assessment_id;
         } else {

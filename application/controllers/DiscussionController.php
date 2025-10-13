@@ -36,10 +36,33 @@ class DiscussionController extends CI_Controller
 
         $ws101 = [
             [
+                'title' => 'CSS Cascading and Selector Priority',
+                'description' => 'When multiple CSS rules target the same HTML element, the cascade determines which style is applied.',
+                'link' => base_url('DiscussionController/css_cascade')
+            ],
+            // [
+            //     'title' => 'Introduction to CSS [PDF]',
+            //     'description' => 'In this lesson, we will look at how to make your web pages more attractive, controlling the design of them using CSS.',
+            //     'link' => base_url('DiscussionController/css_intro')
+            // ],
+            // [
+            //     'title' => 'CSS Syntax [Web]',
+            //     'description' => 'In this lesson, we will look at how to make your web pages more attractive, controlling the design of them using CSS.',
+            //     'link' => base_url('DiscussionController/css_syntax')
+            // ],
+            // [
+            //     'title' => 'CSS How to [Web]',
+            //     'description' => 'In this lesson, we will look at how to make your web pages more attractive, controlling the design of them using CSS.',
+            //     'link' => base_url('DiscussionController/css_howto')
+            // ],
+            // [
+            //     'title' => 'Introduction to CSS [PDF]',
+            //     'description' => 'In this lesson, we will look at how to make your web pages more attractive, controlling the design of them using CSS.',
+            //     'link' => base_url('assets/pdfjs/web/viewer.html') . '?file=' . urlencode(base_url('uploads/discussions/html_css.pdf')) . '#page=236'
+            // ],
+            [
                 'title' => 'PHP includes',
-                'description' => 'The include (or 
-require) statement takes all the text/code/markup that exists in the specified file and copies it into
-the file that uses the include statement.',
+                'description' => 'The include (or require) statement takes all the text/code/markup that exists in the specified file and copies it into the file that uses the include statement.',
                 'link' => base_url('assets/pdfjs/web/viewer.html') . '?file=' . urlencode(base_url('uploads/discussions/web_dev.pdf')) . '#page=145'
             ],
             [
@@ -88,5 +111,25 @@ the file that uses the include statement.',
     public function linked_list_memory()
     {
         $this->load->view('discussions/dsa_theory_linkedlists_memory');
+    }
+
+    public function css_intro()
+    {
+        $this->load->view('discussions/css_intro');
+    }
+
+    public function css_syntax()
+    {
+        $this->load->view('discussions/css_syntax');
+    }
+
+    public function css_howto()
+    {
+        $this->load->view('discussions/css_howto');
+    }
+
+    public function css_cascade()
+    {
+        $this->load->view('discussions/css_cascade');
     }
 }

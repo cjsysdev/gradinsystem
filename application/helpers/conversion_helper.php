@@ -81,7 +81,7 @@ function randomizeNumber($min, $max)
 
 function convertPercentageToGradePoint($percentage)
 {
-    $passingGrade = 60;
+    $passingGrade = 50;
 
     if ($percentage <= $passingGrade) {
         // Range 1: 0% to passing grade (returns 5.0 → 3.0)
@@ -95,7 +95,7 @@ function convertPercentageToGradePoint($percentage)
     }
 
     // Round DOWN to 1 decimal place (e.g., 3.06 → 3.0)
-    $gradePoint = floor($gradePoint * 10) / 10;
+    $gradePoint = number_format($gradePoint * 10 / 10, 2);
 
     // Return as float (e.g., 3.0) or formatted string (e.g., "3.0")
     return $gradePoint; // Float (recommended for calculations)

@@ -151,6 +151,12 @@
                         </div>
                     <?php endfor; ?>
 
+                    <div class="progress my-4" style="height: 30px;">
+                        <div id="quizProgressBar" class="progress-bar bg-info" role="progressbar" style="width: 0%; font-size: 18px;">
+                            <span id="answeredCount">0</span> / <span id="totalQuestions"><?= $totalQuestions ?></span> Answered
+                        </div>
+                    </div>
+
                     <div class="navigation-buttons mt-4">
                         <div class="row">
                             <div class="col-6">
@@ -210,6 +216,21 @@
             // console.log('Quiz started, fullscreen mode entered.');
         }
 
+        function updateProgressBar() {
+            const totalQuestions = <?= $totalQuestions ?>;
+            const answered = document.querySelectorAll('.form-check-input:checked').length;
+            const percent = Math.round((answered / totalQuestions) * 100);
+
+            const progressBar = document.getElementById('quizProgressBar');
+            const answeredCount = document.getElementById('answeredCount');
+            const totalQuestionsElem = document.getElementById('totalQuestions');
+
+            progressBar.style.width = percent + '%';
+            progressBar.textContent = `${answered} / ${totalQuestions}`;
+            answeredCount.textContent = answered;
+            totalQuestionsElem.textContent = totalQuestions;
+        }
+
         // Update display
         function updateDisplay() {
             for (let i = 0; i < groups.length; i++) {
@@ -247,6 +268,7 @@
                 quizAnswers[this.dataset.question] = this.value;
                 localStorage.setItem('quiz_answers', JSON.stringify(quizAnswers));
                 checkAllAnswered();
+                updateProgressBar(); // <-- Add this
             });
         });
 
@@ -397,6 +419,7 @@
         // Initial setup
         loadSavedAnswers();
         updateDisplay();
+        updateProgressBar();
 
         // Retrieve the remaining time from localStorage
         const savedTime = localStorage.getItem('remainingTime');

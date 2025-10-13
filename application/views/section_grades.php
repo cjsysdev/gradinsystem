@@ -32,7 +32,7 @@
         table,
         th,
         td {
-            border: 1px solid black;
+            border: 0 solid black;
         }
 
         th,
@@ -117,21 +117,32 @@
 <table class="table table-bordered">
     <thead>
         <tr>
-            <th>Student ID</th>
-            <th>Student Name (Lastname, First name M.I)</th>
+            <!-- <th>Student ID</th> -->
+            <th>Name (Lastname, Firstname)</th>
+            <!-- <th>First name</th> -->
             <th>Grade</th>
+            <th>Present</th>
+            <th>Absent</th>
+            <th>Late</th>
         </tr>
     </thead>
     <tbody>
         <?php if (!empty($studentsGrades)): ?>
             <?php foreach ($studentsGrades as $student): ?>
                 <tr class="<?= $student['grade_point'] === 'INC' ? 'highlight-inc' : '' ?>">
-                    <td><?= $student['student_id'] ?></td>
-                    <td><?= $student['lastname'] ?>, <?= $student['firstname'] ?>
+                    <!-- <td>***</td> -->
+                    <!-- <td><?= $student['student_id'] ?></td> -->
+                    <!-- <td><?= $student['lastname'] ?>, <?= $student['firstname'] ?>
                         <?php if ($student['middlename'] != 'N/A') {
                             echo $student['middlename'][0] . '.';
-                        } else '' ?></td>
-                    <td><?= is_numeric($student['grade_point']) ? number_format(floor($student['grade_point'] * 10) / 10, 1) : $student['grade_point'] ?></td>
+                        } else '' ?></td> -->
+                    <td><?= $student['lastname'] ?>, <?= $student['firstname'] ?></td>
+                    <!-- <td><?= $student['firstname'] ?></td> -->
+                    <!-- <td>*****, ***** </td> -->
+                    <td><?= is_numeric($student['grade_point']) ? number_format(($student['grade_point'] * 10) / 10, 1) : $student['grade_point'] ?></td>
+                    <td><?= floor($student['present'] / 2) ?></td>
+                    <td><?= floor($student['absent'] / 2) ?></td>
+                    <td><?= floor($student['late'] / 2) ?></td>
                 </tr>
             <?php endforeach; ?>
         <?php else: ?>
