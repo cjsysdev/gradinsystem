@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>CSS Cascading and Selector Priority Interactive</title>
+
+	<!-- Highlight.js CSS Theme -->
+	<!-- Highlight.js CSS -->
+	<link rel="stylesheet" href="<?= base_url('assets/highlights/atom-one-light.min.css') ?>">
+	<!-- Highlight.js JS -->
+	<script src="<?= base_url("assets/highlights/11.7.0-highlight.min.js") ?> "></script>
+	<script>
+		hljs.highlightAll();
+	</script>
+
+	<style>
+		body {
+			font-family: "Segoe UI", Arial, sans-serif;
+			background-color: #f6f6f6;
+			margin: 0;
+			color: #333;
+		}
+
+		header {
+			background-color: #2196f3;
+			color: white;
+			padding: 20px;
+			text-align: center;
+		}
+
+		.content {
+			max-width: 900px;
+			margin: 20px auto;
+			background: white;
+			padding: 20px 30px;
+			border-radius: 8px;
+			box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+		}
+
+		h2 {
+			border-left: 6px solid #04aa6d;
+			padding-left: 10px;
+			color: #333;
+		}
+
+		pre {
+			background-color: #f8f8f8;
+			border-left: 4px solid #04aa6d;
+			padding: 10px;
+			overflow-x: auto;
+		}
+
+		.activity {
+			background-color: #f9f9f9;
+			border-left: 5px solid #2196f3;
+			padding: 15px;
+			margin: 20px 0;
+		}
+
+		button {
+			background-color: #04aa6d;
+			color: white;
+			border: none;
+			padding: 8px 16px;
+			border-radius: 5px;
+			cursor: pointer;
+			margin-top: 10px;
+		}
+
+		button:hover {
+			background-color: #03995e;
+		}
+
+		.result {
+			background-color: #fff8e1;
+			border-left: 4px solid #ff9800;
+			padding: 10px 15px;
+			margin-top: 10px;
+			display: none;
+		}
+
+		.references {
+			background: #f1f1f1;
+			border-left: 5px solid #04aa6d;
+			padding: 15px;
+			margin-top: 30px;
+		}
+
+		.references a {
+			color: #04aa6d;
+			text-decoration: none;
+		}
+
+		.references a:hover {
+			text-decoration: underline;
+		}
+
+		.footer {
+			background-color: #333;
+			color: white;
+			text-align: center;
+			padding: 15px;
+			margin-top: 30px;
+			font-size: 14px;
+		}
+	</style>
+</head>
+
+<body>
+	<header>
+		<h1>CSS Cascading and Selector Priority</h1>
+		<p>Interactive Guessing Game – Which Style Wins?</p>
+	</header>
+
+	<div class="content">
+		<h2>Instructions</h2>
+		<p>
+			Read each CSS snippet carefully. Guess which color or style will apply,
+			then click <strong>"Check Answer"</strong> to reveal the correct result.
+		</p>
+
+		<div class="activity">
+			<h3>ID vs Class vs Element</h3>
+			<pre><code class="language-html">&lt;p class="note" id="message"&gt;Hello, world!&lt;/p&gt;</code></pre>
+			<pre><code class="language-css">p { color: green; }
+.note { color: blue; }
+#message { color: red; }</code></pre>
+			<button onclick="showAnswer(1)">Check Answer</button>
+			<div id="result1" class="result">
+				Answer: <span style="color: red">Red</span> – ID selector has the
+				highest specificity.
+			</div>
+		</div>
+
+		<div class="activity">
+			<h3>Source Order</h3>
+			<pre><code class="language-html">&lt;p class="info"&gt;Welcome to CSS!&lt;/p&gt;</code></pre>
+			<pre><code class="language-css">.info { color: purple; }
+.info { color: orange; }</code></pre>
+			<button onclick="showAnswer(2)">Check Answer</button>
+			<div id="result2" class="result">
+				Answer: <span style="color: orange">Orange</span> – The last rule wins
+				if specificity is the same.
+			</div>
+		</div>
+
+		<div class="activity">
+			<h3>Inline vs External</h3>
+			<pre><code class="language-html">&lt;p id="title" style="color: brown;"&gt;Inline Text&lt;/p&gt;</code></pre>
+			<pre><code class="language-css">#title { color: black; }</code></pre>
+			<button onclick="showAnswer(3)">Check Answer</button>
+			<div id="result3" class="result">
+				Answer: <span style="color: brown">Brown</span> – Inline styles
+				override external styles.
+			</div>
+		</div>
+
+		<div class="activity">
+			<h3>Using !important</h3>
+			<pre><code class="language-html">&lt;p id="note" class="highlight"&gt;Important text&lt;/p&gt;</code></pre>
+			<pre><code class="language-css">.highlight { color: green !important; }
+#note { color: red; }</code></pre>
+			<button onclick="showAnswer(4)">Check Answer</button>
+			<div id="result4" class="result">
+				Answer: <span style="color: green">Green</span> –
+				<code>!important</code> overrides the ID rule.
+			</div>
+		</div>
+
+		<div class="activity">
+			<h3>Multiple Classes</h3>
+			<pre><code class="language-html">&lt;p class="info note"&gt;Hello Cascading&lt;/p&gt;</code></pre>
+			<pre><code class="language-css">.info { color: blue; }
+.note { color: orange; }</code></pre>
+			<button onclick="showAnswer(5)">Check Answer</button>
+			<div id="result5" class="result">
+				Answer: <span style="color: orange">Orange</span> – The last declared
+				class rule wins if specificity is equal.
+			</div>
+		</div>
+
+		<div class="activity">
+			<h3>Parent vs Child Selector</h3>
+			<pre><code class="language-html">&lt;div class="wrapper"&gt;
+  &lt;p&gt;Styled Text&lt;/p&gt;
+&lt;/div&gt;</code></pre>
+			<pre><code class="language-css">.wrapper p { color: teal; }
+p { color: gray; }</code></pre>
+			<button onclick="showAnswer(6)">Check Answer</button>
+			<div id="result6" class="result">
+				Answer: <span style="color: teal">Teal</span> –
+				<code>.wrapper p</code> is more specific than <code>p</code>.
+			</div>
+		</div>
+
+		<div class="activity">
+			<h3>Attribute Selector</h3>
+			<pre><code class="language-html">&lt;input type="text" value="hello"&gt;</code></pre>
+			<pre><code class="language-css">input { border: 2px solid black; }
+input[type="text"] { border: 2px solid red; }</code></pre>
+			<button onclick="showAnswer(7)">Check Answer</button>
+			<div id="result7" class="result">
+				Answer: <span style="color: red">Red border</span> – Attribute
+				selector is more specific than element selector.
+			</div>
+		</div>
+
+		<div class="activity">
+			<h3>Pseudo-class</h3>
+			<pre><code class="language-html">&lt;a href="#" class="link"&gt;Hover me&lt;/a&gt;</code></pre>
+			<pre><code class="language-css">.link { color: blue; }
+.link:hover { color: orange; }</code></pre>
+			<button onclick="showAnswer(8)">Check Answer</button>
+			<div id="result8" class="result">
+				Answer: <span style="color: orange">Orange</span> when hovered –
+				<code>:hover</code> applies dynamically.
+			</div>
+		</div>
+
+		<div class="activity">
+			<h3>Inline vs !important</h3>
+			<pre><code class="language-html">&lt;p style="color: gray;" class="warn"&gt;Warning&lt;/p&gt;</code></pre>
+			<pre><code class="language-css">.warn { color: red !important; }</code></pre>
+			<button onclick="showAnswer(9)">Check Answer</button>
+			<div id="result9" class="result">
+				Answer: <span style="color: red">Red</span> –
+				<code>!important</code> even overrides inline styles.
+			</div>
+		</div>
+
+		<div class="activity">
+			<h3>Combining IDs and Classes</h3>
+			<pre><code class="language-html">&lt;p id="msg" class="note"&gt;Final Test&lt;/p&gt;</code></pre>
+			<pre><code class="language-css">#msg.note { color: blue; }
+#msg { color: green; }</code></pre>
+			<button onclick="showAnswer(10)">Check Answer</button>
+			<div id="result10" class="result">
+				Answer: <span style="color: blue">Blue</span> –
+				<code>#msg.note</code> is more specific (110 vs 100).
+			</div>
+		</div>
+
+		<div class="activity">
+			<h3>Pseudo-class vs. Class Selector</h3>
+			<pre><code class="language-html">&lt;a href="#" class="link"&gt;Click Me&lt;/a&gt;</code></pre>
+			<pre><code class="language-css">.link { color: green; }
+a:hover { color: red; }</code></pre>
+			<button onclick="showAnswer(11)">Check Answer</button>
+			<div id="result11" class="result">
+				Answer: <span style="color: red">Red</span> –
+				<code>a:hover</code> applies when hovered.
+			</div>
+		</div>
+
+		<div class="activity">
+			<h3>Combining Class and Element Selectors</h3>
+			<pre><code class="language-html">&lt;p class="highlight"&gt;CSS Practice&lt;/p&gt;</code></pre>
+			<pre><code class="language-css">p { color: black; }
+p.highlight { color: blue; }</code></pre>
+			<button onclick="showAnswer(12)">Check Answer</button>
+			<div id="result12" class="result">
+				Answer: <span style="color: blue">Blue</span> –
+				<code>p.highlight</code> is more specific (11 vs 1).
+			</div>
+		</div>
+
+		<div class="activity">
+			<h3>Multiple Classes</h3>
+			<pre><code class="language-html">&lt;p class="note important"&gt;Read Me!&lt;/p&gt;</code></pre>
+			<pre><code class="language-css">.note { color: gray; }
+.important { color: orange; }</code></pre>
+			<button onclick="showAnswer(13)">Check Answer</button>
+			<div id="result13" class="result">
+				Answer: <span style="color: orange">Orange</span> – The
+				<code>.important</code> rule appears later and overrides.
+			</div>
+		</div>
+
+		<div class="activity">
+			<h3>Universal Selector</h3>
+			<pre><code class="language-html">&lt;h2&gt;Title&lt;/h2&gt;</code></pre>
+			<pre><code class="language-css">* { color: purple; }
+h2 { color: green; }</code></pre>
+			<button onclick="showAnswer(14)">Check Answer</button>
+			<div id="result14" class="result">
+				Answer: <span style="color: green">Green</span> – <code>h2</code> is
+				more specific than <code>*</code>.
+			</div>
+		</div>
+
+		<div class="activity">
+			<h3>Attribute Selector</h3>
+			<pre><code class="language-html">&lt;input type="text" value="Hello"&gt;</code></pre>
+			<pre><code class="language-css">input { color: black; }
+input[type="text"] { color: red; }</code></pre>
+			<button onclick="showAnswer(15)">Check Answer</button>
+			<div id="result15" class="result">
+				Answer: <span style="color: red">Red</span> – The attribute selector
+				is more specific (11 vs 1).
+			</div>
+		</div>
+
+		<div class="activity">
+			<h3>Multiple Selectors with Same Specificity</h3>
+			<pre><code class="language-html">&lt;h1 class="main"&gt;Hello&lt;/h1&gt;</code></pre>
+			<pre><code class="language-css">.main { color: green; }
+h1.main { color: blue; }</code></pre>
+			<button onclick="showAnswer(16)">Check Answer</button>
+			<div id="result16" class="result">
+				Answer: <span style="color: blue">Blue</span> –
+				<code>h1.main</code> is more specific (11 vs 10).
+			</div>
+		</div>
+
+		<div class="activity">
+			<h3>ID and Inline Combination</h3>
+			<pre><code class="language-html">&lt;h2 id="subtitle" style="color:pink;"&gt;Subheading&lt;/h2&gt;</code></pre>
+			<pre><code class="language-css">#subtitle { color: green; }</code></pre>
+			<button onclick="showAnswer(17)">Check Answer</button>
+			<div id="result17" class="result">
+				Answer: <span style="color: pink">Pink</span> – Inline styles (1000)
+				override ID selectors (100).
+			</div>
+		</div>
+
+		<div class="activity">
+			<h3>Pseudo-element vs. Class</h3>
+			<pre><code class="language-html">&lt;p class="intro"&gt;Welcome!&lt;/p&gt;</code></pre>
+			<pre><code class="language-css">.intro::first-letter { color: red; }
+.intro { color: blue; }</code></pre>
+			<button onclick="showAnswer(18)">Check Answer</button>
+			<div id="result18" class="result">
+				Answer: <span style="color: red">Red</span> – The
+				<code>::first-letter</code> targets the letter specifically.
+			</div>
+		</div>
+
+		<div class="activity">
+			<h3>!important and Inline Style</h3>
+			<pre><code class="language-html">&lt;p style="color:yellow;" class="alert"&gt;Warning!&lt;/p&gt;</code></pre>
+			<pre><code class="language-css">.alert { color: red !important; }</code></pre>
+			<button onclick="showAnswer(19)">Check Answer</button>
+			<div id="result19" class="result">
+				Answer: <span style="color: red">Red</span> –
+				<code>!important</code> overrides inline styles.
+			</div>
+		</div>
+
+		<div class="activity">
+			<h3>Nested Selectors</h3>
+			<pre><code class="language-html">&lt;div class="container"&gt;
+  &lt;p&gt;Nested Text&lt;/p&gt;
+&lt;/div&gt;</code></pre>
+			<pre><code class="language-css">.container p { color: blue; }
+p { color: gray; }</code></pre>
+			<button onclick="showAnswer(20)">Check Answer</button>
+			<div id="result20" class="result">
+				Answer: <span style="color: blue">Blue</span> –
+				<code>.container p</code> is more specific (11 vs 1).
+			</div>
+		</div>
+
+		<div class="references">
+			<h2>References</h2>
+			<ul>
+				<li>
+					<a
+						href="https://www.w3schools.com/css/css_howto.asp"
+						target="_blank">W3Schools: CSS How To</a>
+				</li>
+				<li>
+					<a
+						href="https://developer.mozilla.org/en-US/docs/Web/CSS/Cascade"
+						target="_blank">MDN Web Docs: CSS Cascade</a>
+				</li>
+				<li>
+					<a
+						href="https://developer.mozilla.org/en-US/docs/Web/CSS/Specificity"
+						target="_blank">MDN Web Docs: CSS Specificity</a>
+				</li>
+				<li>
+					<a
+						href="https://www.freecodecamp.org/news/what-is-css-specificity/"
+						target="_blank">FreeCodeCamp: Understanding CSS Specificity</a>
+				</li>
+			</ul>
+		</div>
+	</div>
+
+	<div class="footer">
+		© 2025 CSS Learning Module | Interactive Cascading Activity
+	</div>
+</body>
+
+</html>

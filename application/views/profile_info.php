@@ -9,6 +9,7 @@
 		</div>
 		<div class="col text-center">
 			<!-- <a title="survey" href="" class=" btn btn-outline-dark"><i class="fa fa-list" aria-hidden="true"></i> Survey</a> -->
+			<!-- <a href="" class="btn btn-outline-dark"><i class="fa fa-add" aria-hidden="true"></i></a> -->
 			<a href="<?= base_url("logout") ?>" class=" btn btn-outline-dark">Logout</a>
 		</div>
 	</div>

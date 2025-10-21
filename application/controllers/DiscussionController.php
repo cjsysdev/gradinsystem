@@ -36,9 +36,29 @@ class DiscussionController extends CI_Controller
 
         $ws101 = [
             [
+                'title' => 'CSS Display',
+                'description' => 'Explore common display values with live examples and a small playground. Click any value to see what it does.',
+                'link' => base_url('DiscussionController/css_display')
+            ],
+            [
+                'title' => 'CSS Essential Properties',
+                'description' => 'Learn the most common and useful CSS properties that make your web pages beautiful and structured!',
+                'link' => base_url('DiscussionController/css_properties')
+            ],
+            [
+                'title' => 'CSS Errors',
+                'description' => 'Errors in CSS can lead to unexpected behavior or styles not being applied correctly. This page shows common CSS mistakes and how to avoid them.',
+                'link' => base_url('DiscussionController/css_error')
+            ],
+            [
                 'title' => 'CSS Cascading and Selector Priority',
                 'description' => 'When multiple CSS rules target the same HTML element, the cascade determines which style is applied.',
                 'link' => base_url('DiscussionController/css_cascade')
+            ],
+            [
+                'title' => 'CSS Cascading and Selector Priority - Interactive Activity',
+                'description' => 'When multiple CSS rules target the same HTML element, the cascade determines which style is applied.',
+                'link' => base_url('DiscussionController/css_cascade_activity_nojs')
             ],
             // [
             //     'title' => 'Introduction to CSS [PDF]',
@@ -131,5 +151,54 @@ class DiscussionController extends CI_Controller
     public function css_cascade()
     {
         $this->load->view('discussions/css_cascade');
+    }
+
+    public function css_cascade_activity()
+    {
+        if ($this->session->role != 'admin') {
+            redirect();
+        }
+        $this->load->view('discussions/css_cascading_activity');
+    }
+
+    public function css_cascade_activity_nojs()
+    {
+        $this->load->view('discussions/css_cascading_activity_nojs');
+    }
+
+    public function css_error()
+    {
+        $this->load->view('discussions/css_error');
+    }
+
+    public function css_properties()
+    {
+        $this->load->view('discussions/css_properties');
+    }
+
+    public function css_error_activity()
+    {
+        $this->load->view('discussions/css_cascading_activity copy');
+    }
+
+    public function css_display()
+    {
+        $this->load->view('discussions/css_display');
+    }
+
+
+    public function css_roadmap()
+    {
+        $this->load->view('discussions/css_roadmap');
+    }
+
+    public function css_bg_color()
+    {
+        $this->load->view('discussions/css_bg_color');
+    }
+
+    public function css_units()
+    {
+        $this->load->view('discussions/css_units');
     }
 }
