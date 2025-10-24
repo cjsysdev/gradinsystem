@@ -1,0 +1,118 @@
+body {
+    font-family: "Segoe UI", Arial, sans-serif;
+    margin: 0;
+    background-color: #f6f6f6;
+    color: #333;
+}
+
+header {
+    background-color: #04AA6D;
+    color: white;
+    padding: 20px;
+    text-align: center;
+}
+
+.content {
+    max-width: 900px;
+    margin: 20px auto;
+    background: white;
+    padding: 20px 30px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+h2 {
+    border-left: 6px solid #04AA6D;
+    padding-left: 10px;
+    color: #333;
+}
+
+h3 {
+    color: #04AA6D;
+}
+
+pre {
+    background-color: #f1f1f1;
+    border-left: 4px solid #04AA6D;
+    padding: 10px;
+    overflow-x: auto;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+table, th, td {
+    border: 1px solid #ddd;
+}
+
+th, td {
+    text-align: left;
+    padding: 8px;
+}
+
+th {
+    background-color: #04AA6D;
+    color: white;
+}
+
+code {
+    background: #eee;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: Consolas, monospace;
+    color: #d63384;
+}
+
+ul {
+    line-height: 1.6;
+}
+
+strong {
+    color: #04AA6D;
+}
+
+.references {
+    background: #f1f1f1;
+    border-left: 5px solid #04AA6D;
+    padding: 15px;
+    margin-top: 30px;
+}
+
+.references a {
+    color: #04AA6D;
+    text-decoration: none;
+}
+
+.references a:hover {
+    text-decoration: underline;
+}
+
+.footer {
+    background-color: #333;
+    color: white;
+    text-align: center;
+    padding: 15px;
+    margin-top: 30px;
+    font-size: 14px;
+}
+
+.activity-link {
+    display: inline-block;
+    background-color: #04AA6D;
+    color: white;
+    text-decoration: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    margin-top: 20px;
+}
+
+.activity-link:hover {
+    background-color: #028a57;
+}
+
+ul {
+    list-style-type: none;
+}

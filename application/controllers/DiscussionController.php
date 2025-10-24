@@ -36,6 +36,12 @@ class DiscussionController extends CI_Controller
 
         $ws101 = [
             [
+                'title' => 'Bootstrap Framework Basics',
+                'description' => 'Learn how to install and use Bootstrap containers and the grid system
+                to create responsive web layouts with ease.',
+                'link' => base_url('DiscussionController/css_bootstrap')
+            ],
+            [
                 'title' => 'CSS Display',
                 'description' => 'Explore common display values with live examples and a small playground. Click any value to see what it does.',
                 'link' => base_url('DiscussionController/css_display')
@@ -200,5 +206,10 @@ class DiscussionController extends CI_Controller
     public function css_units()
     {
         $this->load->view('discussions/css_units');
+    }
+
+    public function css_bootstrap()
+    {
+        $this->load->view('discussions/css_bootstrap');
     }
 }

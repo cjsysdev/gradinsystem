@@ -43,7 +43,7 @@ if ($classwork['iotype_id'] == '4' || $classwork['iotype_id'] == '3') {
                                 <div class="modal-body">
                                     <?php
                                     $file_extension = pathinfo($classwork['pdf_file_path'], PATHINFO_EXTENSION);
-                                    if (in_array($file_extension, ['pdf', 'txt', 'c', 'sql', 'php', 'html', 'js', 'css', 'jpg'])): ?>
+                                    if (in_array($file_extension, ['pdf', 'txt', 'c', 'sql', 'php', 'html', 'js', 'css', 'jpg', 'png', 'cpp'])): ?>
                                         <!-- Display file content in an iframe for supported file types -->
                                         <iframe src="<?= base_url($classwork['pdf_file_path']) ?>" width="100%" height="600px" style="border: none;"></iframe>
                                     <?php else: ?>

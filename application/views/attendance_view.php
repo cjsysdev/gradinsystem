@@ -105,7 +105,7 @@
             </div>
         <?php endif; ?>
 
-        <!-- <a class="btn alert-primary btn-block mb-3" href="./uploads/WS_PEER_TEACHING_3A.pdf" download="WS_PEER_TEACHING_3A.pdf" src="./uploads/WS_PEER_TEACHING_3A.pdf"><i class="fa fa-download" aria-hidden="true" style="margin-right: 10px"> </i>Download WS101: Peer Coaching Sessions</a> -->
+        <!-- <a class="btn alert-primary btn-block mb-3" href="./uploads/stack_debug.txt" download="stack_debug.txt" src="./uploads/stack_debug.txt"><i class="fa fa-download" aria-hidden="true" style="margin-right: 10px"> </i>Stack Debug</a> -->
 
         <?php if ($this->session->exam_review): ?>
             <a class="btn alert-primary btn-block mb-3" href="./uploads/<?= $desc ?>_reviewer.pdf" download="<?= $desc ?>_reviewer.pdf" src="./uploads/<?= $desc ?>_reviewer.pdf"><i class="fa fa-download" aria-hidden="true" style="margin-right: 10px"> </i>Download CC<?= $desc ?> - Midterm Reviewer</a>

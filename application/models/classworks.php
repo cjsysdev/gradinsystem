@@ -28,7 +28,7 @@ class classworks extends MY_Model
 
     public function get_all_submissions($assessment_id)
     {
-        $sql = "SELECT c.classwork_id, s.trans_no, s.firstname, s.lastname, c.code, c.file_upload, c.created_at, c.randomized_count, c.score
+        $sql = "SELECT c.classwork_id, s.trans_no, s.firstname, s.lastname, c.code, c.file_upload, c.created_at, c.randomized_count, c.score, a.max_score
                 FROM classworks c 
                 JOIN student_master s ON s.trans_no = c.student_id 
                 JOIN assessments a ON a.assessment_id = c.assessment_id 
