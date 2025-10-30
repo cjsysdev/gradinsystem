@@ -105,7 +105,7 @@
             </div>
         <?php endif; ?>
 
-        <!-- <a class="btn alert-primary btn-block mb-3" href="./uploads/stack_debug.txt" download="stack_debug.txt" src="./uploads/stack_debug.txt"><i class="fa fa-download" aria-hidden="true" style="margin-right: 10px"> </i>Stack Debug</a> -->
+        <a class="btn alert-primary btn-block mb-3" href="./uploads/bootstrap.4.5.2.min.css" download="bootstrap.4.5.2.min.css" src="./uploads/bootstrap.4.5.2.min.css"><i class="fa fa-download" aria-hidden="true" style="margin-right: 10px"> </i>Bootstrap</a>
 
         <?php if ($this->session->exam_review): ?>
             <a class="btn alert-primary btn-block mb-3" href="./uploads/<?= $desc ?>_reviewer.pdf" download="<?= $desc ?>_reviewer.pdf" src="./uploads/<?= $desc ?>_reviewer.pdf"><i class="fa fa-download" aria-hidden="true" style="margin-right: 10px"> </i>Download CC<?= $desc ?> - Midterm Reviewer</a>

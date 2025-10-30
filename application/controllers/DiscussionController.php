@@ -17,15 +17,20 @@ class DiscussionController extends CI_Controller
 
         $cc104 = [
             [
+                'title' => 'Allocate Memory',
+                'description' => 'The process of reserving memory is called allocation. The way to allocate memory depends on the type of memory.',
+                'link' => base_url('DiscussionController/topic/memory_allocate')
+            ],
+            [
                 'title' => 'DSA Linked Lists in Memory',
                 'description' => 'To explain what linked lists are, and how linked lists are different from arrays, we need to understand some basics about how computer memory works.',
-                'link' => base_url('DiscussionController/linked_list_memory')
+                'link' => base_url('DiscussionController/topic/linked_list_memory')
             ],
             [
                 'title' => 'Linked List',
                 'description' => 'A Linked List is, as the word implies, a list where the nodes are linked together. Each node contains data and a pointer. The way they are linked together is that each node points to where in the memory the next node is placed.
             ',
-                'link' => base_url('DiscussionController/linked_list')
+                'link' => base_url('DiscussionController/topic/linked_list')
             ],
             [
                 'title' => 'C Structs',
@@ -36,50 +41,65 @@ class DiscussionController extends CI_Controller
 
         $ws101 = [
             [
+                'title' => 'Bootstrap Tables',
+                'description' => 'Learn how to create clean, responsive, and user-friendly tables using Bootstrap 4.',
+                'link' => base_url('DiscussionController/topic/bootstrap_table')
+            ],
+            [
+                'title' => 'Bootstrap Sandbox',
+                'description' => 'Learn how to design responsive and user-friendly forms using Bootstrap 4 components and utilities.',
+                'link' => base_url('DiscussionController/topic/bootstrap_sandbox')
+            ],
+            [
+                'title' => 'Bootstrap Forms',
+                'description' => 'Learn how to design responsive and user-friendly forms using Bootstrap 4 components and utilities.',
+                'link' => base_url('DiscussionController/topic/bootstrap_forms')
+            ],
+            [
                 'title' => 'Bootstrap Framework Basics',
                 'description' => 'Learn how to install and use Bootstrap containers and the grid system
                 to create responsive web layouts with ease.',
-                'link' => base_url('DiscussionController/css_bootstrap')
+                'link' => base_url('DiscussionController/topic/css_bootstrap')
             ],
             [
                 'title' => 'CSS Display',
                 'description' => 'Explore common display values with live examples and a small playground. Click any value to see what it does.',
-                'link' => base_url('DiscussionController/css_display')
+                'link' => base_url('DiscussionController/topic/css_display')
             ],
             [
                 'title' => 'CSS Essential Properties',
                 'description' => 'Learn the most common and useful CSS properties that make your web pages beautiful and structured!',
-                'link' => base_url('DiscussionController/css_properties')
+                'link' => base_url('DiscussionController/topic/css_properties')
             ],
             [
                 'title' => 'CSS Errors',
                 'description' => 'Errors in CSS can lead to unexpected behavior or styles not being applied correctly. This page shows common CSS mistakes and how to avoid them.',
-                'link' => base_url('DiscussionController/css_error')
+                'link' => base_url('DiscussionController/topic/css_error')
             ],
             [
                 'title' => 'CSS Cascading and Selector Priority',
                 'description' => 'When multiple CSS rules target the same HTML element, the cascade determines which style is applied.',
-                'link' => base_url('DiscussionController/css_cascade')
+                'link' => base_url('DiscussionController/topic/css_cascade')
             ],
             [
                 'title' => 'CSS Cascading and Selector Priority - Interactive Activity',
                 'description' => 'When multiple CSS rules target the same HTML element, the cascade determines which style is applied.',
-                'link' => base_url('DiscussionController/css_cascade_activity_nojs')
+                'link' => base_url('DiscussionController/topic/css_cascade_activity_nojs')
             ],
             // [
             //     'title' => 'Introduction to CSS [PDF]',
             //     'description' => 'In this lesson, we will look at how to make your web pages more attractive, controlling the design of them using CSS.',
-            //     'link' => base_url('DiscussionController/css_intro')
+            //     'link' => base_url('DiscussionController/topic/css_intro')
             // ],
             // [
             //     'title' => 'CSS Syntax [Web]',
             //     'description' => 'In this lesson, we will look at how to make your web pages more attractive, controlling the design of them using CSS.',
-            //     'link' => base_url('DiscussionController/css_syntax')
+            //     'link' => base_url('DiscussionController/topic/css_syntax')
             // ],
             // [
             //     'title' => 'CSS How to [Web]',
             //     'description' => 'In this lesson, we will look at how to make your web pages more attractive, controlling the design of them using CSS.',
-            //     'link' => base_url('DiscussionController/css_howto')
+            //     'link' => base_url('DiscussionController/topic/css_howto')
             // ],
             // [
             //     'title' => 'Introduction to CSS [PDF]',
@@ -118,47 +138,7 @@ class DiscussionController extends CI_Controller
         $data['topics'] = $topics;
         $this->load->view('discussion_view', $data);
     }
-
-    public function structs()
-    {
-        $this->load->view('discussions/structs2');
-    }
-
-    public function includes()
-    {
-        $this->load->view('discussions/php_includes');
-    }
-
-    public function linked_list()
-    {
-        $this->load->view('discussions/dsa_theory_linkedlists');
-    }
-
-    public function linked_list_memory()
-    {
-        $this->load->view('discussions/dsa_theory_linkedlists_memory');
-    }
-
-    public function css_intro()
-    {
-        $this->load->view('discussions/css_intro');
-    }
-
-    public function css_syntax()
-    {
-        $this->load->view('discussions/css_syntax');
-    }
-
-    public function css_howto()
-    {
-        $this->load->view('discussions/css_howto');
-    }
-
-    public function css_cascade()
-    {
-        $this->load->view('discussions/css_cascade');
-    }
-
+    
     public function css_cascade_activity()
     {
         if ($this->session->role != 'admin') {
@@ -167,49 +147,10 @@ class DiscussionController extends CI_Controller
         $this->load->view('discussions/css_cascading_activity');
     }
 
-    public function css_cascade_activity_nojs()
-    {
-        $this->load->view('discussions/css_cascading_activity_nojs');
-    }
+   
 
-    public function css_error()
+    public function topic($title)
     {
-        $this->load->view('discussions/css_error');
-    }
-
-    public function css_properties()
-    {
-        $this->load->view('discussions/css_properties');
-    }
-
-    public function css_error_activity()
-    {
-        $this->load->view('discussions/css_cascading_activity copy');
-    }
-
-    public function css_display()
-    {
-        $this->load->view('discussions/css_display');
-    }
-
-
-    public function css_roadmap()
-    {
-        $this->load->view('discussions/css_roadmap');
-    }
-
-    public function css_bg_color()
-    {
-        $this->load->view('discussions/css_bg_color');
-    }
-
-    public function css_units()
-    {
-        $this->load->view('discussions/css_units');
-    }
-
-    public function css_bootstrap()
-    {
-        $this->load->view('discussions/css_bootstrap');
+        $this->load->view('discussions/' . $title);
     }
 }
