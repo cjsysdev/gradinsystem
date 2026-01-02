@@ -92,7 +92,7 @@
         if (!empty($studentsGrades)):
             foreach ($studentsGrades as $student): ?>
                 <tr<?php if (strtoupper($student['final_grade']) === 'INC' || (float)$student['final_grade'] > 3.00) echo ' class="highlight-inc"'; ?>>
-                    <td style="font-weight:bold;"><?= $i++ ?></td>
+                    <td><?= $i++ ?></td>
                     <td style="text-align:left;">
                         <?= strtoupper($student['lastname']) ?>, <?= strtoupper($student['firstname']) ?>
                         <?php if (!empty($student['middlename'])): ?>
@@ -115,7 +115,7 @@
                         }
                         ?>
                     </td> -->
-                    <td>
+                    <td style="text-align:left;">
                         <?php
                         // Always show one decimal place for numeric grades
                         if (is_numeric($student['final_grade'])) {

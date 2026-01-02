@@ -67,76 +67,84 @@
     </style>
 </head>
 
-<div style="margin-top: 20px; margin-bottom: 0; font-size:16px;">
-    <b>Course Code:</b> <?= $class_code ?><br>
-    <b>Course Title:</b> <?= $class_name ?><br>
-    <b>Section:</b> <?= strtoupper($section) ?><br>
-    <?php if (isset($schedule)): ?>
-        <b>Schedule:</b> <?= $schedule ?><br>
-    <?php endif; ?>
-</div>
+<img src="<?= base_url('./assets/finalgrades_header.jpg') ?>" alt="finalgrades_header" style="width:100%; max-width:800px;">
 
-<table class="inc-table" style="margin-top: 10px;">
-    <thead>
-        <tr>
-            <th style="width:50px;">ID No.</th>
-            <th style="width:350px;">Student Name <span style="font-weight:normal;">(Lastname, First name M.I)</span></th>
-            <!-- <th style="width:80px;">Midterm Grade</th> -->
-            <!-- <th style="width:80px;">Tentative Final Grade</th> -->
-            <th style="width:80px;">Grade</th>
-        </tr>
-    </thead>
-    <tbody>
-        <?php
-        $i = 1;
-        if (!empty($studentsGrades)):
-            foreach ($studentsGrades as $student): ?>
-                <tr<?php if (strtoupper($student['final_grade']) === 'INC' || (float)$student['final_grade'] > 3.00) echo ' class="highlight-inc"'; ?>>
-                    <td style="font-weight:bold;"><?= $i++ ?></td>
-                    <td style="text-align:left;">
-                        <?= strtoupper($student['lastname']) ?>, <?= strtoupper($student['firstname']) ?>
-                        <?php if (!empty($student['middlename'])): ?>
-                            <?= strtoupper(substr($student['middlename'], 0, 1)) ?>.
-                        <?php endif; ?>
-                    </td>
-                    <!-- <td>
-                        <?php
-                        // Always show one decimal place for numeric grades
-                        if (is_numeric($student['midterm_grade'])) {
-                            echo convertPercentageToGradePoint(number_format($student['midterm_grade'], 1));
-                        }
-                        ?>
-                    </td>
-                    <td>
-                        <?php
-                        // Always show one decimal place for numeric grades
-                        if (is_numeric($student['tentative_final_grade'])) {
-                            echo convertPercentageToGradePoint(number_format($student['tentative_final_grade'], 1));
-                        }
-                        ?>
-                    </td> -->
-                    <td>
-                        <?php
-                        // Always show one decimal place for numeric grades
-                        if (is_numeric($student['final_grade'])) {
-                            echo number_format($student['final_grade'], 1);
-                        } else {
-                            echo $student['final_grade'];
-                        }
-                        ?>
-                    </td>
-                    </tr>
-                <?php endforeach;
-        else: ?>
-                <tr>
-                    <td colspan="3" class="text-center">No student grades available for this section.</td>
-                </tr>
+<?php
+// Normalize incoming data (supports either $studentsGrades or $studentsGrades['studentsGrades'])
+$studentsList = [];
+if (!empty($studentsGrades)) {
+    $studentsList = isset($studentsGrades['studentsGrades']) ? $studentsGrades['studentsGrades'] : $studentsGrades;
+}
+
+// Group students by section
+$sections = [];
+foreach ($studentsList as $s) {
+    $sec = isset($s['section']) ? $s['section'] : 'UNKNOWN';
+    $sections[$sec][] = $s;
+}
+
+if (!empty($sections)):
+    foreach ($sections as $sectionName => $students):
+        // use first student entry for course-level info
+        $first = reset($students);
+        $class_code = isset($first['class_code']) ? $first['class_code'] : '';
+        $class_name = isset($first['class_name']) ? $first['class_name'] : '';
+        $schedule = isset($first['schedule']) ? $first['schedule'] : null;
+?>
+        <div style="margin-top: 20px; margin-bottom: 0; font-size:16px;">
+            <b>Course Code:</b> <?= htmlspecialchars($class_code) ?><br>
+            <b>Course Title:</b> <?= htmlspecialchars($class_name) ?><br>
+            <b>Section:</b> <?= strtoupper(htmlspecialchars($sectionName)) ?><br>
+            <?php if (!empty($schedule)): ?>
+                <b>Schedule:</b> <?= htmlspecialchars($schedule) ?><br>
             <?php endif; ?>
-    </tbody>
-</table>
+        </div>
 
-<div class="prepared">
+        <table class="inc-table" style="margin-top: 10px;">
+            <thead>
+                <tr>
+                    <th style="width:50px;">ID No.</th>
+                    <th style="width:350px;">Student Name <span style="font-weight:normal;">(Lastname, First name M.I)</span></th>
+                    <th style="width:80px;">Grade</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php
+                $i = 1;
+                foreach ($students as $student): ?>
+                    <tr<?php if (strtoupper((string)$student['final_grade']) === 'INC' || (is_numeric($student['final_grade']) && (float)$student['final_grade'] >= 3.1)) echo ' class="highlight-inc"'; ?>>
+                        <td><?= $i++ ?></td>
+                        <td style="text-align:left;">
+                            <?= strtoupper(htmlspecialchars($student['lastname'])) ?>, <?= strtoupper(htmlspecialchars($student['firstname'])) ?>
+                            <?php if (!empty($student['middlename'])): ?>
+                                <?= strtoupper(htmlspecialchars(substr($student['middlename'], 0, 1))) ?>.
+                            <?php endif; ?>
+                        </td>
+                        <td style="text-align:left;">
+                            <?php
+                            if (is_numeric($student['final_grade'])) {
+                                echo number_format((float)$student['final_grade'], 1);
+                            } else {
+                                echo htmlspecialchars($student['final_grade']);
+                            }
+                            ?>
+                        </td>
+                        </tr>
+                    <?php endforeach; ?>
+            </tbody>
+        </table>
+    <?php
+    endforeach;
+else: ?>
+    <div style="margin-top: 20px; margin-bottom: 0; font-size:16px;">
+        No student grades available.
+    </div>
+<?php endif; ?>
+
+<img src="<?= base_url('./assets/finalgrades_footer.jpg') ?>" alt="finalgrades_footer" style="width:100%; max-width:800px;">
+
+<!-- <div class="prepared">
     Prepared By:<br><br>
     <span class="faculty" style="font-weight:bold;">Criscel Jay F. Nayve</span><br>
     Faculty
-</div>
+</div> -->

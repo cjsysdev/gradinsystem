@@ -45,7 +45,7 @@ class GradesController extends CI_Controller
     {
         $term = 'midterm';
         $grades = $this->classworks->getGradesBySection($term, $section);
-        
+
         $studentsGrades = [];
         foreach ($grades as $grade) {
             $studentId = $grade['student_id'];
@@ -212,6 +212,9 @@ class GradesController extends CI_Controller
 
             if (!isset($studentsGrades[$studentId])) {
                 $studentsGrades[$studentId] = [
+                    'class_code' => $grade['class_code'],
+                    'class_name' => $grade['class_name'],
+                    'schedule' => date('g:iA', strtotime($grade['start'])) . ' - ' . date('g:iA', strtotime($grade['end'])) . ' (' . $grade['day'] . ')',
                     'student_id' => $studentId,
                     'firstname' => $grade['firstname'],
                     'lastname' => $grade['lastname'],
@@ -236,6 +239,9 @@ class GradesController extends CI_Controller
 
             if (!isset($studentsGrades[$studentId])) {
                 $studentsGrades[$studentId] = [
+                    'class_code' => $grade['class_code'],
+                    'class_name' => $grade['class_name'],
+                    'schedule' => date('g:iA', strtotime($grade['start'])) . ' - ' . date('g:iA', strtotime($grade['end'])) . ' (' . $grade['day'] . ')',
                     'student_id' => $studentId,
                     'firstname' => $grade['firstname'],
                     'lastname' => $grade['lastname'],
@@ -262,7 +268,7 @@ class GradesController extends CI_Controller
                 $student['final_grade'] = 'INC';
             } else {
                 $student['final_grade'] = convertPercentageToGradePoint(round(($student['midterm_grade'] * 0.5) + ($student['tentative_final_grade'] * 0.5), 2));
-                if ($student['final_grade'] > 3.1) {
+                if ($student['final_grade'] >= 3.05) {
                     $student['final_grade'] = 'INC';
                 }
             }
