@@ -45,13 +45,13 @@
   &lt;/thead&gt;
   &lt;tbody&gt;
     &lt;tr&gt;
-      &lt;th scope="row"&gt;1&lt;/th&gt;
+      &lt;th&gt;1&lt;/th&gt;
       &lt;td&gt;Mark&lt;/td&gt;
       &lt;td&gt;Otto&lt;/td&gt;
       &lt;td&gt;@mdo&lt;/td&gt;
     &lt;/tr&gt;
     &lt;tr&gt;
-      &lt;th scope="row"&gt;2&lt;/th&gt;
+      &lt;th&gt;2&lt;/th&gt;
       &lt;td&gt;Jacob&lt;/td&gt;
       &lt;td&gt;Thornton&lt;/td&gt;
       &lt;td&gt;@fat&lt;/td&gt;
@@ -71,13 +71,13 @@
             </thead>
             <tbody>
                 <tr>
-                    <th scope="row">1</th>
+                    <th>1</th>
                     <td>Mark</td>
                     <td>Otto</td>
                     <td>@mdo</td>
                 </tr>
                 <tr>
-                    <th scope="row">2</th>
+                    <th>2</th>
                     <td>Jacob</td>
                     <td>Thornton</td>
                     <td>@fat</td>

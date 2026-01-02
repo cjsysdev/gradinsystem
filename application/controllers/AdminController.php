@@ -10,11 +10,17 @@ class AdminController extends CI_Controller
 
     public function dashboard()
     {
+        $class = $this->class_schedule->class_today(date('D'));
+
         // Get the current discussion mode from the database
         $query = $this->db->get_where('global_settings', [
             'setting_key' => 'discussion_mode',
         ]);
         $data['discussion_mode'] = $query->row()->setting_value === '1';
+
+        $data['attendance'] = $this->attendance->get_double_entry(date('Y-m-d'), $class['schedule_id']);
+
+        $data['lates'] = $this->attendance->get_student_status($class['schedule_id'], date('Y-m-d'), 'late');
 
         $this->load->view('admin/dashboard', $data);
     }

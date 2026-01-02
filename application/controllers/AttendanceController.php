@@ -103,11 +103,52 @@ class AttendanceController extends CI_Controller
 
     private function handleStudentAttendance($class, $student_id, $date)
     {
+        // start class session (ensure attendance rows for the day exist)
         $this->attendance->start_class(
             $class['schedule_id'],
             $class['section'],
             $date
         );
+
+        // check for duplicate IP (same schedule, same date) and warn if another student already logged from this IP
+        $client_ip = $this->input->ip_address();
+        $duplicate = $this->db
+            ->select('student_id')
+            ->from('attendance')
+            ->where('ip_address', $client_ip)
+            ->where('schedule_id', $class['schedule_id'])
+            ->where('DATE(`date`)', $date)
+            ->where_in('status', ['present', 'late'])
+            ->where('student_id !=', $student_id)
+            ->limit(1)
+            ->get()
+            ->row();
+
+        if ($duplicate) {
+            // Set a warning so the view can show it to the user/admin
+            $this->session->set_flashdata(
+                'warning',
+                'Warning: Another student (ID: ' . $duplicate->student_id . ') has already logged attendance from this IP for this class today.'
+            );
+        }
+
+        // compute scheduled datetime and current attendance datetime
+        $scheduledDatetime = null;
+        if (!empty($class['time_start'])) {
+            $scheduledDatetime = $date . ' ' . $class['time_start'];
+        }
+        $attendanceDatetime = $date . ' ' . date('H:i:s');
+
+        // default status
+        $statusToSet = 'present';
+        if ($scheduledDatetime) {
+            $minutesLate = (int) round((strtotime($attendanceDatetime) - strtotime($scheduledDatetime)) / 60);
+            if ($minutesLate > 30) {
+                $statusToSet = 'late';
+            } else {
+                $statusToSet = 'present';
+            }
+        }
 
         $check_student = $this->attendance
             ->where([
@@ -121,21 +162,35 @@ class AttendanceController extends CI_Controller
             isset($check_student->status) &&
             $check_student->status === 'absent'
         ) {
+            // update absent -> present/late depending on computed status
             $client_ip = $this->input->ip_address();
             $this->attendance->update_status(
-                'present',
+                $statusToSet,
                 $client_ip,
                 $student_id,
                 $date
             );
         } else if (!$check_student) {
+            // no record yet -> insert with computed status and timestamp
             $this->attendance->insert_data([
                 'schedule_id' => $class['schedule_id'],
                 'student_id' => $student_id,
-                'status' => 'present',
+                'status' => $statusToSet,
                 'ip_address' => $this->input->ip_address(),
-                'date' => $date . ' ' . date('H:i:s'),
+                'date' => $attendanceDatetime,
             ]);
+        } else {
+            // There is already a record (maybe present/late) — ensure status reflects lateness if needed
+            if (isset($check_student->status) && $check_student->status === 'present' && $statusToSet === 'late') {
+                // upgrade present -> late if logging time indicates late (optional)
+                $client_ip = $this->input->ip_address();
+                $this->attendance->update_status(
+                    'late',
+                    $client_ip,
+                    $student_id,
+                    $date
+                );
+            }
         }
     }
 

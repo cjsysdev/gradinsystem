@@ -33,13 +33,11 @@
     <?php if (!empty($attendance)): ?>
         <table class="table table-bordered">
             <thead>
-                <tr>
-                    <th>Student ID</th>
-                    <th>Lastname</th>
-                    <th>Firstname</th>
-                    <th>Absents</th>
-                    <th>Absence Dates</th>
-                </tr>
+                <th>Student ID</th>
+                <th>Lastname</th>
+                <th>Firstname</th>
+                <th>Absents</th>
+                <th>Absence Dates</th>
             </thead>
             <tbody>
                 <?php foreach ($attendance as $record): ?>

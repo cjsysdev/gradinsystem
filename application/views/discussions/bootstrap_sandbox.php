@@ -39,14 +39,26 @@
 
 <body class="p-4">
 
-    <h2 class="mb-3">Bootstrap Live Sandbox (with CodeMirror)</h2>
-    <p>Type Bootstrap HTML code below and click <strong>Run Code</strong> to see the live output.</p>
+    <h2 class="mb-3">Bootstrap Live Sandbox</h2>
+    <p>Type HTML, CSS, Javascript code below and click <strong>Run Code</strong> to see the live output.</p>
 
     <div class="sandbox">
         <!-- editor textarea (give it an id so CodeMirror can attach) -->
         <textarea id="codeEditor">
-
-    </textarea>
+            <h1 id="message">Click the button below</h1>
+<button onclick="window.alert('hello')">
+  Hello Alert
+</button>
+<button onclick="document.write('hello')">
+  Write
+</button>
+<button onclick="document.getElementById('message').innerHTML = 'Button Clicked!'">
+  Change Text
+</button>
+<button onclick="document.getElementById('message').style.color = 'red'">
+  Change Color
+</button>
+        </textarea>
 
         <div class="d-flex">
             <button id="runBtn" class="btn btn-primary mr-2" type="button">Run Code</button>

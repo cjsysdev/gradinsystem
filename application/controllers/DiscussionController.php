@@ -17,6 +17,11 @@ class DiscussionController extends CI_Controller
 
         $cc104 = [
             [
+                'title' => 'Introduction to Queues',
+                'description' => 'Learn how the queue data structure works using arrays and the FIFO principle.',
+                'link' => base_url('DiscussionController/topic/queue_intro')
+            ],
+            [
                 'title' => 'Allocate Memory',
                 'description' => 'The process of reserving memory is called allocation. The way to allocate memory depends on the type of memory.',
                 'link' => base_url('DiscussionController/topic/memory_allocate')
@@ -41,13 +46,18 @@ class DiscussionController extends CI_Controller
 
         $ws101 = [
             [
+                'title' => 'Introduction to JavaScript',
+                'description' => 'Learn the basics of JavaScript, including syntax, variables, and data types.',
+                'link' => base_url('DiscussionController/topic/js_intro')
+            ],
+            [
                 'title' => 'Bootstrap Tables',
                 'description' => 'Learn how to create clean, responsive, and user-friendly tables using Bootstrap 4.',
                 'link' => base_url('DiscussionController/topic/bootstrap_table')
             ],
             [
-                'title' => 'Bootstrap Sandbox',
-                'description' => 'Learn how to design responsive and user-friendly forms using Bootstrap 4 components and utilities.',
+                'title' => 'Web Sandbox',
+                'description' => 'Create interactive code and display its result',
                 'link' => base_url('DiscussionController/topic/bootstrap_sandbox')
             ],
             [
@@ -138,7 +148,7 @@ class DiscussionController extends CI_Controller
         $data['topics'] = $topics;
         $this->load->view('discussion_view', $data);
     }
-    
+
     public function css_cascade_activity()
     {
         if ($this->session->role != 'admin') {
@@ -147,7 +157,7 @@ class DiscussionController extends CI_Controller
         $this->load->view('discussions/css_cascading_activity');
     }
 
-   
+
 
     public function topic($title)
     {

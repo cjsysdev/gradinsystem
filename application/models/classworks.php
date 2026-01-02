@@ -28,12 +28,12 @@ class classworks extends MY_Model
 
     public function get_all_submissions($assessment_id)
     {
-        $sql = "SELECT c.classwork_id, s.trans_no, s.firstname, s.lastname, c.code, c.file_upload, c.created_at, c.randomized_count, c.score, a.max_score
+        $sql = "SELECT c.classwork_id, s.trans_no, c.score, s.firstname, s.lastname, c.code, c.file_upload, c.created_at, c.randomized_count, c.score, a.max_score
                 FROM classworks c 
                 JOIN student_master s ON s.trans_no = c.student_id 
                 JOIN assessments a ON a.assessment_id = c.assessment_id 
-                WHERE a.assessment_id = ? AND c.score IS NULL
-                ORDER BY c.score, c.created_at";
+                WHERE a.assessment_id = ?
+                ORDER BY c.created_at DESC ";
 
         $query = $this->db->query($sql, [$assessment_id]);
 
@@ -142,6 +142,86 @@ class classworks extends MY_Model
     }
 
     public function getGradesBySection($term, $section)
+    {
+        $query = $this->db->query("
+                    SELECT 
+                        cs.section,
+                        class.class_code,
+                        class.class_name,
+                        sched.time_start AS start,
+                        sched.time_end AS end,
+                        sched.day,
+                        sm.trans_no AS student_id,
+                        sm.firstname,
+                        sm.lastname,
+                        sm.middlename,
+                        a.iotype_id,
+                        i.type AS iotype_name,
+                        i.percentage AS iotype_percentage,
+                        ROUND(SUM(IFNULL(c.score, 0)), 2) AS total_score,
+                        ROUND(SUM(a.max_score), 2) AS total_max_score,
+                        ROUND((SUM(IFNULL(c.score, 0)) / SUM(a.max_score)) * 100, 2) AS percentage,
+                        ROUND(
+                            CASE 
+                                WHEN (SUM(IFNULL(c.score, 0)) / SUM(a.max_score)) * 100 <= 50 THEN 
+                                    5.0 - (2.0 / 50) * ((SUM(IFNULL(c.score, 0)) / SUM(a.max_score)) * 100)
+                                WHEN (SUM(IFNULL(c.score, 0)) / SUM(a.max_score)) * 100 > 50 THEN 
+                                    3.0 - (2.0 / 50) * (((SUM(IFNULL(c.score, 0)) / SUM(a.max_score)) * 100) - 50)
+                            END, 
+                            2
+                        ) AS grade_point,
+                        ROUND((SUM(IFNULL(c.score, 0)) / SUM(a.max_score)) * i.percentage, 2) AS weighted_grade,
+                        IFNULL(att.absences, 0) AS absences,
+                        IFNULL(att.presents, 0) AS present,
+                        IFNULL(late_att.lates, 0) AS lates
+                    FROM 
+                        class_student cs
+                    JOIN 
+                        student_master sm ON cs.student_id = sm.trans_no
+                    JOIN 
+                        class_schedule sched ON cs.section = sched.section AND cs.section = ?
+                    JOIN 
+                        classes class ON class.class_id = sched.class_id
+                    JOIN 
+                        assessments a ON a.schedule_id = sched.schedule_id AND a.term = ?
+                    JOIN 
+                        io_type i ON a.iotype_id = i.iotype_id
+                    LEFT JOIN 
+                        classworks c ON c.assessment_id = a.assessment_id AND c.student_id = cs.student_id
+                    LEFT JOIN (
+                        SELECT 
+                            student_id,
+                            SUM(status = 'absent') AS absences,
+                            SUM(status = 'present') AS presents
+                        FROM attendance
+                        WHERE 
+                            DATE(date) < '2025-10-03'
+                        GROUP BY student_id
+                    ) att ON att.student_id = sm.trans_no
+                    LEFT JOIN (
+                        SELECT 
+                            a.student_id,
+                            COUNT(*) AS lates
+                        FROM attendance a
+                        JOIN class_schedule cs ON a.schedule_id = cs.schedule_id
+                        WHERE 
+                            a.status = 'present'
+                            AND TIMESTAMPDIFF(MINUTE, 
+                                CONCAT(DATE(a.date), ' ', cs.time_start), 
+                                a.date
+                            ) > 45
+                        GROUP BY a.student_id
+                    ) late_att ON late_att.student_id = sm.trans_no
+                    GROUP BY 
+                        cs.section, sm.trans_no, a.iotype_id
+                    ORDER BY 
+                        cs.section, sm.lastname, sm.firstname
+                ", [$section, $term]);
+
+        return $query->result_array(); // Return the result as an array of rows
+    }
+
+     public function getAllGradesBySection($term)
     {
         $query = $this->db->query("
                     SELECT 

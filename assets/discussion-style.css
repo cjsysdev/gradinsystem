@@ -24,6 +24,7 @@ header {
 h2 {
     border-left: 6px solid #04AA6D;
     padding-left: 10px;
+    margin: 20px 0px 20px 0px;
     color: #333;
 }
 
@@ -114,5 +115,5 @@ strong {
 }
 
 ul {
-    list-style-type: none;
+    list-style-type: decimal;
 }

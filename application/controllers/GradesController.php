@@ -172,18 +172,18 @@ class GradesController extends CI_Controller
                 $student['final_grade'] = 'INC';
             } else {
                 $student['final_grade'] = convertPercentageToGradePoint(round(($student['midterm_grade'] * 0.5) + ($student['tentative_final_grade'] * 0.5), 2));
-                if ($student['final_grade'] > 3.0) {
+                if ($student['final_grade'] > 3.1) {
                     $student['final_grade'] = 'INC';
                 }
             }
         }
 
         // Sort students by final_grade descending (numeric grades only, INC at the bottom)
-        usort($studentsGrades, function ($a, $b) {
-            $gradeA = is_numeric($a['final_grade']) ? floatval($a['final_grade']) : 999;
-            $gradeB = is_numeric($b['final_grade']) ? floatval($b['final_grade']) : 999;
-            return $gradeA <=> $gradeB;
-        });
+        // usort($studentsGrades, function ($a, $b) {
+        //     $gradeA = is_numeric($a['final_grade']) ? floatval($a['final_grade']) : 999;
+        //     $gradeB = is_numeric($b['final_grade']) ? floatval($b['final_grade']) : 999;
+        //     return $gradeA <=> $gradeB;
+        // });
 
         $data['studentsGrades'] = $studentsGrades;
         $data['section'] = $section;
@@ -193,6 +193,96 @@ class GradesController extends CI_Controller
         $data['schedule'] = date('g:iA', strtotime($midtermGrades[0]['start'])) . ' - ' . date('g:iA', strtotime($midtermGrades[0]['end'])) . ' (' . $midtermGrades[0]['day'] . ')';
 
         $this->load->view('section_grades_finals', $data);
+        // $this->load->view('section_inc_grades', $data);
+    }
+
+    public function AllSectionGrades()
+    {
+        // if ($this->is_offline) redirect();
+
+        // Fetch midterm and final grades for the section
+        $midtermGrades = $this->classworks->getAllGradesBySection('midterm');
+        $finalGrades = $this->classworks->getAllGradesBySection('final');
+
+        $studentsGrades = [];
+
+        // Process midterm grades
+        foreach ($midtermGrades as $grade) {
+            $studentId = $grade['student_id'];
+
+            if (!isset($studentsGrades[$studentId])) {
+                $studentsGrades[$studentId] = [
+                    'student_id' => $studentId,
+                    'firstname' => $grade['firstname'],
+                    'lastname' => $grade['lastname'],
+                    'section' => $grade['section'],
+                    'midterm_grade' => 0,
+                    'final_grade' => 0,
+                    'tentative_final_grade' => 0,
+                    'is_incomplete' => false,
+                ];
+            }
+
+            if (is_null($grade['total_score']) || is_null($grade['percentage'])) {
+                $studentsGrades[$studentId]['is_incomplete'] = true;
+            } else {
+                $studentsGrades[$studentId]['midterm_grade'] += $grade['percentage'] * ($grade['iotype_percentage'] / 100);
+            }
+        }
+
+        // Process final grades
+        foreach ($finalGrades as $grade) {
+            $studentId = $grade['student_id'];
+
+            if (!isset($studentsGrades[$studentId])) {
+                $studentsGrades[$studentId] = [
+                    'student_id' => $studentId,
+                    'firstname' => $grade['firstname'],
+                    'lastname' => $grade['lastname'],
+                    'section' => $grade['section'],
+                    'midterm_grade' => 0,
+                    'final_grade' => 0,
+                    'tentative_final_grade' => 0,
+                    'is_incomplete' => false,
+                ];
+            }
+
+            if (is_null($grade['total_score']) || is_null($grade['percentage'])) {
+                $studentsGrades[$studentId]['is_incomplete'] = true;
+            } else {
+                $studentsGrades[$studentId]['tentative_final_grade'] += $grade['percentage'] * ($grade['iotype_percentage'] / 100);
+            }
+        }
+
+        // Calculate final grades
+        foreach ($studentsGrades as $studentId => &$student) {
+            if ($student['is_incomplete']) {
+                $student['midterm_grade'] = 'INC';
+                $student['tentative_final_grade'] = 'INC';
+                $student['final_grade'] = 'INC';
+            } else {
+                $student['final_grade'] = convertPercentageToGradePoint(round(($student['midterm_grade'] * 0.5) + ($student['tentative_final_grade'] * 0.5), 2));
+                if ($student['final_grade'] > 3.1) {
+                    $student['final_grade'] = 'INC';
+                }
+            }
+        }
+
+        // Sort students by final_grade descending (numeric grades only, INC at the bottom)
+        // usort($studentsGrades, function ($a, $b) {
+        //     $gradeA = is_numeric($a['final_grade']) ? floatval($a['final_grade']) : 999;
+        //     $gradeB = is_numeric($b['final_grade']) ? floatval($b['final_grade']) : 999;
+        //     return $gradeA <=> $gradeB;
+        // });
+
+        $data['studentsGrades'] = $studentsGrades;
+        $data['section'] = 'N/A';
+        $data['class_code'] = $midtermGrades[0]['class_code'] ?? '';
+        $data['class_name'] = $midtermGrades[0]['class_name'] ?? '';
+        $data['schedule'] = $midtermGrades[0]['schedule'] ?? '';
+        $data['schedule'] = date('g:iA', strtotime($midtermGrades[0]['start'])) . ' - ' . date('g:iA', strtotime($midtermGrades[0]['end'])) . ' (' . $midtermGrades[0]['day'] . ')';
+
+        $this->load->view('allgrades', $data);
         // $this->load->view('section_inc_grades', $data);
     }
 

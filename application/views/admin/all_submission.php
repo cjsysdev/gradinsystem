@@ -51,7 +51,7 @@
                             <div class="card-body">
                                 <h3 class="card-title mb-1"><?= $row['classwork_id'] . " - " . $row['lastname'] . ", " . $row['firstname'] ?></h3>
                                 <hr>
-                                <p class="card-text mb-3"><?= $row['created_at'] ?></p>
+                                <p class="card-text mb-3"><?= $row['created_at'] , " " , $row['file_upload'], " - ", $row['score'] ?></p>
                                 <!-- Button to open modal -->
                                 <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#viewSubmissionModal" onclick="loadSubmission(<?= htmlspecialchars(json_encode($row['code']), ENT_QUOTES, 'UTF-8') ?>, '<?= $row['file_upload'] ?>')">
                                     View Submission
@@ -66,8 +66,8 @@
                                             <input type="decimal" name="score" class="form-control mr-1 ml-1" placeholder="Enter score" min="0" required>
                                             <a href="<?= base_url('add_rand_score/' . $row['classwork_id'] . "/{$row['max_score']}" . "/$selected_assessment_id") ?>" type="button" class="btn btn-outline-secondary mr-1 ml-1" name="score" value="good"><?= $row['max_score'] ?></a><button type="submit" class="btn btn-info mr-1 ml-1">Submit</button>
                                         </div>
-                                        <?php if (isset($row['file_upload'])): ?>
-                                            <iframe src="<?= base_url("uploads/classworks/{$row['file_upload']}") ?>" width="100%" height="600px" style="border: none;"></iframe>
+                                        <?php if (isset($row['file_upload']) && !str_contains($row['file_upload'], 'zip')): ?>
+                                            <!-- <iframe src="<?= base_url("uploads/classworks/{$row['file_upload']}") ?>" width="100%" height="600px" style="border: none;"></iframe> -->
                                         <?php endif; ?>
                                     </form>
                                 <?php endif; ?>
@@ -264,8 +264,7 @@
                                 <div class="card mb-3 shadow-sm">
                                     <div class="card-body">
                                         <h3 class="card-title">${submission.classwork_id} - ${submission.lastname}, ${submission.firstname}</h3>
-                                        <p class="card-text">${submission.created_at}</p>
-                                        <button type="button" class="btn btn-primary" onclick="viewSubmission(${submission.classwork_id})">View Submission</button>
+                                        <p class="card-text">${submission.created_at} <span class="badge badge-secondary">${submission.score}</span></p>
                                     </div>
                                 </div>
                             `;

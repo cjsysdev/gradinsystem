@@ -21,7 +21,7 @@ class AuthenticationController extends CI_Controller
                 'section' => $section->section,
                 'role' => $user->role,
                 'online' => true,
-                'exam_term' => false,
+                'exam_term' => true,
                 'exam_review' => false
             ];
 

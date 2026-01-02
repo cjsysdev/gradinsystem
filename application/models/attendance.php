@@ -246,4 +246,56 @@ class attendance extends MY_Model
         $this->db->where('attendance_id', $attendance_id);
         return $this->db->update($this->table, $data);
     }
+
+    public function get_double_entry($date, $schedule_id)
+    {
+        $sql = "SELECT a.student_id, sm.lastname, sm.firstname, a.date, a.status, a.ip_address
+                FROM attendance a
+                JOIN student_master sm
+                ON a.student_id = sm.trans_no
+                WHERE ip_address IN (
+                    SELECT ip_address
+                    FROM attendance
+                    WHERE DATE(date) = ?  -- Same date filter
+                    AND schedule_id = ?
+                    GROUP BY ip_address
+                    HAVING COUNT(*) > 1
+                )
+                AND DATE(a.date) = ?  -- Apply date filter to main query too
+                AND a.schedule_id = ?
+                ORDER BY a.ip_address, date;
+                ";
+
+        $query = $this->db->query($sql, [$date, $schedule_id, $date, $schedule_id]);
+
+        return $query->result_array();
+    }
+
+    public function get_student_status($schedule_id, $date, $status)
+    {
+        $sql = "
+            SELECT 
+                  a.student_id,
+                s.firstname, 
+                s.lastname,
+                a.status,
+                a.date
+            FROM 
+                attendance a
+            JOIN 
+                student_master s 
+            ON 
+                a.student_id = s.trans_no
+            WHERE 
+                a.schedule_id = ? 
+            AND 
+                a.status = ?
+            AND 
+                DATE(a.date) = ?
+        ";
+
+        $query = $this->db->query($sql, [$schedule_id, $status, $date]);
+
+        return $query->result_array();
+    }
 }
