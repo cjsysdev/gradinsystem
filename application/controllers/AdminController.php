@@ -12,6 +12,14 @@ class AdminController extends CI_Controller
     {
         $class = $this->class_schedule->class_today(date('D'));
 
+        if (!$class) {
+            $data['attendance'] = [];
+            $data['lates'] = [];
+            $data['discussion_mode'] = false;
+            $this->load->view('admin/dashboard', $data);
+            return;
+        }
+
         // Get the current discussion mode from the database
         $query = $this->db->get_where('global_settings', [
             'setting_key' => 'discussion_mode',
@@ -57,11 +65,7 @@ class AdminController extends CI_Controller
 
         $term = 'midterm';
 
-        $data['assessments'] = (isset($class['schedule_id'])) ?
-            $this->assessments->where(['schedule_id' => $class["schedule_id"]])->order_by('schedule_id', 'asc')
-            ->with_class_schedule()->as_array()->get_all() :
-            $this->assessments->order_by('schedule_id', 'asc')
-            ->with_class_schedule()->as_array()->get_all();
+        $data['assessments'] = $this->assessments->get_for_schedule($class['schedule_id']);
 
         // Fetch submissions for the selected assessment
         if ($assessment_id) {

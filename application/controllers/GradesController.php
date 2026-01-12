@@ -219,6 +219,9 @@ class GradesController extends CI_Controller
                     'firstname' => $grade['firstname'],
                     'lastname' => $grade['lastname'],
                     'section' => $grade['section'],
+                    'present' => $grade['present'],
+                    'absent' => $grade['absences'],
+                    'late' => $grade['lates'],
                     'midterm_grade' => 0,
                     'final_grade' => 0,
                     'tentative_final_grade' => 0,
@@ -246,6 +249,9 @@ class GradesController extends CI_Controller
                     'firstname' => $grade['firstname'],
                     'lastname' => $grade['lastname'],
                     'section' => $grade['section'],
+                    'present' => $grade['present'],
+                    'absent' => $grade['absences'],
+                    'late' => $grade['lates'],
                     'midterm_grade' => 0,
                     'final_grade' => 0,
                     'tentative_final_grade' => 0,
@@ -288,7 +294,8 @@ class GradesController extends CI_Controller
         $data['schedule'] = $midtermGrades[0]['schedule'] ?? '';
         $data['schedule'] = date('g:iA', strtotime($midtermGrades[0]['start'])) . ' - ' . date('g:iA', strtotime($midtermGrades[0]['end'])) . ' (' . $midtermGrades[0]['day'] . ')';
 
-        $this->load->view('allgrades', $data);
+        // $this->load->view('allgrades', $data);
+        $this->load->view('section_grades_finals', $data);
         // $this->load->view('section_inc_grades', $data);
     }
 

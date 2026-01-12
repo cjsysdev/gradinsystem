@@ -57,6 +57,10 @@ class assessments extends MY_Model
             JOIN
                 io_type iot
                 ON iot.iotype_id = a.iotype_id
+            JOIN
+                semester_master sem
+                ON cs.semester_id = sem.trans_no
+                AND sem.is_active = 1
             WHERE 
                 c.classwork_id IS NULL AND cs.section = ?
             ORDER BY 
@@ -80,6 +84,9 @@ class assessments extends MY_Model
             SELECT * FROM classworks c 
             JOIN assessments a ON c.assessment_id = a.assessment_id 
             JOIN io_type iot ON a.iotype_id = iot.iotype_id
+            JOIN class_schedule cs ON a.schedule_id = cs.schedule_id
+            JOIN semester_master sem ON cs.semester_id = sem.trans_no 
+            AND sem.is_active = 1
             WHERE student_id = ? ORDER BY c.created_at DESC";
 
         $query = $this->db->query($sql, [$student_id]);
@@ -88,6 +95,59 @@ class assessments extends MY_Model
             $error = $this->db->error();
             log_message('error', 'Database error: ' . $error['message']);
             return []; // Return an empty array or handle the error as needed
+        }
+
+        return $query->result_array();
+    }
+
+    public function get_for_schedule($schedule_id = null)
+    {
+        if ($schedule_id) {
+            $sql = "
+                SELECT 
+                    a.*,
+                    cs.*,
+                    iot.type AS iotype
+                FROM 
+                    assessments a
+                JOIN 
+                    class_schedule cs ON a.schedule_id = cs.schedule_id
+                JOIN
+                    io_type iot ON a.iotype_id = iot.iotype_id
+                JOIN
+                    semester_master sem ON cs.semester_id = sem.trans_no AND sem.is_active = 1
+                WHERE 
+                    a.schedule_id = ?
+                ORDER BY 
+                    a.created_at DESC
+            ";
+            $query = $this->db->query($sql, [$schedule_id]);
+        } else {
+            $sql = "
+                SELECT 
+                    a.*,
+                    cs.*,
+                    iot.type AS iotype
+                FROM 
+                    assessments a
+                JOIN 
+                    class_schedule cs ON a.schedule_id = cs.schedule_id
+                JOIN
+                    io_type iot ON a.iotype_id = iot.iotype_id
+                JOIN
+                    semester_master sem ON cs.semester_id = sem.trans_no AND sem.is_active = 1
+                WHERE
+                    sem.is_active = 1
+                ORDER BY 
+                    cs.section, a.created_at DESC
+            ";
+            $query = $this->db->query($sql);
+        }
+
+        if ($query === false) {
+            $error = $this->db->error();
+            log_message('error', 'Database error: ' . $error['message']);
+            return [];
         }
 
         return $query->result_array();

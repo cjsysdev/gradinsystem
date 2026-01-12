@@ -38,8 +38,11 @@ class attendance extends MY_Model
                 FROM attendance a
                 JOIN student_master sm ON a.student_id = sm.trans_no
                 JOIN class_schedule cs ON a.schedule_id = cs.schedule_id
-                JOIN classes c ON cs.class_id = c.class_id WHERE student_id = $id
+                JOIN classes c ON cs.class_id = c.class_id 
+                JOIN semester_master sem ON cs.semester_id = sem.trans_no
+                WHERE student_id = $id
                 AND a.status = 'present'
+                AND sem.is_active = 1
                 order by date desc");
 
         return $query->result_array();
@@ -98,7 +101,9 @@ class attendance extends MY_Model
             SELECT student_id, COUNT(*) as present_days
             FROM attendance a
             JOIN class_schedule cs ON a.schedule_id = cs.schedule_id 
+            JOIN semester_master sem ON cs.semester_id = sem.trans_no
             WHERE cs.section = ? AND status = 'present' AND DATE(a.date) BETWEEN ? AND ?
+            AND sem.is_active = 1
             GROUP BY student_id
             ORDER BY present_days DESC
             LIMIT 1;
@@ -117,8 +122,10 @@ class attendance extends MY_Model
             SELECT COUNT(*) as present_days
             FROM attendance a
             JOIN class_schedule cs ON a.schedule_id = cs.schedule_id 
+            JOIN semester_master sem ON cs.semester_id = sem.trans_no
             WHERE cs.section = ? AND student_id = ? AND (status = 'present' OR status = 'excuse')
             AND DATE(a.date) BETWEEN ? AND ?
+            AND sem.is_active = 1
         ",
             [$section, $student_id, $start_date, $end_date]
         );
@@ -137,9 +144,12 @@ class attendance extends MY_Model
             "
             SELECT COUNT(*) as present_days
             FROM attendance a
+            JOIN class_schedule cs ON a.schedule_id = cs.schedule_id
+            JOIN semester_master sem ON cs.semester_id = sem.trans_no
             WHERE student_id = ? AND status = 'present' 
             AND date(a.date) BETWEEN ? AND ?
-        ",
+            AND sem.is_active = 1
+            ",
             [$student_id, $start_date, $end_date]
         );
 
@@ -173,8 +183,10 @@ class attendance extends MY_Model
             SELECT *
             FROM attendance a
             JOIN class_schedule cs ON a.schedule_id = cs.schedule_id
+            JOIN semester_master sem ON cs.semester_id = sem.trans_no
             WHERE cs.section = ? AND a.student_id = ? AND a.status = 'absent' AND a.reason IS NULL
             AND DATE(a.date) BETWEEN ? AND ?
+            AND sem.is_active = 1
         ",
             [$section, $student_id, $start_date, $end_date]
         );
@@ -199,12 +211,18 @@ class attendance extends MY_Model
                 student_master s ON a.student_id = s.trans_no
             JOIN 
                 class_student sec ON s.trans_no = sec.student_id
-            WHERE 
+            JOIN 
+                class_schedule cs ON sec.student_id = cs.student_id
+            JOIN 
+                semester_master sem ON cs.semester_id = sem.trans_no
+                WHERE 
                 sec.section = ? 
             AND 
                 a.date >= ?
             AND 
                 a.status = 'absent'
+            AND 
+                sem.is_active = 1
             GROUP BY 
                 s.trans_no, s.lastname, s.firstname, sec.section
             ORDER BY 
@@ -222,18 +240,13 @@ class attendance extends MY_Model
                 s.trans_no, 
                 s.firstname, 
                 s.lastname 
-            FROM 
-                attendance a
-            JOIN 
-                student_master s 
-            ON 
-                a.student_id = s.trans_no
-            WHERE 
-                a.schedule_id = ? 
-            AND 
-                a.status = 'present' 
-            AND 
-                DATE(a.date) = ?
+            FROM attendance a
+            JOIN student_master s ON a.student_id = s.trans_no
+            JOIN class_schedule cs ON a.schedule_id = cs.schedule_id
+            JOIN semester_master sem ON cs.semester_id = sem.trans_no
+            WHERE a.schedule_id = ? AND a.status = 'present' 
+            AND DATE(a.date) = ?
+            AND sem.is_active = 1
         ";
 
         $query = $this->db->query($sql, [$section_id, $date]);
@@ -253,6 +266,8 @@ class attendance extends MY_Model
                 FROM attendance a
                 JOIN student_master sm
                 ON a.student_id = sm.trans_no
+                JOIN class_schedule cs ON a.schedule_id = cs.schedule_id
+                JOIN semester_master sem ON cs.semester_id = sem.trans_no
                 WHERE ip_address IN (
                     SELECT ip_address
                     FROM attendance
@@ -263,6 +278,7 @@ class attendance extends MY_Model
                 )
                 AND DATE(a.date) = ?  -- Apply date filter to main query too
                 AND a.schedule_id = ?
+                AND sem.is_active = 1
                 ORDER BY a.ip_address, date;
                 ";
 

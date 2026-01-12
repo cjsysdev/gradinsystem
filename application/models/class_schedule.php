@@ -23,15 +23,20 @@ class class_schedule extends MY_Model
     {
         $query = $this->db->query("SELECT * FROM class_schedule 
         JOIN classes ON class_schedule.class_id = classes.class_id 
+        JOIN semester_master sm ON class_schedule.semester_id = sm.trans_no
         WHERE day LIKE '%$day%' 
-        AND CURTIME() BETWEEN time_start AND time_end ");
+        AND CURTIME() BETWEEN time_start 
+        AND time_end
+        AND sm.is_active = 1");
 
-        return $query->row_array() ?? false;
+        return $query->row_array() ?? [];
     }
 
     public function get_sections()
     {
-        $sql = "SELECT distinct(section) FROM class_schedule";
+        $sql = "SELECT distinct(section) FROM class_schedule
+        JOIN semester_master sm ON class_schedule.semester_id = sm.trans_no
+        WHERE sm.is_active = 1";
         $query = $this->db->query($sql);
 
         return $query->result_array();

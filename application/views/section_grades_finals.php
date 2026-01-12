@@ -67,23 +67,26 @@
     </style>
 </head>
 
-<div style="margin-top: 20px; margin-bottom: 0; font-size:16px;">
+<!-- <div style="margin-top: 20px; margin-bottom: 0; font-size:16px;">
     <b>Course Code:</b> <?= $class_code ?><br>
     <b>Course Title:</b> <?= $class_name ?><br>
     <b>Section:</b> <?= strtoupper($section) ?><br>
     <?php if (isset($schedule)): ?>
         <b>Schedule:</b> <?= $schedule ?><br>
     <?php endif; ?>
-</div>
+</div> -->
 
 <table class="inc-table" style="margin-top: 10px;">
     <thead>
         <tr>
-            <th style="width:50px;">ID No.</th>
+            <!-- <th style="width:50px;">ID No.</th> -->
             <th style="width:350px;">Student Name <span style="font-weight:normal;">(Lastname, First name M.I)</span></th>
-            <!-- <th style="width:80px;">Midterm Grade</th> -->
-            <!-- <th style="width:80px;">Tentative Final Grade</th> -->
+            <th style="width:80px;">Midterm Grade</th>
+            <th style="width:80px;">Tentative Final Grade</th>
             <th style="width:80px;">Grade</th>
+            <th>Present</th>
+            <th>Absent</th>
+            <th>Late</th>
         </tr>
     </thead>
     <tbody>
@@ -92,14 +95,14 @@
         if (!empty($studentsGrades)):
             foreach ($studentsGrades as $student): ?>
                 <tr<?php if (strtoupper($student['final_grade']) === 'INC' || (float)$student['final_grade'] > 3.00) echo ' class="highlight-inc"'; ?>>
-                    <td><?= $i++ ?></td>
+                    <!-- <td><?= $i++ ?></td> -->
                     <td style="text-align:left;">
                         <?= strtoupper($student['lastname']) ?>, <?= strtoupper($student['firstname']) ?>
                         <?php if (!empty($student['middlename'])): ?>
                             <?= strtoupper(substr($student['middlename'], 0, 1)) ?>.
                         <?php endif; ?>
                     </td>
-                    <!-- <td>
+                    <td>
                         <?php
                         // Always show one decimal place for numeric grades
                         if (is_numeric($student['midterm_grade'])) {
@@ -114,7 +117,7 @@
                             echo convertPercentageToGradePoint(number_format($student['tentative_final_grade'], 1));
                         }
                         ?>
-                    </td> -->
+                    </td>
                     <td style="text-align:left;">
                         <?php
                         // Always show one decimal place for numeric grades
@@ -125,6 +128,9 @@
                         }
                         ?>
                     </td>
+                    <td><?= floor($student['present'] / 2) ?></td>
+                    <td><?= floor($student['absent'] / 2) ?></td>
+                    <td><?= floor($student['late'] / 2) ?></td>
                     </tr>
                 <?php endforeach;
         else: ?>

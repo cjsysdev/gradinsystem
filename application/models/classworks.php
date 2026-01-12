@@ -32,6 +32,9 @@ class classworks extends MY_Model
                 FROM classworks c 
                 JOIN student_master s ON s.trans_no = c.student_id 
                 JOIN assessments a ON a.assessment_id = c.assessment_id 
+                JOIN class_schedule cs ON cs.schedule_id = a.schedule_id
+                JOIN semester_master sem ON cs.semester_id = sem.trans_no 
+                AND sem.is_active = 1
                 WHERE a.assessment_id = ?
                 ORDER BY c.created_at DESC ";
 
@@ -81,6 +84,10 @@ class classworks extends MY_Model
                     classworks c
                 JOIN 
                     assessments a ON c.assessment_id = a.assessment_id
+                JOIN 
+                    class_schedule cs ON a.schedule_id = cs.schedule_id
+                JOIN 
+                    semester_master sem ON cs.semester_id = sem.trans_no AND sem.is_active = 1
                 WHERE 
                     a.term = '$term'
                     AND a.iotype_id = $iotype
@@ -126,6 +133,8 @@ class classworks extends MY_Model
                 classworks c ON c.assessment_id = a.assessment_id AND c.student_id = ?
             JOIN 
 			    class_schedule cs ON cs.schedule_id = a.schedule_id
+            JOIN 
+                semester_master sem ON cs.semester_id = sem.trans_no AND sem.is_active = 1
             WHERE 
                 a.term = ? AND cs.section = ?
             GROUP BY 
@@ -186,6 +195,8 @@ class classworks extends MY_Model
                         assessments a ON a.schedule_id = sched.schedule_id AND a.term = ?
                     JOIN 
                         io_type i ON a.iotype_id = i.iotype_id
+                    JOIN
+                        semester_master sem ON sched.semester_id = sem.trans_no AND sem.is_active = 1
                     LEFT JOIN 
                         classworks c ON c.assessment_id = a.assessment_id AND c.student_id = cs.student_id
                     LEFT JOIN (
@@ -195,7 +206,7 @@ class classworks extends MY_Model
                             SUM(status = 'present') AS presents
                         FROM attendance
                         WHERE 
-                            DATE(date) < '2025-10-03'
+                            DATE(date) < '2025-12-12'
                         GROUP BY student_id
                     ) att ON att.student_id = sm.trans_no
                     LEFT JOIN (
@@ -266,6 +277,8 @@ class classworks extends MY_Model
                         assessments a ON a.schedule_id = sched.schedule_id AND a.term = ?
                     JOIN 
                         io_type i ON a.iotype_id = i.iotype_id
+                    JOIN
+                        semester_master sem ON sched.semester_id = sem.trans_no AND sem.is_active = 1
                     LEFT JOIN 
                         classworks c ON c.assessment_id = a.assessment_id AND c.student_id = cs.student_id
                     LEFT JOIN (
@@ -275,7 +288,7 @@ class classworks extends MY_Model
                             SUM(status = 'present') AS presents
                         FROM attendance
                         WHERE 
-                            DATE(date) < '2025-10-03'
+                            DATE(date) < '2025-12-12'
                         GROUP BY student_id
                     ) att ON att.student_id = sm.trans_no
                     LEFT JOIN (
@@ -320,6 +333,10 @@ class classworks extends MY_Model
                 student_master s 
             ON 
                 c.student_id = s.trans_no
+            JOIN
+                class_schedule cs ON a.schedule_id = cs.schedule_id
+            JOIN
+                semester_master sem ON cs.semester_id = sem.trans_no AND sem.is_active = 1
             WHERE 
                 c.student_id = ?
             ORDER BY 

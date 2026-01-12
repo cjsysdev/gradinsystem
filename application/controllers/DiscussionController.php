@@ -143,7 +143,15 @@ class DiscussionController extends CI_Controller
             ]
         ];
 
-        $topics = ($class == '3') ? $cc104 : $ws101;
+        $cc105 = [
+            // Add topics for CC105 if any
+        ];
+
+        $business_intelligence = [
+            // Add topics for Business Intelligence if any
+        ];
+
+        $topics = ($class == '3') ? $business_intelligence : $cc105;
 
         $data['topics'] = $topics;
         $this->load->view('discussion_view', $data);
