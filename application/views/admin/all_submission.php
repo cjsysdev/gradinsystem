@@ -67,7 +67,7 @@
                                             <a href="<?= base_url('add_rand_score/' . $row['classwork_id'] . "/{$row['max_score']}" . "/$selected_assessment_id") ?>" type="button" class="btn btn-outline-secondary mr-1 ml-1" name="score" value="good"><?= $row['max_score'] ?></a><button type="submit" class="btn btn-info mr-1 ml-1">Submit</button>
                                         </div>
                                         <?php if (isset($row['file_upload']) && !str_contains($row['file_upload'], 'zip')): ?>
-                                            <!-- <iframe src="<?= base_url("uploads/classworks/{$row['file_upload']}") ?>" width="100%" height="600px" style="border: none;"></iframe> -->
+                                            <iframe src="<?= base_url("uploads/classworks/{$row['file_upload']}") ?>" width="100%" height="600px" style="border: none;"></iframe>
                                         <?php endif; ?>
                                     </form>
                                 <?php endif; ?>

@@ -143,15 +143,37 @@ class DiscussionController extends CI_Controller
             ]
         ];
 
-        $cc105 = [
-            // Add topics for CC105 if any
+        $cc105 =  [
+            [
+                'title' => 'Databases and RDBMS',
+                'description' => 'Understand the fundamentals of databases and relational database management systems.',
+                'link' => base_url('DiscussionController/topic/105c_rdbms')
+            ],
+            [
+                'title' => 'Data, Information, and Metadata',
+                'description' => 'Learn how the difference between data, information, and metadata works in computing systems.',
+                'link' => base_url('DiscussionController/topic/105a_data')
+            ],
+            [
+                'title' => 'Traditional vs Database Approach',
+                'description' => 'Learn how the difference between traditional file processing and database approaches works in computing systems.',
+                'link' => base_url('DiscussionController/topic/105b_trad_vs_dbms')
+            ]
         ];
-
         $business_intelligence = [
-            // Add topics for Business Intelligence if any
+             [
+                'title' => 'Introduction to Business Intelligence',
+                'description' => 'Understand how data is transformed into insights that support business decisions',
+                'link' => base_url('DiscussionController/topic/BI_intro')
+             ],
+             [
+                'title' => 'Decision Making',
+                'description' => 'Understanding the importance and process of decision making in business intelligence',
+                'link' => base_url('DiscussionController/topic/BI_decision')
+            ]
         ];
 
-        $topics = ($class == '3') ? $business_intelligence : $cc105;
+        $topics = ($class == '3') ? $cc105 : $business_intelligence;
 
         $data['topics'] = $topics;
         $this->load->view('discussion_view', $data);

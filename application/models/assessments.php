@@ -81,7 +81,8 @@ class assessments extends MY_Model
     public function get_submitted_assessments($student_id)
     {
         $sql = "
-            SELECT * FROM classworks c 
+            SELECT *, a.description
+            FROM classworks c 
             JOIN assessments a ON c.assessment_id = a.assessment_id 
             JOIN io_type iot ON a.iotype_id = iot.iotype_id
             JOIN class_schedule cs ON a.schedule_id = cs.schedule_id

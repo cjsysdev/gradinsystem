@@ -107,7 +107,10 @@ class AssessmentController extends CI_Controller
                     $config['height'] = 768; // Resize height
 
                     $this->load->library('image_lib', $config);
-
+                    $this->image_lib->initialize($config);
+                    $this->image_lib->resize();
+                    $this->image_lib->clear();
+                    
                     if (!$this->image_lib->resize()) {
                         $this->session->set_flashdata('error', $this->image_lib->display_errors());
                         redirect('classwork');
