@@ -105,7 +105,7 @@
             </div>
         <?php endif; ?>
 
-        <!-- <a class="btn alert-primary btn-block mb-3" href="./uploads/bootstrap.4.5.2.min.css" download="bootstrap.4.5.2.min.css" src="./uploads/bootstrap.4.5.2.min.css"><i class="fa fa-download" aria-hidden="true" style="margin-right: 10px"> </i>Bootstrap</a> -->
+        <a class="btn alert-primary btn-block mb-3" href="./uploads/discussion/DBMS_normalization.pdf" download="bootstrap.4.5.2.min.css" src="./uploads/discussion/DBMS_normalization.pdf"><i class="fa fa-download" aria-hidden="true" style="margin-right: 10px"> </i>DBMS_normalization</a>
         <!-- <a class="btn alert-primary btn-block mb-3" href="http://192.168.1.137/cmc/public/index.php">Survey</a> -->
 
         <?php if ($this->session->exam_review): ?>

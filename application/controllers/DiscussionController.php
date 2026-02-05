@@ -144,6 +144,21 @@ class DiscussionController extends CI_Controller
         ];
 
         $cc105 =  [
+               [
+                'title' => 'Introduction to SQL',
+                'description' => 'Understand how Structured Query Language (SQL) is used to manage and interact with databases.',
+                'link' => base_url('DiscussionController/topic/105e_introtosql')
+            ],
+             [
+                'title' => 'Relational Database Normalization',
+                'description' => 'Designing efficient, consistent, and scalable databases',
+                'link' => base_url('DiscussionController/topic/105d_normalization')
+            ],
+            [
+                'title' => 'Databases Worksheet',
+                'description' => 'Understand the fundamentals of databases and relational database management systems.',
+                'link' => base_url('DiscussionController/topic/105database_worksheet')
+            ],
             [
                 'title' => 'Databases and RDBMS',
                 'description' => 'Understand the fundamentals of databases and relational database management systems.',
@@ -162,15 +177,36 @@ class DiscussionController extends CI_Controller
         ];
         $business_intelligence = [
              [
-                'title' => 'Introduction to Business Intelligence',
-                'description' => 'Understand how data is transformed into insights that support business decisions',
-                'link' => base_url('DiscussionController/topic/BI_intro')
-             ],
-             [
+                'title' => 'Text Analytics, Text Mining, and Natural Language Processing',
+                'description' => 'Modern organizations generate massive amounts of unstructured text data from emails, social media, reviews, reports, chat logs, and documents. To extract value from this data, techniques such as Text Analytics, Text Mining, and Natural Language Processing (NLP) are used.',
+                'link' => base_url('DiscussionController/topic/BI_textmining')
+            ],
+            [
+                'title' => 'Business Intelligence Concepts',
+                'description' => 'Concepts, architecture, and role of BI in modern decision making.',
+                'link' => base_url('DiscussionController/topic/BI_framework')
+            ],
+            [
+                'title' => 'OLTP vs OLAP',
+                'description' => 'Understanding Operational and Analytical Database Systems',
+                'link' => base_url('DiscussionController/topic/BI_OTLPvsOLAP')
+            ],
+            [
+                'title' => 'Business Analytics',
+                'description' => 'Understanding Descriptive, Predictive, and Prescriptive Analytics',
+                'link' => base_url('DiscussionController/topic/BI_analytics')
+            ],
+            [
                 'title' => 'Decision Making',
                 'description' => 'Understanding the importance and process of decision making in business intelligence',
                 'link' => base_url('DiscussionController/topic/BI_decision')
+            ],
+            [
+                'title' => 'Introduction to Business Intelligence',
+                'description' => 'Understand how data is transformed into insights that support business decisions',
+                'link' => base_url('DiscussionController/topic/BI_intro')
             ]
+
         ];
 
         $topics = ($class == '3') ? $cc105 : $business_intelligence;

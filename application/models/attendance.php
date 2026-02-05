@@ -212,7 +212,7 @@ class attendance extends MY_Model
             JOIN 
                 class_student sec ON s.trans_no = sec.student_id
             JOIN 
-                class_schedule cs ON sec.student_id = cs.student_id
+                class_schedule cs ON sec.section = cs.section
             JOIN 
                 semester_master sem ON cs.semester_id = sem.trans_no
                 WHERE 

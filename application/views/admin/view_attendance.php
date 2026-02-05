@@ -45,7 +45,7 @@
                         <td><?= $record['student_id'] ?></td>
                         <td><?= $record['lastname'] ?></td>
                         <td><?= $record['firstname'] ?></td>
-                        <td><?= $record['absents'] / 2 ?></td>
+                        <td><?= $record['absents'] ?></td>
                         <td>
                             <?php
                             $dates = explode(', ', $record['absence_dates']);
