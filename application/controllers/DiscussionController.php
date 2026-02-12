@@ -144,12 +144,17 @@ class DiscussionController extends CI_Controller
         ];
 
         $cc105 =  [
-               [
+             [
+                'title' => 'Database Design Worksheet',
+                'description' => 'Design databases using normalization and entity-relationship diagrams.',
+                'link' => base_url('DiscussionController/topic/105_db_designworksheet')
+            ],
+            [
                 'title' => 'Introduction to SQL',
                 'description' => 'Understand how Structured Query Language (SQL) is used to manage and interact with databases.',
                 'link' => base_url('DiscussionController/topic/105e_introtosql')
             ],
-             [
+            [
                 'title' => 'Relational Database Normalization',
                 'description' => 'Designing efficient, consistent, and scalable databases',
                 'link' => base_url('DiscussionController/topic/105d_normalization')
@@ -176,7 +181,12 @@ class DiscussionController extends CI_Controller
             ]
         ];
         $business_intelligence = [
-             [
+            [
+                'title' => 'Natural Language Processing (NLP) with Orange Data Mining',
+                'description' => 'Turning text (reviews, comments, messages) into meaningful insights — no heavy coding required.',
+                'link' => base_url('DiscussionController/topic/BI_textmining')
+            ],
+            [
                 'title' => 'Text Analytics, Text Mining, and Natural Language Processing',
                 'description' => 'Modern organizations generate massive amounts of unstructured text data from emails, social media, reviews, reports, chat logs, and documents. To extract value from this data, techniques such as Text Analytics, Text Mining, and Natural Language Processing (NLP) are used.',
                 'link' => base_url('DiscussionController/topic/BI_textmining')

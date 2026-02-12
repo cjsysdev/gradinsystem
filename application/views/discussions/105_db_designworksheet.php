@@ -137,7 +137,7 @@
 
         <hr>
 
-        <div class="section">
+        <!-- <div class="section">
             <h2>Scenario: Hospital Outpatient System</h2>
 
             <p>
@@ -182,9 +182,9 @@
                     </tr>
                 </table>
             </div>
-        </div>
+        </div> -->
 
-        <div class="section">
+        <!-- <div class="section">
             <h2>Scenario: Public Library Borrowing System</h2>
 
             <p>
@@ -229,9 +229,9 @@
                     </tr>
                 </table>
             </div>
-        </div>
+        </div> -->
 
-        <div class="section">
+        <!-- <div class="section">
             <h2>Scenario: Retail Store Sales System</h2>
 
             <p>
@@ -276,9 +276,9 @@
                     </tr>
                 </table>
             </div>
-        </div>
+        </div> -->
 
-        <div class="section">
+        <!-- <div class="section">
             <h2>Scenario: Hotel Room Booking System</h2>
 
             <p>
@@ -369,7 +369,91 @@
                     </tr>
                 </table>
             </div>
+        </div> -->
+
+        <div class="section">
+            <h2>Scenario: Retail Store Sales System</h2>
+
+            <p>
+                A small retail store sells computer accessories and records all sales
+                transactions in a single worksheet. Each row represents one product sold
+                to a customer during a transaction.
+            </p>
+
+            <p>
+                However, the store owner noticed several problems:
+            <ul>
+                <li>Customer information is repeated every time the customer makes a purchase.</li>
+                <li>Product details such as name, category, and unit price are duplicated.</li>
+                <li>If a product price changes, old records may become inconsistent.</li>
+                <li>It is difficult to generate accurate reports such as total sales per customer or product.</li>
+            </ul>
+            </p>
+
+            <p>
+                The store wants to redesign its system using a properly structured
+                relational database to reduce redundancy and improve data consistency.
+            </p>
+
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered table-striped">
+                    <tr>
+                        <th>SaleID</th>
+                        <th>CustomerID</th>
+                        <th>CustomerName</th>
+                        <th>ProductID</th>
+                        <th>ProductName</th>
+                        <th>Category</th>
+                        <th>UnitPrice</th>
+                        <th>Quantity</th>
+                        <th>SaleDate</th>
+                    </tr>
+                    <tr>
+                        <td>1</td>
+                        <td>C001</td>
+                        <td>Paolo Reyes</td>
+                        <td>P100</td>
+                        <td>USB Flash Drive</td>
+                        <td>Accessories</td>
+                        <td>450</td>
+                        <td>2</td>
+                        <td>2025-01-08</td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td>C002</td>
+                        <td>Nina Cruz</td>
+                        <td>P101</td>
+                        <td>Wireless Mouse</td>
+                        <td>Accessories</td>
+                        <td>850</td>
+                        <td>1</td>
+                        <td>2025-01-09</td>
+                    </tr>
+                </table>
+            </div>
         </div>
+
+        <!-- <div class="section">
+            <h3>Activity Tasks</h3>
+            <ol>
+                <li>Identify the possible <strong>entities</strong> in the scenario.</li>
+                <li>Determine the <strong>primary key</strong> for each entity.</li>
+                <li>Identify the <strong>attributes</strong> that belong to each entity.</li>
+                <li>Draw the <strong>ERD</strong> showing relationships between entities.</li>
+                <li>Create the SQL database and tables using:
+                    <ul>
+                        <li>Primary Keys</li>
+                        <li>Foreign Keys</li>
+                        <li>Appropriate data types</li>
+                    </ul>
+                </li>
+                <li>Insert at least 3 sample records per table.</li>
+                <li>Create one query that shows the total sales per product.</li>
+            </ol>
+        </div> -->
+
+
 
 
         <!-- <div class="section">

@@ -88,6 +88,21 @@
         text-align: center;
         margin-bottom: 20px;
     }
+
+    .text-answer-input {
+        width: 100%;
+        padding: 10px;
+        margin: 5px 0;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 16px;
+    }
+
+    .text-answer-input:focus {
+        outline: none;
+        border-color: #007bff;
+        box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+    }
 </style>
 <div class="container mt-3 mb-5">
     <div class="dashboard">
@@ -133,18 +148,39 @@
 </pre>
                                         <?php endif; ?>
                                     </div>
-                                    <?php foreach ($questions[$i]['choices'] as $choiceIndex => $choice): ?>
+                                    <?php
+                                    // Check if choices are empty or only contain empty strings
+                                    $validChoices = array_filter($questions[$i]['choices'], function ($choice) {
+                                        return trim($choice) !== '';
+                                    });
+                                    ?>
+                                    <?php if (empty($validChoices)): ?>
+                                        <!-- Text Input for questions without choices -->
                                         <div>
-                                            <input class="form-check-input" type="radio"
+                                            <input type="text"
+                                                class="text-answer-input"
                                                 name="answers[<?= $i ?>]"
-                                                value="<?= htmlspecialchars($choice) ?>"
-                                                id="choice<?= $i ?>_<?= $choiceIndex ?>"
-                                                data-question="<?= $i ?>">
-                                            <label class="form-check-label" for="choice<?= $i ?>_<?= $choiceIndex ?>">
-                                                <?= htmlspecialchars($choice) ?>
-                                            </label>
+                                                id="choice<?= $i ?>_text"
+                                                placeholder="Type your answer here..."
+                                                data-question="<?= $i ?>"
+                                                data-question-type="text">
                                         </div>
-                                    <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <!-- Radio buttons for multiple choice questions -->
+                                        <?php foreach ($questions[$i]['choices'] as $choiceIndex => $choice): ?>
+                                            <div>
+                                                <input class="form-check-input" type="radio"
+                                                    name="answers[<?= $i ?>]"
+                                                    value="<?= htmlspecialchars($choice) ?>"
+                                                    id="choice<?= $i ?>_<?= $choiceIndex ?>"
+                                                    data-question="<?= $i ?>"
+                                                    data-question-type="radio">
+                                                <label class="form-check-label" for="choice<?= $i ?>_<?= $choiceIndex ?>">
+                                                    <?= htmlspecialchars($choice) ?>
+                                                </label>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
                                 </div>
                                 <hr>
                             <?php endfor; ?>
@@ -218,7 +254,18 @@
 
         function updateProgressBar() {
             const totalQuestions = <?= $totalQuestions ?>;
-            const answered = document.querySelectorAll('.form-check-input:checked').length;
+            let answered = 0;
+
+            // Count radio buttons
+            answered += document.querySelectorAll('.form-check-input:checked').length;
+
+            // Count text inputs with values
+            document.querySelectorAll('input[data-question-type="text"]').forEach(input => {
+                if (input.value.trim() !== '') {
+                    answered++;
+                }
+            });
+
             const percent = Math.round((answered / totalQuestions) * 100);
 
             const progressBar = document.getElementById('quizProgressBar');
@@ -250,8 +297,20 @@
 
         // Check if all questions are answered
         function checkAllAnswered() {
-            const allAnswered = Array.from(document.querySelectorAll('.form-check-input'))
-                .filter(input => input.checked).length === <?= $totalQuestions ?>;
+            const totalQuestions = <?= $totalQuestions ?>;
+            let answered = 0;
+
+            // Count radio buttons
+            answered += document.querySelectorAll('.form-check-input:checked').length;
+
+            // Count text inputs with values
+            document.querySelectorAll('input[data-question-type="text"]').forEach(input => {
+                if (input.value.trim() !== '') {
+                    answered++;
+                }
+            });
+
+            const allAnswered = answered === totalQuestions;
             if (allAnswered) {
                 submitBtn.style.display = 'block';
             } else {
@@ -262,22 +321,46 @@
         // Save all answers in one object
         let quizAnswers = JSON.parse(localStorage.getItem('quiz_answers')) || {};
         const radioButtons = document.querySelectorAll('.form-check-input');
+        const textInputs = document.querySelectorAll('input[data-question-type="text"]');
+
+        // Radio button event listeners
         radioButtons.forEach(radio => {
             radio.addEventListener('change', function() {
                 if (!quizStarted) enterFullscreen();
                 quizAnswers[this.dataset.question] = this.value;
                 localStorage.setItem('quiz_answers', JSON.stringify(quizAnswers));
                 checkAllAnswered();
-                updateProgressBar(); // <-- Add this
+                updateProgressBar();
+            });
+        });
+
+        // Text input event listeners
+        textInputs.forEach(input => {
+            input.addEventListener('input', function() {
+                if (!quizStarted) enterFullscreen();
+                quizAnswers[this.dataset.question] = this.value;
+                localStorage.setItem('quiz_answers', JSON.stringify(quizAnswers));
+                checkAllAnswered();
+                updateProgressBar();
             });
         });
 
         function loadSavedAnswers() {
             quizAnswers = JSON.parse(localStorage.getItem('quiz_answers')) || {};
+
+            // Load radio button answers
             radioButtons.forEach(radio => {
                 const questionIndex = radio.dataset.question;
                 if (quizAnswers[questionIndex] && radio.value === quizAnswers[questionIndex]) {
                     radio.checked = true;
+                }
+            });
+
+            // Load text input answers
+            textInputs.forEach(input => {
+                const questionIndex = input.dataset.question;
+                if (quizAnswers[questionIndex]) {
+                    input.value = quizAnswers[questionIndex];
                 }
             });
         }
@@ -344,18 +427,37 @@
             // Prepare the results array in the same format as QuizController::submit
             const questions = <?= json_encode($questions); ?>;
             const answers = {};
+
+            // Get answers from radio buttons (multiple choice)
             document.querySelectorAll('.form-check-input:checked').forEach(input => {
+                answers[input.name.replace('answers[', '').replace(']', '')] = input.value;
+            });
+
+            // Get answers from text inputs
+            document.querySelectorAll('input[data-question-type="text"]').forEach(input => {
                 answers[input.name.replace('answers[', '').replace(']', '')] = input.value;
             });
 
             const results = questions.map((question, index) => {
                 const userAnswer = answers[index] !== undefined ? answers[index] : 'No answer';
+                // Case-insensitive comparison with whitespace trimming for text inputs
+                const userAnswerNormalized = userAnswer.toLowerCase().trim();
+                const correctAnswerNormalized = question.answer.toLowerCase().trim();
+                const isCorrect = userAnswerNormalized === correctAnswerNormalized;
+
+                // Debug logging - remove after testing
+                if (userAnswer !== 'No answer') {
+                    console.log(`Q${index}: User="${userAnswer}" vs Correct="${question.answer}"`);
+                    console.log(`Normalized: User="${userAnswerNormalized}" vs Correct="${correctAnswerNormalized}"`);
+                    console.log(`Match: ${isCorrect}`);
+                }
+
                 return {
                     question: question.question,
                     code: question.code,
                     user_answer: userAnswer,
                     correct_answer: question.answer,
-                    is_correct: userAnswer === question.answer
+                    is_correct: isCorrect
                 };
             });
 

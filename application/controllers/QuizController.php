@@ -85,7 +85,27 @@ class QuizController extends CI_Controller
 
         foreach ($questions as $index => $question) {
             $userAnswer = isset($userAnswers[$index]) ? $userAnswers[$index] : 'No answer';
-            $isCorrect = ($userAnswer === $question['answer']);
+
+            // Determine comparison method: if question has no valid choices, treat as free-text
+            $hasValidChoices = false;
+            if (isset($question['choices']) && is_array($question['choices'])) {
+                foreach ($question['choices'] as $c) {
+                    if (trim($c) !== '') {
+                        $hasValidChoices = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!$hasValidChoices) {
+                // Case-insensitive, whitespace-tolerant comparison for text answers
+                $userNorm = mb_strtolower(trim((string)$userAnswer));
+                $correctNorm = mb_strtolower(trim((string)$question['answer']));
+                $isCorrect = ($userNorm === $correctNorm);
+            } else {
+                // For multiple-choice, use trimmed exact match
+                $isCorrect = (trim((string)$userAnswer) === trim((string)$question['answer']));
+            }
 
             if ($isCorrect) {
                 $score++;
