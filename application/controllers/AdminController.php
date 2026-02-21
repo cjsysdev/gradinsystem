@@ -27,8 +27,8 @@ class AdminController extends CI_Controller
         $data['discussion_mode'] = $query->row()->setting_value === '1';
 
         $data['attendance'] = $this->attendance->get_double_entry(date('Y-m-d'), $class['schedule_id']);
-
         $data['lates'] = $this->attendance->get_student_status($class['schedule_id'], date('Y-m-d'), 'late');
+        $data['absents'] = $this->attendance->get_student_status($class['schedule_id'], date('Y-m-d'), 'absent');
 
         $this->load->view('admin/dashboard', $data);
     }

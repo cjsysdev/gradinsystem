@@ -144,6 +144,11 @@ class DiscussionController extends CI_Controller
         ];
 
         $cc105 =  [
+            [
+                'title' => 'SQL Constraints',
+                'description' => 'Learn about SQL constraints and how they enforce data integrity.',
+                'link' => base_url('DiscussionController/topic/105_constraints')
+            ],
              [
                 'title' => 'Database Design Worksheet',
                 'description' => 'Design databases using normalization and entity-relationship diagrams.',
@@ -180,7 +185,13 @@ class DiscussionController extends CI_Controller
                 'link' => base_url('DiscussionController/topic/105b_trad_vs_dbms')
             ]
         ];
+        
         $business_intelligence = [
+             [
+                'title' => 'Text Mining',
+                'description' => 'Understanding how unstructured text data can be transformed into valuable business intelligence insights.',
+                'link' => base_url('DiscussionController/topic/BI_textmining_demo')
+            ],
             [
                 'title' => 'Natural Language Processing (NLP) with Orange Data Mining',
                 'description' => 'Turning text (reviews, comments, messages) into meaningful insights — no heavy coding required.',

@@ -371,7 +371,7 @@
             </div>
         </div> -->
 
-        <div class="section">
+        <!-- <div class="section">
             <h2>Scenario: Retail Store Sales System</h2>
 
             <p>
@@ -432,7 +432,87 @@
                     </tr>
                 </table>
             </div>
+        </div> -->
+
+        <div class="section">
+            <h2>Scenario: School Library Borrowing System</h2>
+
+            <p>
+                A school library keeps track of books borrowed by students using a single spreadsheet.
+                Each row records one borrowing transaction.
+            </p>
+
+            <p>
+                The librarian noticed several problems:
+            <ul>
+                <li>Student information is repeated every time a student borrows a book.</li>
+                <li>Book details such as title and author are duplicated.</li>
+                <li>If a book title changes or is corrected, multiple rows must be updated.</li>
+                <li>It is difficult to generate reports such as most borrowed books or student borrowing history.</li>
+            </ul>
+            </p>
+
+            <p>
+                The school wants to redesign the system using a properly structured
+                relational database to reduce redundancy and improve data consistency.
+            </p>
+
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered table-striped">
+                    <tr>
+                        <th>BorrowID</th>
+                        <th>StudentID</th>
+                        <th>StudentName</th>
+                        <th>GradeLevel</th>
+                        <th>BookID</th>
+                        <th>BookTitle</th>
+                        <th>Author</th>
+                        <th>BorrowDate</th>
+                        <th>ReturnDate</th>
+                    </tr>
+                    <tr>
+                        <td>1</td>
+                        <td>S001</td>
+                        <td>Maria Santos</td>
+                        <td>Grade 10</td>
+                        <td>B100</td>
+                        <td>Introduction to Programming</td>
+                        <td>J. Cruz</td>
+                        <td>2025-01-05</td>
+                        <td>2025-01-12</td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td>S002</td>
+                        <td>Kevin Lim</td>
+                        <td>Grade 9</td>
+                        <td>B101</td>
+                        <td>Basic Algebra</td>
+                        <td>L. Reyes</td>
+                        <td>2025-01-07</td>
+                        <td>2025-01-14</td>
+                    </tr>
+                </table>
+            </div>
         </div>
+
+        <div class="section">
+            <h3>Activity Tasks</h3>
+            <ol>
+                <li>Identify the possible <strong>entities</strong> in the scenario.</li>
+                <li>Determine the <strong>primary key</strong> for each entity.</li>
+                <li>Assign appropriate <strong>attributes</strong> to each entity.</li>
+                <li>Draw the <strong>ERD</strong> showing relationships between entities.</li>
+                <li>Create the SQL database and tables with:
+                    <ul>
+                        <li>Primary Keys</li>
+                        <li>Foreign Keys</li>
+                        <li>Proper data types</li>
+                    </ul>
+                </li>
+            </ol>
+        </div>
+
 
         <!-- <div class="section">
             <h3>Activity Tasks</h3>
