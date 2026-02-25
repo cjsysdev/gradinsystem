@@ -224,7 +224,90 @@ WHERE course = 'BSIT' AND year_level = 1;
             </ul>
         </div>
 
+        <div class="section">
+            <h2>Laboratory Objectives</h2>
+            <ul>
+                <li>Understand the purpose of inserting records into a table</li>
+                <li>Insert one record correctly into a table</li>
+                <li>Insert multiple records using one statement</li>
+                <li>Explain why multi-row insert is more efficient</li>
+                <li>Verify inserted data using SELECT</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>Given Table Structure</h2>
+            <p>
+                Create the table <strong>students</strong> with the following columns:
+            </p>
+            <ul>
+                <li>student_id (Auto Increment, Primary Key)</li>
+                <li>full_name (Required)</li>
+                <li>course (Required)</li>
+                <li>year_level (Required)</li>
+                <li>email (Unique, Optional)</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>Single Row Insert</h2>
+            <p class="text-muted">
+                Goal: Insert only one student record into the table.
+            </p>
+
+            <h5 class="mt-3">Instructions</h5>
+            <ol>
+                <li>Insert one new student into the <strong>students</strong> table.</li>
+                <li>Provide values for:
+                    <ul>
+                        <li>full_name</li>
+                        <li>course</li>
+                        <li>year_level</li>
+                        <li>email</li>
+                    </ul>
+                </li>
+                <li>Do NOT manually insert a value for <strong>student_id</strong>.</li>
+                <li>After inserting, verify your record using a SELECT statement.</li>
+            </ol>
+
+            <div class="alert alert-warning mt-3">
+                <strong>Guide Questions:</strong>
+                <ul>
+                    <li>Why did you not include the student_id?</li>
+                    <li>What automatically happens to the primary key?</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Multiple Row Insert</h2>
+            <p class="text-muted">
+                Goal: Insert multiple student records using a single INSERT statement.
+            </p>
+
+            <h5 class="mt-3">Instructions</h5>
+            <ol>
+                <li>Insert at least three (3) new students at the same time.</li>
+                <li>Use only ONE INSERT statement.</li>
+                <li>Each student must have:
+                    <ul>
+                        <li>Different full_name</li>
+                        <li>Different email</li>
+                    </ul>
+                </li>
+                <li>Do NOT insert student_id manually.</li>
+                <li>Verify all inserted records using SELECT.</li>
+            </ol>
+
+            <div class="alert alert-info mt-3">
+                <strong>Performance Reflection:</strong>
+                Why is inserting multiple rows in one statement better than writing three separate INSERT statements?
+            </div>
+        </div>
     </div>
+
+    <?php $this->load->view('web_to_image'); ?>
+
 </body>
 
 </html>

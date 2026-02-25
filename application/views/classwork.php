@@ -1,3 +1,41 @@
+
+<?php
+// Only declare once at the top
+if (!function_exists('truncate_html_preserve')) {
+  function truncate_html_preserve($html, $maxLen) {
+    $printedLength = 0;
+    $tags = array();
+    $result = '';
+    $regex = '/<[^>]+>|[^<]+/';
+    preg_match_all($regex, $html, $tokens);
+    foreach ($tokens[0] as $token) {
+      if ($token[0] == '<') {
+        if ($token[1] == '/') {
+          array_pop($tags);
+          $result .= $token;
+        } else {
+          preg_match('/<([a-z0-9]+)(?:\s[^>]*)?>/i', $token, $tagMatch);
+          if (isset($tagMatch[1])) $tags[] = $tagMatch[1];
+          $result .= $token;
+        }
+      } else {
+        $str = $token;
+        if ($printedLength + mb_strlen($str) > $maxLen) {
+          $result .= mb_substr($str, 0, $maxLen - $printedLength) . '...';
+          break;
+        } else {
+          $result .= $str;
+          $printedLength += mb_strlen($str);
+        }
+      }
+    }
+    while (!empty($tags)) {
+      $result .= '</' . array_pop($tags) . '>';
+    }
+    return $result;
+  }
+}
+?>
 <?php $this->load->view('header') ?>
 
 <div class="container">
@@ -45,7 +83,20 @@
                 </p>
               </div>
               <div class="card-body">
-                <p class="card-text mb-3 <?= ($row['iotype_id'] == 3) ? "" : "text-truncate" ?>"><?= $row['description'] ?></p>
+                <?php
+                  $desc = $row['description'];
+                  $maxLen = 120;
+                  $plain = strip_tags($desc);
+                  $isLong = mb_strlen($plain) > $maxLen;
+                  $shortDesc = $isLong ? truncate_html_preserve($desc, $maxLen) : $desc;
+                ?>
+                <div class="card-text mb-3 description-text">
+                  <span class="desc-short"<?= $isLong ? '' : ' style="display:inline"' ?>><?= $shortDesc ?></span>
+                  <?php if ($isLong): ?>
+                    <span class="desc-full" style="display:none;"><?= $desc ?></span>
+                    <button type="button" class="btn btn-link btn-sm p-0 see-more-btn">See more</button>
+                  <?php endif; ?>
+                </div>
                 <a href="<?= base_url('assessment/' . $row['assessment_id']) ?>" class="btn btn-info btn-block">
                   <?= ($row['iotype_id'] == 3) ? "Start Exam" : "Create" ?>
                 </a>
@@ -66,7 +117,20 @@
                   </p>
                 </div>
                 <div class="card-body">
-                  <p class="card-text mb-3 text-truncate"><?= $row['description'] ?></p>
+                  <?php
+                    $desc = $row['description'];
+                    $maxLen = 120;
+                    $plain = strip_tags($desc);
+                    $isLong = mb_strlen($plain) > $maxLen;
+                    $shortDesc = $isLong ? truncate_html_preserve($desc, $maxLen) : $desc;
+                  ?>
+                  <div class="card-text mb-3 description-text">
+                    <span class="desc-short"<?= $isLong ? '' : ' style="display:inline"' ?>><?= $shortDesc ?></span>
+                    <?php if ($isLong): ?>
+                      <span class="desc-full" style="display:none;"><?= $desc ?></span>
+                      <button type="button" class="btn btn-link btn-sm p-0 see-more-btn">See more</button>
+                    <?php endif; ?>
+                  </div>
                   <a href="<?= base_url('student_submission/' . $row['classwork_id']) ?>" class="btn btn-outline-info btn-block">View</a>
                 </div>
               </div>
@@ -100,6 +164,24 @@
       } else if (filterValue === 'submitted') {
         assessmentCards.forEach(card => card.style.display = 'none');
         submittedCards.forEach(card => card.style.display = 'block');
+      }
+    });
+  });
+
+  // See more/less toggle for PHP-generated descriptions
+  document.querySelectorAll('.see-more-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const container = this.closest('.description-text');
+      const shortSpan = container.querySelector('.desc-short');
+      const fullSpan = container.querySelector('.desc-full');
+      if (fullSpan.style.display === 'none') {
+        shortSpan.style.display = 'none';
+        fullSpan.style.display = 'inline';
+        this.textContent = 'See less';
+      } else {
+        shortSpan.style.display = 'inline';
+        fullSpan.style.display = 'none';
+        this.textContent = 'See more';
       }
     });
   });

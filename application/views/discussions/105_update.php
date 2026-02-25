@@ -247,6 +247,9 @@ ORDER BY StudentID;</code></pre>
         <small>Prepared for SQL Fundamentals • Practice safe updates ✅</small>
     </footer>
 
+    <?php $this->load->view('web_to_image'); ?>
+
+
 </body>
 
 </html>

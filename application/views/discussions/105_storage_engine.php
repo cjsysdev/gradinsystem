@@ -188,6 +188,7 @@ CREATE TABLE students (
             </ul>
         </div>
 
+
         <!-- ================= LAB ACTIVITY ================= -->
         <!-- <div class="section">
             <h2>Hands-On Lab Activity: Storage Engines in Practice</h2>
@@ -360,6 +361,8 @@ SHOW TABLE STATUS FROM library_db;
 
 
     </div>
+    <?php $this->load->view('web_to_image'); ?>
+
 </body>
 
 </html>

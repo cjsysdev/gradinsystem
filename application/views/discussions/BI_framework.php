@@ -208,9 +208,12 @@
             <b>Key idea:</b> Secure, integrated BI systems lead to better and safer insights.
         </div>
 
-                <a class="btn alert-primary btn-block mb-3" href="<?= base_url('assets/pdfjs/web/viewer.html') . '?file=' . urlencode(base_url('uploads/discussions/BI_book.pdf')) . '#page=59' ?>" target="_blank"><i class="fa fa-download" aria-hidden="true" style="margin-right: 10px"> </i>Business Intelligence, Analytics, Data Science, and AI A Managerial Perspective (5th Edition) </a>
+        <a class="btn alert-primary btn-block mb-3" href="<?= base_url('assets/pdfjs/web/viewer.html') . '?file=' . urlencode(base_url('uploads/discussions/BI_book.pdf')) . '#page=59' ?>" target="_blank"><i class="fa fa-download" aria-hidden="true" style="margin-right: 10px"> </i>Business Intelligence, Analytics, Data Science, and AI A Managerial Perspective (5th Edition) </a>
 
     </div>
 
+    <?php $this->load->view('web_to_image'); ?>
+
 </body>
+
 </html>

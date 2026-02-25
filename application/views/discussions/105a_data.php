@@ -20,7 +20,7 @@
     </script>
 </head>
 
-<body >
+<body>
 
     <header>
         <h1>Data, Information, and Metadata</h1>
@@ -160,6 +160,8 @@
         </div>
 
     </div>
+
+    <?php $this->load->view('web_to_image'); ?>
 
 </body>
 

@@ -279,6 +279,9 @@ SELECT * FROM students WHERE course IS NOT NULL;</code></pre>
         <small>Prepared for SQL Fundamentals • Use with MySQL / MariaDB</small>
     </footer>
 
+    <?php $this->load->view('web_to_image'); ?>
+
+
 </body>
 
 </html>

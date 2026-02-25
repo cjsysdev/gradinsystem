@@ -184,7 +184,8 @@ class attendance extends MY_Model
             FROM attendance a
             JOIN class_schedule cs ON a.schedule_id = cs.schedule_id
             JOIN semester_master sem ON cs.semester_id = sem.trans_no
-            WHERE cs.section = ? AND a.student_id = ? AND a.status = 'absent' AND a.reason IS NULL
+            JOIN classes c ON cs.class_id = c.class_id
+            WHERE cs.section = ? AND a.student_id = ? AND a.status = 'absent'
             AND DATE(a.date) BETWEEN ? AND ?
             AND sem.is_active = 1
         ",

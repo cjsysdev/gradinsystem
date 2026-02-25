@@ -454,6 +454,8 @@ LEFT JOIN orders AS o
         <small>SQL JOIN Queries • Web Discussion Format (Bootstrap + Highlight.js)</small>
     </footer>
 
+    <?php $this->load->view('web_to_image'); ?>
+
 </body>
 
 </html>

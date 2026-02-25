@@ -165,6 +165,7 @@
             </ul>
         </div>
 
+        <?php $this->load->view('web_to_image'); ?>
 
     </div>
 </body>

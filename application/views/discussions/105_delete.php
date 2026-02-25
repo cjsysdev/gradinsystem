@@ -307,6 +307,7 @@ INSERT INTO orders VALUES
     <footer class="text-center">
         <small>Prepared for SQL Fundamentals — DELETE Statement</small>
     </footer>
+    <?php $this->load->view('web_to_image'); ?>
 
 </body>
 

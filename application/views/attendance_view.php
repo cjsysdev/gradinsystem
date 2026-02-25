@@ -155,19 +155,91 @@
                         <?= date('l, F j, Y', strtotime($absence['date'])) ?>
                     </strong>
                 </div>
-                <form method="post" action="<?= base_url('add_reason') ?>" class="row align-items-center p-2" style="background:#f8f9fa; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.04); margin-bottom:8px;">
-                    <input type="hidden" name="attendance_id" value="<?= $absence['attendance_id'] ?>">
-                    <div class="col-md-8 col-12 mb-2 mb-md-0">
-                        <input type="text" name="reason" class="form-control" placeholder="Enter reason for absence..." required style="border-radius:6px;">
+                <?php if (!empty($absence['reason'])): ?>
+                    <div class="col-12 p-2" style="background:#f8f9fa; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.04); margin-bottom:8px;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span><b>Reason:</b> <?= htmlspecialchars($absence['reason']) ?></span>
+                            <button class="btn btn-outline-primary btn-sm" onclick="printExcuseLetter('<?= htmlspecialchars($absence['date']) ?>', '<?= htmlspecialchars($absence['class_code'] . ' - ' . $absence['class_name'] . ' - ' . $absence['section']) ?>', '<?= htmlspecialchars($absence['reason']) ?>')">
+                                <i class="fa fa-print mr-1"></i> Print Excuse Letter
+                            </button>
+                        </div>
                     </div>
-                    <div class="col-md-4 col-12 text-md-right text-center">
-                        <button type="submit" class="btn btn-success btn-block px-4" style="border-radius:6px;">
-                            <i class="fa fa-paper-plane mr-1"></i>
-                        </button>
-                    </div>
-                </form>
+                <?php else: ?>
+                    <form method="post" action="<?= base_url('add_reason') ?>" class="row align-items-center p-2" style="background:#f8f9fa; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.04); margin-bottom:8px;">
+                        <input type="hidden" name="attendance_id" value="<?= $absence['attendance_id'] ?>">
+                        <div class="col-md-8 col-12 mb-2 mb-md-0">
+                            <input type="text" name="reason" class="form-control" placeholder="Enter reason for absence..." required style="border-radius:6px;">
+                        </div>
+                        <div class="col-md-4 col-12 text-md-right text-center">
+                            <button type="submit" class="btn btn-success btn-block px-4" style="border-radius:6px;">
+                                <i class="fa fa-paper-plane mr-1"></i>
+                            </button>
+                        </div>
+                    </form>
+                <?php endif; ?>
             </div>
         <?php endforeach; ?>
+
+        <!-- Excuse Letter Template for Printing -->
+        <div id="excuseLetterTemplate" style="display:none;">
+            <div id="excuseLetterContent" style="font-family: Arial, sans-serif; width: 8.5in; height: 11in; min-height: 11in; margin: 0 auto; padding: 1in; box-sizing: border-box; background: white;">
+                <div style="text-align:center; margin-bottom: 30px;">
+                    <img src="<?= base_url('assets/cmc_logo_no_bg.png') ?>" alt="School Logo" style="height:70px; margin-bottom:10px;">
+                    <h3 style="margin:0;">Carmen Municipal College</h3>
+                    <div style="font-size:15px;">Pob. Norte, Carmen, Bohol<br>info@cmcbohol.edu.ph</div>
+                    <hr style="margin:20px 0 0 0;">
+                </div>
+                <h2 style="text-align:center; margin-top: 10px;">Excuse Letter</h2>
+                <p style="text-align:right;">Date: <span id="excuseDate"></span></p>
+                <p>To whom it may concern,</p>
+                <p style="text-align:justify;">I am writing to formally excuse my absence on <b><span id="excuseAbsenceDate"></span></b> due to the following reason:</p>
+                <blockquote style="background:#f1f1f1; padding:10px; border-radius:6px;"><span id="excuseReason"></span></blockquote>
+                <p>Course: <span id="excuseCourse"></span></p>
+                <br><br>
+                <p>Sincerely,</p>
+                <br><br>
+                <p><b><?= $this->session->lastname . ' ' . $this->session->firstname ?></b></p>
+                <p>Student</p> 
+                <br><br><br>
+                <p>Verified by:</p> 
+                <br><br>
+                ________________________
+            </div>
+        </div>
+
+        <script>
+            function printExcuseLetter(absenceDate, course, reason) {
+                // Fill in the template
+                document.getElementById('excuseDate').innerText = new Date().toLocaleDateString();
+                document.getElementById('excuseAbsenceDate').innerText = formatLongDate(absenceDate);
+                // Format date as 'dddd, mmmm dd, yyyy'
+                function formatLongDate(dateStr) {
+                    const date = new Date(dateStr);
+                    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+                    const dayName = days[date.getDay()];
+                    const monthName = months[date.getMonth()];
+                    const day = date.getDate();
+                    const year = date.getFullYear();
+                    return `${dayName}, ${monthName} ${day < 10 ? '0' : ''}${day}, ${year}`;
+                }
+                document.getElementById('excuseCourse').innerText = course;
+                document.getElementById('excuseReason').innerText = reason;
+
+                // Prepare print window for short bond paper (8.5x11in)
+                var printContents = document.getElementById('excuseLetterContent').outerHTML;
+                var win = window.open('', '', 'width=850,height=1100');
+                win.document.write('<html><head><title>Excuse Letter</title>');
+                win.document.write('<style>@media print { body { margin:0; } #excuseLetterContent { width:8.5in; height:11in; min-height:11in; margin:0; padding:1in; box-sizing:border-box; background:white; } }</style>');
+                win.document.write('</head><body>' + printContents + '</body></html>');
+                win.document.close();
+                win.focus();
+                setTimeout(function() {
+                    win.print();
+                    win.close();
+                }, 500);
+            }
+        </script>
         <div class="container mt-1 mb-5 p-0">
             <div id="calendar"></div>
         </div>

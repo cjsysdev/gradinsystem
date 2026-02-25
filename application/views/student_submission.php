@@ -193,7 +193,7 @@
 <?php
 $date = new DateTime($classwork['created_at']);
 $dateStr = $date->format('Y-m-d H:i:s');
-$date->modify('-1 days');
+$date->modify('+2 days');
 $date_a_week = $date->format('Y-m-d');
 ?>
 
@@ -232,7 +232,11 @@ $date_a_week = $date->format('Y-m-d');
         $top_students = $query->result_array();
         ?>
 
-        <?php if (isset($classwork['code']) && date('Y-m-d') >= $date_a_week && !$this->session->exam_term): ?>
+        <?php if (
+          isset($classwork['code']) &&
+          strtotime('now') >= strtotime($date_a_week) &&
+          !$this->session->exam_term
+        ): ?>
           <?php foreach (json_decode($classwork['code'], true) as $index => $result): ?>
             <div class="mb-4 text-left position-relative" style="position:relative;">
               <!-- Watermark for each question -->
