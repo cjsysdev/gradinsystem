@@ -81,7 +81,7 @@ function randomizeNumber($min, $max)
 
 function convertPercentageToGradePoint($percentage)
 {
-    $passingGrade = 50;
+    $passingGrade = 60;
 
     if ($percentage <= $passingGrade) {
         // Range 1: 0% to passing grade (returns 5.0 → 3.0)

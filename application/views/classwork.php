@@ -118,7 +118,7 @@ if (!function_exists('truncate_html_preserve')) {
                 </div>
                 <div class="card-body">
                   <?php
-                    $desc = $row['description'];
+                    $desc = isset($row['description']) ? $row['description'] : '';
                     $maxLen = 120;
                     $plain = strip_tags($desc);
                     $isLong = mb_strlen($plain) > $maxLen;

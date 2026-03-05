@@ -128,9 +128,9 @@
                         }
                         ?>
                     </td>
-                    <td><?= floor($student['present'] / 2) ?></td>
-                    <td><?= floor($student['absent'] / 2) ?></td>
-                    <td><?= floor($student['late'] / 2) ?></td>
+                    <td><?= floor($student['present']) ?></td>
+                    <td><?= floor($student['absent']) ?></td>
+                    <td><?= floor($student['late']) ?></td>
                     </tr>
                 <?php endforeach;
         else: ?>

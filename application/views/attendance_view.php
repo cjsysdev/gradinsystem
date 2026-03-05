@@ -5,6 +5,7 @@
 <script src="<?= base_url('/assets/underscore-min.js') ?> "></script>
 <script src="<?= base_url('/assets/moment.min.js') ?> "></script>
 <script src="<?= base_url('/assets/clndr.min.js') ?> "></script>
+<script src="<?= base_url('assets/html2canvas.min.js') ?>"></script>
 
 <style>
     #calendar {
@@ -105,7 +106,7 @@
             </div>
         <?php endif; ?>
 
-        <!-- <a class="btn alert-primary btn-block mb-3" href="./uploads/discussion/DBMS_normalization.pdf" download="bootstrap.4.5.2.min.css" src="./uploads/discussion/DBMS_normalization.pdf"><i class="fa fa-download" aria-hidden="true" style="margin-right: 10px"> </i>DBMS_normalization</a> -->
+        <a class="btn alert-primary btn-block mb-3" href="./uploads/orange3.exe" download="orange3.exe" src="./uploads/orange3.exe"><i class="fa fa-download" aria-hidden="true" style="margin-right: 10px"> </i>Orange</a>
         <!-- <a class="btn alert-primary btn-block mb-3" href="http://192.168.1.137/cmc/public/index.php">Survey</a> -->
 
         <?php if ($this->session->exam_review): ?>
@@ -151,7 +152,6 @@
             <div class="row m-1">
                 <div class="col alert alert-secondary">
                     <strong>
-                        <?= htmlspecialchars($absence['type']) ?>
                         <?= date('l, F j, Y', strtotime($absence['date'])) ?>
                     </strong>
                 </div>
@@ -159,7 +159,7 @@
                     <div class="col-12 p-2" style="background:#f8f9fa; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.04); margin-bottom:8px;">
                         <div class="d-flex justify-content-between align-items-center">
                             <span><b>Reason:</b> <?= htmlspecialchars($absence['reason']) ?></span>
-                            <button class="btn btn-outline-primary btn-sm" onclick="printExcuseLetter('<?= htmlspecialchars($absence['date']) ?>', '<?= htmlspecialchars($absence['class_code'] . ' - ' . $absence['class_name'] . ' - ' . $absence['section']) ?>', '<?= htmlspecialchars($absence['reason']) ?>')">
+                            <button class="btn btn-outline-primary btn-sm" target="_blank" onclick="printExcuseLetter('<?= htmlspecialchars($absence['date']) ?>', '<?= htmlspecialchars($absence['class_code'] . ' - ' . $absence['class_name'] . ' - ' . $absence['section']) ?>', '<?= htmlspecialchars($absence['reason']) ?>')">
                                 <i class="fa fa-print mr-1"></i> Print Excuse Letter
                             </button>
                         </div>
@@ -199,11 +199,11 @@
                 <p>Sincerely,</p>
                 <br><br>
                 <p><b><?= $this->session->lastname . ' ' . $this->session->firstname ?></b></p>
-                <p>Student</p> 
+                <p>Student</p>
                 <br><br><br>
-                <p>Verified by:</p> 
-                <br><br>
-                ________________________
+                <p>Verified by:</p>
+                <br><br><br>
+                <p style="color: lightgray;">(Name & Signature)</p>
             </div>
         </div>
 
@@ -236,7 +236,6 @@
                 win.focus();
                 setTimeout(function() {
                     win.print();
-                    win.close();
                 }, 500);
             }
         </script>

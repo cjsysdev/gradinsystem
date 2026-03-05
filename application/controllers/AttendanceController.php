@@ -28,7 +28,7 @@ class AttendanceController extends CI_Controller
 
         $day = date('D');
         $date = date('Y-m-d');
-        $start_date = '2025-08-01'; // Example start date
+        $start_date = '2026-01-13'; // Example start date
 
         $class = $this->class_schedule->class_today($day);
         $student_id = $this->session->student_id;
@@ -83,7 +83,7 @@ class AttendanceController extends CI_Controller
                 $start_date,
                 $date
             ),
-            'show_red_overlay' => $absences >= 100,
+            'show_red_overlay' => $absences >= 8,
         ];
 
         $this->load->view('attendance_view', $data);

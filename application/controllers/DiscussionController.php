@@ -198,6 +198,11 @@ class DiscussionController extends CI_Controller
 
         $business_intelligence = [
             [
+                'title' => 'Midterm Project Instructions',
+                'description' => 'Text Mining, Analytics, and NLP Using Orange Data Mining.',
+                'link' => base_url('DiscussionController/topic/BI_midterm_instruction')
+            ],
+            [
                 'title' => 'Text Mining',
                 'description' => 'Understanding how unstructured text data can be transformed into valuable business intelligence insights.',
                 'link' => base_url('DiscussionController/topic/BI_textmining_demo')
