@@ -90,6 +90,25 @@ class StudentController extends CI_Controller
         }
     }
 
+    public function get_exam_mode()
+    {
+        // Load the database library
+        $this->load->database();
+
+        // Query the database for the discussion mode
+        $query = $this->db->get_where('global_settings', [
+            'setting_key' => 'exam_mode',
+        ]);
+
+        // Check if the setting exists and return the value
+        if ($query->num_rows() > 0) {
+            $exam_mode = $query->row()->setting_value === '1';
+            echo json_encode(['exam_mode' => $exam_mode]);
+        } else {
+            echo json_encode(['error' => 'Discussion mode setting not found.']);
+        }
+    }
+
     public function add_section()
     {
         date_default_timezone_set('Asia/Manila');

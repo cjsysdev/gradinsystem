@@ -106,7 +106,7 @@
             </div>
         <?php endif; ?>
 
-        <a class="btn alert-primary btn-block mb-3" href="./uploads/orange3.exe" download="orange3.exe" src="./uploads/orange3.exe"><i class="fa fa-download" aria-hidden="true" style="margin-right: 10px"> </i>Orange</a>
+        <!-- <a class="btn alert-primary btn-block mb-3" href="./uploads/orange3.exe" download="orange3.exe" src="./uploads/orange3.exe"><i class="fa fa-download" aria-hidden="true" style="margin-right: 10px"> </i>Orange</a> -->
         <!-- <a class="btn alert-primary btn-block mb-3" href="http://192.168.1.137/cmc/public/index.php">Survey</a> -->
 
         <?php if ($this->session->exam_review): ?>
@@ -127,6 +127,7 @@
                                             convert_time($class['time_start']),
                                             '-',
                                             convert_time($class['time_end']) ?></p>
+                <p class="card-text m-0">Instructor: <?= $class['instructor'] ?> </p>
                 <p class="card-text m-0 mt-3" id="txt"></p>
                 <div id="txt"></div>
             </div>
