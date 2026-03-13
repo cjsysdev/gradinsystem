@@ -43,5 +43,5 @@
     checkDiscussionMode();
 
     // Optionally, check discussion mode periodically (e.g., every 24 hours)
-    setInterval(checkDiscussionMode, 3000); // 24 hours in milliseconds
+    // setInterval(checkDiscussionMode, 3000); // 24 hours in milliseconds
 </script>

@@ -296,7 +296,8 @@ class GradesController extends CI_Controller
         $data['schedule'] = date('g:iA', strtotime($midtermGrades[0]['start'])) . ' - ' . date('g:iA', strtotime($midtermGrades[0]['end'])) . ' (' . $midtermGrades[0]['day'] . ')';
 
         // $this->load->view('allgrades', $data);
-        $this->load->view('section_grades_finals', $data);
+        // $this->load->view('section_grades_finals', $data);
+        $this->load->view('section_grades_midterm', $data);
         // $this->load->view('section_inc_grades', $data);
     }
 
