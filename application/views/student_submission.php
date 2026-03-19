@@ -200,7 +200,6 @@ $date_a_week = $date->format('Y-m-d');
 <div class="container">
 
   <?php $this->load->view('profile_info') ?>
-
   <div class="card shadow-sm">
     <div class="card-header d-flex justify-content-between align-items-center">
       <h5 class="mb-0">Your Work - <?= $classwork['classwork_id'] ?></h5>
@@ -219,6 +218,8 @@ $date_a_week = $date->format('Y-m-d');
         <a href="#" class="btn btn-outline-primary" onclick="previewFile('<?= base_url('uploads/classworks/' . $classwork['file_upload']) ?>')">
           <?= $classwork['file_upload'] ?>
         </a>
+      <?php elseif ($classwork['assessments'][0]->iotype_id == 3): ?>
+
       <?php elseif ($classwork['assessments'][0]->iotype_id == 4): ?>
         <?php
         $assessment_id = $classwork['assessment_id'];
@@ -231,6 +232,7 @@ $date_a_week = $date->format('Y-m-d');
                 ");
         $top_students = $query->result_array();
         ?>
+
 
         <?php if (
           isset($classwork['code']) &&

@@ -6,244 +6,19 @@ class DiscussionController extends CI_Controller
     public function __construct()
     {
         parent::__construct();
-        // Load model if you have a topics/discussion model
-        // $this->load->model('discussion_model');
+        $this->load->model('discussions');
     }
 
     public function index()
     {
 
+        $cc105 = $this->discussions->as_array()->order_by('created_at', 'desc')->get_all(['class_id' => 1]);
+        $business_intelligence = $this->discussions->as_array()->order_by('created_at', 'desc')->get_all(['class_id' => 5]);
+
         $class = $this->class_student->get(['student_id' => $_SESSION['student_id']])->class_id;
 
-        $cc104 = [
-            [
-                'title' => 'Introduction to Queues',
-                'description' => 'Learn how the queue data structure works using arrays and the FIFO principle.',
-                'link' => base_url('DiscussionController/topic/queue_intro')
-            ],
-            [
-                'title' => 'Allocate Memory',
-                'description' => 'The process of reserving memory is called allocation. The way to allocate memory depends on the type of memory.',
-                'link' => base_url('DiscussionController/topic/memory_allocate')
-            ],
-            [
-                'title' => 'DSA Linked Lists in Memory',
-                'description' => 'To explain what linked lists are, and how linked lists are different from arrays, we need to understand some basics about how computer memory works.',
-                'link' => base_url('DiscussionController/topic/linked_list_memory')
-            ],
-            [
-                'title' => 'Linked List',
-                'description' => 'A Linked List is, as the word implies, a list where the nodes are linked together. Each node contains data and a pointer. The way they are linked together is that each node points to where in the memory the next node is placed.
-            ',
-                'link' => base_url('DiscussionController/topic/linked_list')
-            ],
-            [
-                'title' => 'C Structs',
-                'description' => 'A struct in C is a user-defined data type that allows grouping variables of different types under a single name.',
-                'link' => base_url('discussion/structs')
-            ]
-        ];
-
-        $ws101 = [
-            [
-                'title' => 'Introduction to JavaScript',
-                'description' => 'Learn the basics of JavaScript, including syntax, variables, and data types.',
-                'link' => base_url('DiscussionController/topic/js_intro')
-            ],
-            [
-                'title' => 'Bootstrap Tables',
-                'description' => 'Learn how to create clean, responsive, and user-friendly tables using Bootstrap 4.',
-                'link' => base_url('DiscussionController/topic/bootstrap_table')
-            ],
-            [
-                'title' => 'Web Sandbox',
-                'description' => 'Create interactive code and display its result',
-                'link' => base_url('DiscussionController/topic/bootstrap_sandbox')
-            ],
-            [
-                'title' => 'Bootstrap Forms',
-                'description' => 'Learn how to design responsive and user-friendly forms using Bootstrap 4 components and utilities.',
-                'link' => base_url('DiscussionController/topic/bootstrap_forms')
-            ],
-            [
-                'title' => 'Bootstrap Framework Basics',
-                'description' => 'Learn how to install and use Bootstrap containers and the grid system
-                to create responsive web layouts with ease.',
-                'link' => base_url('DiscussionController/topic/css_bootstrap')
-            ],
-            [
-                'title' => 'CSS Display',
-                'description' => 'Explore common display values with live examples and a small playground. Click any value to see what it does.',
-                'link' => base_url('DiscussionController/topic/css_display')
-            ],
-            [
-                'title' => 'CSS Essential Properties',
-                'description' => 'Learn the most common and useful CSS properties that make your web pages beautiful and structured!',
-                'link' => base_url('DiscussionController/topic/css_properties')
-            ],
-            [
-                'title' => 'CSS Errors',
-                'description' => 'Errors in CSS can lead to unexpected behavior or styles not being applied correctly. This page shows common CSS mistakes and how to avoid them.',
-                'link' => base_url('DiscussionController/topic/css_error')
-            ],
-            [
-                'title' => 'CSS Cascading and Selector Priority',
-                'description' => 'When multiple CSS rules target the same HTML element, the cascade determines which style is applied.',
-                'link' => base_url('DiscussionController/topic/css_cascade')
-            ],
-            [
-                'title' => 'CSS Cascading and Selector Priority - Interactive Activity',
-                'description' => 'When multiple CSS rules target the same HTML element, the cascade determines which style is applied.',
-                'link' => base_url('DiscussionController/topic/css_cascade_activity_nojs')
-            ],
-            // [
-            //     'title' => 'Introduction to CSS [PDF]',
-            //     'description' => 'In this lesson, we will look at how to make your web pages more attractive, controlling the design of them using CSS.',
-            //     'link' => base_url('DiscussionController/topic/css_intro')
-            // ],
-            // [
-            //     'title' => 'CSS Syntax [Web]',
-            //     'description' => 'In this lesson, we will look at how to make your web pages more attractive, controlling the design of them using CSS.',
-            //     'link' => base_url('DiscussionController/topic/css_syntax')
-            // ],
-            // [
-            //     'title' => 'CSS How to [Web]',
-            //     'description' => 'In this lesson, we will look at how to make your web pages more attractive, controlling the design of them using CSS.',
-            //     'link' => base_url('DiscussionController/topic/css_howto')
-            // ],
-            // [
-            //     'title' => 'Introduction to CSS [PDF]',
-            //     'description' => 'In this lesson, we will look at how to make your web pages more attractive, controlling the design of them using CSS.',
-            //     'link' => base_url('assets/pdfjs/web/viewer.html') . '?file=' . urlencode(base_url('uploads/discussions/html_css.pdf')) . '#page=236'
-            // ],
-            [
-                'title' => 'PHP includes',
-                'description' => 'The include (or require) statement takes all the text/code/markup that exists in the specified file and copies it into the file that uses the include statement.',
-                'link' => base_url('assets/pdfjs/web/viewer.html') . '?file=' . urlencode(base_url('uploads/discussions/web_dev.pdf')) . '#page=145'
-            ],
-            [
-                'title' => 'PHP sessions',
-                'description' => 'A session is a way to store information (in variables) to be used across multiple pages.',
-                'link' => base_url('assets/pdfjs/web/viewer.html') . '?file=' . urlencode(base_url('uploads/discussions/web_dev.pdf')) . '#page=411'
-            ],
-            [
-                'title' => 'PHP Superglobals',
-                'description' => ' Some predefined variables in PHP are "superglobals", which means that they are always accessible, regardless of scope - and you can access them from any function, class or file without having to do anything special',
-                'link' => base_url('assets/pdfjs/web/viewer.html') . '?file=' . urlencode(base_url('uploads/discussions/web_dev.pdf')) . '#page=93'
-            ],
-            [
-                'title' => 'PHP Form Handling',
-                'description' => ' The PHP superglobals $_GET and $_POST are used to collect form-data.',
-                'link' => base_url('assets/pdfjs/web/viewer.html') . '?file=' . urlencode(base_url('uploads/discussions/web_dev.pdf')) . '#page=366'
-            ],
-            [
-                'title' => 'HTML Tags Chart',
-                'description' => ' To use any of the following HTML tags, simply select the HTML code you like and copy and paste it into your web page.',
-                'link' => base_url('uploads/discussions/html-tags-chart.pdf')
-            ]
-        ];
-
-        $cc105 =  [
-            [
-                'title' => 'SQL Insert Statement',
-                'description' => 'Understanding how databases add new records into a table safely and correctly',
-                'link' => base_url('DiscussionController/topic/105_insert')
-            ],
-            [
-                'title' => 'Storage Engines',
-                'description' => 'Understanding how databases store, retrieve, and manage data internally.',
-                'link' => base_url('DiscussionController/topic/105_storage_engine')
-            ],
-            [
-                'title' => 'SQL Constraints',
-                'description' => 'Learn about SQL constraints and how they enforce data integrity.',
-                'link' => base_url('DiscussionController/topic/105_constraints')
-            ],
-            [
-                'title' => 'Database Design Worksheet',
-                'description' => 'Design databases using normalization and entity-relationship diagrams.',
-                'link' => base_url('DiscussionController/topic/105_db_designworksheet')
-            ],
-            [
-                'title' => 'Introduction to SQL',
-                'description' => 'Understand how Structured Query Language (SQL) is used to manage and interact with databases.',
-                'link' => base_url('DiscussionController/topic/105e_introtosql')
-            ],
-            [
-                'title' => 'Relational Database Normalization',
-                'description' => 'Designing efficient, consistent, and scalable databases',
-                'link' => base_url('DiscussionController/topic/105d_normalization')
-            ],
-            [
-                'title' => 'Databases Worksheet',
-                'description' => 'Understand the fundamentals of databases and relational database management systems.',
-                'link' => base_url('DiscussionController/topic/105database_worksheet')
-            ],
-            [
-                'title' => 'Databases and RDBMS',
-                'description' => 'Understand the fundamentals of databases and relational database management systems.',
-                'link' => base_url('DiscussionController/topic/105c_rdbms')
-            ],
-            [
-                'title' => 'Data, Information, and Metadata',
-                'description' => 'Learn how the difference between data, information, and metadata works in computing systems.',
-                'link' => base_url('DiscussionController/topic/105a_data')
-            ],
-            [
-                'title' => 'Traditional vs Database Approach',
-                'description' => 'Learn how the difference between traditional file processing and database approaches works in computing systems.',
-                'link' => base_url('DiscussionController/topic/105b_trad_vs_dbms')
-            ]
-        ];
-
-        $business_intelligence = [
-            [
-                'title' => 'Midterm Project Instructions',
-                'description' => 'Text Mining, Analytics, and NLP Using Orange Data Mining.',
-                'link' => base_url('DiscussionController/topic/BI_midterm_instruction')
-            ],
-            [
-                'title' => 'Text Mining',
-                'description' => 'Understanding how unstructured text data can be transformed into valuable business intelligence insights.',
-                'link' => base_url('DiscussionController/topic/BI_textmining_demo')
-            ],
-            [
-                'title' => 'Natural Language Processing (NLP) with Orange Data Mining',
-                'description' => 'Turning text (reviews, comments, messages) into meaningful insights — no heavy coding required.',
-                'link' => base_url('DiscussionController/topic/BI_textmining')
-            ],
-            [
-                'title' => 'Text Analytics, Text Mining, and Natural Language Processing',
-                'description' => 'Modern organizations generate massive amounts of unstructured text data from emails, social media, reviews, reports, chat logs, and documents. To extract value from this data, techniques such as Text Analytics, Text Mining, and Natural Language Processing (NLP) are used.',
-                'link' => base_url('DiscussionController/topic/BI_textmining')
-            ],
-            [
-                'title' => 'Business Intelligence Concepts',
-                'description' => 'Concepts, architecture, and role of BI in modern decision making.',
-                'link' => base_url('DiscussionController/topic/BI_framework')
-            ],
-            [
-                'title' => 'OLTP vs OLAP',
-                'description' => 'Understanding Operational and Analytical Database Systems',
-                'link' => base_url('DiscussionController/topic/BI_OTLPvsOLAP')
-            ],
-            [
-                'title' => 'Business Analytics',
-                'description' => 'Understanding Descriptive, Predictive, and Prescriptive Analytics',
-                'link' => base_url('DiscussionController/topic/BI_analytics')
-            ],
-            [
-                'title' => 'Decision Making',
-                'description' => 'Understanding the importance and process of decision making in business intelligence',
-                'link' => base_url('DiscussionController/topic/BI_decision')
-            ],
-            [
-                'title' => 'Introduction to Business Intelligence',
-                'description' => 'Understand how data is transformed into insights that support business decisions',
-                'link' => base_url('DiscussionController/topic/BI_intro')
-            ]
-
-        ];
+        $cc104 = $this->discussions->as_array()->order_by('created_at', 'desc')->get_all(['class_id' => 3]);
+        $ws101 = $this->discussions->as_array()->order_by('created_at', 'desc')->get_all(['class_id' => 4]);
 
         $topics = ($class == '3') ? $cc105 : $business_intelligence;
 
@@ -258,8 +33,6 @@ class DiscussionController extends CI_Controller
         }
         $this->load->view('discussions/css_cascading_activity');
     }
-
-
 
     public function topic($title)
     {

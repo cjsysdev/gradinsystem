@@ -426,7 +426,8 @@ class classworks extends MY_Model
                 a.title, 
                 s.firstname, 
                 s.lastname,
-                a.max_score 
+                a.max_score,
+                a.iotype_id 
             FROM 
                 classworks c
             JOIN 

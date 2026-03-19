@@ -27,7 +27,7 @@
         <p>Retrieving data from tables (columns, rows, filtering, sorting, and limiting results)</p>
     </header>
 
-    <main class="container">
+    <main class="container content">
 
         <!-- Learning Objectives -->
         <section class="section">

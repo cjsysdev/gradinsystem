@@ -147,4 +147,47 @@ class StudentController extends CI_Controller
             redirect('attendance');
         }
     }
+
+    public function performance_sheet()
+    {
+        $student_id = $this->session->student_id;
+
+        $attendance_record = $this->attendance->where(['status' => 'absent'])->get_all(
+            ['student_id' => $student_id]
+        );
+
+        $classworks = $this->classworks->get_submissions_by_student($student_id);
+
+        foreach ($classworks as $submission) {
+            if ($submission['iotype_id'] == 4) {
+                $quiz['each_score'][] =  $submission['score'];
+                $quiz['score'] += $submission['score'];
+                $quiz['max'] += $submission['max_score'];
+            }
+
+            if ($submission['iotype_id'] == 3) {
+                $exam['score'] =  $submission['score'];
+                $exam['max'] = $submission['max_score'];
+            }
+
+            if ($submission['iotype_id'] == 2) {
+                $project['score'] =  $submission['score'];
+                $project['max'] = $submission['max_score'];
+            }
+
+            if ($submission['iotype_id'] == 1) {
+                $activity['score'] +=  $submission['score'];
+                $activity['max'] += $submission['max_score'];
+            }
+        }
+
+        $data = [
+            'exam' => $exam,
+            'quiz' => $quiz,
+            'project' => $project,
+            'activity' => $activity
+        ];
+
+        $this->load->view('performance_sheet', $data);
+    }
 }
