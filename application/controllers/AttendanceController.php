@@ -9,6 +9,11 @@ class AttendanceController extends CI_Controller
         $this->is_offline = !isset($_SESSION['online']);
     }
 
+    public function __destruct()
+    {
+        $this->db->close();
+    }
+
     public function attendance_main()
     {
         $section = $this->class_student->get(['student_id' => $this->session->student_id]);

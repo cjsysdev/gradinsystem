@@ -11,7 +11,6 @@ class DiscussionController extends CI_Controller
 
     public function index()
     {
-
         $cc105 = $this->discussions->as_array()->order_by('created_at', 'desc')->get_all(['class_id' => 1]);
         $business_intelligence = $this->discussions->as_array()->order_by('created_at', 'desc')->get_all(['class_id' => 5]);
 

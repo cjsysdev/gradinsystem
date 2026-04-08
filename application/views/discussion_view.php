@@ -1,6 +1,6 @@
 <?php $this->load->view('header'); ?>
 
-<div class="container mt-4 mb-5">
+<div class="container">
     <div class="dashboard">
         <?php $this->load->view('profile_info') ?>
     </div>

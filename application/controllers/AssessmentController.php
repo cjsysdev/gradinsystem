@@ -68,10 +68,12 @@ class AssessmentController extends CI_Controller
         ];
 
         // Validate required fields
-        if (empty($assessment_data['iotype_id']) || empty($assessment_data['schedule_id']) || 
-            empty($assessment_data['title']) || empty($assessment_data['description']) || 
-            empty($assessment_data['max_score']) || empty($assessment_data['due']) || 
-            empty($assessment_data['term'])) {
+        if (
+            empty($assessment_data['iotype_id']) || empty($assessment_data['schedule_id']) ||
+            empty($assessment_data['title']) || empty($assessment_data['description']) ||
+            empty($assessment_data['max_score']) || empty($assessment_data['due']) ||
+            empty($assessment_data['term'])
+        ) {
             $this->session->set_flashdata('error', 'Please fill in all required fields');
             redirect('AssessmentController/add_assessment');
         }
@@ -126,12 +128,13 @@ class AssessmentController extends CI_Controller
     {
         $filename = $this->class_student->get(
             ['student_id' => $this->session->student_id]
-        )->section . $this->session->lastname . time();
+        )->section . '-' . $this->session->lastname . time();
 
+        $post = $this->input->post();
         $config['upload_path'] = './uploads/error_submission';
         $config['allowed_types'] = '*';
         $config['max_size'] = 51200; // 50MB
-        $config['file_name'] = $filename;
+        $config['file_name'] = $filename . '-' . $post['project_title'] . '-' . $post['members'];
 
         $this->upload->initialize($config);
 
@@ -193,7 +196,7 @@ class AssessmentController extends CI_Controller
                     $this->image_lib->initialize($config);
                     $this->image_lib->resize();
                     $this->image_lib->clear();
-                    
+
                     if (!$this->image_lib->resize()) {
                         $this->session->set_flashdata('error', $this->image_lib->display_errors());
                         redirect('classwork');

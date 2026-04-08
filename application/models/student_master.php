@@ -3,70 +3,6 @@ defined('BASEPATH') or exit('No direct script access allowed');
 
 class student_master extends MY_Model
 {
-    // Fetch major exam score
-    public function get_major_exam_score($student_id)
-    {
-        $this->db->select('score');
-        $this->db->from('assessments');
-        $this->db->where('student_id', $student_id);
-        $this->db->where('type', 'major_exam');
-        $result = $this->db->get()->row_array();
-        return $result ? $result['score'] : '';
-    }
-
-    // Fetch performance task score
-    public function get_performance_task_score($student_id)
-    {
-        $this->db->select('score');
-        $this->db->from('assessments');
-        $this->db->where('student_id', $student_id);
-        $this->db->where('type', 'performance_task');
-        $result = $this->db->get()->row_array();
-        return $result ? $result['score'] : '';
-    }
-    // Fetch quiz scores for graph
-    public function get_quiz_scores($student_id)
-    {
-        $this->db->select('quiz_name as quiz, score');
-        $this->db->from('assessments');
-        $this->db->where('student_id', $student_id);
-        $this->db->where('type', 'quiz');
-        $this->db->order_by('quiz_date', 'asc');
-        return $this->db->get()->result_array();
-    }
-    // Fetch missed activities
-    public function get_missed_activities($student_id)
-    {
-        $this->db->select('activity_name, due_date');
-        $this->db->from('classworks');
-        $this->db->where('student_id', $student_id);
-        $this->db->where('status', 'missed');
-        return $this->db->get()->result_array();
-    }
-
-    // Fetch missed quizzes
-    public function get_missed_quizzes($student_id)
-    {
-        $this->db->select('quiz_name, quiz_date');
-        $this->db->from('assessments');
-        $this->db->where('student_id', $student_id);
-        $this->db->where('status', 'missed');
-        return $this->db->get()->result_array();
-    }
-    // Fetch absences with dates and reasons
-    public function get_absences($student_id)
-    {
-        $this->db->select('date, reason');
-        $this->db->from('attendance');
-        $this->db->where('student_id', $student_id);
-        $this->db->where('status', 'absent');
-        $this->db->order_by('date', 'desc');
-        return $this->db->get()->result_array();
-    }
-
-    public $table = 'student_master';
-    public $primary_key = 'trans_no';
-    public $protected = array('trans_no');
 
     public function __construct()
     {
@@ -80,6 +16,40 @@ class student_master extends MY_Model
         parent::__construct();
     }
 
+    public function get_student_classworks($student_id)
+    {
+        $sql = "SELECT student_id, asm.assessment_id, score, cw.created_at, iotype_id,
+                title, max_score, section, is_active
+                FROM classworks cw
+                JOIN assessments asm ON asm.assessment_id = cw.assessment_id
+                JOIN class_schedule cs ON cs.schedule_id = asm.schedule_id
+                JOIN semester_master sem ON sem.trans_no = cs.semester_id
+                WHERE student_id = $student_id AND sem.is_active = 1";
+
+        return $this->db->query($sql)->result_array();
+    }
+
+    // Fetch absences with dates and reasons
+    public function get_absences($student_id)
+    {
+        $sql = "SELECT c.class_name AS course, a.date, a.reason, a.status
+                FROM attendance a
+                JOIN class_schedule cs ON a.schedule_id = cs.schedule_id
+                JOIN semester_master sem ON cs.semester_id = sem.trans_no
+                JOIN classes c ON cs.class_id = c.class_id
+                WHERE a.student_id = $student_id
+                AND sem.is_active = 1
+                AND (a.status = 'absent' OR a.reason IS NOT NULL)
+                ORDER BY DATE(a.date) DESC";
+
+        return $this->db->query($sql)->result_array();
+    }
+
+    public $table = 'student_master';
+    public $primary_key = 'trans_no';
+    public $protected = array('trans_no');
+
+
     public function search_by_name($search)
     {
         $this->db->like('firstname', $search);
@@ -90,24 +60,28 @@ class student_master extends MY_Model
     // Fetch student info for performance sheet
     public function get_student_info($student_id)
     {
-        $this->db->select('trans_no, firstname, lastname, age, program, year, photo_url');
+        $this->db->select('*');
         $this->db->where('trans_no', $student_id);
+
         $student = $this->db->get('student_master')->row_array();
+
         if ($student) {
             $student['name'] = $student['firstname'] . ' ' . $student['lastname'];
         }
+
         return $student;
     }
 
     // Fetch current course for student
     public function get_current_course($student_id)
     {
-        $this->db->select('c.class_name as course');
-        $this->db->from('class_student cs');
-        $this->db->join('classes c', 'cs.class_id = c.class_id');
-        $this->db->where('cs.student_id', $student_id);
-        $this->db->order_by('cs.trans_no', 'desc');
-        $result = $this->db->get()->row_array();
+        $sql = "SELECT c.class_name AS course
+                FROM class_student cs
+                JOIN classes c ON cs.class_id = c.class_id
+                WHERE cs.student_id = 'student_id'
+                ORDER BY cs.student_id DESC
+                LIMIT 1";
+        $result = $this->db->query($sql)->row_array();
         return $result ? $result['course'] : '';
     }
 }

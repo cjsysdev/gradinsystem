@@ -46,7 +46,7 @@
         <p>Combine rows from two or more tables using related columns</p>
     </header>
 
-    <main class="container pb-4">
+    <main class="content container pb-4">
 
         <!-- Learning Objectives -->
         <div class="section">

@@ -108,6 +108,45 @@
 
         <!-- <a class="btn alert-primary btn-block mb-3" href="./uploads/orange3.exe" download="orange3.exe" src="./uploads/orange3.exe"><i class="fa fa-download" aria-hidden="true" style="margin-right: 10px"> </i>Orange</a> -->
         <!-- <a class="btn alert-primary btn-block mb-3" href="http://192.168.1.137/cmc/public/index.php">Survey</a> -->
+        <!-- <a class="btn alert-primary btn-block mb-3" href="<?= base_url('output_upload') ?>">Final Project Checkpoint</a> -->
+
+        <!-- <div class="container mb-5">
+            <div class="card border-0 rounded-lg">
+                <div class="card-body p-4">
+
+                    <div class="mb-4 text-center">
+                        <h5 class="font-weight-bold mb-1">Submit Asynchronous Task</h5>
+                        <small class="text-muted">Upload your file (PDF, DOCX, Image, etc.)</small>
+                    </div>
+
+                    <form action="upload_activity" method="POST" enctype="multipart/form-data">
+
+                        <div class="form-group">
+                            <label for="photo-upload" class="font-weight-bold">
+                                <i class="fa fa-file-upload mr-1 text-info"></i>
+                                Upload File
+                            </label>
+
+                            <div class="custom-file">
+                                <input type="file" class="custom-file-input" id="photo-upload" name="photo-upload" required>
+                                <label class="custom-file-label" for="photo-upload">Choose file...</label>
+                            </div>
+
+                            <small class="form-text text-muted mt-2">
+                                Accepted formats: Any file type (Max size depends on system limit)
+                            </small>
+                        </div>
+
+                        <div class="pt-3">
+                            <button class="btn btn-info btn-block shadow-sm" type="submit">
+                                <i class="fa fa-upload mr-1"></i> Upload Task
+                            </button>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+        </div> -->
 
         <?php if ($this->session->exam_review): ?>
             <a class="btn alert-primary btn-block mb-3" href="./uploads/<?= $desc ?>_reviewer.pdf" download="<?= $desc ?>_reviewer.pdf" src="./uploads/<?= $desc ?>_reviewer.pdf"><i class="fa fa-download" aria-hidden="true" style="margin-right: 10px"> </i>Download CC<?= $desc ?> - Midterm Reviewer</a>
@@ -180,6 +219,8 @@
                 <?php endif; ?>
             </div>
         <?php endforeach; ?>
+
+        <a class="btn alert-primary btn-block mb-3" href="<?= base_url('PerformanceSheetController') ?>">Student Summary</a>
 
         <!-- Excuse Letter Template for Printing -->
         <div id="excuseLetterTemplate" style="display:none;">
@@ -342,4 +383,9 @@
         }
         return i;
     }
+
+    document.querySelector('.custom-file-input').addEventListener('change', function(e) {
+        var fileName = e.target.files[0]?.name || "Choose file...";
+        e.target.nextElementSibling.innerText = fileName;
+    });
 </script>

@@ -102,7 +102,7 @@ class attendance extends MY_Model
             FROM attendance a
             JOIN class_schedule cs ON a.schedule_id = cs.schedule_id 
             JOIN semester_master sem ON cs.semester_id = sem.trans_no
-            WHERE cs.section = ? AND status = 'present' AND DATE(a.date) BETWEEN ? AND ?
+            WHERE cs.section = ? AND status = 'present' AND a.date >= ? AND a.date <= ?
             AND sem.is_active = 1
             GROUP BY student_id
             ORDER BY present_days DESC
@@ -124,7 +124,7 @@ class attendance extends MY_Model
             JOIN class_schedule cs ON a.schedule_id = cs.schedule_id 
             JOIN semester_master sem ON cs.semester_id = sem.trans_no
             WHERE cs.section = ? AND student_id = ? AND (status = 'present' OR status = 'excuse')
-            AND DATE(a.date) BETWEEN ? AND ?
+            AND a.date >= ? AND a.date <= ?
             AND sem.is_active = 1
         ",
             [$section, $student_id, $start_date, $end_date]
@@ -147,7 +147,7 @@ class attendance extends MY_Model
             JOIN class_schedule cs ON a.schedule_id = cs.schedule_id
             JOIN semester_master sem ON cs.semester_id = sem.trans_no
             WHERE student_id = ? AND status = 'present' 
-            AND date(a.date) BETWEEN ? AND ?
+            AND a.date >= ? AND a.date <= ?
             AND sem.is_active = 1
             ",
             [$student_id, $start_date, $end_date]
@@ -186,7 +186,7 @@ class attendance extends MY_Model
             JOIN semester_master sem ON cs.semester_id = sem.trans_no
             JOIN classes c ON cs.class_id = c.class_id
             WHERE cs.section = ? AND a.student_id = ? AND a.status = 'absent'
-            AND DATE(a.date) BETWEEN ? AND ?
+            AND a.date >= ? AND a.date <= ?
             AND sem.is_active = 1
         ",
             [$section, $student_id, $start_date, $end_date]
