@@ -109,6 +109,7 @@
         <!-- <a class="btn alert-primary btn-block mb-3" href="./uploads/orange3.exe" download="orange3.exe" src="./uploads/orange3.exe"><i class="fa fa-download" aria-hidden="true" style="margin-right: 10px"> </i>Orange</a> -->
         <!-- <a class="btn alert-primary btn-block mb-3" href="http://192.168.1.137/cmc/public/index.php">Survey</a> -->
         <a class="btn alert-primary btn-block mb-3" href="<?= base_url('output_upload') ?>">Final Project Checkpoint</a>
+        <a class="btn alert-secondary btn-block mb-3" href="./uploads/im_final.docx" download="im_final.docx" src="./uploads/im_final.docx"><i class="fa fa-download" aria-hidden="true" style="margin-right: 10px"> </i>Project Template</a>
 
         <!-- <div class="container mb-5">
             <div class="card border-0 rounded-lg">

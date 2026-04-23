@@ -26,6 +26,17 @@ defined('BASEPATH') or exit('No direct script access allowed');
 // $config['base_url'] = 'http://'.$_SERVER['SERVER_ADDR'].':'.$_SERVER['SERVER_PORT'].'/gradingsystem';
 $config['base_url'] = 'http://cmc.test/gradingsystem';
 // $config['base_url'] = 'http://localhost/gradingsystem'; // Change this to your actual base URL if needed
+$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+
+if (!empty($_SERVER['HTTP_HOST'])) {
+    $host = $_SERVER['HTTP_HOST'];
+} elseif (!empty($_SERVER['SERVER_ADDR'])) {
+    $host = $_SERVER['SERVER_ADDR'];
+} else {
+    $host = 'cmc.test';
+}
+
+$config['base_url'] = $protocol . '://' . $host . '/gradingsystem/';
 /*
 |--------------------------------------------------------------------------
 | Index File
