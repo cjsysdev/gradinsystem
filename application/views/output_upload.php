@@ -13,7 +13,7 @@
                 <?= $this->session->flashdata('success'); ?>
             </div>
         <?php endif; ?>
-        <!-- <div class="container">
+        <div class="container">
             <form action="upload_activity" method="POST" enctype="multipart/form-data">
                 <div class="category-btns row">
                     <div class="col-12 form-section p-2">
@@ -29,7 +29,7 @@
                     <button class="btn btn-info btn-total btn-block" type="submit"><i class="fa fa-upload" aria-hidden="true"> </i> Upload</button>
                 </div>
             </form>
-        </div> -->
+        </div>
     </div>
 </div>
 

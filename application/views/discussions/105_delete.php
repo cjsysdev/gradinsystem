@@ -27,7 +27,7 @@
         <p>Safely removing rows from a table using conditions, constraints, and best practices</p>
     </header>
 
-    <main class="container">
+    <main class="content container">
 
         <div class="section">
             <h2>Learning Objectives</h2>

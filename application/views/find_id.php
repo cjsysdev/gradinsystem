@@ -84,7 +84,7 @@
 <div class="container login-wrapper mt-5">
   <div class="login-card">
     <div class="row justify-content-center mb-3">
-      <a href="<?= base_url("update_account_form") ?>"><img src="<?= base_url("assets/cmc_logo_no_bg.png") ?>" alt="Profile Picture" style="length: 3rem; width: 3rem;" /></a>
+      <a><img src="<?= base_url("assets/cmc_logo_no_bg.png") ?>" alt="Profile Picture" style="length: 3rem; width: 3rem;" /></a>
     </div>
 
     <h4 class="text-center fw-bold mb-1">Find Your ID</h4>
