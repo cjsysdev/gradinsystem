@@ -129,7 +129,7 @@
                 <?php $assessment_id = (explode('/', uri_string())[1]) ?>
                 <form action="<?= site_url('quiz/submit/' . $assessment_id) ?>" method="post" id="quizForm">
                     <?php
-                    $questionsPerPage = 10;
+                    $questionsPerPage = 20;
                     $totalQuestions = count($questions);
                     $totalGroups = ceil($totalQuestions / $questionsPerPage);
 

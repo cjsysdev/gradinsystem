@@ -229,7 +229,7 @@
         <?php if (
           isset($classwork['code']) &&
           !$this->session->exam_term &&
-          $classwork['status'] !== 'viewed'
+          $classwork['status'] !== 'viewed' && FALSE
         ):
         ?>
           <?php $this->classworks->update(['status' => 'viewed'], $classwork['classwork_id']); ?>
