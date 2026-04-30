@@ -1,79 +1,361 @@
+/* ══════════════════════════════════════════════════════════════
+   discussion-style.css
+   CMC Unified Web Discussion Template
+   Compatible with:
+     - Old style (green #04AA6D, plain h2/h3, .references, .footer)
+     - New style (blue #2b6cb0, .section cards, .alert-*, .reflection-box)
+   Usage: <link rel="stylesheet" href="discussion-style.css"/>
+   ══════════════════════════════════════════════════════════════ */
+
+
+/* ════════════════════════════════════════
+   SHARED BASE
+   ════════════════════════════════════════ */
+
 body {
-    font-family: "Segoe UI", Arial, sans-serif;
+    font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
     margin: 0;
-    background-color: #f6f6f6;
-    color: #333;
+    background-color: #f5f7fa;
+    color: #2d3748;
+    font-size: 0.97rem;
 }
 
-header {
-    background-color: #04AA6D;
-    color: white;
-    padding: 20px;
-    text-align: center;
-}
-
+/* ── Content wrapper ── */
 .content {
     max-width: 900px;
     margin: 20px auto;
-    /* background: white; */
     padding: 20px 30px;
-    /* border-radius: 8px; */
-    /* box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); */
 }
 
+
+/* ════════════════════════════════════════
+   HEADER
+   Supports both old (green) and new (blue gradient)
+   Old: uses plain <header> with no extra class
+   New: same — gradient is the default now
+   ════════════════════════════════════════ */
+
+header {
+    background: linear-gradient(135deg, #1a365d 0%, #2b6cb0 100%);
+    color: #fff;
+    padding: 2.5rem 0 2rem;
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.3rem;
+}
+
+header p.subtitle {
+    font-size: 1rem;
+    opacity: 0.85;
+    margin: 0;
+}
+
+/* Old-style header used plain <p> inside header */
+header p {
+    font-size: 1rem;
+    opacity: 0.85;
+    margin: 0;
+}
+
+
+/* ════════════════════════════════════════
+   HEADINGS
+   Old: plain h2/h3 with green accent
+   New: h2 inside .section cards (blue)
+   Both are supported simultaneously
+   ════════════════════════════════════════ */
+
+/* Plain h2 (old style — used outside .section) */
 h2 {
     border-left: 6px solid #04AA6D;
     padding-left: 10px;
-    margin: 20px 0px 20px 0px;
+    margin: 20px 0;
     color: #333;
+    font-size: 1.15rem;
+    font-weight: 700;
 }
 
+/* h2 inside .section cards (new style — overrides above) */
+.section h2 {
+    border-left: 4px solid #2b6cb0;
+    padding-left: 0.75rem;
+    margin-bottom: 1rem;
+    color: #1a365d;
+    font-size: 1.15rem;
+    font-weight: 700;
+}
+
+/* h3 — old style green, still works in new discussions too */
 h3 {
     color: #04AA6D;
+    font-size: 1rem;
+    font-weight: 700;
+    margin-top: 1rem;
 }
+
+
+/* ════════════════════════════════════════
+   SECTION CARDS (new style only)
+   ════════════════════════════════════════ */
+
+.section {
+    background: #ffffff;
+    border-radius: 10px;
+    padding: 1.6rem 1.8rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+}
+
+
+/* ════════════════════════════════════════
+   CODE BLOCKS
+   Both styles share <pre> and <code>
+   ════════════════════════════════════════ */
 
 pre {
     background-color: #f1f1f1;
     border-left: 4px solid #04AA6D;
     padding: 10px;
     overflow-x: auto;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    margin-top: 0.75rem;
+    margin-bottom: 0.75rem;
 }
 
+pre code {
+    background: none;
+    padding: 0;
+    color: inherit;
+    border-radius: 8px;
+}
+
+code {
+    background: #eee;
+    padding: 2px 5px;
+    border-radius: 3px;
+    font-family: Consolas, 'Courier New', monospace;
+    color: #d63384;
+    font-size: 0.88em;
+}
+
+.code-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #718096;
+    margin-bottom: 0.2rem;
+}
+
+
+/* ════════════════════════════════════════
+   TABLES
+   Unified — old had simple borders, new had blue th
+   Merged: blue th from new, clean borders from old
+   ════════════════════════════════════════ */
+
 table {
-    border-collapse: collapse;
     width: 100%;
+    border-collapse: collapse;
+    margin-top: 0.7rem;
     margin-bottom: 20px;
+}
+
+th {
+    background-color: #2b6cb0;
+    color: #fff;
+    padding: 0.55rem 0.8rem;
+    font-size: 0.88rem;
+    text-align: left;
+}
+
+td {
+    padding: 0.5rem 0.8rem;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 0.88rem;
 }
 
 table, th, td {
     border: 1px solid #ddd;
 }
 
-th, td {
-    text-align: left;
-    padding: 8px;
+tr:last-child td {
+    border-bottom: none;
 }
 
-th {
-    background-color: #04AA6D;
-    color: white;
+tr:nth-child(even) td {
+    background: #f7fafc;
 }
 
-code {
-    background: #eee;
-    padding: 2px 4px;
-    border-radius: 3px;
-    font-family: Consolas, monospace;
-    color: #d63384;
+
+/* ════════════════════════════════════════
+   LISTS
+   ════════════════════════════════════════ */
+
+ul, ol {
+    line-height: 1.7;
 }
 
-ul {
-    line-height: 1.6;
+/* Old style used decimal for ul — kept as a utility class
+   so it doesn't break new discussions that use real ul bullets */
+ul.decimal {
+    list-style-type: decimal;
 }
+
+.objectives-list {
+    padding-left: 1.2rem;
+    margin: 0;
+}
+
+.objectives-list li {
+    margin-bottom: 0.45rem;
+}
+
+
+/* ════════════════════════════════════════
+   STRONG / EMPHASIS
+   Old: green strong; new: neutral
+   Using old behavior as default (subtle, still readable)
+   ════════════════════════════════════════ */
 
 strong {
     color: #04AA6D;
 }
+
+
+/* ════════════════════════════════════════
+   ALERTS (new style)
+   ════════════════════════════════════════ */
+
+.alert-tip {
+    background: #f0fff4;
+    border-left: 4px solid #38a169;
+    border-radius: 6px;
+    padding: 0.9rem 1.1rem;
+    margin-bottom: 0.9rem;
+}
+
+.alert-tip .alert-title {
+    font-weight: 700;
+    color: #276749;
+    margin-bottom: 0.2rem;
+}
+
+.alert-warning {
+    background: #fffaf0;
+    border-left: 4px solid #dd6b20;
+    border-radius: 6px;
+    padding: 0.9rem 1.1rem;
+    margin-bottom: 0.9rem;
+}
+
+.alert-warning .alert-title {
+    font-weight: 700;
+    color: #9c4221;
+    margin-bottom: 0.2rem;
+}
+
+.alert-info {
+    background: #ebf8ff;
+    border-left: 4px solid #3182ce;
+    border-radius: 6px;
+    padding: 0.9rem 1.1rem;
+    margin-bottom: 0.9rem;
+}
+
+.alert-info .alert-title {
+    font-weight: 700;
+    color: #2c5282;
+    margin-bottom: 0.2rem;
+}
+
+
+/* ════════════════════════════════════════
+   REFLECTION BOX (new style)
+   ════════════════════════════════════════ */
+.reflection {
+    background: #eef2f7;
+    border-left: 4px solid #2e6da4;
+    padding: 14px 18px;
+    border-radius: 6px;
+    font-style: italic;
+    color: #444;
+    font-size: 0.92rem;
+}
+
+.reflection-box {
+    background: #faf5ff;
+    border: 1.5px dashed #9f7aea;
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+}
+
+.reflection-box ol {
+    margin: 0.5rem 0 0;
+    padding-left: 1.3rem;
+}
+
+.reflection-box li {
+    margin-bottom: 0.5rem;
+    color: #44337a;
+}
+
+
+/* ════════════════════════════════════════
+   CONCEPT FLOW DIAGRAM (new style)
+   ════════════════════════════════════════ */
+
+.flow-diagram {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 1rem 0;
+}
+
+.flow-step {
+    background: #ebf4ff;
+    border: 1.5px solid #bee3f8;
+    border-radius: 6px;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #2b6cb0;
+}
+
+.flow-arrow {
+    color: #a0aec0;
+    font-size: 1.1rem;
+}
+
+
+/* ════════════════════════════════════════
+   BADGE (new style)
+   ════════════════════════════════════════ */
+
+.badge-section {
+    display: inline-block;
+    background: #2b6cb0;
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    border-radius: 20px;
+    padding: 0.15rem 0.65rem;
+    margin-bottom: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+
+/* ════════════════════════════════════════
+   REFERENCES (old style)
+   ════════════════════════════════════════ */
 
 .references {
     background: #f1f1f1;
@@ -91,14 +373,10 @@ strong {
     text-decoration: underline;
 }
 
-.footer {
-    background-color: #333;
-    color: white;
-    text-align: center;
-    padding: 15px;
-    margin-top: 30px;
-    font-size: 14px;
-}
+
+/* ════════════════════════════════════════
+   ACTIVITY LINK BUTTON (old style)
+   ════════════════════════════════════════ */
 
 .activity-link {
     display: inline-block;
@@ -114,6 +392,43 @@ strong {
     background-color: #028a57;
 }
 
-ul {
-    list-style-type: decimal;
+
+/* ════════════════════════════════════════
+   FOOTER
+   Old: .footer div  |  New: <footer> tag
+   Both supported
+   ════════════════════════════════════════ */
+
+footer,
+.footer {
+    background-color: #1a365d;
+    color: rgba(255, 255, 255, 0.75);
+    text-align: center;
+    padding: 15px;
+    margin-top: 30px;
+    font-size: 0.82rem;
+}
+
+
+/* ════════════════════════════════════════
+   MOBILE RESPONSIVE
+   ════════════════════════════════════════ */
+
+@media (max-width: 600px) {
+    header h1 {
+        font-size: 1.5rem;
+    }
+
+    .section {
+        padding: 1.1rem 1rem;
+    }
+
+    .content {
+        padding: 10px 15px;
+    }
+
+    .flow-diagram {
+        flex-direction: column;
+        align-items: flex-start;
+    }
 }
