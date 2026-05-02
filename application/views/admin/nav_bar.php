@@ -18,5 +18,8 @@
         <a href="<?= base_url(
                         'interactive_quiz/analytics'
                     ) ?>" class="btn btn-outline-secondary col m-2">IQ Analytics</a>
+        <a href="<?= base_url(
+                        'interactive_quiz/manage_topics'
+                    ) ?>" class="btn btn-outline-secondary col m-2">IQ Topics</a>
     </div>
 </div>

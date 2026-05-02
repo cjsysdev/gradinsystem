@@ -108,6 +108,9 @@ $route['interactive_quiz/save_result'] = 'InteractiveQuizController/save_result'
 $route['interactive_quiz/record_attempt'] = 'InteractiveQuizController/record_attempt';
 $route['interactive_quiz/analytics/(:any)'] = 'InteractiveQuizController/analytics/$1';
 $route['interactive_quiz/analytics'] = 'InteractiveQuizController/analytics';
+$route['interactive_quiz/manage_topics'] = 'InteractiveQuizController/manage_topics';
+$route['interactive_quiz/upload_topic'] = 'InteractiveQuizController/upload_topic';
+$route['interactive_quiz/delete_topic/(:any)'] = 'InteractiveQuizController/delete_topic/$1';
 $route['interactive_quiz/load/(:any)/(:num)'] = 'InteractiveQuizController/load/$1/$2';
 $route['interactive_quiz/load/(:any)'] = 'InteractiveQuizController/load/$1';
 
