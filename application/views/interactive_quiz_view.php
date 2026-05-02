@@ -1,5 +1,7 @@
 <?php $this->load->view('header') ?>
 
+<link rel="stylesheet" href="<?= base_url('assets/highlights/atom-one-light.min.css') ?>">
+
 <style>
 :root {
     --iq-primary:   #04AA6D;
@@ -221,7 +223,67 @@
     0%   { opacity: 1; transform: translate(0,0) scale(1); }
     100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0.3); }
 }
+
+/* ── Discussion-view class compatibility ─────────────────── */
+.iq-lesson-body .discussion-title { font-size: 1.3rem; font-weight: 700; color: var(--iq-dark); }
+.iq-lesson-body .discussion-intro { font-size: 15px; color: #555; margin-bottom: 14px; }
+.iq-lesson-body .section { margin-bottom: 20px; }
+.iq-lesson-body .note, .iq-lesson-body .key-term-box {
+    background: #e8f5e9;
+    border-left: 4px solid var(--iq-primary);
+    padding: 10px 14px;
+    border-radius: 0 4px 4px 0;
+    margin: 10px 0;
+}
+.iq-lesson-body .warning-box {
+    background: #fff3cd;
+    border-left: 4px solid #ffc107;
+    padding: 10px 14px;
+    border-radius: 0 4px 4px 0;
+    margin: 10px 0;
+}
+
+/* ── Review mode ─────────────────────────────────────────── */
+#iq-review-header {
+    display: none;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--iq-primary);
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.15);
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+#iq-review-header.active { display: flex; }
+.iq-review-label { flex: 1; font-weight: 600; font-size: 15px; }
+.iq-review-mode .iq-card-header { background: #6c757d; }
+.iq-review-answered-note {
+    font-size: 13px;
+    color: #155724;
+    background: #d4edda;
+    border-left: 3px solid #28a745;
+    padding: 6px 10px;
+    border-radius: 0 4px 4px 0;
+    margin-bottom: 8px;
+}
 </style>
+
+<!-- ── Review mode sticky header (hidden until review) ── -->
+<div id="iq-review-header">
+    <span class="iq-review-label">
+        &#128218; Review: <?= htmlspecialchars($title) ?>
+    </span>
+    <a href="<?= site_url('attendance') ?>" class="btn btn-light btn-sm">
+        &larr; Home
+    </a>
+    <a href="<?= site_url('interactive_quiz/topics') ?>" class="btn btn-outline-light btn-sm">
+        Topics
+    </a>
+</div>
 
 <div class="container mt-3 mb-5" id="iq-app">
 
@@ -265,7 +327,7 @@
                 <h5><?= htmlspecialchars($section['title']) ?></h5>
             </div>
             <div class="iq-lesson-body">
-                <?= $section['lesson'] ?>
+                <?= str_replace('{ASSETS}', base_url(), $section['lesson']) ?>
             </div>
         </div>
 
@@ -345,6 +407,9 @@
         <span>Best streak: <strong id="iq-max-streak">0</strong></span>
     </div>
     <div class="iq-congrats-actions">
+        <button type="button" class="btn btn-outline-light btn-lg" onclick="iqShowReview()">
+            &#128218; Review All Content
+        </button>
         <a href="<?= site_url('attendance') ?>" class="btn btn-light btn-lg">
             &larr; Back to Home
         </a>
@@ -540,6 +605,65 @@ function spawnConfetti() {
             's ease-out ' + (Math.random() * 0.3).toFixed(2) + 's forwards;';
         wrap.appendChild(d);
     }
+}
+
+function iqShowReview() {
+    // Close congrats overlay
+    document.getElementById('iq-congrats').classList.remove('active');
+
+    // Show sticky review header
+    document.getElementById('iq-review-header').classList.add('active');
+
+    // Hide the quiz HUD
+    var topbar = document.querySelector('.iq-topbar');
+    if (topbar) topbar.style.display = 'none';
+
+    // Show all sections in review style; hide nav buttons
+    for (var i = 0; i < IQ.totalSecs; i++) {
+        var sec = document.getElementById('iq-sec-' + i);
+        if (sec) {
+            sec.style.display = 'block';
+            sec.classList.add('iq-review-mode');
+        }
+        var nextBtn = document.getElementById('iq-next-' + i);
+        if (nextBtn) nextBtn.style.display = 'none';
+    }
+    var finishBtn = document.getElementById('iq-finish');
+    if (finishBtn) finishBtn.style.display = 'none';
+
+    // Reveal correct answers for every question (answered or not)
+    for (var si = 0; si < IQ.totalSecs; si++) {
+        for (var qi = 0; qi < (IQ.qCounts[si] || 0); qi++) {
+            var card = document.getElementById('iq-q-' + si + '-' + qi);
+            if (!card) continue;
+            var correctVal = card.dataset.answer;
+
+            card.querySelectorAll('.iq-choice-btn').forEach(function(b) {
+                b.disabled = true;
+                if (b.dataset.value === correctVal) {
+                    b.classList.remove('iq-incorrect');
+                    b.classList.add('iq-correct');
+                }
+            });
+
+            // If unanswered, show a "review" feedback note
+            if (!card.dataset.answered) {
+                var note = document.createElement('div');
+                note.className = 'iq-review-answered-note';
+                note.textContent = 'Correct answer highlighted above.';
+                var fbEl = document.getElementById('iq-fb-' + si + '-' + qi);
+                if (fbEl) {
+                    var msg = fbEl.querySelector('.iq-fb-msg');
+                    if (msg) msg.textContent = '';
+                    fbEl.prepend(note);
+                    fbEl.style.display = 'block';
+                    fbEl.className = 'iq-feedback correct';
+                }
+            }
+        }
+    }
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 document.addEventListener('DOMContentLoaded', function() {
