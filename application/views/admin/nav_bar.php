@@ -15,5 +15,8 @@
         <a href="<?= base_url(
                         'view_attendance'
                     ) ?>" class="btn btn-outline-secondary col m-2">Attendance</a>
+        <a href="<?= base_url(
+                        'interactive_quiz/analytics'
+                    ) ?>" class="btn btn-outline-secondary col m-2">IQ Analytics</a>
     </div>
 </div>

@@ -370,7 +370,9 @@ const IQ = {
     total:      <?= (int)$total_questions ?>,
     totalSecs:  <?= (int)count($sections) ?>,
     currentSec: 0,
-    qCounts: <?= json_encode(array_map(function($s){ return count($s['questions'] ?? []); }, $sections)) ?>
+    topic:      '<?= addslashes($topic) ?>',
+    qCounts:    <?= json_encode(array_map(function($s){ return count($s['questions'] ?? []); }, $sections)) ?>,
+    sectionTitles: <?= json_encode(array_column($sections, 'title')) ?>
 };
 
 function updateHUD() {
@@ -418,6 +420,21 @@ function iqAnswer(btn, si, qi) {
 
     updateHUD();
     checkSectionDone(si);
+
+    // Record attempt for analytics (fire-and-forget)
+    var qText = card.querySelector('.iq-question-text').textContent.replace(/^\s*Q\d+:\s*/, '').trim();
+    fetch('<?= site_url('interactive_quiz/record_attempt') ?>', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({
+            topic:          IQ.topic,
+            section_index:  si,
+            section_title:  IQ.sectionTitles[si] || '',
+            question_index: qi,
+            question_text:  qText,
+            is_correct:     isCorrect ? '1' : '0'
+        })
+    }).catch(function() {}); // silent fail — never block the quiz UI
 }
 
 function checkSectionDone(si) {

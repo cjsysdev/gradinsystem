@@ -8,7 +8,7 @@ class InteractiveQuizController extends CI_Controller
     public function __construct()
     {
         parent::__construct();
-        $this->load->model(['classworks', 'assessments']);
+        $this->load->model(['classworks', 'assessments', 'Iq_attempts']);
         $this->load->helper(['url']);
         $this->load->library(['session']);
         $this->json_path = FCPATH . 'assets/json/';
@@ -30,7 +30,7 @@ class InteractiveQuizController extends CI_Controller
             return;
         }
 
-        $raw = file_get_contents($json_file);
+        $raw        = file_get_contents($json_file);
         $topic_data = json_decode($raw, true);
 
         if (!$topic_data || !isset($topic_data['sections'])) {
@@ -38,19 +38,19 @@ class InteractiveQuizController extends CI_Controller
             return;
         }
 
-        $sections = $topic_data['sections'];
+        $sections        = $topic_data['sections'];
         $total_questions = 0;
         foreach ($sections as $section) {
             $total_questions += count($section['questions'] ?? []);
         }
 
         $data = [
-            'topic'          => $topic,
-            'title'          => $topic_data['title'] ?? ucwords(str_replace('_', ' ', $topic)),
-            'description'    => $topic_data['description'] ?? '',
-            'sections'       => $sections,
+            'topic'           => $topic,
+            'title'           => $topic_data['title'] ?? ucwords(str_replace('_', ' ', $topic)),
+            'description'     => $topic_data['description'] ?? '',
+            'sections'        => $sections,
             'total_questions' => $total_questions,
-            'assessment_id'  => $assessment_id ? (int) $assessment_id : null,
+            'assessment_id'   => $assessment_id ? (int) $assessment_id : null,
         ];
 
         $this->load->view('interactive_quiz_view', $data);
@@ -102,6 +102,84 @@ class InteractiveQuizController extends CI_Controller
         }
 
         echo file_get_contents($json_file);
+    }
+
+    // AJAX — record one question attempt for analytics
+    public function record_attempt()
+    {
+        header('Content-Type: application/json');
+
+        $topic          = $this->input->post('topic');
+        $section_index  = (int) $this->input->post('section_index');
+        $section_title  = $this->input->post('section_title');
+        $question_index = (int) $this->input->post('question_index');
+        $question_text  = $this->input->post('question_text');
+        $is_correct     = $this->input->post('is_correct') === '1' ? 1 : 0;
+        $student_id     = $this->session->student_id ?? 'guest';
+
+        if (!$topic || !preg_match('/^[a-z0-9_]+$/', $topic)) {
+            echo json_encode(['success' => false]);
+            return;
+        }
+
+        $this->load->database();
+        $this->Iq_attempts->ensure_table();
+
+        $this->Iq_attempts->record([
+            'student_id'     => $student_id,
+            'topic'          => $topic,
+            'section_index'  => $section_index,
+            'section_title'  => mb_substr((string) $section_title, 0, 255),
+            'question_index' => $question_index,
+            'question_text'  => mb_substr((string) $question_text, 0, 1000),
+            'is_correct'     => $is_correct,
+        ]);
+
+        echo json_encode(['success' => true]);
+    }
+
+    // Admin — per-section analytics for a given topic
+    public function analytics($topic = null)
+    {
+        $this->load->database();
+        $this->Iq_attempts->ensure_table();
+
+        // Build topic list from JSON files + DB data
+        $files           = glob($this->json_path . '*.json') ?: [];
+        $available_topics = [];
+        foreach ($files as $f) {
+            $base = basename($f, '.json');
+            $meta = json_decode(file_get_contents($f), true);
+            $available_topics[$base] = $meta['title'] ?? ucwords(str_replace('_', ' ', $base));
+        }
+
+        // Default to first topic if none specified
+        if (!$topic || !array_key_exists($topic, $available_topics)) {
+            $topic = array_key_first($available_topics);
+        }
+
+        if (!$topic) {
+            $this->load->view('interactive_quiz_analytics_view', [
+                'available_topics' => [],
+                'topic'            => null,
+                'topic_title'      => '',
+                'summary'          => ['total' => 0, 'students' => 0, 'accuracy' => 0],
+                'sections'         => [],
+                'missed'           => [],
+            ]);
+            return;
+        }
+
+        $data = [
+            'available_topics' => $available_topics,
+            'topic'            => $topic,
+            'topic_title'      => $available_topics[$topic],
+            'summary'          => $this->Iq_attempts->topic_summary($topic),
+            'sections'         => $this->Iq_attempts->section_stats($topic),
+            'missed'           => $this->Iq_attempts->missed_questions($topic, 10),
+        ];
+
+        $this->load->view('interactive_quiz_analytics_view', $data);
     }
 
     // Save the student's score to classworks (requires valid assessment_id)
