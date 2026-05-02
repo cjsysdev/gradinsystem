@@ -1,0 +1,245 @@
+{
+  "topic": "php_basics",
+  "title": "PHP Basics",
+  "description": "Master the fundamentals of PHP programming — from syntax to arrays.",
+  "sections": [
+    {
+      "id": 1,
+      "title": "What is PHP?",
+      "lesson": "<p>PHP (PHP: Hypertext Preprocessor) is a server-side scripting language designed primarily for web development. PHP code runs on the <strong>server</strong> and generates HTML that is sent to the client's browser.</p><ul><li>Free and open-source</li><li>Runs on all major platforms (Windows, Linux, macOS)</li><li>Works with most web servers (Apache, Nginx)</li><li>Integrates easily with databases like MySQL</li></ul><p>A PHP file has the <code>.php</code> extension and can contain HTML, CSS, JavaScript, and PHP code.</p><pre><code class='language-php'>&lt;?php\n  echo 'Hello, World!';\n?&gt;</code></pre>",
+      "questions": [
+        {
+          "question": "Where does PHP code run?",
+          "choices": ["On the server", "In the browser", "On the client machine", "In a mobile app"],
+          "answer": "On the server",
+          "explanation": "PHP is a server-side language — the server executes it and sends the result (usually HTML) to the browser."
+        },
+        {
+          "question": "What file extension do PHP files use?",
+          "choices": [".php", ".html", ".py", ".js"],
+          "answer": ".php",
+          "explanation": "PHP files use the .php extension. The web server recognizes this extension and processes the file through the PHP engine."
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "PHP Syntax & Tags",
+      "lesson": "<p>PHP code is placed inside special <strong>opening and closing tags</strong> that tell the server where PHP begins and ends.</p><pre><code class='language-php'>&lt;?php\n  // Your PHP code here\n?&gt;</code></pre><p>Key syntax rules:</p><ul><li>Every PHP statement ends with a <strong>semicolon</strong> <code>;</code></li><li>PHP is <strong>not case-sensitive</strong> for keywords (echo, ECHO, Echo all work)</li><li>Variable names <strong>are</strong> case-sensitive (<code>$name</code> ≠ <code>$Name</code>)</li></ul><p>You can write comments in PHP three ways:</p><pre><code class='language-php'>&lt;?php\n  // Single-line comment\n  # Also a single-line comment\n  /* Multi-line\n     comment */\n  echo 'PHP is fun!'; // inline comment\n?&gt;</code></pre>",
+      "questions": [
+        {
+          "question": "What character ends every PHP statement?",
+          "choices": [";", ":", ".", ","],
+          "answer": ";",
+          "explanation": "Every PHP statement must end with a semicolon (;). Missing it causes a parse error."
+        },
+        {
+          "question": "Which of these is a valid single-line comment in PHP?",
+          "choices": ["// This is a comment", "<!-- This is a comment -->", "** This is a comment", "## This is a comment"],
+          "answer": "// This is a comment",
+          "explanation": "PHP uses // for single-line comments (and # also works). <!-- --> is HTML comment syntax."
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Variables & Data Types",
+      "lesson": "<p>In PHP, a <strong>variable</strong> starts with the <code>$</code> sign followed by the variable name. Variable names are case-sensitive.</p><pre><code class='language-php'>&lt;?php\n  $name = 'Alice';    // String\n  $age  = 25;         // Integer\n  $gpa  = 3.75;       // Float\n  $enrolled = true;   // Boolean\n  $score = null;      // Null\n?&gt;</code></pre><p>PHP is a <strong>loosely typed</strong> language — you don't declare the type, PHP figures it out automatically.</p><table><tr><th>Type</th><th>Example</th><th>Description</th></tr><tr><td>String</td><td><code>'Hello'</code></td><td>Text in single or double quotes</td></tr><tr><td>Integer</td><td><code>42</code></td><td>Whole numbers</td></tr><tr><td>Float</td><td><code>3.14</code></td><td>Numbers with decimals</td></tr><tr><td>Boolean</td><td><code>true</code> / <code>false</code></td><td>True or False</td></tr><tr><td>Null</td><td><code>null</code></td><td>No value assigned</td></tr></table>",
+      "questions": [
+        {
+          "question": "What symbol must start every PHP variable name?",
+          "choices": ["$", "@", "#", "&"],
+          "answer": "$",
+          "explanation": "In PHP, all variables must begin with the dollar sign ($). For example: $name, $age, $total."
+        },
+        {
+          "question": "Which of the following correctly declares a string variable in PHP?",
+          "choices": ["$greeting = 'Hello';", "string greeting = 'Hello';", "var greeting = 'Hello';", "$greeting == 'Hello';"],
+          "answer": "$greeting = 'Hello';",
+          "explanation": "PHP variables are declared with $ and assigned with = (single equals). No type declaration is needed."
+        },
+        {
+          "question": "PHP is considered a ________ typed language.",
+          "choices": ["loosely", "strictly", "statically", "weakly-enforced"],
+          "answer": "loosely",
+          "explanation": "PHP is loosely typed — you don't need to declare a variable's type. PHP infers it automatically from the value."
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Operators",
+      "lesson": "<p>PHP supports several types of operators for performing operations on values.</p><p><strong>Arithmetic Operators:</strong></p><pre><code class='language-php'>&lt;?php\n  $a = 10; $b = 3;\n  echo $a + $b;  // 13  (addition)\n  echo $a - $b;  // 7   (subtraction)\n  echo $a * $b;  // 30  (multiplication)\n  echo $a / $b;  // 3.33 (division)\n  echo $a % $b;  // 1   (modulo)\n  echo $a ** $b; // 1000 (exponentiation)\n?&gt;</code></pre><p><strong>Comparison Operators:</strong></p><table><tr><th>Operator</th><th>Meaning</th><th>Example</th></tr><tr><td><code>==</code></td><td>Equal (loose)</td><td><code>5 == '5'</code> → true</td></tr><tr><td><code>===</code></td><td>Identical (strict)</td><td><code>5 === '5'</code> → false</td></tr><tr><td><code>!=</code></td><td>Not equal</td><td><code>5 != 3</code> → true</td></tr><tr><td><code>&gt;</code></td><td>Greater than</td><td><code>5 &gt; 3</code> → true</td></tr><tr><td><code>&lt;</code></td><td>Less than</td><td><code>3 &lt; 5</code> → true</td></tr></table><p><strong>String Concatenation:</strong> Use the <code>.</code> (dot) operator to join strings.</p><pre><code class='language-php'>&lt;?php\n  $first = 'Hello';\n  $second = 'World';\n  echo $first . ' ' . $second; // Hello World\n?&gt;</code></pre>",
+      "questions": [
+        {
+          "question": "Which operator is used to concatenate (join) strings in PHP?",
+          "choices": [".", "+", "&", "~"],
+          "answer": ".",
+          "explanation": "PHP uses the dot (.) operator to concatenate strings. Example: 'Hello' . ' World' produces 'Hello World'."
+        },
+        {
+          "question": "What is the result of 10 % 3 in PHP?",
+          "choices": ["1", "3", "0.33", "7"],
+          "answer": "1",
+          "explanation": "The % operator returns the remainder of division. 10 ÷ 3 = 3 remainder 1, so 10 % 3 = 1."
+        },
+        {
+          "question": "What does the === operator check in PHP?",
+          "choices": ["Value AND type (strict equality)", "Value only (loose equality)", "Assignment", "Not equal"],
+          "answer": "Value AND type (strict equality)",
+          "explanation": "=== is the strict equality operator. It returns true only if both the value AND the data type are identical. == only compares values."
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "String Functions",
+      "lesson": "<p>PHP provides many built-in functions to work with strings. Here are the most commonly used:</p><pre><code class='language-php'>&lt;?php\n  $str = 'Hello, World!';\n\n  echo strlen($str);           // 13 - string length\n  echo strtoupper($str);       // HELLO, WORLD!\n  echo strtolower($str);       // hello, world!\n  echo str_replace('World', 'PHP', $str); // Hello, PHP!\n  echo substr($str, 0, 5);     // Hello\n  echo strpos($str, 'World');  // 7 (position)\n  echo trim('  hello  ');      // 'hello' (removes spaces)\n  echo str_word_count($str);   // 2\n?&gt;</code></pre><p>String interpolation — embedding variables inside double-quoted strings:</p><pre><code class='language-php'>&lt;?php\n  $name = 'Alice';\n  echo \"Hello, $name!\";        // Hello, Alice!\n  echo 'Hello, $name!';        // Hello, $name! (no interpolation in single quotes)\n?&gt;</code></pre>",
+      "questions": [
+        {
+          "question": "Which PHP function returns the length of a string?",
+          "choices": ["strlen()", "length()", "strcount()", "count()"],
+          "answer": "strlen()",
+          "explanation": "strlen() returns the number of characters in a string. Example: strlen('Hello') returns 5."
+        },
+        {
+          "question": "What does substr('Hello World', 6) return?",
+          "choices": ["World", "Hello", "Hello World", "W"],
+          "answer": "World",
+          "explanation": "substr() extracts part of a string. Starting at index 6, 'Hello World' gives 'World'."
+        },
+        {
+          "question": "Variable interpolation works inside ______ quoted strings.",
+          "choices": ["double", "single", "both", "neither"],
+          "answer": "double",
+          "explanation": "Variables inside double-quoted strings are automatically replaced with their values. Single-quoted strings treat $ literally."
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Conditional Statements",
+      "lesson": "<p>Conditional statements let your program make decisions based on conditions.</p><p><strong>if / elseif / else:</strong></p><pre><code class='language-php'>&lt;?php\n  $score = 85;\n\n  if ($score &gt;= 90) {\n      echo 'Grade: A';\n  } elseif ($score &gt;= 80) {\n      echo 'Grade: B';\n  } elseif ($score &gt;= 70) {\n      echo 'Grade: C';\n  } else {\n      echo 'Grade: F';\n  }\n  // Output: Grade: B\n?&gt;</code></pre><p><strong>switch statement</strong> — useful when comparing one variable against many values:</p><pre><code class='language-php'>&lt;?php\n  $day = 'Monday';\n  switch ($day) {\n      case 'Monday':\n          echo 'Start of work week';\n          break;\n      case 'Friday':\n          echo 'End of work week';\n          break;\n      default:\n          echo 'Midweek';\n  }\n?&gt;</code></pre><p><strong>Ternary operator</strong> — a shorthand for simple if/else:</p><pre><code class='language-php'>&lt;?php\n  $age = 20;\n  $status = ($age &gt;= 18) ? 'Adult' : 'Minor';\n  echo $status; // Adult\n?&gt;</code></pre>",
+      "questions": [
+        {
+          "question": "Which keyword is used in PHP for an 'else if' condition?",
+          "choices": ["elseif", "elif", "else if", "elsif"],
+          "answer": "elseif",
+          "explanation": "PHP uses elseif (one word) for chaining conditions. Note: 'else if' (two words) also works, but elseif is the standard PHP style."
+        },
+        {
+          "question": "What is the output of: echo (5 > 3) ? 'Yes' : 'No';",
+          "choices": ["Yes", "No", "true", "1"],
+          "answer": "Yes",
+          "explanation": "The ternary operator returns the first value ('Yes') if the condition is true, second value ('No') if false. 5 > 3 is true, so 'Yes' is returned."
+        },
+        {
+          "question": "Which statement is best when checking one variable against many specific values?",
+          "choices": ["switch", "if/elseif", "while", "for"],
+          "answer": "switch",
+          "explanation": "switch is designed for comparing a single variable against multiple possible values, making it more readable than a long if/elseif chain."
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Loops",
+      "lesson": "<p>Loops execute a block of code repeatedly. PHP has four main loop types:</p><p><strong>for loop</strong> — when you know the exact number of iterations:</p><pre><code class='language-php'>&lt;?php\n  for ($i = 1; $i &lt;= 5; $i++) {\n      echo $i . ' ';  // 1 2 3 4 5\n  }\n?&gt;</code></pre><p><strong>while loop</strong> — repeats while a condition is true:</p><pre><code class='language-php'>&lt;?php\n  $n = 1;\n  while ($n &lt;= 3) {\n      echo $n . ' ';  // 1 2 3\n      $n++;\n  }\n?&gt;</code></pre><p><strong>foreach loop</strong> — iterates over each element in an array:</p><pre><code class='language-php'>&lt;?php\n  $fruits = ['Apple', 'Banana', 'Cherry'];\n  foreach ($fruits as $fruit) {\n      echo $fruit . ' ';  // Apple Banana Cherry\n  }\n?&gt;</code></pre><p>Use <code>break</code> to exit a loop early, and <code>continue</code> to skip to the next iteration.</p>",
+      "questions": [
+        {
+          "question": "Which loop is best suited for iterating over every element in an array?",
+          "choices": ["foreach", "for", "while", "do-while"],
+          "answer": "foreach",
+          "explanation": "foreach is designed specifically for iterating over arrays and objects — it automatically handles the index and stopping condition."
+        },
+        {
+          "question": "What does the break statement do inside a loop?",
+          "choices": ["Exits the loop immediately", "Skips the current iteration", "Pauses the loop", "Restarts the loop"],
+          "answer": "Exits the loop immediately",
+          "explanation": "break terminates the loop entirely and execution continues after the loop block. continue only skips the current iteration."
+        },
+        {
+          "question": "In a for loop: for($i=0; $i<3; $i++), how many times does the loop body execute?",
+          "choices": ["3", "2", "4", "0"],
+          "answer": "3",
+          "explanation": "The loop runs for $i = 0, 1, 2 (stops when $i reaches 3). That's 3 iterations total."
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Functions",
+      "lesson": "<p>A <strong>function</strong> is a reusable block of code that performs a specific task. Define functions with the <code>function</code> keyword.</p><pre><code class='language-php'>&lt;?php\n  // Define a function\n  function greet($name) {\n      return 'Hello, ' . $name . '!';\n  }\n\n  // Call the function\n  echo greet('Alice');  // Hello, Alice!\n  echo greet('Bob');    // Hello, Bob!\n?&gt;</code></pre><p><strong>Default parameter values:</strong></p><pre><code class='language-php'>&lt;?php\n  function power($base, $exp = 2) {\n      return $base ** $exp;\n  }\n  echo power(3);     // 9  (uses default exp=2)\n  echo power(2, 10); // 1024\n?&gt;</code></pre><p><strong>Return values:</strong> Use <code>return</code> to send a value back to the caller. A function without <code>return</code> returns <code>null</code>.</p><p><strong>Variable scope:</strong> Variables declared inside a function are local and not accessible outside it.</p>",
+      "questions": [
+        {
+          "question": "Which keyword is used to define a function in PHP?",
+          "choices": ["function", "def", "func", "sub"],
+          "answer": "function",
+          "explanation": "PHP uses the 'function' keyword to define a function. Example: function myFunc() { ... }"
+        },
+        {
+          "question": "What does the return statement do in a PHP function?",
+          "choices": ["Sends a value back to the caller", "Ends the script", "Loops back to the start", "Prints the value"],
+          "answer": "Sends a value back to the caller",
+          "explanation": "return exits the function and optionally sends a value back to where the function was called. Without return, the function returns null."
+        },
+        {
+          "question": "What are default parameter values used for?",
+          "choices": ["To make a parameter optional", "To make a parameter required", "To restrict data types", "To print the parameter"],
+          "answer": "To make a parameter optional",
+          "explanation": "Default parameter values let you call a function without passing all arguments. The default is used when no argument is provided."
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Arrays",
+      "lesson": "<p>An <strong>array</strong> stores multiple values in a single variable. PHP supports indexed and associative arrays.</p><p><strong>Indexed arrays</strong> (numeric keys starting at 0):</p><pre><code class='language-php'>&lt;?php\n  $colors = ['Red', 'Green', 'Blue'];\n  echo $colors[0]; // Red\n  echo count($colors); // 3\n?&gt;</code></pre><p><strong>Associative arrays</strong> (named/string keys):</p><pre><code class='language-php'>&lt;?php\n  $student = [\n      'name'  =&gt; 'Alice',\n      'grade' =&gt; 90,\n      'major' =&gt; 'CS'\n  ];\n  echo $student['name'];  // Alice\n  echo $student['grade']; // 90\n?&gt;</code></pre><p><strong>Common array functions:</strong></p><pre><code class='language-php'>&lt;?php\n  $nums = [3, 1, 4, 1, 5, 9];\n  sort($nums);                  // Sort ascending\n  echo array_sum($nums);        // 23\n  echo in_array(4, $nums);      // true (1)\n  array_push($nums, 2);         // Add to end\n  $last = array_pop($nums);     // Remove from end\n?&gt;</code></pre>",
+      "questions": [
+        {
+          "question": "What index does the first element of a PHP array have?",
+          "choices": ["0", "1", "-1", "It depends"],
+          "answer": "0",
+          "explanation": "PHP arrays (like most programming languages) are zero-indexed. The first element is at index 0, second at 1, etc."
+        },
+        {
+          "question": "Which syntax creates an associative array in PHP?",
+          "choices": ["['key' => 'value']", "['key': 'value']", "{'key': 'value'}", "array('key' = 'value')"],
+          "answer": "['key' => 'value']",
+          "explanation": "PHP uses => (fat arrow) to define key-value pairs in associative arrays. Example: ['name' => 'Alice']."
+        },
+        {
+          "question": "Which function returns the number of elements in a PHP array?",
+          "choices": ["count()", "length()", "size()", "num_items()"],
+          "answer": "count()",
+          "explanation": "count() returns the number of elements in an array. Example: count([1, 2, 3]) returns 3."
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "PHP Forms & User Input",
+      "lesson": "<p>PHP can collect user input from HTML forms. Forms use either <strong>GET</strong> or <strong>POST</strong> method.</p><p><strong>HTML Form:</strong></p><pre><code class='language-html'>&lt;form method='post' action='process.php'&gt;\n  &lt;input type='text' name='username'&gt;\n  &lt;input type='submit' value='Submit'&gt;\n&lt;/form&gt;</code></pre><p><strong>Processing in PHP:</strong></p><pre><code class='language-php'>&lt;?php\n  if ($_SERVER['REQUEST_METHOD'] === 'POST') {\n      $username = $_POST['username'];\n      // Always sanitize user input!\n      $safe = htmlspecialchars($username);\n      echo 'Hello, ' . $safe;\n  }\n?&gt;</code></pre><p><strong>GET vs POST:</strong></p><table><tr><th>Feature</th><th>GET</th><th>POST</th></tr><tr><td>Data location</td><td>URL query string</td><td>Request body</td></tr><tr><td>Visible in URL</td><td>Yes</td><td>No</td></tr><tr><td>Data limit</td><td>~2000 chars</td><td>No practical limit</td></tr><tr><td>Use for</td><td>Search, filters</td><td>Login, forms</td></tr></table><p><strong>Security:</strong> Always use <code>htmlspecialchars()</code> to prevent XSS attacks when outputting user-provided data.</p>",
+      "questions": [
+        {
+          "question": "Which superglobal is used to access POST form data in PHP?",
+          "choices": ["$_POST", "$_FORM", "$_REQUEST_POST", "$_INPUT"],
+          "answer": "$_POST",
+          "explanation": "$_POST is the PHP superglobal array that contains data sent via HTTP POST method from HTML forms."
+        },
+        {
+          "question": "Which function should you use to prevent XSS attacks when displaying user input?",
+          "choices": ["htmlspecialchars()", "strip_tags()", "sanitize()", "escape()"],
+          "answer": "htmlspecialchars()",
+          "explanation": "htmlspecialchars() converts special characters like < and > to HTML entities, preventing them from being interpreted as HTML/JavaScript."
+        },
+        {
+          "question": "Which HTTP method sends data in the URL (visible to the user)?",
+          "choices": ["GET", "POST", "PUT", "DELETE"],
+          "answer": "GET",
+          "explanation": "GET appends form data to the URL as a query string (e.g., ?name=Alice). POST sends data in the request body, keeping it out of the URL."
+        }
+      ]
+    }
+  ]
+}

@@ -101,6 +101,13 @@ $route['quiz/(:num)'] = 'QuizController/index/$1';
 $route['quiz/submit/(:num)'] = 'QuizController/submit/$1';
 $route['quiz/check_session'] = 'QuizController/check_session';
 
+// Interactive Quiz Routes
+$route['interactive_quiz/topics'] = 'InteractiveQuizController/list_topics';
+$route['interactive_quiz/data/(:any)'] = 'InteractiveQuizController/get_data/$1';
+$route['interactive_quiz/save_result'] = 'InteractiveQuizController/save_result';
+$route['interactive_quiz/load/(:any)/(:num)'] = 'InteractiveQuizController/load/$1/$2';
+$route['interactive_quiz/load/(:any)'] = 'InteractiveQuizController/load/$1';
+
 // Miscellaneous Routes
 $route['test'] = 'Main/test';
 $route['signup'] = 'Main/signup';

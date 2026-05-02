@@ -1,0 +1,126 @@
+{
+  "topic": "sql_intro",
+  "title": "SQL Introduction",
+  "description": "Learn the basics of SQL — the language for managing and querying relational databases.",
+  "sections": [
+    {
+      "id": 1,
+      "title": "What is SQL?",
+      "lesson": "<p><strong>SQL</strong> (Structured Query Language) is the standard language for communicating with relational database management systems (RDBMS). It lets you create, read, update, and delete data in structured tables.</p><p>SQL is used by nearly every application that needs persistent data storage — from simple web apps to enterprise systems.</p><p>Popular databases that use SQL:</p><ul><li>MySQL / MariaDB</li><li>PostgreSQL</li><li>SQLite</li><li>Microsoft SQL Server</li><li>Oracle Database</li></ul><p>SQL operations fall into categories:</p><table><tr><th>Category</th><th>Commands</th><th>Purpose</th></tr><tr><td>DQL</td><td>SELECT</td><td>Query/read data</td></tr><tr><td>DML</td><td>INSERT, UPDATE, DELETE</td><td>Modify data</td></tr><tr><td>DDL</td><td>CREATE, ALTER, DROP</td><td>Define structure</td></tr><tr><td>DCL</td><td>GRANT, REVOKE</td><td>Control access</td></tr></table>",
+      "questions": [
+        {
+          "question": "What does SQL stand for?",
+          "choices": ["Structured Query Language", "Simple Query Language", "Standard Question Language", "Sequential Query Logic"],
+          "answer": "Structured Query Language",
+          "explanation": "SQL stands for Structured Query Language. It is the standard language for relational database management systems."
+        },
+        {
+          "question": "Which SQL command is used to READ/retrieve data from a table?",
+          "choices": ["SELECT", "GET", "FETCH", "READ"],
+          "answer": "SELECT",
+          "explanation": "SELECT is the SQL command for querying and retrieving data from one or more tables. It belongs to DQL (Data Query Language)."
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "The SELECT Statement",
+      "lesson": "<p>The <code>SELECT</code> statement retrieves data from one or more tables. It is the most frequently used SQL command.</p><pre><code class='language-sql'>-- Select all columns from a table\nSELECT * FROM students;\n\n-- Select specific columns\nSELECT name, grade FROM students;\n\n-- Select with a column alias\nSELECT name AS student_name, grade AS score FROM students;\n\n-- Select with ORDER BY (sort results)\nSELECT name, grade FROM students ORDER BY grade DESC;\n\n-- Select with LIMIT (cap results)\nSELECT name FROM students ORDER BY grade DESC LIMIT 5;</code></pre><p>Useful SELECT clauses:</p><table><tr><th>Clause</th><th>Purpose</th><th>Example</th></tr><tr><td>ORDER BY</td><td>Sort results</td><td>ORDER BY name ASC</td></tr><tr><td>LIMIT</td><td>Cap the number of rows</td><td>LIMIT 10</td></tr><tr><td>DISTINCT</td><td>Remove duplicate rows</td><td>SELECT DISTINCT city</td></tr><tr><td>AS</td><td>Alias a column name</td><td>grade AS score</td></tr></table>",
+      "questions": [
+        {
+          "question": "What does SELECT * FROM students return?",
+          "choices": ["All columns and all rows from the students table", "Only the first row", "Only column names", "Nothing — * is invalid"],
+          "answer": "All columns and all rows from the students table",
+          "explanation": "The * wildcard means 'all columns'. Without a WHERE clause, all rows are returned. So SELECT * FROM students returns every column and row."
+        },
+        {
+          "question": "Which clause sorts the result set in SQL?",
+          "choices": ["ORDER BY", "SORT BY", "GROUP BY", "ARRANGE BY"],
+          "answer": "ORDER BY",
+          "explanation": "ORDER BY sorts the result set. Use ASC for ascending (default) or DESC for descending order."
+        },
+        {
+          "question": "What does SELECT DISTINCT city FROM offices return?",
+          "choices": ["Unique city names only", "All city entries including duplicates", "Only the first city", "City names in alphabetical order"],
+          "answer": "Unique city names only",
+          "explanation": "DISTINCT eliminates duplicate values in the result. If five offices are in 'Manila', only one 'Manila' appears in the output."
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "The WHERE Clause",
+      "lesson": "<p>The <code>WHERE</code> clause filters rows — only rows matching the condition are returned.</p><pre><code class='language-sql'>-- Exact match\nSELECT * FROM students WHERE grade = 90;\n\n-- Comparison\nSELECT name FROM students WHERE grade &gt;= 85;\n\n-- String match\nSELECT * FROM students WHERE section = 'BSCS-3A';\n\n-- LIKE pattern matching\nSELECT * FROM students WHERE name LIKE 'A%';   -- starts with A\nSELECT * FROM students WHERE name LIKE '%son'; -- ends with 'son'\n\n-- IN operator (multiple values)\nSELECT * FROM students WHERE section IN ('BSCS-3A', 'BSCS-3B');\n\n-- BETWEEN (range)\nSELECT * FROM students WHERE grade BETWEEN 80 AND 90;\n\n-- Combining conditions\nSELECT * FROM students WHERE grade &gt;= 85 AND section = 'BSCS-3A';\nSELECT * FROM students WHERE grade &lt; 75 OR absent &gt; 3;</code></pre><p><strong>LIKE wildcards:</strong></p><ul><li><code>%</code> — matches any sequence of characters</li><li><code>_</code> — matches exactly one character</li></ul>",
+      "questions": [
+        {
+          "question": "Which SQL clause is used to filter rows based on a condition?",
+          "choices": ["WHERE", "FILTER", "HAVING", "CONDITION"],
+          "answer": "WHERE",
+          "explanation": "WHERE filters rows in a query. Only rows where the condition is true are included in the result."
+        },
+        {
+          "question": "What does WHERE name LIKE 'A%' match?",
+          "choices": ["Names starting with A", "Names ending with A", "Names containing A anywhere", "Exactly the letter A"],
+          "answer": "Names starting with A",
+          "explanation": "In SQL LIKE patterns, % matches any sequence of characters. 'A%' means 'starts with A followed by anything'."
+        },
+        {
+          "question": "Which operator checks if a value falls within a range (inclusive)?",
+          "choices": ["BETWEEN", "IN", "LIKE", "RANGE"],
+          "answer": "BETWEEN",
+          "explanation": "BETWEEN low AND high returns rows where the value is >= low AND <= high. Both endpoints are inclusive."
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "INSERT, UPDATE, DELETE",
+      "lesson": "<p>These DML commands modify the data in your tables.</p><p><strong>INSERT</strong> — Add new rows:</p><pre><code class='language-sql'>-- Insert one row\nINSERT INTO students (student_id, name, grade, section)\nVALUES (1001, 'Alice Cruz', 92, 'BSCS-3A');\n\n-- Insert multiple rows\nINSERT INTO students (student_id, name, grade)\nVALUES (1002, 'Bob Santos', 88),\n       (1003, 'Carol Reyes', 95);</code></pre><p><strong>UPDATE</strong> — Modify existing rows:</p><pre><code class='language-sql'>-- Update a specific row\nUPDATE students SET grade = 95 WHERE student_id = 1001;\n\n-- Update multiple columns\nUPDATE students\nSET grade = 90, section = 'BSCS-3B'\nWHERE name = 'Bob Santos';</code></pre><p><strong>DELETE</strong> — Remove rows:</p><pre><code class='language-sql'>-- Delete a specific row\nDELETE FROM students WHERE student_id = 1003;\n\n-- Delete all rows (keep table structure)\nDELETE FROM students;</code></pre><p class='text-danger'><strong>Warning:</strong> Always use WHERE with UPDATE and DELETE — without it, all rows are affected!</p>",
+      "questions": [
+        {
+          "question": "Which SQL command adds new rows to a table?",
+          "choices": ["INSERT INTO", "ADD ROW", "APPEND", "CREATE ROW"],
+          "answer": "INSERT INTO",
+          "explanation": "INSERT INTO table (...) VALUES (...) adds new rows to a table. You specify the columns and the corresponding values."
+        },
+        {
+          "question": "What happens if you run UPDATE students SET grade = 0 without a WHERE clause?",
+          "choices": ["All students get grade = 0", "Only the first student is updated", "An error occurs", "Nothing happens"],
+          "answer": "All students get grade = 0",
+          "explanation": "Without a WHERE clause, UPDATE affects every row in the table. This is a common mistake that can cause data loss."
+        },
+        {
+          "question": "Which command removes rows from a table but keeps the table structure intact?",
+          "choices": ["DELETE", "DROP", "TRUNCATE", "REMOVE"],
+          "answer": "DELETE",
+          "explanation": "DELETE removes rows from a table but keeps the table itself. DROP TABLE removes the entire table. TRUNCATE also removes all rows but is non-transactional."
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "JOINs — Combining Tables",
+      "lesson": "<p>A <strong>JOIN</strong> combines rows from two or more tables based on a related column (usually a foreign key).</p><p>Given two tables:</p><table><tr><th colspan='2'>students</th></tr><tr><td>student_id</td><td>name</td></tr><tr><td>1001</td><td>Alice</td></tr><tr><td>1002</td><td>Bob</td></tr></table><table><tr><th colspan='3'>grades</th></tr><tr><td>grade_id</td><td>student_id</td><td>score</td></tr><tr><td>1</td><td>1001</td><td>92</td></tr><tr><td>2</td><td>1002</td><td>88</td></tr></table><p><strong>INNER JOIN</strong> — Returns only matching rows from both tables:</p><pre><code class='language-sql'>SELECT s.name, g.score\nFROM students s\nINNER JOIN grades g ON s.student_id = g.student_id;</code></pre><p><strong>LEFT JOIN</strong> — Returns all rows from the left table, plus matching rows from the right (NULL if no match):</p><pre><code class='language-sql'>SELECT s.name, g.score\nFROM students s\nLEFT JOIN grades g ON s.student_id = g.student_id;\n-- Includes students with no grade (score will be NULL)</code></pre><p><strong>When to use which:</strong></p><ul><li>Use <code>INNER JOIN</code> when you only want rows that have matches in both tables</li><li>Use <code>LEFT JOIN</code> when you want all records from the left table, regardless of matches</li></ul>",
+      "questions": [
+        {
+          "question": "Which JOIN returns only rows that have matching values in both tables?",
+          "choices": ["INNER JOIN", "LEFT JOIN", "RIGHT JOIN", "FULL OUTER JOIN"],
+          "answer": "INNER JOIN",
+          "explanation": "INNER JOIN returns only the rows where the join condition is satisfied in both tables. Rows without a match are excluded."
+        },
+        {
+          "question": "What does LEFT JOIN return that INNER JOIN does not?",
+          "choices": ["All rows from the left table, even without matches", "All rows from the right table", "Duplicate rows", "Rows in alphabetical order"],
+          "answer": "All rows from the left table, even without matches",
+          "explanation": "LEFT JOIN returns all rows from the left table. For rows with no match in the right table, the right-side columns are filled with NULL."
+        },
+        {
+          "question": "In a JOIN, what does the ON clause specify?",
+          "choices": ["The condition linking the two tables", "The columns to display", "The sort order", "The maximum number of rows"],
+          "answer": "The condition linking the two tables",
+          "explanation": "The ON clause defines how the two tables are related — typically matching a foreign key in one table to the primary key in the other."
+        }
+      ]
+    }
+  ]
+}
