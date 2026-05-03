@@ -217,6 +217,8 @@
                                     <a href="<?= site_url('interactive_quiz/load/' . $t['slug']) ?>"
                                        class="btn btn-sm btn-outline-success"
                                        target="_blank">Preview</a>
+                                    <a href="<?= site_url('interactive_quiz/edit_topic/' . $t['slug']) ?>"
+                                       class="btn btn-sm btn-outline-primary">Edit Questions</a>
                                     <a href="<?= site_url('interactive_quiz/analytics/' . $t['slug']) ?>"
                                        class="btn btn-sm btn-outline-secondary">Analytics</a>
                                     <button type="button"

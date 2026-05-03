@@ -345,6 +345,143 @@ class InteractiveQuizController extends CI_Controller
         redirect('attendance');
     }
 
+    // Admin — question editor page for a topic (GET)
+    public function edit_topic($topic)
+    {
+        if (!preg_match('/^[a-z0-9_]+$/', $topic)) {
+            show_error('Invalid topic name.', 400);
+            return;
+        }
+        $file = $this->json_path . $topic . '.json';
+        if (!file_exists($file)) {
+            show_error('Topic not found.', 404);
+            return;
+        }
+        $this->load->view('interactive_quiz_editor_view', [
+            'topic'      => $topic,
+            'topic_data' => json_decode(file_get_contents($file), true),
+        ]);
+    }
+
+    // AJAX — add or update a question in a section (POST, JSON body)
+    public function save_question($topic)
+    {
+        header('Content-Type: application/json');
+        if ($this->input->method() !== 'post') {
+            echo json_encode(['success' => false, 'error' => 'POST required']);
+            return;
+        }
+        if (!preg_match('/^[a-z0-9_]+$/', $topic)) {
+            echo json_encode(['success' => false, 'error' => 'Invalid topic']);
+            return;
+        }
+
+        $payload = json_decode(file_get_contents('php://input'), true);
+        if (!$payload) {
+            echo json_encode(['success' => false, 'error' => 'Invalid JSON payload']);
+            return;
+        }
+
+        $section_index  = isset($payload['section_index']) ? (int)$payload['section_index'] : -1;
+        $question_index = (isset($payload['question_index']) && $payload['question_index'] !== null)
+                          ? (int)$payload['question_index'] : null;
+        $question_text  = trim($payload['question'] ?? '');
+        $choices        = array_values(array_filter(array_map('trim', $payload['choices'] ?? [])));
+        $answer         = trim($payload['answer'] ?? '');
+        $explanation    = trim($payload['explanation'] ?? '');
+
+        if (empty($question_text)) {
+            echo json_encode(['success' => false, 'error' => 'Question text is required.']);
+            return;
+        }
+        if (count($choices) < 2) {
+            echo json_encode(['success' => false, 'error' => 'At least 2 choices are required.']);
+            return;
+        }
+        if (!in_array($answer, $choices, true)) {
+            echo json_encode(['success' => false, 'error' => 'Answer must exactly match one of the choices.']);
+            return;
+        }
+
+        $file = $this->json_path . $topic . '.json';
+        if (!file_exists($file)) {
+            echo json_encode(['success' => false, 'error' => 'Topic not found.']);
+            return;
+        }
+
+        $topic_data = json_decode(file_get_contents($file), true);
+        if (!isset($topic_data['sections'][$section_index])) {
+            echo json_encode(['success' => false, 'error' => 'Section not found.']);
+            return;
+        }
+
+        $q = ['question' => $question_text, 'choices' => $choices, 'answer' => $answer];
+        if ($explanation !== '') {
+            $q['explanation'] = $explanation;
+        }
+
+        if (!isset($topic_data['sections'][$section_index]['questions'])) {
+            $topic_data['sections'][$section_index]['questions'] = [];
+        }
+        $qs = &$topic_data['sections'][$section_index]['questions'];
+
+        if ($question_index !== null && isset($qs[$question_index])) {
+            $qs[$question_index] = $q;
+            $saved_index = $question_index;
+        } else {
+            $qs[] = $q;
+            $saved_index = count($qs) - 1;
+        }
+
+        $pretty = json_encode($topic_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if (file_put_contents($file, $pretty) === false) {
+            echo json_encode(['success' => false, 'error' => 'Failed to write file.']);
+            return;
+        }
+
+        echo json_encode(['success' => true, 'question_index' => $saved_index, 'question' => $q]);
+    }
+
+    // AJAX — delete a question from a section (POST, JSON body)
+    public function delete_question($topic)
+    {
+        header('Content-Type: application/json');
+        if ($this->input->method() !== 'post') {
+            echo json_encode(['success' => false, 'error' => 'POST required']);
+            return;
+        }
+        if (!preg_match('/^[a-z0-9_]+$/', $topic)) {
+            echo json_encode(['success' => false, 'error' => 'Invalid topic']);
+            return;
+        }
+
+        $payload        = json_decode(file_get_contents('php://input'), true);
+        $section_index  = isset($payload['section_index'])  ? (int)$payload['section_index']  : -1;
+        $question_index = isset($payload['question_index']) ? (int)$payload['question_index'] : -1;
+
+        $file = $this->json_path . $topic . '.json';
+        if (!file_exists($file)) {
+            echo json_encode(['success' => false, 'error' => 'Topic not found.']);
+            return;
+        }
+
+        $topic_data = json_decode(file_get_contents($file), true);
+        if (!isset($topic_data['sections'][$section_index]['questions'][$question_index])) {
+            echo json_encode(['success' => false, 'error' => 'Question not found.']);
+            return;
+        }
+
+        array_splice($topic_data['sections'][$section_index]['questions'], $question_index, 1);
+
+        $pretty = json_encode($topic_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if (file_put_contents($file, $pretty) === false) {
+            echo json_encode(['success' => false, 'error' => 'Failed to write file.']);
+            return;
+        }
+
+        echo json_encode(['success' => true]);
+    }
+
     // ── Private helpers ──────────────────────────────────────────────────────
 
     private function _build_topic_list()
