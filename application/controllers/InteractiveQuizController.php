@@ -38,7 +38,25 @@ class InteractiveQuizController extends CI_Controller
             return;
         }
 
-        $sections        = $topic_data['sections'];
+        $sections = $topic_data['sections'];
+
+        // Shuffle questions within each section (and choices within each question)
+        // when the topic has "shuffle": true. Original indices are preserved in
+        // _orig_qi so analytics still record the canonical question position.
+        if (!empty($topic_data['shuffle'])) {
+            foreach ($sections as &$section) {
+                if (!empty($section['questions'])) {
+                    foreach ($section['questions'] as $oi => &$q) {
+                        $q['_orig_qi'] = $oi;
+                        shuffle($q['choices']);
+                    }
+                    unset($q);
+                    shuffle($section['questions']);
+                }
+            }
+            unset($section);
+        }
+
         $total_questions = 0;
         foreach ($sections as $section) {
             $total_questions += count($section['questions'] ?? []);
@@ -482,6 +500,42 @@ class InteractiveQuizController extends CI_Controller
         echo json_encode(['success' => true]);
     }
 
+    // AJAX — update topic-level settings: shuffle flag (POST, JSON body)
+    public function save_topic_settings($topic)
+    {
+        header('Content-Type: application/json');
+        if ($this->input->method() !== 'post') {
+            echo json_encode(['success' => false, 'error' => 'POST required']);
+            return;
+        }
+        if (!preg_match('/^[a-z0-9_]+$/', $topic)) {
+            echo json_encode(['success' => false, 'error' => 'Invalid topic']);
+            return;
+        }
+
+        $payload = json_decode(file_get_contents('php://input'), true);
+        $file    = $this->json_path . $topic . '.json';
+
+        if (!file_exists($file)) {
+            echo json_encode(['success' => false, 'error' => 'Topic not found.']);
+            return;
+        }
+
+        $topic_data = json_decode(file_get_contents($file), true);
+
+        if (array_key_exists('shuffle', $payload)) {
+            $topic_data['shuffle'] = (bool)$payload['shuffle'];
+        }
+
+        $pretty = json_encode($topic_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if (file_put_contents($file, $pretty) === false) {
+            echo json_encode(['success' => false, 'error' => 'Failed to write file.']);
+            return;
+        }
+
+        echo json_encode(['success' => true]);
+    }
+
     // ── Private helpers ──────────────────────────────────────────────────────
 
     private function _build_topic_list()
@@ -504,6 +558,7 @@ class InteractiveQuizController extends CI_Controller
                 }, $meta['sections'] ?? [])),
                 'size'      => filesize($file),
                 'modified'  => filemtime($file),
+                'shuffle'   => !empty($meta['shuffle']),
             ];
         }
 

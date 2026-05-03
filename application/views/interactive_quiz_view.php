@@ -336,7 +336,8 @@
             <?php foreach ($section['questions'] as $qi => $q): ?>
             <div class="card iq-question-card"
                  id="iq-q-<?= $si ?>-<?= $qi ?>"
-                 data-answer="<?= htmlspecialchars($q['answer'], ENT_QUOTES) ?>">
+                 data-answer="<?= htmlspecialchars($q['answer'], ENT_QUOTES) ?>"
+                 data-orig-qi="<?= isset($q['_orig_qi']) ? (int)$q['_orig_qi'] : $qi ?>">
                 <div class="card-body">
                     <p class="iq-question-text">
                         <strong>Q<?= $qi + 1 ?>:</strong>
@@ -495,7 +496,7 @@ function iqAnswer(btn, si, qi) {
             topic:          IQ.topic,
             section_index:  si,
             section_title:  IQ.sectionTitles[si] || '',
-            question_index: qi,
+            question_index: card.dataset.origQi !== undefined ? card.dataset.origQi : qi,
             question_text:  qText,
             is_correct:     isCorrect ? '1' : '0'
         })

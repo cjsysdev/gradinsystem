@@ -122,6 +122,28 @@
                   target="_blank">Preview &rarr;</a>
     </p>
 
+    <!-- ── Topic settings ── -->
+    <div class="card mb-3" style="border:none; box-shadow:0 1px 6px rgba(0,0,0,.08); border-radius:8px;">
+        <div class="card-body py-3 px-4">
+            <div class="d-flex align-items-center">
+                <div style="flex:1;">
+                    <strong style="font-size:14px;">Shuffle Questions &amp; Choices</strong>
+                    <div class="text-muted" style="font-size:12px; margin-top:2px;">
+                        When enabled, question order and choice order are randomised per attempt
+                        so students can't share answers.
+                    </div>
+                </div>
+                <div class="custom-control custom-switch ml-4">
+                    <input type="checkbox" class="custom-control-input"
+                           id="shuffle-toggle"
+                           <?= !empty($topic_data['shuffle']) ? 'checked' : '' ?>
+                           onchange="setShuffle(this.checked)">
+                    <label class="custom-control-label" for="shuffle-toggle"></label>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ── Section accordion ── -->
     <?php foreach ($topic_data['sections'] as $si => $section): ?>
     <?php $qcount = count($section['questions'] ?? []); ?>
@@ -209,8 +231,9 @@
 // ── Bootstrapped state from PHP ─────────────────────────────────────
 var TOPIC    = <?= json_encode($topic_data, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 var TOPIC_ID = <?= json_encode($topic) ?>;
-var SAVE_URL = '<?= site_url('interactive_quiz/save_question/') ?>';
-var DEL_URL  = '<?= site_url('interactive_quiz/delete_question/') ?>';
+var SAVE_URL     = '<?= site_url('interactive_quiz/save_question/') ?>';
+var DEL_URL      = '<?= site_url('interactive_quiz/delete_question/') ?>';
+var SETTINGS_URL = '<?= site_url('interactive_quiz/save_topic_settings/') ?>';
 
 // ── Modal state ─────────────────────────────────────────────────────
 var mSi      = null;   // section index
@@ -452,6 +475,27 @@ function toast(msg, type) {
     el.className   = 'eq-toast ' + type;
     clearTimeout(_toastTimer);
     _toastTimer = setTimeout(function () { el.className += ' hidden'; }, 2600);
+}
+
+function setShuffle(enabled) {
+    fetch(SETTINGS_URL + TOPIC_ID, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ shuffle: enabled })
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+        if (data.success) {
+            toast('Shuffle ' + (enabled ? 'enabled' : 'disabled') + '.', 'success');
+        } else {
+            toast(data.error || 'Failed to update.', 'error');
+            document.getElementById('shuffle-toggle').checked = !enabled;
+        }
+    })
+    .catch(function () {
+        toast('Network error.', 'error');
+        document.getElementById('shuffle-toggle').checked = !enabled;
+    });
 }
 
 function esc(s) {

@@ -201,6 +201,10 @@
                                 <?php endif; ?>
                                 <div class="size-text">
                                     Modified <?= date('M j, Y', $t['modified']) ?>
+                                    <?php if (!empty($t['shuffle'])): ?>
+                                    &bull; <span title="Questions &amp; choices are shuffled per attempt"
+                                                style="color:#6c757d; font-size:11px;">&#x1F500; shuffle</span>
+                                    <?php endif; ?>
                                 </div>
                             </td>
                             <td class="text-center">
