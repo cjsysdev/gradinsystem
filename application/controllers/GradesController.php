@@ -37,6 +37,12 @@ class GradesController extends CI_Controller
         $data['finalGrades'] = $finalGrades;
         $data['finalTotalGrade'] = round($finalTotalGrade, 2);
         $data['overallFinalGrade'] = round($overallFinalGrade, 2);
+        $data['recommendations'] = $this->buildRecommendations(
+            $midtermGrades,
+            $finalGrades,
+            round($midtermTotalGrade, 2),
+            round($overallFinalGrade, 2)
+        );
 
         $this->load->view('home', $data);
     }
@@ -363,5 +369,91 @@ class GradesController extends CI_Controller
         $data['schedule'] = $grades[0]['schedule'] ?? '';
 
         $this->load->view('section_grades', $data);
+    }
+
+    private function buildRecommendations(array $midtermGrades, $finalGrades, float $midtermTotal, float $overallTotal): array
+    {
+        $recommendations = [];
+        $attendance = $this->student_master->get_attendance_summary($this->session->student_id);
+        $absences = (int)($attendance['absent_count'] ?? 0);
+        $lates   = (int)($attendance['late_count'] ?? 0);
+
+        if ($absences >= 4) {
+            $recommendations[] = [
+                'type'    => 'danger',
+                'message' => "Critical: You have $absences absences this semester. Excessive absences may result in automatic failure.",
+            ];
+        } elseif ($absences >= 2) {
+            $recommendations[] = [
+                'type'    => 'warning',
+                'message' => "Warning: You have $absences absences. Please improve your attendance to avoid grade penalties.",
+            ];
+        }
+
+        if ($lates >= 3) {
+            $recommendations[] = [
+                'type'    => 'warning',
+                'message' => "Note: You have been late $lates times. Consistent tardiness may affect your class participation record.",
+            ];
+        }
+
+        foreach ($midtermGrades as $grade) {
+            $pct  = (float)($grade['percentage'] ?? 0);
+            $name = $grade['iotype_name'] ?? 'Component';
+            if ($pct < 60) {
+                $recommendations[] = [
+                    'type'    => 'danger',
+                    'message' => "Midterm $name: Your score is below passing (" . round($pct, 1) . "%). Prioritise reviewing this area before the next term.",
+                ];
+            } elseif ($pct < 75) {
+                $recommendations[] = [
+                    'type'    => 'warning',
+                    'message' => "Midterm $name: Your score (" . round($pct, 1) . "%) is passing but has room for improvement. Consistent practice will help.",
+                ];
+            }
+        }
+
+        if (!empty($finalGrades)) {
+            foreach ($finalGrades as $grade) {
+                $pct  = (float)($grade['percentage'] ?? 0);
+                $name = $grade['iotype_name'] ?? 'Component';
+                if ($pct < 60) {
+                    $recommendations[] = [
+                        'type'    => 'danger',
+                        'message' => "Final $name: Your score is below passing (" . round($pct, 1) . "%). Focus on this component immediately.",
+                    ];
+                } elseif ($pct < 75) {
+                    $recommendations[] = [
+                        'type'    => 'warning',
+                        'message' => "Final $name: Your score (" . round($pct, 1) . "%) needs improvement. Keep up your study efforts.",
+                    ];
+                }
+            }
+        }
+
+        $referenceGrade = !empty($finalGrades) ? $overallTotal : $midtermTotal;
+        if ($referenceGrade < 60) {
+            $recommendations[] = [
+                'type'    => 'danger',
+                'message' => "Your current overall grade (" . round($referenceGrade, 1) . "%) is below passing. Immediate improvement is required across all components.",
+            ];
+        } elseif ($referenceGrade < 75) {
+            $recommendations[] = [
+                'type'    => 'info',
+                'message' => "Your current overall grade (" . round($referenceGrade, 1) . "%) is passing. Consistent effort will help you achieve a better standing.",
+            ];
+        } elseif ($referenceGrade < 85) {
+            $recommendations[] = [
+                'type'    => 'success',
+                'message' => "Good performance! Your current overall grade is " . round($referenceGrade, 1) . "%. Keep maintaining your study habits.",
+            ];
+        } else {
+            $recommendations[] = [
+                'type'    => 'success',
+                'message' => "Excellent performance! Your current overall grade is " . round($referenceGrade, 1) . "%. Keep up the outstanding work!",
+            ];
+        }
+
+        return $recommendations;
     }
 }
