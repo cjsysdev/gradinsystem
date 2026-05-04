@@ -109,6 +109,9 @@ $route['input_submit'] = 'Main/input_submit';
 $route['output_upload'] = 'Main/output_upload';
 
 // Admin Routes
+$route['manage_assessments'] = 'AdminController/manage_assessments';
+$route['save_assessment'] = 'AdminController/save_assessment';
+$route['update_assessment_status'] = 'AdminController/update_assessment_status';
 $route['dashboard'] = 'AdminController/dashboard';
 $route['manage_json_files'] = 'AdminController/manage_json_files';
 $route['all_submissions/(:num)'] = 'AdminController/all_submissions/$1';

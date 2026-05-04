@@ -259,6 +259,69 @@ class AdminController extends CI_Controller
         redirect('AdminController/uncleared_students/' . $section);
     }
 
+    public function manage_assessments()
+    {
+        $schedule_id = $this->input->get('schedule_id');
+        $data['assessments'] = $this->assessments->get_all_for_admin($schedule_id ?: null);
+        $data['schedules'] = $this->class_schedule->get_all_active();
+        $data['io_types'] = $this->db->get('io_type')->result_array();
+        $data['selected_schedule'] = $schedule_id;
+        $this->load->view('admin/manage_assessments', $data);
+    }
+
+    public function save_assessment()
+    {
+        $post = $this->input->post();
+        $assessment_id = !empty($post['assessment_id']) ? (int)$post['assessment_id'] : null;
+
+        $status = isset($post['status']) ? $post['status'] : 0;
+        if ($status === 'open' || $status === 'closed') {
+            $status = $status === 'open' ? '1' : '0';
+        }
+
+        $data = [
+            'iotype_id'    => $post['iotype_id'],
+            'schedule_id'  => $post['schedule_id'],
+            'title'        => $post['title'],
+            'description'  => $post['description'],
+            'max_score'    => $post['max_score'],
+            'due'          => $post['due'],
+            'term'         => $post['term'],
+            'status'       => (int)$status,
+            'is_groupings' => !empty($post['is_groupings']) ? 1 : 0,
+        ];
+
+        if ($assessment_id) {
+            $this->assessments->update($assessment_id, $data);
+            $this->session->set_flashdata('success', 'Assessment updated successfully.');
+        } else {
+            $data['created_at'] = date('Y-m-d H:i:s');
+            $this->assessments->insert($data);
+            $this->session->set_flashdata('success', 'Assessment added successfully.');
+        }
+
+        $qs = !empty($post['schedule_id']) ? '?schedule_id=' . $post['schedule_id'] : '';
+        redirect('manage_assessments' . $qs);
+    }
+
+    public function update_assessment_status()
+    {
+        $assessment_id = (int)$this->input->post('assessment_id');
+        $status = $this->input->post('status');
+
+        if ($status === 'open' || $status === 'closed') {
+            $status = $status === 'open' ? '1' : '0';
+        }
+
+        if (!$assessment_id || !in_array($status, ['0', '1'], true)) {
+            echo json_encode(['success' => false]);
+            return;
+        }
+
+        $this->db->where('assessment_id', $assessment_id)->update('assessments', ['status' => (int)$status]);
+        echo json_encode(['success' => true]);
+    }
+
     public function increment_randomized_count($classwork_id)
     {
         $this->classworks->set('randomized_count', 'randomized_count+1', FALSE)

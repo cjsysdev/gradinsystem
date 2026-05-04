@@ -101,6 +101,37 @@ class assessments extends MY_Model
         return $query->result_array();
     }
 
+    public function get_all_for_admin($schedule_id = null)
+    {
+        $base = "
+            SELECT
+                a.*,
+                cs.section,
+                cs.type AS schedule_type,
+                iot.type AS iotype,
+                iot.percentage,
+                cl.class_name,
+                cl.class_code,
+                COUNT(cw.classwork_id) AS submission_count
+            FROM assessments a
+            JOIN class_schedule cs ON a.schedule_id = cs.schedule_id
+            JOIN io_type iot ON a.iotype_id = iot.iotype_id
+            JOIN classes cl ON cs.class_id = cl.class_id
+            JOIN semester_master sem ON cs.semester_id = sem.trans_no AND sem.is_active = 1
+            LEFT JOIN classworks cw ON cw.assessment_id = a.assessment_id
+        ";
+
+        if ($schedule_id) {
+            $sql = $base . " WHERE a.schedule_id = ? GROUP BY a.assessment_id ORDER BY a.assessment_id DESC, cs.section, a.term, a.created_at DESC";
+            $query = $this->db->query($sql, [(int)$schedule_id]);
+        } else {
+            $sql = $base . " GROUP BY a.assessment_id ORDER BY a.assessment_id DESC, cs.section, a.term, a.created_at DESC";
+            $query = $this->db->query($sql);
+        }
+
+        return $query ? $query->result_array() : [];
+    }
+
     public function get_for_schedule($schedule_id = null)
     {
         if ($schedule_id) {
