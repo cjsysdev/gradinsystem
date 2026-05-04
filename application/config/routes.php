@@ -101,6 +101,23 @@ $route['quiz/(:num)'] = 'QuizController/index/$1';
 $route['quiz/submit/(:num)'] = 'QuizController/submit/$1';
 $route['quiz/check_session'] = 'QuizController/check_session';
 
+// Interactive Quiz Routes
+$route['interactive_quiz/topics'] = 'InteractiveQuizController/list_topics';
+$route['interactive_quiz/data/(:any)'] = 'InteractiveQuizController/get_data/$1';
+$route['interactive_quiz/save_result'] = 'InteractiveQuizController/save_result';
+$route['interactive_quiz/record_attempt'] = 'InteractiveQuizController/record_attempt';
+$route['interactive_quiz/analytics/(:any)'] = 'InteractiveQuizController/analytics/$1';
+$route['interactive_quiz/analytics'] = 'InteractiveQuizController/analytics';
+$route['interactive_quiz/manage_topics'] = 'InteractiveQuizController/manage_topics';
+$route['interactive_quiz/upload_topic'] = 'InteractiveQuizController/upload_topic';
+$route['interactive_quiz/delete_topic/(:any)'] = 'InteractiveQuizController/delete_topic/$1';
+$route['interactive_quiz/edit_topic/(:any)'] = 'InteractiveQuizController/edit_topic/$1';
+$route['interactive_quiz/save_question/(:any)'] = 'InteractiveQuizController/save_question/$1';
+$route['interactive_quiz/delete_question/(:any)'] = 'InteractiveQuizController/delete_question/$1';
+$route['interactive_quiz/save_topic_settings/(:any)'] = 'InteractiveQuizController/save_topic_settings/$1';
+$route['interactive_quiz/load/(:any)/(:num)'] = 'InteractiveQuizController/load/$1/$2';
+$route['interactive_quiz/load/(:any)'] = 'InteractiveQuizController/load/$1';
+
 // Miscellaneous Routes
 $route['test'] = 'Main/test';
 $route['signup'] = 'Main/signup';
