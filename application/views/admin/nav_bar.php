@@ -30,5 +30,8 @@
         <a href="<?= base_url(
                         'admin/students_by_section'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Students by Section"><i class="fa fa-users"></i></a>
+        <a href="<?= base_url(
+                        'admin/semesters'
+                    ) ?>" class="btn btn-outline-secondary col m-2" title="Semesters"><i class="fa fa-calendar-alt"></i></a>
     </div>
 </div>

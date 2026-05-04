@@ -550,6 +550,50 @@ class AdminController extends CI_Controller
         $this->load->view('admin/register_student', $data);
     }
 
+    public function semesters()
+    {
+        $data['semesters'] = $this->db->order_by('trans_no', 'DESC')->get('semester_master')->result_array();
+        $edit_id = $this->input->get('edit');
+        $data['editing'] = null;
+        if ($edit_id) {
+            $data['editing'] = $this->db->where('trans_no', (int)$edit_id)->get('semester_master')->row_array();
+        }
+        $this->load->view('admin/semesters', $data);
+    }
+
+    public function save_semester()
+    {
+        $post        = $this->input->post();
+        $trans_no    = !empty($post['trans_no']) ? (int)$post['trans_no'] : null;
+
+        $data = [
+            'semcode'      => trim($post['semcode']),
+            'description'  => trim($post['description']),
+            'semtype'      => (int)$post['semtype'],
+            'semyear'      => (int)$post['semyear'],
+            'class_started'=> $post['class_started'] ?: null,
+            'passing_rate' => (int)$post['passing_rate'],
+        ];
+
+        if ($trans_no) {
+            $this->db->where('trans_no', $trans_no)->update('semester_master', $data);
+            $this->session->set_flashdata('success', 'Semester updated.');
+        } else {
+            $this->db->insert('semester_master', $data);
+            $this->session->set_flashdata('success', 'Semester added.');
+        }
+
+        redirect('admin/semesters');
+    }
+
+    public function activate_semester($id)
+    {
+        $this->db->update('semester_master', ['is_active' => null]);
+        $this->db->where('trans_no', (int)$id)->update('semester_master', ['is_active' => 1]);
+        $this->session->set_flashdata('success', 'Semester activated. Students without an enrollment record for this semester will be prompted to enroll on next login.');
+        redirect('admin/semesters');
+    }
+
     public function check_student_no()
     {
         header('Content-Type: application/json');

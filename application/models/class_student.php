@@ -23,7 +23,9 @@ class class_student extends MY_Model
     {
         return $this->db
             ->join('student_master', 'class_student.student_id = student_master.trans_no')
-            ->where('section', $section)
+            ->join('semester_master', 'class_student.semester_id = semester_master.trans_no')
+            ->where('class_student.section', $section)
+            ->where('semester_master.is_active', 1)
             ->where('is_cleared IS NULL', null, false)
             ->order_by('student_master.lastname')
             ->get($this->table)
@@ -37,18 +39,56 @@ class class_student extends MY_Model
             ->update($this->table, ['is_cleared' => 1]);
     }
 
-    public function add_section($id, $section)
+    public function add_section($id, $section, $semester_id = null)
     {
+        $semester_id = $semester_id ?: $this->_active_semester_id();
         return $this->db
             ->where('student_id', $id)
+            ->where('semester_id', $semester_id)
             ->update($this->table, ['section' => $section]);
     }
 
-    public function update_class($id, $class)
+    public function update_class($id, $class, $semester_id = null)
     {
+        $semester_id = $semester_id ?: $this->_active_semester_id();
         return $this->db
             ->where('student_id', $id)
+            ->where('semester_id', $semester_id)
             ->update($this->table, ['class_id' => $class]);
+    }
+
+    public function re_enroll($student_id, $class_id, $section, $semester_id)
+    {
+        $exists = $this->db
+            ->where('student_id', $student_id)
+            ->where('semester_id', $semester_id)
+            ->count_all_results($this->table);
+
+        if ($exists) {
+            return $this->db
+                ->where('student_id', $student_id)
+                ->where('semester_id', $semester_id)
+                ->update($this->table, [
+                    'class_id' => $class_id,
+                    'section'  => $section,
+                    'status'   => 'enrolled',
+                ]);
+        }
+
+        return $this->db->insert($this->table, [
+            'student_id'  => $student_id,
+            'class_id'    => $class_id,
+            'section'     => $section,
+            'semester_id' => $semester_id,
+            'status'      => 'enrolled',
+            'is_cleared'  => 0,
+        ]);
+    }
+
+    private function _active_semester_id()
+    {
+        $row = $this->db->select('trans_no')->where('is_active', 1)->get('semester_master')->row();
+        return $row ? $row->trans_no : null;
     }
 
     public function get_students_with_names_by_section($section)
@@ -57,7 +97,8 @@ class class_student extends MY_Model
                 SELECT class_student.student_id, student_master.firstname, student_master.lastname
                 FROM class_student
                 LEFT JOIN student_master ON class_student.student_id = student_master.student_id
-                WHERE class_student.section = ?
+                JOIN semester_master ON class_student.semester_id = semester_master.trans_no
+                WHERE class_student.section = ? AND semester_master.is_active = 1
                 ";
 
         $query = $this->db->query($sql, [$section]);
@@ -79,7 +120,8 @@ class class_student extends MY_Model
             FROM class_student cs
             JOIN student_master sm ON cs.student_id = sm.trans_no
             LEFT JOIN accounts a ON a.student_id = cs.student_id
-            WHERE cs.section = ?
+            JOIN semester_master sem ON cs.semester_id = sem.trans_no
+            WHERE cs.section = ? AND sem.is_active = 1
             ORDER BY sm.lastname, sm.firstname
         ";
 

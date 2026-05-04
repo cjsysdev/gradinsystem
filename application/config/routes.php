@@ -154,3 +154,6 @@ $route['admin/student_summary/(:num)'] = 'AdminController/student_summary/$1';
 $route['admin/register_student'] = 'AdminController/register_student';
 $route['admin/check_student_no'] = 'AdminController/check_student_no';
 $route['admin/check_username'] = 'AdminController/check_username';
+$route['admin/semesters'] = 'AdminController/semesters';
+$route['admin/save_semester'] = 'AdminController/save_semester';
+$route['admin/activate_semester/(:num)'] = 'AdminController/activate_semester/$1';

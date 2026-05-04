@@ -180,41 +180,57 @@ class StudentController extends CI_Controller
 
     public function add_section()
     {
-        date_default_timezone_set('Asia/Manila');
+        $student_id = $this->session->student_id;
 
-        $day = date('D');
+        $active_semester = $this->db->where('is_active', 1)->get('semester_master')->row_array();
 
-        $class = $this->class_schedule->class_today($day);
-
-        if (!$class) {
-            $this->session->set_flashdata('error', 'No class found for today.');
-            // redirect('attendance');
+        if (!$active_semester) {
+            $this->session->set_flashdata('error', 'No active semester found. Please contact your administrator.');
+            redirect('attendance');
+            return;
         }
 
-        $data = [
-            'class' => $class ?? [],
-        ];
+        $already_enrolled = $this->db
+            ->where('student_id', $student_id)
+            ->where('semester_id', $active_semester['trans_no'])
+            ->count_all_results('class_student') > 0;
 
-        // This method can be used to redirect students to a section addition page
+        if ($already_enrolled) {
+            redirect('attendance');
+            return;
+        }
+
+        $data['active_semester'] = $active_semester;
+        $data['schedules'] = $this->class_schedule->get_all_active();
         $this->load->view('add_section', $data);
     }
 
     public function section()
     {
         $post = $this->input->post();
-        $id = $this->session->student_id;
+        $student_id = $this->session->student_id;
 
-        if (empty($post['section'])) {
-            $this->session->set_flashdata('error', 'Section cannot be empty.');
+        $schedule_id = (int)($post['schedule_id'] ?? 0);
+
+        if (!$schedule_id) {
+            $this->session->set_flashdata('error', 'Please select a class/section.');
             redirect('student/add_section');
-        } else {
-            // Add the section to the class_student model
-            $this->class_student->add_section($id, $post['section']);
-            $this->class_student->update_class($id, $post['class_id']);
-            // Set a success message
-            $this->session->set_flashdata('success', 'Section added successfully.');
-            redirect('attendance');
+            return;
         }
+
+        $sched = $this->db->where('schedule_id', $schedule_id)->get('class_schedule')->row_array();
+        if (!$sched) {
+            $this->session->set_flashdata('error', 'Invalid class selected.');
+            redirect('student/add_section');
+            return;
+        }
+
+        $active_semester = $this->db->where('is_active', 1)->get('semester_master')->row_array();
+        $semester_id = $active_semester ? $active_semester['trans_no'] : $sched['semester_id'];
+
+        $this->class_student->re_enroll($student_id, $sched['class_id'], $sched['section'], $semester_id);
+        $this->session->set_flashdata('success', 'Enrolled successfully.');
+        redirect('attendance');
     }
 
     public function emergency_contacts()

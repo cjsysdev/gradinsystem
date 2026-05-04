@@ -16,75 +16,71 @@ class AttendanceController extends CI_Controller
 
     public function attendance_main()
     {
-        $section = $this->class_student->get(['student_id' => $this->session->student_id]);
+        $student_section = $this->session->section;
 
-        if ($section->section == null && $this->session->role != 'admin') {
+        if (empty($student_section) && $this->session->role != 'admin') {
             if ($this->is_offline) {
                 redirect();
+                return;
             }
             $this->session->set_flashdata('error', 'Please add your section first.');
             redirect('student/add_section');
+            return;
         }
 
         if ($this->is_offline) {
             redirect();
+            return;
         }
+
         date_default_timezone_set('Asia/Manila');
 
         $day = date('D');
         $date = date('Y-m-d');
-        $start_date = '2026-01-13'; // Example start date
+        $start_date = '2026-01-13';
 
         $class = $this->class_schedule->class_today($day);
         $student_id = $this->session->student_id;
-
-        $account = $this->class_student->get(['student_id' => $student_id]);
         $admin_id = 14;
 
         if ($student_id == $admin_id) {
             redirect('dashboard');
+            return;
         }
 
-        if (
-            $this->shouldDenyAttendance(
-                $class,
-                $student_id,
-                $admin_id,
-                $account
-            )
-        ) {
+        $account = (object)['section' => $student_section];
+
+        if ($this->shouldDenyAttendance($class, $student_id, $admin_id, $account)) {
             $this->session->set_flashdata('error', 'No available class');
         } else {
             $this->handleStudentAttendance($class, $student_id, $date);
         }
 
-        $attendance_record = $this->attendance->get_student_attendance(
-            $student_id
-        );
+        $attendance_record = $this->attendance->get_student_attendance($student_id);
 
         $absences = $this->attendance->checkStudentAbsences(
             $student_id,
-            $account->section,
+            $student_section,
             $start_date,
             $date
         );
 
         $absences_dates = $this->attendance->get_student_absences(
             $student_id,
-            $account->section,
+            $student_section,
             $start_date,
             $date
         );
 
         $data = [
-            'class' => $class,
-            'record' => $attendance_record,
-            'events' => json_encode($attendance_record),
-            'absences' => $absences,
-            'absences_dates' => $absences_dates,
-            'present' => $this->attendance->get_present_days(
+            'class'            => $class,
+            'record'           => $attendance_record,
+            'events'           => json_encode($attendance_record),
+            'absences'         => $absences,
+            'absences_dates'   => $absences_dates,
+            'present'          => $this->attendance->get_present_days(
                 $student_id,
-                $account->section,
+                $student_section,
                 $start_date,
                 $date
             ),
