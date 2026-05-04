@@ -171,15 +171,28 @@ class AdminController extends CI_Controller
         $this->load->view('admin/student_submissions', $data);
     }
 
-    public function search_students()
+    public function emergency_contacts()
     {
-        $search = $this->input->get('search');
-        $students = [];
-        if ($search) {
-            $students = $this->student_master->search_by_name($search); // Should return array
+        $student_id = $this->input->get('student_id');
+        $data['student'] = null;
+        $data['contacts'] = [];
+
+        if ($student_id) {
+            $data['student'] = $this->student_master->get_student_info($student_id);
+            if ($data['student']) {
+                $data['contacts'] = $this->emergency_contact->get_by_student($student_id);
+            } else {
+                $this->session->set_flashdata('error', 'Student not found.');
+            }
+        } else {
+            $data['contacts'] = $this->emergency_contact->get_all();
         }
-        header('Content-Type: application/json');
-        echo json_encode($students);
+
+        if (is_object($data['contacts'])) {
+            $data['contacts'] = json_decode(json_encode($data['contacts']), true);
+        }
+
+        $this->load->view('admin/emergency_contacts', $data);
     }
 
     public function view_attendance()
@@ -334,5 +347,121 @@ class AdminController extends CI_Controller
     {
         $result = $this->classworks->add_score($classwork_id, $score);
         echo json_encode(['success' => $result]);
+    }
+
+    public function student_violations()
+    {
+        $student_id = $this->input->get('student_id');
+        $status_filter = $this->input->get('status');
+        $severity_filter = $this->input->get('severity');
+        $data['students'] = $this->student_master->get_all();
+        $data['violation_types'] = $this->violation->get_violation_types();
+        $data['violations'] = [];
+        $data['selected_student_id'] = $student_id;
+        $data['selected_status'] = $status_filter;
+        $data['selected_severity'] = $severity_filter;
+        $data['student'] = null;
+
+        if ($student_id) {
+            $data['student'] = $this->student_master->get_student_info($student_id);
+            $filters = ['student_id' => $student_id];
+            if ($status_filter) $filters['status'] = $status_filter;
+            if ($severity_filter) $filters['severity'] = $severity_filter;
+            $data['violations'] = $this->violation->get_all_violations($filters);
+            $data['violation_summary'] = $this->violation->get_violation_summary_by_student($student_id);
+        } else {
+            $filters = [];
+            if ($status_filter) $filters['status'] = $status_filter;
+            if ($severity_filter) $filters['severity'] = $severity_filter;
+            $data['violations'] = $this->violation->get_all_violations($filters);
+        }
+
+        if (is_object($data['violations'])) {
+            $data['violations'] = json_decode(json_encode($data['violations']), true);
+        }
+        if (is_object($data['violation_types'])) {
+            $data['violation_types'] = json_decode(json_encode($data['violation_types']), true);
+        }
+
+        $this->load->view('admin/student_violations', $data);
+    }
+
+    public function add_violation()
+    {
+        if ($this->input->post()) {
+            $student_id = $this->input->post('student_id');
+            $violation_type = $this->input->post('violation_type');
+            $description = $this->input->post('description');
+            $severity = $this->input->post('severity');
+            $date_of_violation = $this->input->post('date_of_violation');
+            $reported_by = $this->input->post('reported_by') ?: 'Admin';
+            $notes = $this->input->post('notes');
+
+            if (!$student_id || !$violation_type || !$date_of_violation) {
+                $this->session->set_flashdata('error', 'Please fill in all required fields.');
+                redirect('admin/student_violations?student_id=' . $student_id);
+                return;
+            }
+
+            $this->violation->add_violation($student_id, $violation_type, $description, $severity, $date_of_violation, $reported_by, $notes);
+            $this->session->set_flashdata('success', 'Violation recorded successfully.');
+            redirect('admin/student_violations?student_id=' . $student_id);
+        } else {
+            $data['violation_types'] = $this->violation->get_violation_types();
+            $data['students'] = $this->student_master->get_all();
+            $this->load->view('admin/add_violation', $data);
+        }
+    }
+
+    public function update_violation_status()
+    {
+        if ($this->input->post()) {
+            $violation_id = $this->input->post('violation_id');
+            $status = $this->input->post('status');
+            $notes = $this->input->post('notes');
+
+            if (!$violation_id || !$status) {
+                echo json_encode(['success' => false, 'message' => 'Missing required fields']);
+                return;
+            }
+
+            $this->violation->update_violation_status($violation_id, $status, $notes);
+            echo json_encode(['success' => true, 'message' => 'Violation status updated']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Invalid request']);
+        }
+    }
+
+    public function search_students()
+    {
+        header('Content-Type: application/json');
+        $q      = $this->input->get('q');
+        $search = $this->input->get('search');
+        $term   = $q ?: $search;
+        $results = [];
+
+        if (!empty($term)) {
+            /** @var CI_DB_query_builder $db */
+            $db = $this->db;
+            $db->select('trans_no, firstname, lastname');
+            $db->like('firstname', $term);
+            $db->or_like('lastname', $term);
+            $db->or_like('trans_no', $term);
+            $db->limit(20);
+            $rows = $db->get('student_master')->result_array();
+
+            if ($q) {
+                foreach ($rows as $student) {
+                    $results[] = [
+                        'id'   => $student['trans_no'],
+                        'text' => $student['firstname'] . ' ' . $student['lastname'] . ' (' . $student['trans_no'] . ')',
+                    ];
+                }
+            } else {
+                $results = $rows;
+            }
+        }
+
+        echo json_encode($results);
     }
 }

@@ -29,39 +29,108 @@ class StudentController extends CI_Controller
         $this->load->view('find_id');
     }
 
-    // New method to update username and password
     public function update_account()
     {
         $input = $this->input->post();
 
-        // Check if the logged-in student is updating their own account
         if ($this->session->student_id != $input['student_id']) {
             $this->session->set_flashdata('error', 'You are not authorized to update this account.');
             redirect('update_account_form');
         }
 
-        // Validate input
-        if (empty($input['username']) || empty($input['password']) || empty($input['student_id'])) {
-            $this->session->set_flashdata('error', 'All fields are required.');
+        if (empty($input['username'])) {
+            $this->session->set_flashdata('error', 'Username is required.');
             redirect('update_account_form');
         }
 
-        // Hash the password
-        $hashed_password = $input['password'];
-
-        // Update the account in the database
-        $this->db->where('student_id', $input['student_id']);
-        $this->db->update('accounts', [
-            'username' => $input['username'],
-            'password' => $hashed_password
-        ]);
-
-        if ($this->db->affected_rows() > 0) {
-            $this->session->set_flashdata('success', 'Account updated successfully.');
-        } else {
-            $this->session->set_flashdata('error', 'Failed to update account. Please try again.');
+        if (!empty($input['password']) && $input['password'] !== $input['confirm_password']) {
+            $this->session->set_flashdata('error', 'Passwords do not match.');
+            redirect('update_account_form');
         }
 
+        $update_data = ['username' => $input['username']];
+
+        if (!empty($input['password'])) {
+            $update_data['password'] = $input['password'];
+        }
+
+        // Handle profile picture upload
+        $profile_pic = null;
+        if (!empty($_FILES['profile_pic']['name']) && $_FILES['profile_pic']['error'] === UPLOAD_ERR_OK) {
+            $upload_dir = realpath(FCPATH . 'uploads' . DIRECTORY_SEPARATOR . 'profile_pics');
+            if (!$upload_dir) {
+                mkdir(FCPATH . 'uploads' . DIRECTORY_SEPARATOR . 'profile_pics', 0755, true);
+                $upload_dir = realpath(FCPATH . 'uploads' . DIRECTORY_SEPARATOR . 'profile_pics');
+            }
+
+            // Validate MIME type
+            $finfo    = new finfo(FILEINFO_MIME_TYPE);
+            $mime     = $finfo->file($_FILES['profile_pic']['tmp_name']);
+            $allowed  = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+            if (!in_array($mime, $allowed)) {
+                $this->session->set_flashdata('error', 'Only JPG, PNG, GIF, or WEBP images are allowed.');
+                redirect('update_account_form');
+            }
+
+            // Validate file size (10 MB max)
+            if ($_FILES['profile_pic']['size'] > 10 * 1024 * 1024) {
+                $this->session->set_flashdata('error', 'Image must be 10 MB or smaller.');
+                redirect('update_account_form');
+            }
+
+            $ext       = pathinfo($_FILES['profile_pic']['name'], PATHINFO_EXTENSION) ?: 'jpg';
+            $filename  = 'student_' . $input['student_id'] . '_' . time() . '.' . strtolower($ext);
+            $full_path = $upload_dir . DIRECTORY_SEPARATOR . $filename;
+
+            if (!move_uploaded_file($_FILES['profile_pic']['tmp_name'], $full_path)) {
+                $this->session->set_flashdata('error', 'Could not save the uploaded file.');
+                redirect('update_account_form');
+            }
+
+            // Center-crop to square, then resize to 300×300 at quality 80
+            list($orig_w, $orig_h) = getimagesize($full_path);
+            $square   = min($orig_w, $orig_h);
+            $x_offset = (int)(($orig_w - $square) / 2);
+            $y_offset = (int)(($orig_h - $square) / 2);
+
+            $this->load->library('image_lib');
+
+            $this->image_lib->initialize([
+                'image_library' => 'gd2',
+                'source_image'  => $full_path,
+                'x_axis'        => $x_offset,
+                'y_axis'        => $y_offset,
+                'width'         => $square,
+                'height'        => $square,
+            ]);
+            $this->image_lib->crop();
+            $this->image_lib->clear();
+
+            $this->image_lib->initialize([
+                'image_library'  => 'gd2',
+                'source_image'   => $full_path,
+                'width'          => 300,
+                'height'         => 300,
+                'maintain_ratio' => FALSE,
+                'quality'        => 80,
+            ]);
+            $this->image_lib->resize();
+            $this->image_lib->clear();
+
+            $profile_pic = $filename;
+            $update_data['profile_pic'] = $profile_pic;
+        }
+
+        $this->db->where('student_id', $input['student_id']);
+        $this->db->update('accounts', $update_data);
+
+        // Refresh session data
+        $this->session->set_userdata('username', $input['username']);
+        if ($profile_pic) {
+            $this->session->set_userdata('profile_pic', $profile_pic);
+        }
+
+        $this->session->set_flashdata('success', 'Account updated successfully.');
         redirect('update_account_form');
     }
 
@@ -146,6 +215,82 @@ class StudentController extends CI_Controller
             $this->session->set_flashdata('success', 'Section added successfully.');
             redirect('attendance');
         }
+    }
+
+    public function emergency_contacts()
+    {
+        $student_id = $this->session->student_id;
+        $data['contacts'] = $this->emergency_contact->get_by_student($student_id);
+        $this->load->view('emergency_contacts', $data);
+    }
+
+    public function save_emergency_contact()
+    {
+        $student_id = $this->session->student_id;
+        $input = $this->input->post();
+
+        if (empty($input['full_name']) || empty($input['relationship']) || empty($input['contact_no'])) {
+            $this->session->set_flashdata('error', 'Name, relationship, and contact number are required.');
+            redirect('emergency_contacts');
+        }
+
+        $is_primary = isset($input['is_primary']) ? 1 : 0;
+
+        if ($is_primary) {
+            $this->db->where('student_id', $student_id)
+                     ->update('student_emergency_contacts', ['is_primary' => 0]);
+        }
+
+        $this->db->insert('student_emergency_contacts', [
+            'student_id'   => $student_id,
+            'full_name'    => $input['full_name'],
+            'relationship' => $input['relationship'],
+            'contact_no'   => $input['contact_no'],
+            'email'        => $input['email'] ?? null,
+            'address'      => $input['address'] ?? null,
+            'is_primary'   => $is_primary,
+        ]);
+
+        $this->session->set_flashdata('success', 'Emergency contact added.');
+        redirect('emergency_contacts');
+    }
+
+    public function delete_emergency_contact($contact_id)
+    {
+        $student_id = $this->session->student_id;
+
+        $contact = $this->db->get_where('student_emergency_contacts', [
+            'contact_id' => $contact_id,
+            'student_id' => $student_id,
+        ])->row_array();
+
+        if (!$contact) {
+            $this->session->set_flashdata('error', 'Contact not found.');
+            redirect('emergency_contacts');
+        }
+
+        $this->db->where('contact_id', $contact_id)->delete('student_emergency_contacts');
+        $this->session->set_flashdata('success', 'Contact removed.');
+        redirect('emergency_contacts');
+    }
+
+    public function set_primary_contact($contact_id)
+    {
+        $student_id = $this->session->student_id;
+
+        $contact = $this->db->get_where('student_emergency_contacts', [
+            'contact_id' => $contact_id,
+            'student_id' => $student_id,
+        ])->row_array();
+
+        if (!$contact) {
+            $this->session->set_flashdata('error', 'Contact not found.');
+            redirect('emergency_contacts');
+        }
+
+        $this->emergency_contact->set_primary($contact_id, $student_id);
+        $this->session->set_flashdata('success', 'Primary contact updated.');
+        redirect('emergency_contacts');
     }
 
     public function performance_sheet()
