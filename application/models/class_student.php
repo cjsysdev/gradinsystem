@@ -68,4 +68,23 @@ class class_student extends MY_Model
         }
     }
 
+    public function get_students_with_profile_by_section($section)
+    {
+        $sql = "
+            SELECT
+                cs.student_id,
+                sm.firstname,
+                sm.lastname,
+                a.profile_pic
+            FROM class_student cs
+            JOIN student_master sm ON cs.student_id = sm.trans_no
+            LEFT JOIN accounts a ON a.student_id = cs.student_id
+            WHERE cs.section = ?
+            ORDER BY sm.lastname, sm.firstname
+        ";
+
+        $query = $this->db->query($sql, [$section]);
+        return $query ? $query->result_array() : [];
+    }
+
 }

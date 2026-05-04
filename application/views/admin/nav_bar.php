@@ -27,5 +27,8 @@
         <a href="<?= base_url(
                         'interactive_quiz/manage_topics'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="IQ Topics"><i class="fa fa-book"></i></a>
+        <a href="<?= base_url(
+                        'admin/students_by_section'
+                    ) ?>" class="btn btn-outline-secondary col m-2" title="Students by Section"><i class="fa fa-users"></i></a>
     </div>
 </div>

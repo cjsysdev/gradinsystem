@@ -354,8 +354,8 @@ class AdminController extends CI_Controller
         $student_id = $this->input->get('student_id');
         $status_filter = $this->input->get('status');
         $severity_filter = $this->input->get('severity');
-        $data['students'] = $this->student_master->get_all();
-        $data['violation_types'] = $this->violation->get_violation_types();
+        $data['students'] = json_decode(json_encode($this->student_master->get_all() ?: []), true);
+        $data['violation_types'] = $this->violation->get_violation_types() ?: [];
         $data['violations'] = [];
         $data['selected_student_id'] = $student_id;
         $data['selected_status'] = $status_filter;
@@ -367,20 +367,13 @@ class AdminController extends CI_Controller
             $filters = ['student_id' => $student_id];
             if ($status_filter) $filters['status'] = $status_filter;
             if ($severity_filter) $filters['severity'] = $severity_filter;
-            $data['violations'] = $this->violation->get_all_violations($filters);
-            $data['violation_summary'] = $this->violation->get_violation_summary_by_student($student_id);
+            $data['violations'] = $this->violation->get_all_violations($filters) ?: [];
+            $data['violation_summary'] = $this->violation->get_violation_summary_by_student($student_id) ?: [];
         } else {
             $filters = [];
             if ($status_filter) $filters['status'] = $status_filter;
             if ($severity_filter) $filters['severity'] = $severity_filter;
-            $data['violations'] = $this->violation->get_all_violations($filters);
-        }
-
-        if (is_object($data['violations'])) {
-            $data['violations'] = json_decode(json_encode($data['violations']), true);
-        }
-        if (is_object($data['violation_types'])) {
-            $data['violation_types'] = json_decode(json_encode($data['violation_types']), true);
+            $data['violations'] = $this->violation->get_all_violations($filters) ?: [];
         }
 
         $this->load->view('admin/student_violations', $data);
@@ -407,8 +400,8 @@ class AdminController extends CI_Controller
             $this->session->set_flashdata('success', 'Violation recorded successfully.');
             redirect('admin/student_violations?student_id=' . $student_id);
         } else {
-            $data['violation_types'] = $this->violation->get_violation_types();
-            $data['students'] = $this->student_master->get_all();
+            $data['violation_types'] = $this->violation->get_violation_types() ?: [];
+            $data['students'] = json_decode(json_encode($this->student_master->get_all() ?: []), true);
             $this->load->view('admin/add_violation', $data);
         }
     }
@@ -430,6 +423,147 @@ class AdminController extends CI_Controller
         } else {
             echo json_encode(['success' => false, 'message' => 'Invalid request']);
         }
+    }
+
+    public function students_by_section()
+    {
+        $section = $this->input->get('section');
+        $data['sections'] = $this->class_schedule->get_sections();
+        $data['selected_section'] = $section;
+        $data['students'] = [];
+
+        if ($section) {
+            $this->load->model('class_student');
+            $data['students'] = $this->class_student->get_students_with_profile_by_section($section);
+        }
+
+        $this->load->view('admin/students_by_section', $data);
+    }
+
+    public function student_summary($student_id = null)
+    {
+        if (!$student_id) {
+            redirect('admin/students_by_section');
+        }
+
+        $student = $this->student_master->get_student_info($student_id);
+        if (!$student) {
+            $this->session->set_flashdata('error', 'Student not found.');
+            redirect('admin/students_by_section');
+        }
+
+        $account = $this->accounts->as_array()->get(['student_id' => $student_id]);
+
+        $this->load->model('classworks');
+        $data['student']      = $student;
+        $data['profile_pic']  = $account ? $account['profile_pic'] : null;
+        $data['attendance']   = $this->student_master->get_attendance_summary($student_id);
+        $data['classworks']   = $this->classworks->get_submissions_by_student($student_id);
+        $data['violations']   = $this->violation->get_all_violations(['student_id' => $student_id]);
+        $data['vio_summary']  = $this->violation->get_violation_summary_by_student($student_id);
+        $data['contacts']     = $this->emergency_contact->get_by_student($student_id);
+
+        $this->load->view('admin/student_summary', $data);
+    }
+
+    public function register_student()
+    {
+        $data['schedules'] = $this->class_schedule->get_all_active();
+        $data['active_semester'] = $this->db->where('is_active', 1)->get('semester_master')->row_array();
+
+        if ($this->input->post()) {
+            $student_no = trim($this->input->post('student_no'));
+            $lastname   = trim($this->input->post('lastname'));
+            $firstname  = trim($this->input->post('firstname'));
+            $username   = trim($this->input->post('username'));
+            $password   = $this->input->post('password');
+            $confirm    = $this->input->post('confirm_password');
+
+            if ($password !== $confirm) {
+                $this->session->set_flashdata('error', 'Passwords do not match.');
+                $this->load->view('admin/register_student', $data);
+                return;
+            }
+
+            if ($this->db->where('student_no', $student_no)->count_all_results('student_master')) {
+                $this->session->set_flashdata('error', "Student number {$student_no} is already registered.");
+                $this->load->view('admin/register_student', $data);
+                return;
+            }
+
+            if ($this->db->where('username', $username)->count_all_results('accounts')) {
+                $this->session->set_flashdata('error', "Username \"{$username}\" is already taken.");
+                $this->load->view('admin/register_student', $data);
+                return;
+            }
+
+            $student_data = [
+                'student_no'    => $student_no,
+                'lastname'      => $lastname,
+                'firstname'     => $firstname,
+                'middlename'    => trim($this->input->post('middlename')),
+                'extname'       => trim($this->input->post('extname')),
+                'gender'        => $this->input->post('gender'),
+                'birthday'      => $this->input->post('birthday') ?: null,
+                'course'        => trim($this->input->post('course')),
+                'current_year'  => (int)$this->input->post('current_year'),
+                'year_section'  => trim($this->input->post('year_section')),
+                'SY'            => trim($this->input->post('SY')),
+                'contact_no'    => trim($this->input->post('contact_no')),
+                'email'         => trim($this->input->post('email')),
+                'allowed_to_enroll' => 'Y',
+                'status'        => 'E',
+                'created_dt'    => date('Y-m-d H:i:s'),
+            ];
+            $this->db->insert('student_master', $student_data);
+            $student_id = $this->db->insert_id();
+
+            $this->db->insert('accounts', [
+                'student_id'  => $student_id,
+                'username'    => $username,
+                'password'    => $password,
+                'role'        => 'student',
+                'created_at'  => date('Y-m-d'),
+            ]);
+
+            $schedule_id = (int)$this->input->post('schedule_id');
+            if ($schedule_id) {
+                $sched = $this->db->where('schedule_id', $schedule_id)->get('class_schedule')->row_array();
+                if ($sched) {
+                    $sem_id = $data['active_semester'] ? $data['active_semester']['trans_no'] : $sched['semester_id'];
+                    $this->db->insert('class_student', [
+                        'student_id'  => $student_id,
+                        'class_id'    => $sched['class_id'],
+                        'section'     => $sched['section'],
+                        'semester_id' => $sem_id,
+                        'status'      => 'enrolled',
+                        'is_cleared'  => 0,
+                    ]);
+                }
+            }
+
+            $this->session->set_flashdata('success', "Student {$firstname} {$lastname} registered successfully.");
+            redirect('admin/register_student');
+            return;
+        }
+
+        $this->load->view('admin/register_student', $data);
+    }
+
+    public function check_student_no()
+    {
+        header('Content-Type: application/json');
+        $student_no = $this->input->get('student_no');
+        $exists = $student_no && $this->db->where('student_no', $student_no)->count_all_results('student_master') > 0;
+        echo json_encode(['exists' => $exists]);
+    }
+
+    public function check_username()
+    {
+        header('Content-Type: application/json');
+        $username = $this->input->get('username');
+        $exists = $username && $this->db->where('username', $username)->count_all_results('accounts') > 0;
+        echo json_encode(['exists' => $exists]);
     }
 
     public function search_students()

@@ -72,6 +72,23 @@ class student_master extends MY_Model
         return $student;
     }
 
+    public function get_attendance_summary($student_id)
+    {
+        $sql = "
+            SELECT
+                SUM(a.status = 'present') AS present_count,
+                SUM(a.status = 'absent')  AS absent_count,
+                SUM(a.status = 'late')    AS late_count,
+                SUM(a.status = 'excuse')  AS excuse_count
+            FROM attendance a
+            JOIN class_schedule cs  ON a.schedule_id = cs.schedule_id
+            JOIN semester_master sem ON cs.semester_id = sem.trans_no AND sem.is_active = 1
+            WHERE a.student_id = ?
+        ";
+        $row = $this->db->query($sql, [$student_id])->row_array();
+        return $row ?: ['present_count' => 0, 'absent_count' => 0, 'late_count' => 0, 'excuse_count' => 0];
+    }
+
     // Fetch current course for student
     public function get_current_course($student_id)
     {

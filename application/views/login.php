@@ -124,8 +124,11 @@
       <span class="text-muted">Need help accessing your account?</span><br>
       <!-- <a href="mailto:support@lms.com" class="fw-medium">Contact Support</a> -->
       <a href="<?= base_url('find_id') ?>" class="text-primary text-decoration-none">Find ID</a>
-
     </div>
+    <!-- <div class="mt-3 pt-3 border-top text-center helper-links">
+      <span class="text-muted">New Student?</span><br>
+      <a href="<?= base_url('register') ?>" class="text-primary text-decoration-none">Register here</a>
+    </div> -->
   </div>
 </div>
 

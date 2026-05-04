@@ -1,26 +1,23 @@
-<script src="<?= base_url("/assets/jquery-3.5.1.slim.min.js") ?> "></script>
-<script src="<?= base_url("/assets/popper.min.js") ?>"></script>
+<script src="<?= base_url("/assets/jquery-3.5.1.slim.min.js") ?>"></script>
 <script src="<?= base_url("/assets/bootstrap.bundle.min.js") ?>"></script>
 
-<script src="<?= base_url("assets/highlights/11.7.0-highlight.min.js") ?> "></script>
-
-<!-- Bootstrap 4.5.2 JS (with Popper and jQuery) -->
-<script src="<?= base_url("/assets/2-jquery-3.5.1.slim.min.js") ?>"></script>
-<script src="<?= base_url("/assets/4.5.2.bootstrap.bundle.min") ?>"></script>
-
+<script src="<?= base_url("assets/highlights/11.7.0-highlight.min.js") ?>"></script>
 
 <!-- CodeMirror JavaScript -->
-<script src="<?= base_url('./assets/codemirror.min.js ?>') ?> "></script>
+<script src="<?= base_url('./assets/codemirror.min.js') ?>"></script>
 <script src="<?= base_url('./assets/clike.min.js') ?>"></script>
 
 <script>
-    const editor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
-        mode: 'text/x-csrc',
-        lineNumbers: true,
-        indentUnit: 4,
-        matchBrackets: true,
-        autoCloseBrackets: true,
-    });
+    var codeEditorEl = document.getElementById('code-editor');
+    if (codeEditorEl) {
+        var editor = CodeMirror.fromTextArea(codeEditorEl, {
+            mode: 'text/x-csrc',
+            lineNumbers: true,
+            indentUnit: 4,
+            matchBrackets: true,
+            autoCloseBrackets: true,
+        });
+    }
 </script>
 
 <script>

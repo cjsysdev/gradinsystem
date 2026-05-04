@@ -34,7 +34,7 @@
                 <h4><i class="fa fa-exclamation-triangle"></i> All Student Violations</h4>
                 <p class="text-muted">Showing violations for all students.</p>
             </div>
-            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addViolationModal">
+            <button type="button" class="btn btn-success" onclick="openAddViolationModal()">
                 <i class="fa fa-plus"></i> Add Violation
             </button>
         </div>
@@ -44,7 +44,7 @@
                 <h4><i class="fa fa-exclamation-triangle"></i> Violations for <?= htmlspecialchars($student['firstname'] . ' ' . $student['lastname']) ?></h4>
                 <p class="text-muted">Student ID: <?= htmlspecialchars($student['trans_no']) ?></p>
             </div>
-            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addViolationModal">
+            <button type="button" class="btn btn-success" onclick="openAddViolationModal()">
                 <i class="fa fa-plus"></i> Add Violation
             </button>
         </div>
@@ -227,22 +227,18 @@
             <form method="post" action="<?= base_url('admin/add_violation') ?>" id="addViolationForm">
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="modal_student_id" class="form-label"><strong>Student <span class="text-danger">*</span></strong></label>
-                        <select name="student_id" id="modal_student_id" class="form-select" required style="width: 100%;">
-                            <option value="">-- Select Student --</option>
-                            <?php if (!empty($student)): ?>
-                                <option value="<?= $student['trans_no'] ?>" selected>
-                                    <?= htmlspecialchars($student['firstname'] . ' ' . $student['lastname']) ?>
-                                </option>
-                            <?php endif; ?>
-                            <?php foreach ($students as $s): ?>
-                                <?php if (empty($student) || $s['trans_no'] != $student['trans_no']): ?>
-                                    <option value="<?= $s['trans_no'] ?>">
-                                        <?= htmlspecialchars($s['firstname'] . ' ' . $s['lastname']) ?> (<?= $s['trans_no'] ?>)
-                                    </option>
-                                <?php endif; ?>
-                            <?php endforeach; ?>
-                        </select>
+                        <label class="form-label"><strong>Student <span class="text-danger">*</span></strong></label>
+                        <div class="position-relative">
+                            <input type="text" id="studentSearchBox" class="form-control"
+                                   placeholder="Type name or ID to search..."
+                                   autocomplete="off">
+                            <div id="studentResultsList"
+                                 class="list-group position-absolute w-100"
+                                 style="display:none; max-height:220px; overflow-y:auto; z-index:1060; box-shadow:0 4px 12px rgba(0,0,0,.15);">
+                            </div>
+                        </div>
+                        <input type="hidden" name="student_id" id="modal_student_id">
+                        <div class="invalid-feedback d-block" id="studentSearchFeedback" style="display:none!important;"></div>
                     </div>
 
                     <div class="mb-3">
@@ -259,7 +255,7 @@
 
                     <div class="mb-3">
                         <label for="modal_date_of_violation" class="form-label"><strong>Date <span class="text-danger">*</span></strong></label>
-                        <input type="date" name="date_of_violation" id="modal_date_of_violation" class="form-control" required max="<?= date('Y-m-d') ?>">
+                        <input type="date" name="date_of_violation" id="modal_date_of_violation" class="form-control" required max="<?= date('Y-m-d') ?>" value="<?= date('Y-m-d') ?>">
                     </div>
 
                     <div class="mb-3">
@@ -299,73 +295,139 @@
 
 <?php $this->load->view('footer'); ?>
 
-<link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
-<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
-
 <script>
-    $(document).ready(function() {
-        // Initialize Select2 inside modal only after it's shown to avoid backdrop z-index conflict
-        $('#addViolationModal').on('shown.bs.modal', function() {
-            if (!$('#modal_student_id').hasClass('select2-hidden-accessible')) {
-                $('#modal_student_id').select2({
-                    dropdownParent: $('#addViolationModal'),
-                    placeholder: '-- Select Student --',
-                    width: '100%'
+    // Student data from PHP — used by the modal autocomplete
+    var allStudents = <?= json_encode(array_map(function($s) {
+        return [
+            'id'   => (string)$s['trans_no'],
+            'name' => $s['firstname'] . ' ' . $s['lastname'],
+        ];
+    }, $students ?: [])) ?>;
+
+    // ── Modal autocomplete ──────────────────────────────────────────────────
+    (function () {
+        var searchBox    = document.getElementById('studentSearchBox');
+        var resultsList  = document.getElementById('studentResultsList');
+        var hiddenInput  = document.getElementById('modal_student_id');
+        var feedback     = document.getElementById('studentSearchFeedback');
+
+        function renderResults(query) {
+            resultsList.innerHTML = '';
+            var q = query.toLowerCase().trim();
+            if (!q) { resultsList.style.display = 'none'; return; }
+
+            var matches = allStudents.filter(function (s) {
+                return s.name.toLowerCase().indexOf(q) !== -1 || s.id.indexOf(q) !== -1;
+            }).slice(0, 10);
+
+            if (matches.length === 0) {
+                resultsList.innerHTML = '<div class="list-group-item text-muted small py-2">No students found</div>';
+            } else {
+                matches.forEach(function (s) {
+                    var btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'list-group-item list-group-item-action py-2 px-3';
+                    btn.innerHTML = '<span class="fw-semibold">' + s.name + '</span>'
+                                  + ' <small class="text-muted">(' + s.id + ')</small>';
+                    btn.addEventListener('mousedown', function (e) {
+                        e.preventDefault(); // keep focus on searchBox long enough to register
+                        hiddenInput.value = s.id;
+                        searchBox.value   = s.name;
+                        searchBox.classList.remove('is-invalid');
+                        feedback.style.display = 'none';
+                        resultsList.style.display = 'none';
+                    });
+                    resultsList.appendChild(btn);
                 });
             }
+            resultsList.style.display = 'block';
+        }
+
+        searchBox.addEventListener('input', function () {
+            hiddenInput.value = ''; // clear selection when user edits
+            renderResults(this.value);
         });
 
-        // Validate Select2 student field before form submit
-        $('#addViolationForm').on('submit', function(e) {
-            if (!$('#modal_student_id').val()) {
+        searchBox.addEventListener('focus', function () {
+            if (this.value) renderResults(this.value);
+        });
+
+        searchBox.addEventListener('blur', function () {
+            setTimeout(function () { resultsList.style.display = 'none'; }, 150);
+        });
+
+        // Form submit guard
+        document.getElementById('addViolationForm').addEventListener('submit', function (e) {
+            if (!hiddenInput.value) {
                 e.preventDefault();
-                $('#modal_student_id').next('.select2').find('.select2-selection').addClass('is-invalid');
-                $('#modal_student_id').parent().append('<div class="text-danger small mt-1" id="student-error">Please select a student.</div>');
-                return false;
+                searchBox.classList.add('is-invalid');
+                feedback.textContent   = 'Please select a student from the list.';
+                feedback.style.display = 'block';
+                searchBox.focus();
             }
         });
-        $('#modal_student_id').on('change', function() {
-            $('#student-error').remove();
-            $('#modal_student_id').next('.select2').find('.select2-selection').removeClass('is-invalid');
+
+        // Pre-fill when a specific student is in context
+        document.getElementById('addViolationModal').addEventListener('shown.bs.modal', function () {
+            <?php if (!empty($student)): ?>
+            hiddenInput.value = <?= json_encode((string)$student['trans_no']) ?>;
+            searchBox.value   = <?= json_encode($student['firstname'] . ' ' . $student['lastname']) ?>;
+            <?php else: ?>
+            searchBox.focus();
+            <?php endif; ?>
         });
 
-        // Student search
-        document.getElementById('violationSearchForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const searchVal = document.getElementById('studentSearchInput').value.trim();
-            if (!searchVal) return;
-
-            fetch('<?= base_url('admin/search_students?q=') ?>' + encodeURIComponent(searchVal))
-                .then(res => res.json())
-                .then(students => {
-                    const dropdown = document.getElementById('studentDropdown');
-                    dropdown.innerHTML = '';
-                    if (students.length > 0) {
-                        dropdown.style.display = 'block';
-                        students.forEach(student => {
-                            const option = document.createElement('option');
-                            option.value = student.id;
-                            option.textContent = student.text;
-                            dropdown.appendChild(option);
-                        });
-                        if (students.length === 1) {
-                            window.location.href = '<?= base_url('admin/student_violations?student_id=') ?>' + students[0].id;
-                        }
-                    } else {
-                        dropdown.style.display = 'none';
-                        alert('No students found.');
-                    }
-                });
+        // Reset when modal closes
+        document.getElementById('addViolationModal').addEventListener('hidden.bs.modal', function () {
+            searchBox.value   = '';
+            hiddenInput.value = '';
+            searchBox.classList.remove('is-invalid');
+            feedback.style.display  = 'none';
+            resultsList.style.display = 'none';
         });
+    }());
 
-        document.getElementById('studentDropdown').addEventListener('change', function() {
-            if (this.value) {
-                window.location.href = '<?= base_url('admin/student_violations?student_id=') ?>' + this.value;
-            }
-        });
-    });
+    // ── Utility functions ───────────────────────────────────────────────────
+    function openAddViolationModal() {
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('addViolationModal')).show();
+    }
 
     function clearFilters() {
         window.location.href = '<?= base_url('admin/student_violations') ?>';
     }
+
+    // ── Page-level student search form ──────────────────────────────────────
+    document.getElementById('violationSearchForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var q = document.getElementById('studentSearchInput').value.trim();
+        if (!q) return;
+
+        fetch('<?= base_url('admin/search_students?q=') ?>' + encodeURIComponent(q))
+            .then(function (res) { return res.json(); })
+            .then(function (students) {
+                var dropdown = document.getElementById('studentDropdown');
+                dropdown.innerHTML = '';
+                if (students.length > 0) {
+                    dropdown.style.display = 'block';
+                    students.forEach(function (s) {
+                        var opt = document.createElement('option');
+                        opt.value = s.id;
+                        opt.textContent = s.text;
+                        dropdown.appendChild(opt);
+                    });
+                    if (students.length === 1) {
+                        window.location.href = '<?= base_url('admin/student_violations?student_id=') ?>' + students[0].id;
+                    }
+                } else {
+                    dropdown.style.display = 'none';
+                    alert('No students found.');
+                }
+            });
+    });
+
+    document.getElementById('studentDropdown').addEventListener('change', function () {
+        if (this.value) {
+            window.location.href = '<?= base_url('admin/student_violations?student_id=') ?>' + this.value;
+        }
+    });
 </script>
