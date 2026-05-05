@@ -38,17 +38,14 @@ class StudentController extends CI_Controller
             redirect('update_account_form');
         }
 
-        if (empty($input['username'])) {
-            $this->session->set_flashdata('error', 'Username is required.');
-            redirect('update_account_form');
-        }
+        $username = !empty($input['username']) ? $input['username'] : $this->session->username;
 
         if (!empty($input['password']) && $input['password'] !== $input['confirm_password']) {
             $this->session->set_flashdata('error', 'Passwords do not match.');
             redirect('update_account_form');
         }
 
-        $update_data = ['username' => $input['username']];
+        $update_data = ['username' => $username];
 
         if (!empty($input['password'])) {
             $update_data['password'] = $input['password'];
@@ -125,7 +122,7 @@ class StudentController extends CI_Controller
         $this->db->update('accounts', $update_data);
 
         // Refresh session data
-        $this->session->set_userdata('username', $input['username']);
+        $this->session->set_userdata('username', $username);
         if ($profile_pic) {
             $this->session->set_userdata('profile_pic', $profile_pic);
         }

@@ -349,6 +349,18 @@ class AdminController extends CI_Controller
         echo json_encode(['success' => $result]);
     }
 
+    public function add_rand_score_incremental($classwork_id)
+    {
+        $result = $this->db->query(
+            "UPDATE classworks c
+             JOIN assessments a ON a.assessment_id = c.assessment_id
+             SET c.score = LEAST(COALESCE(c.score, 0) + 2, a.max_score)
+             WHERE c.classwork_id = ?",
+            [$classwork_id]
+        );
+        echo json_encode(['success' => (bool)$result]);
+    }
+
     public function student_violations()
     {
         $student_id = $this->input->get('student_id');

@@ -1,5 +1,8 @@
 <?php $this->load->view('header') ?>
 
+<!-- Override viewport to support safe-area-inset for Android nav bar -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+
 <!-- Highlight.js CSS -->
 <link rel="stylesheet" href="<?= base_url('assets/highlights/atom-one-light.min.css') ?>">
 <!-- Highlight.js JS -->
@@ -102,6 +105,12 @@
         outline: none;
         border-color: #007bff;
         box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+    }
+
+    /* Push buttons above Android/iOS system navigation bar */
+    .navigation-buttons {
+        padding-bottom: 72px; /* fallback for Android 3-button nav */
+        padding-bottom: max(72px, calc(env(safe-area-inset-bottom, 0px) + 16px));
     }
 </style>
 <div class="container mt-3 mb-5">

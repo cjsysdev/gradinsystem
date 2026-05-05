@@ -55,14 +55,16 @@
                         <hr class="my-3">
 
                         <!-- Username -->
-                        <div class="form-group">
+                        <div class="form-group mb-1">
                             <label for="username" class="font-weight-bold">
                                 <i class="fa fa-user mr-1 text-secondary"></i>Username
                             </label>
+                            <small class="text-muted ml-1">(leave blank to keep current)</small>
+                        </div>
+                        <div class="form-group">
                             <input type="text" name="username" id="username" class="form-control"
                                    placeholder="Enter new username"
-                                   value="<?= htmlspecialchars($this->session->username ?? '') ?>"
-                                   required>
+                                   pattern="\S+" title="Username cannot contain spaces">
                         </div>
 
                         <!-- Password section -->
@@ -108,6 +110,11 @@
 </div>
 
 <script>
+    // Prevent spaces in username
+    document.getElementById('username').addEventListener('input', function () {
+        this.value = this.value.replace(/\s/g, '');
+    });
+
     // Live profile picture preview
     document.getElementById('profile_pic').addEventListener('change', function () {
         if (this.files && this.files[0]) {

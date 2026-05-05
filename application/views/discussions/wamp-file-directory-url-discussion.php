@@ -608,6 +608,7 @@
             flex-wrap: wrap;
             justify-content: center;
             flex-shrink: 0;
+            padding-bottom: 60px;
         }
 
         button {
