@@ -19,14 +19,10 @@
                             </div>
                         </div>
                         <div class="row justify-content-center mt-3">
-                            <div class="col-md-6 text-center">
-                                <button type="button" class="btn btn-success mb-4 mr-2" onclick="randomizeStudent()">Randomize Student</button>
-                                <button type="button" class="btn btn-dark mb-4" onclick="openFullscreenRandomizer()">&#x26F6; Fullscreen</button>
-                            </div>
-                        </div>
-                        <div class="row justify-content-center">
-                            <div class="col-md-6 text-center">
-                                <button type="button" class="btn btn-secondary mb-4" onclick="toggleSubmissions()">Hide Submissions</button>
+                            <div class="col text-center">
+                                <button type="button" class="btn btn-success mb-4 mr-2" onclick="randomizeStudent()"><i class="fa fa-shuffle" aria-hidden="true"></i></button>
+                                <button type="button" class="btn btn-dark mb-4 mr-2" onclick="openFullscreenRandomizer()">&#x26F6;</button>
+                                <button type="button" class="btn btn-secondary mb-4" onclick="toggleSubmissions()"><i class="fa fa-eye" aria-hidden="true"></i></button>
                             </div>
                         </div>
                         <ul class="dropdown-menu w-100 shadow-sm" aria-labelledby="assessmentDropdown">
@@ -44,7 +40,7 @@
         </div>
 
         <!-- Filter buttons -->
-        <div class="row justify-content-center mt-3">
+        <div class="row justify-content-center">
             <div class="col-md-6 text-center">
                 <div class="btn-group mb-3" role="group">
                     <button type="button" class="btn btn-primary active" id="filterAll" onclick="filterSubmissions('all')">Show All</button>
@@ -176,7 +172,7 @@
         const btn = document.querySelector('.btn-secondary[onclick="toggleSubmissions()"]');
         const hidden = section.style.display === 'none';
         section.style.display = hidden ? 'block' : 'none';
-        btn.innerText = hidden ? 'Hide Submissions' : 'Show Submissions';
+        btn.innerHTML = hidden ? '<i class="fa fa-eye" aria-hidden="true"></i>' : '<i class="fa fa-eye-slash" aria-hidden="true"></i>';
     }
 
     function filterSubmissions(mode) {

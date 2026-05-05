@@ -306,6 +306,86 @@ class StudentController extends CI_Controller
         redirect('emergency_contacts');
     }
 
+    public function advance_excuse()
+    {
+        $student_id = $this->session->student_id;
+
+        $schedules = $this->db
+            ->select('cs.schedule_id, cs.section, cs.day, cs.time_start, cs.time_end, c.class_code, c.class_name')
+            ->from('class_student cls')
+            ->join('class_schedule cs', 'cls.section = cs.section')
+            ->join('classes c', 'cs.class_id = c.class_id')
+            ->join('semester_master sem', 'cs.semester_id = sem.trans_no')
+            ->where('cls.student_id', $student_id)
+            ->where('sem.is_active', 1)
+            ->get()->result_array();
+
+        $data['schedules'] = $schedules;
+        $data['requests'] = $this->advance_excuse->get_student_requests($student_id);
+        $this->load->view('advance_excuse', $data);
+    }
+
+    public function submit_advance_excuse()
+    {
+        $student_id = $this->session->student_id;
+        $post = $this->input->post();
+
+        $schedule_id  = (int)($post['schedule_id'] ?? 0);
+        $absence_date = $post['absence_date'] ?? '';
+        $reason       = trim($post['reason'] ?? '');
+
+        if (!$schedule_id || !$absence_date || !$reason) {
+            $this->session->set_flashdata('error', 'All fields are required.');
+            redirect('advance_excuse');
+            return;
+        }
+
+        if ($absence_date < date('Y-m-d', strtotime('-7 days'))) {
+            $this->session->set_flashdata('error', 'Excuse date cannot be more than 7 days in the past.');
+            redirect('advance_excuse');
+            return;
+        }
+
+        if ($this->advance_excuse->has_duplicate($student_id, $schedule_id, $absence_date)) {
+            $this->session->set_flashdata('error', 'You already have a pending or approved excuse for this class on that date.');
+            redirect('advance_excuse');
+            return;
+        }
+
+        $this->db->insert('advance_excuse_requests', [
+            'student_id'   => $student_id,
+            'schedule_id'  => $schedule_id,
+            'absence_date' => $absence_date,
+            'reason'       => $reason,
+            'status'       => 'pending',
+            'created_at'   => date('Y-m-d H:i:s'),
+        ]);
+
+        $this->session->set_flashdata('success', 'Excuse request submitted successfully.');
+        redirect('advance_excuse');
+    }
+
+    public function cancel_advance_excuse($request_id)
+    {
+        $student_id = $this->session->student_id;
+
+        $request = $this->db->get_where('advance_excuse_requests', [
+            'request_id' => $request_id,
+            'student_id' => $student_id,
+            'status'     => 'pending',
+        ])->row_array();
+
+        if (!$request) {
+            $this->session->set_flashdata('error', 'Request not found or cannot be cancelled.');
+            redirect('advance_excuse');
+            return;
+        }
+
+        $this->db->where('request_id', $request_id)->delete('advance_excuse_requests');
+        $this->session->set_flashdata('success', 'Request cancelled.');
+        redirect('advance_excuse');
+    }
+
     public function performance_sheet()
     {
         $student_id = $this->session->student_id;

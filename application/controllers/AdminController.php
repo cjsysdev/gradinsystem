@@ -173,23 +173,65 @@ class AdminController extends CI_Controller
 
     public function emergency_contacts()
     {
-        $student_id = $this->input->get('student_id');
-        $data['student'] = null;
-        $data['contacts'] = [];
+        $this->load->library('pagination');
+
+        $student_id          = $this->input->get('student_id');
+        $data['student']     = null;
+        $data['contacts']    = [];
+        $data['pagination']  = '';
+        $data['total']       = 0;
+        $data['per_page']    = 20;
+        $data['offset']      = 0;
 
         if ($student_id) {
             $data['student'] = $this->student_master->get_student_info($student_id);
             if ($data['student']) {
                 $data['contacts'] = $this->emergency_contact->get_by_student($student_id);
+                $data['total']    = count($data['contacts']);
             } else {
                 $this->session->set_flashdata('error', 'Student not found.');
             }
         } else {
-            $data['contacts'] = $this->emergency_contact->get_all();
-        }
+            $per_page = 20;
+            $offset   = (int)($this->input->get('per_page') ?? 0);
+            $total    = $this->emergency_contact->count_all_contacts();
 
-        if (is_object($data['contacts'])) {
-            $data['contacts'] = json_decode(json_encode($data['contacts']), true);
+            $config = [
+                'base_url'             => base_url('admin/emergency_contacts'),
+                'total_rows'           => $total,
+                'per_page'             => $per_page,
+                'page_query_string'    => TRUE,
+                'query_string_segment' => 'per_page',
+                'reuse_query_string'   => TRUE,
+                'use_page_numbers'     => FALSE,
+                'full_tag_open'        => '<ul class="pagination pagination-sm mb-0">',
+                'full_tag_close'       => '</ul>',
+                'first_link'           => '&laquo;',
+                'first_tag_open'       => '<li class="page-item">',
+                'first_tag_close'      => '</li>',
+                'last_link'            => '&raquo;',
+                'last_tag_open'        => '<li class="page-item">',
+                'last_tag_close'       => '</li>',
+                'next_link'            => '&rsaquo;',
+                'next_tag_open'        => '<li class="page-item">',
+                'next_tag_close'       => '</li>',
+                'prev_link'            => '&lsaquo;',
+                'prev_tag_open'        => '<li class="page-item">',
+                'prev_tag_close'       => '</li>',
+                'num_tag_open'         => '<li class="page-item">',
+                'num_tag_close'        => '</li>',
+                'cur_tag_open'         => '<li class="page-item active"><a class="page-link" href="#">',
+                'cur_tag_close'        => '</a></li>',
+                'attributes'           => ['class' => 'page-link'],
+                'num_links'            => 4,
+            ];
+            $this->pagination->initialize($config);
+
+            $data['contacts']   = $this->emergency_contact->get_all_paged($per_page, $offset);
+            $data['pagination'] = $this->pagination->create_links();
+            $data['total']      = $total;
+            $data['per_page']   = $per_page;
+            $data['offset']     = $offset;
         }
 
         $this->load->view('admin/emergency_contacts', $data);
@@ -620,6 +662,98 @@ class AdminController extends CI_Controller
         $username = $this->input->get('username');
         $exists = $username && $this->db->where('username', $username)->count_all_results('accounts') > 0;
         echo json_encode(['exists' => $exists]);
+    }
+
+    public function advance_excuses()
+    {
+        $this->load->library('pagination');
+
+        $status    = $this->input->get('status') ?: null;
+        $per_page  = 15;
+        $total     = $this->advance_excuse->count_requests($status);
+        $cur_page  = max(1, (int)$this->input->get('per_page') ?: 1);
+        // CI query-string pagination passes the offset via the per_page key
+        $offset    = (int)$this->input->get('per_page') ?: 0;
+
+        $base_url = base_url('admin/advance_excuses') . '?'
+            . ($status ? 'status=' . urlencode($status) . '&' : '');
+
+        $config = [
+            'base_url'              => $base_url,
+            'total_rows'            => $total,
+            'per_page'              => $per_page,
+            'page_query_string'     => TRUE,
+            'query_string_segment'  => 'per_page',
+            'reuse_query_string'    => TRUE,
+            'use_page_numbers'      => FALSE,
+            'full_tag_open'         => '<ul class="pagination pagination-sm mb-0">',
+            'full_tag_close'        => '</ul>',
+            'first_link'            => '&laquo;',
+            'first_tag_open'        => '<li class="page-item">',
+            'first_tag_close'       => '</li>',
+            'last_link'             => '&raquo;',
+            'last_tag_open'         => '<li class="page-item">',
+            'last_tag_close'        => '</li>',
+            'next_link'             => '&rsaquo;',
+            'next_tag_open'         => '<li class="page-item">',
+            'next_tag_close'        => '</li>',
+            'prev_link'             => '&lsaquo;',
+            'prev_tag_open'         => '<li class="page-item">',
+            'prev_tag_close'        => '</li>',
+            'num_tag_open'          => '<li class="page-item">',
+            'num_tag_close'         => '</li>',
+            'cur_tag_open'          => '<li class="page-item active"><a class="page-link" href="#">',
+            'cur_tag_close'         => '</a></li>',
+            'attributes'            => ['class' => 'page-link'],
+            'num_links'             => 4,
+        ];
+        $this->pagination->initialize($config);
+
+        $data['requests']        = $this->advance_excuse->get_all_requests($status, $per_page, $offset);
+        $data['selected_status'] = $status;
+        $data['pagination']      = $this->pagination->create_links();
+        $data['total']           = $total;
+        $data['per_page']        = $per_page;
+        $data['offset']          = $offset;
+        $this->load->view('admin/advance_excuses', $data);
+    }
+
+    public function process_excuse()
+    {
+        $post        = $this->input->post();
+        $request_id  = (int)($post['request_id'] ?? 0);
+        $action      = $post['action'] ?? '';
+        $admin_notes = trim($post['admin_notes'] ?? '');
+
+        if (!$request_id || !in_array($action, ['approved', 'rejected'])) {
+            $this->session->set_flashdata('error', 'Invalid request.');
+            redirect('admin/advance_excuses');
+            return;
+        }
+
+        $request = $this->db->get_where('advance_excuse_requests', ['request_id' => $request_id])->row_array();
+        if (!$request) {
+            $this->session->set_flashdata('error', 'Request not found.');
+            redirect('admin/advance_excuses');
+            return;
+        }
+
+        $this->db->where('request_id', $request_id)->update('advance_excuse_requests', [
+            'status'      => $action,
+            'admin_notes' => $admin_notes,
+            'updated_at'  => date('Y-m-d H:i:s'),
+        ]);
+
+        if ($action === 'approved') {
+            $this->db
+                ->where('student_id', $request['student_id'])
+                ->where('schedule_id', $request['schedule_id'])
+                ->where('DATE(date)', $request['absence_date'])
+                ->update('attendance', ['status' => 'excuse', 'reason' => $request['reason']]);
+        }
+
+        $this->session->set_flashdata('success', 'Request ' . $action . '.');
+        redirect('admin/advance_excuses');
     }
 
     public function search_students()

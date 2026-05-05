@@ -16,9 +16,13 @@
     </form>
 
     <?php if (empty($student)): ?>
-        <div class="mb-4">
+        <div class="mb-2">
             <h4>All Emergency Contacts</h4>
-            <p class="text-muted">Showing contacts for all students.</p>
+            <?php if ($total > 0): ?>
+                <p class="text-muted mb-0">
+                    Showing <?= $offset + 1 ?>–<?= min($offset + $per_page, $total) ?> of <?= $total ?> contact<?= $total != 1 ? 's' : '' ?>
+                </p>
+            <?php endif; ?>
         </div>
     <?php else: ?>
         <div class="mb-4">
@@ -28,9 +32,12 @@
     <?php endif; ?>
 
     <?php if (!empty($contacts)): ?>
-        <table class="table table-bordered">
-            <thead>
+        <table class="table table-bordered table-sm table-hover">
+            <thead class="thead-light">
                 <tr>
+                    <?php if (empty($student)): ?>
+                        <th>Student</th>
+                    <?php endif; ?>
                     <th>Full Name</th>
                     <th>Relationship</th>
                     <th>Contact Number</th>
@@ -42,6 +49,14 @@
             <tbody>
                 <?php foreach ($contacts as $contact): ?>
                     <tr>
+                        <?php if (empty($student)): ?>
+                            <td>
+                                <a href="<?= base_url('admin/emergency_contacts?student_id=' . urlencode($contact['student_id'])) ?>">
+                                    <?= htmlspecialchars(($contact['lastname'] ?? '') . ', ' . ($contact['firstname'] ?? '')) ?>
+                                </a><br>
+                                <small class="text-muted"><?= htmlspecialchars($contact['student_no'] ?? '') ?></small>
+                            </td>
+                        <?php endif; ?>
                         <td><?= htmlspecialchars($contact['full_name']) ?></td>
                         <td><?= htmlspecialchars($contact['relationship']) ?></td>
                         <td><?= htmlspecialchars($contact['contact_no']) ?></td>
@@ -58,6 +73,12 @@
                 <?php endforeach; ?>
             </tbody>
         </table>
+
+        <?php if ($pagination): ?>
+            <nav aria-label="Page navigation" class="mb-5">
+                <?= $pagination ?>
+            </nav>
+        <?php endif; ?>
     <?php else: ?>
         <?php if (empty($student)): ?>
             <div class="alert alert-info">No emergency contacts found.</div>

@@ -76,6 +76,15 @@ $route['grades'] = 'GradesController/grades';
 $route['sectiongrades/(:any)'] = 'GradesController/sectionGrades/$1';
 $route['sectionFinalGrades/(:any)'] = 'GradesController/sectionFinalGrades/$1';
 
+// Advance Excuse Routes (student)
+$route['advance_excuse'] = 'StudentController/advance_excuse';
+$route['advance_excuse/submit'] = 'StudentController/submit_advance_excuse';
+$route['advance_excuse/cancel/(:num)'] = 'StudentController/cancel_advance_excuse/$1';
+
+// Advance Excuse Routes (admin)
+$route['admin/advance_excuses'] = 'AdminController/advance_excuses';
+$route['admin/process_excuse'] = 'AdminController/process_excuse';
+
 // Attendance Routes
 $route['attendance'] = 'AttendanceController/attendance_main';
 $route['attendance_visualizer'] = 'AttendanceController/attendance_visualizer';

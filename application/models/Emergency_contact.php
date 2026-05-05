@@ -16,6 +16,24 @@ class Emergency_contact extends MY_Model
             ->result_array();
     }
 
+    public function count_all_contacts()
+    {
+        return $this->db->count_all('student_emergency_contacts');
+    }
+
+    public function get_all_paged($limit, $offset)
+    {
+        return $this->db
+            ->select('ec.*, sm.firstname, sm.lastname, sm.student_no')
+            ->from('student_emergency_contacts ec')
+            ->join('student_master sm', 'sm.trans_no = ec.student_id', 'left')
+            ->order_by('sm.lastname', 'ASC')
+            ->order_by('ec.is_primary', 'DESC')
+            ->limit($limit, $offset)
+            ->get()
+            ->result_array();
+    }
+
     public function set_primary($contact_id, $student_id)
     {
         $this->db->where('student_id', $student_id)->update('student_emergency_contacts', ['is_primary' => 0]);

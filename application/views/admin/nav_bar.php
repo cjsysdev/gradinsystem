@@ -33,5 +33,8 @@
         <a href="<?= base_url(
                         'admin/semesters'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Semesters"><i class="fa fa-calendar-alt"></i></a>
+        <a href="<?= base_url(
+                        'admin/advance_excuses'
+                    ) ?>" class="btn btn-outline-secondary col m-2" title="Advance Excuses"><i class="fa fa-calendar-times"></i></a>
     </div>
 </div>
