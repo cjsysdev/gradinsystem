@@ -14,8 +14,10 @@
 			</a>
 		</div>
 		<div class="col">
-			<h6 class="m-0"><strong><?= $this->session->lastname, ', ',  $this->session->firstname ?></strong></h6>
-			<p style="font-size: 15px;"> <span class="badge badge-info"> <?= $this->session->student_id ?></span> - <?= $this->session->section ?></p>
+			<a href="<?= base_url('grades') ?>" class="text-dark text-decoration-none">
+				<h6 class="m-0"><strong><?= $this->session->lastname, ', ',  $this->session->firstname ?></strong></h6>
+				<p style="font-size: 15px;"> <span class="badge badge-info"> <?= $this->session->student_id ?></span> - <?= $this->session->section ?></p>
+			</a>
 		</div>
 		<div class="col text-center">
 			<!-- <a title="survey" href="" class=" btn btn-outline-dark"><i class="fa fa-list" aria-hidden="true"></i> Survey</a> -->

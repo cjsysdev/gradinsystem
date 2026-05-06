@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(cmd /c \"dir d:\\\\wamp64\\\\bin\")",
+      "PowerShell(cmd /c \"dir d:\\\\wamp64\\\\bin\\\\apache\")"
+    ]
+  }
+}

@@ -664,19 +664,20 @@ class AdminController extends CI_Controller
         echo json_encode(['exists' => $exists]);
     }
 
-    public function advance_excuses()
+    public function student_requests()
     {
         $this->load->library('pagination');
 
-        $status    = $this->input->get('status') ?: null;
-        $per_page  = 15;
-        $total     = $this->advance_excuse->count_requests($status);
-        $cur_page  = max(1, (int)$this->input->get('per_page') ?: 1);
-        // CI query-string pagination passes the offset via the per_page key
-        $offset    = (int)$this->input->get('per_page') ?: 0;
+        $status   = $this->input->get('status') ?: null;
+        $type     = $this->input->get('type')   ?: null;
+        $per_page = 15;
+        $total    = $this->student_request->count_requests($status, $type);
+        $offset   = (int)$this->input->get('per_page') ?: 0;
 
-        $base_url = base_url('admin/advance_excuses') . '?'
-            . ($status ? 'status=' . urlencode($status) . '&' : '');
+        $qs_parts = [];
+        if ($status) $qs_parts[] = 'status=' . urlencode($status);
+        if ($type)   $qs_parts[] = 'type='   . urlencode($type);
+        $base_url = base_url('admin/student_requests') . '?' . ($qs_parts ? implode('&', $qs_parts) . '&' : '');
 
         $config = [
             'base_url'              => $base_url,
@@ -709,16 +710,17 @@ class AdminController extends CI_Controller
         ];
         $this->pagination->initialize($config);
 
-        $data['requests']        = $this->advance_excuse->get_all_requests($status, $per_page, $offset);
+        $data['requests']        = $this->student_request->get_all_requests($status, $type, $per_page, $offset);
         $data['selected_status'] = $status;
+        $data['selected_type']   = $type;
         $data['pagination']      = $this->pagination->create_links();
         $data['total']           = $total;
         $data['per_page']        = $per_page;
         $data['offset']          = $offset;
-        $this->load->view('admin/advance_excuses', $data);
+        $this->load->view('admin/student_requests', $data);
     }
 
-    public function process_excuse()
+    public function process_student_request()
     {
         $post        = $this->input->post();
         $request_id  = (int)($post['request_id'] ?? 0);
@@ -727,33 +729,33 @@ class AdminController extends CI_Controller
 
         if (!$request_id || !in_array($action, ['approved', 'rejected'])) {
             $this->session->set_flashdata('error', 'Invalid request.');
-            redirect('admin/advance_excuses');
+            redirect('admin/student_requests');
             return;
         }
 
-        $request = $this->db->get_where('advance_excuse_requests', ['request_id' => $request_id])->row_array();
+        $request = $this->db->get_where('student_requests', ['request_id' => $request_id])->row_array();
         if (!$request) {
             $this->session->set_flashdata('error', 'Request not found.');
-            redirect('admin/advance_excuses');
+            redirect('admin/student_requests');
             return;
         }
 
-        $this->db->where('request_id', $request_id)->update('advance_excuse_requests', [
+        $this->db->where('request_id', $request_id)->update('student_requests', [
             'status'      => $action,
             'admin_notes' => $admin_notes,
             'updated_at'  => date('Y-m-d H:i:s'),
         ]);
 
-        if ($action === 'approved') {
+        if ($action === 'approved' && $request['type'] === 'absence') {
             $this->db
                 ->where('student_id', $request['student_id'])
                 ->where('schedule_id', $request['schedule_id'])
-                ->where('DATE(date)', $request['absence_date'])
+                ->where('DATE(date)', $request['request_date'])
                 ->update('attendance', ['status' => 'excuse', 'reason' => $request['reason']]);
         }
 
         $this->session->set_flashdata('success', 'Request ' . $action . '.');
-        redirect('admin/advance_excuses');
+        redirect('admin/student_requests');
     }
 
     // ── Discussion Management ────────────────────────────────────────────────

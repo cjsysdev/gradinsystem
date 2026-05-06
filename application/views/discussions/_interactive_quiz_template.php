@@ -67,7 +67,8 @@ $sections_json = json_encode($topic_data['sections'] ?? [], JSON_HEX_TAG | JSON_
         <div class="header">
             <div class="header-top">
                 <div class="header-title"><?= $title ?></div>
-                <button class="header-close" onclick="confirmExit()">&#x2715;</button>
+                <!-- <button class="header-close" onclick="confirmExit()">&#x2715;</button> -->
+                <a class="button header-close" href="<?= base_url('interactive_quiz/topics') ?>" style="text-decoration:none;">✕</a>
             </div>
 
             <div class="stats-bar">

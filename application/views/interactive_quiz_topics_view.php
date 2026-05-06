@@ -50,10 +50,10 @@
             Static Discussions
             <span class="badge-count"><?= count($static_topics) ?></span>
         </button>
-        <!-- <button class="disc-tab-btn flex-fill justify-content-center" onclick="switchTab('interactive', this)">
+        <button class="disc-tab-btn flex-fill justify-content-center" onclick="switchTab('interactive', this)">
             Interactive Topics
             <span class="badge-count"><?= count($interactive_topics) ?></span>
-        </button> -->
+        </button>
     </div>
 
     <!-- ══ STATIC DISCUSSIONS ════════════════════════════════════ -->

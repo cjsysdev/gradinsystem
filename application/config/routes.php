@@ -76,14 +76,25 @@ $route['grades'] = 'GradesController/grades';
 $route['sectiongrades/(:any)'] = 'GradesController/sectionGrades/$1';
 $route['sectionFinalGrades/(:any)'] = 'GradesController/sectionFinalGrades/$1';
 
-// Advance Excuse Routes (student)
+// Student Request Routes (student-facing — combined)
+$route['requests'] = 'StudentController/requests';
+
+// Student Request Routes (student-facing — absence excuses)
 $route['advance_excuse'] = 'StudentController/advance_excuse';
 $route['advance_excuse/submit'] = 'StudentController/submit_advance_excuse';
 $route['advance_excuse/cancel/(:num)'] = 'StudentController/cancel_advance_excuse/$1';
 
-// Advance Excuse Routes (admin)
-$route['admin/advance_excuses'] = 'AdminController/advance_excuses';
-$route['admin/process_excuse'] = 'AdminController/process_excuse';
+// Student Request Routes (student-facing — leaving passes)
+$route['leaving_pass'] = 'StudentController/leaving_pass';
+$route['leaving_pass/submit'] = 'StudentController/submit_leaving_pass';
+$route['leaving_pass/cancel/(:num)'] = 'StudentController/cancel_leaving_pass/$1';
+
+// Student Request Routes (admin — unified view)
+$route['admin/student_requests'] = 'AdminController/student_requests';
+$route['admin/process_student_request'] = 'AdminController/process_student_request';
+// Legacy redirects so old bookmarks still work
+$route['admin/advance_excuses'] = 'AdminController/student_requests';
+$route['admin/leaving_passes'] = 'AdminController/student_requests';
 
 // Attendance Routes
 $route['attendance'] = 'AttendanceController/attendance_main';

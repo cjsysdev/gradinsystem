@@ -3,7 +3,13 @@
     "allow": [
       "PowerShell(& \"C:\\\\wamp64\\\\bin\\\\mysql\\\\mysql8.3.0\\\\bin\\\\mysql.exe\" -u root \"-pcmc@dmin\" gradingsystem2025a -e \"SHOW TABLES LIKE 'violation%';\")",
       "PowerShell(& \"D:\\\\wamp64\\\\bin\\\\mysql\\\\mysql8.3.0\\\\bin\\\\mysql.exe\" -u root \"-pcmc@dmin\" gradingsystem2025a -e \"DESCRIBE student_violations; DESCRIBE violation_types;\")",
-      "Bash(php -r ' *)"
+      "Bash(php -r ' *)",
+      "Bash(Get-ChildItem -Path \"d:\\\\wamp64\\\\www\\\\gradingSystem\" -Recurse -Directory -Name)",
+      "Bash(xargs grep -l \"advance_excuse\")",
+      "Bash(xargs grep -l \"CREATE TABLE.*advance_excuse\")",
+      "Bash(Get-ChildItem \"d:\\\\wamp64\\\\logs\" -Recurse -Filter \"*.log\")",
+      "Bash(Sort-Object LastWriteTime -Descending)",
+      "Bash(Select-Object -First 5 FullName, LastWriteTime)"
     ]
   }
 }
