@@ -8,7 +8,7 @@ class InteractiveQuizController extends CI_Controller
     public function __construct()
     {
         parent::__construct();
-        $this->load->model(['classworks', 'assessments', 'Iq_attempts']);
+        $this->load->model(['classworks', 'assessments', 'Iq_attempts', 'discussions', 'class_student']);
         $this->load->helper(['url']);
         $this->load->library(['session']);
         $this->json_path = FCPATH . 'assets/json/';
@@ -74,30 +74,45 @@ class InteractiveQuizController extends CI_Controller
         $this->load->view('interactive_quiz_view', $data);
     }
 
-    // List all available topics found in assets/json/
+    // List all topics — static and interactive, both from the discussions table.
+    // Schema requires: discussions.type ENUM('static','interactive')
+    // For interactive rows, discussions.link holds the JSON topic slug (e.g. '105_mysqli').
     public function list_topics()
     {
-        $files  = glob($this->json_path . '*.json') ?: [];
-        $topics = [];
+        // classes: 1=CC105, 2=CC103, 3=CC104, 4=WS101, 5=PROFEL-3 (BI)
+        $enrollment       = $this->class_student->get(['student_id' => $_SESSION['student_id']]);
+        $student_class_id = $enrollment ? (int) $enrollment->class_id : null;
 
-        foreach ($files as $file) {
-            $base = basename($file, '.json');
-            $raw  = file_get_contents($file);
-            $meta = json_decode($raw, true);
+        $all = $student_class_id
+            ? $this->discussions->as_array()->order_by('created_at', 'desc')->get_all(['class_id' => $student_class_id]) ?: []
+            : [];
 
-            $topics[] = [
-                'topic'       => $base,
-                'title'       => $meta['title'] ?? ucwords(str_replace('_', ' ', $base)),
-                'description' => $meta['description'] ?? '',
-                'sections'    => count($meta['sections'] ?? []),
-                'questions'   => array_sum(array_map(function ($s) {
-                    return count($s['questions'] ?? []);
-                }, $meta['sections'] ?? [])),
-                'url'         => site_url('interactive_quiz/load/' . $base),
-            ];
+        $static_topics      = [];
+        $interactive_topics = [];
+
+        foreach ($all as $d) {
+            $type = $d['type'] ?? 'static';
+            $link = $d['link'] ?? '';
+
+            if ($type === 'interactive') {
+                $interactive_topics[] = [
+                    'title'       => $d['title']       ?? '',
+                    'description' => $d['description'] ?? '',
+                    'url'         => $link ? site_url("InteractiveQuizController/discussion/{$link}") : '#',
+                ];
+            } else {
+                $static_topics[] = [
+                    'title'       => $d['title']       ?? '',
+                    'description' => $d['description'] ?? '',
+                    'link'        => $link ? site_url($link) : '',
+                ];
+            }
         }
 
-        $this->load->view('interactive_quiz_topics_view', ['topics' => $topics]);
+        $this->load->view('interactive_quiz_topics_view', [
+            'static_topics'      => $static_topics,
+            'interactive_topics' => $interactive_topics,
+        ]);
     }
 
     // Admin — list topics and handle uploads/deletes
@@ -328,6 +343,41 @@ class InteractiveQuizController extends CI_Controller
             'summary'          => $this->Iq_attempts->topic_summary($topic),
             'sections'         => $this->Iq_attempts->section_stats($topic),
             'missed'           => $this->Iq_attempts->missed_questions($topic, 10),
+        ]);
+    }
+
+    // Display an interactive discussion by topic name (single-quiz-per-section format).
+    // JSON schema: sections[].quiz = { question, options[], correct (index), code? }
+    public function discussion($topic, $assessment_id = null)
+    {
+        if (!preg_match('/^[a-z0-9_]+$/', $topic)) {
+            show_error('Invalid topic name.', 400);
+            return;
+        }
+
+        $json_file = $this->json_path . $topic . '.json';
+
+        if (!file_exists($json_file)) {
+            show_error('Topic not found: ' . htmlspecialchars($topic, ENT_QUOTES), 404);
+            return;
+        }
+
+        $topic_data = json_decode(file_get_contents($json_file), true);
+
+        if (!$topic_data || !isset($topic_data['sections'])) {
+            show_error('Invalid or malformed topic data.', 500);
+            return;
+        }
+
+        $validation_error = $this->_validate_discussion_structure($topic_data);
+        if ($validation_error) {
+            show_error($validation_error, 422);
+            return;
+        }
+
+        $this->load->view('discussions/_interactive_quiz_template', [
+            'topic_data'    => $topic_data,
+            'assessment_id' => $assessment_id ? (int) $assessment_id : null,
         ]);
     }
 
@@ -563,6 +613,39 @@ class InteractiveQuizController extends CI_Controller
         }
 
         return $topics;
+    }
+
+    private function _validate_discussion_structure(array $data): string
+    {
+        if (empty($data['title']) || !is_string($data['title'])) {
+            return 'JSON must have a non-empty "title" string field.';
+        }
+        if (empty($data['sections']) || !is_array($data['sections'])) {
+            return 'JSON must have a non-empty "sections" array.';
+        }
+        foreach ($data['sections'] as $i => $section) {
+            $n = $i + 1;
+            if (empty($section['title'])) {
+                return "Section {$n} is missing a \"title\" field.";
+            }
+            if (!isset($section['lesson'])) {
+                return "Section {$n} is missing a \"lesson\" field.";
+            }
+            if (empty($section['quiz']) || !is_array($section['quiz'])) {
+                return "Section {$n} is missing a \"quiz\" object.";
+            }
+            $q = $section['quiz'];
+            if (empty($q['question'])) {
+                return "Section {$n} quiz is missing a \"question\" field.";
+            }
+            if (empty($q['options']) || !is_array($q['options']) || count($q['options']) < 2) {
+                return "Section {$n} quiz must have at least 2 \"options\".";
+            }
+            if (!isset($q['correct']) || !is_int($q['correct']) || $q['correct'] < 0 || $q['correct'] >= count($q['options'])) {
+                return "Section {$n} quiz \"correct\" must be a valid option index.";
+            }
+        }
+        return '';
     }
 
     private function _validate_topic_structure(array $data): string

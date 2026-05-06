@@ -1,0 +1,108 @@
+{
+  "topic": "105_mysqli",
+  "title": "MySQLi Functions",
+  "description": "Interactive Learning",
+  "congratsText": "You mastered MySQLi Functions!",
+  "sections": [
+    {
+      "id": 0,
+      "title": "What is MySQLi?",
+      "lesson": "<div class=\"lesson-title\">Introduction to MySQLi</div><div class=\"lesson-text\">MySQLi stands for <span class=\"highlight\">MySQL Improved</span>. It's a PHP extension that lets you communicate with MySQL databases.</div><div class=\"lesson-text\"><strong>Why MySQLi?</strong></div><div class=\"lesson-text\"><ul><li>Supports prepared statements (prevents SQL injection)</li><li>Both procedural and object-oriented interfaces</li><li>Better error handling</li><li>Built-in functions for database operations</li></ul></div><div class=\"lesson-text\">Think of MySQLi as a <span class=\"highlight\">bridge between your PHP code and your database</span>. The browser sends a request → PHP processes it → MySQLi communicates with the database → Results sent back.</div>",
+      "quiz": {
+        "question": "What does MySQLi stand for?",
+        "options": ["MySQL Internet", "MySQL Improved", "My SQL Integration", "MySQL Interface"],
+        "correct": 1
+      }
+    },
+    {
+      "id": 1,
+      "title": "mysqli_connect() Basics",
+      "lesson": "<div class=\"lesson-title\">The Connection Function</div><div class=\"lesson-text\"><code>mysqli_connect()</code> creates a connection to your MySQL database. It's the first step in any database interaction.</div><div class=\"code-block\">$conn = mysqli_connect(\n    \"localhost\",     // Host\n    \"root\",          // Username\n    \"\",              // Password\n    \"student_db\"     // Database name\n);</div><div class=\"lesson-text\"><strong>Parameters:</strong></div><div class=\"lesson-text\"><ul><li><code>Host</code>: Where the database server is (usually \"localhost\")</li><li><code>Username</code>: Database user (usually \"root\")</li><li><code>Password</code>: User password (empty \"\" for local development)</li><li><code>Database</code>: Name of the database to use</li></ul></div><div class=\"lesson-text\"><strong>Always check if connection succeeded:</strong></div><div class=\"code-block\">if (!$conn) {\n    die(\"Connection failed: \" . mysqli_connect_error());\n}</div>",
+      "quiz": {
+        "question": "Which parameter specifies the database name in mysqli_connect()?",
+        "options": ["First parameter", "Second parameter", "Third parameter", "Fourth parameter"],
+        "correct": 3
+      }
+    },
+    {
+      "id": 2,
+      "title": "Complete Connection Code",
+      "lesson": "<div class=\"lesson-title\">Setting Up Your Connection</div><div class=\"lesson-text\">Here's a complete, safe connection setup:</div><div class=\"code-block\">// Database credentials\n$servername = \"localhost\";\n$username = \"root\";\n$password = \"\";\n$database = \"school_db\";\n\n// Create connection\n$conn = mysqli_connect($servername, $username, $password, $database);\n\n// Check connection\nif (!$conn) {\n    die(\"Connection failed: \" . mysqli_connect_error());\n}\necho \"Connected successfully!\";\n\n// Close when done\nmysqli_close($conn);</div><div class=\"lesson-text\"><span class=\"highlight\">Key points:</span></div><div class=\"lesson-text\"><ul><li>Store credentials in variables first</li><li>Always validate with <code>if (!$conn)</code></li><li>Use <code>mysqli_connect_error()</code> to see what went wrong</li><li>Close the connection with <code>mysqli_close()</code> when finished</li></ul></div>",
+      "quiz": {
+        "question": "What function returns the connection error message?",
+        "options": ["mysqli_error()", "mysqli_connect_error()", "mysqli_get_error()", "connection_error()"],
+        "correct": 1
+      }
+    },
+    {
+      "id": 3,
+      "title": "mysqli_query() - Execute Queries",
+      "lesson": "<div class=\"lesson-title\">Running SQL Statements</div><div class=\"lesson-text\"><code>mysqli_query()</code> executes SQL statements (SELECT, INSERT, UPDATE, DELETE).</div><div class=\"code-block\">$sql = \"SELECT * FROM students\";\n$result = mysqli_query($conn, $sql);\n\nif ($result) {\n    echo \"Query executed!\";\n} else {\n    echo \"Error: \" . mysqli_error($conn);\n}</div><div class=\"lesson-text\"><strong>What it returns:</strong></div><div class=\"lesson-text\"><ul><li><strong>SELECT queries:</strong> Returns a result object (contains rows)</li><li><strong>INSERT/UPDATE/DELETE:</strong> Returns TRUE on success, FALSE on failure</li></ul></div><div class=\"lesson-text\"><strong>Different Query Types:</strong></div><div class=\"code-block\">// SELECT - Get data\n$result = mysqli_query($conn, \"SELECT * FROM students\");\n\n// INSERT - Add data\nmysqli_query($conn, \"INSERT INTO students (name, email) VALUES ('Bob', 'bob@example.com')\");\n\n// UPDATE - Modify data\nmysqli_query($conn, \"UPDATE students SET email = 'new@example.com' WHERE id = 1\");\n\n// DELETE - Remove data\nmysqli_query($conn, \"DELETE FROM students WHERE id = 5\");</div>",
+      "quiz": {
+        "question": "What does mysqli_query() return for a SELECT statement?",
+        "options": ["TRUE", "FALSE", "A result object with rows", "The number of rows"],
+        "correct": 2
+      }
+    },
+    {
+      "id": 4,
+      "title": "Query Execution Patterns",
+      "lesson": "<div class=\"lesson-title\">Handling Different Query Types</div><div class=\"lesson-text\">SELECT queries need different handling than INSERT/UPDATE/DELETE:</div><div class=\"code-block\">// SELECT - Must fetch results\n$result = mysqli_query($conn, \"SELECT id, name FROM students\");\nif ($result) {\n    // Fetch rows from result\n    while ($row = mysqli_fetch_assoc($result)) {\n        echo $row[\"name\"];\n    }\n}</div><div class=\"code-block\">// INSERT/UPDATE/DELETE - Check TRUE/FALSE\n$sql = \"INSERT INTO students (name) VALUES ('Alice')\";\nif (mysqli_query($conn, $sql)) {\n    echo \"Success!\";\n    $new_id = mysqli_insert_id($conn); // Get inserted ID\n} else {\n    echo \"Error: \" . mysqli_error($conn);\n}</div><div class=\"lesson-text\"><span class=\"highlight\">Pro Tip:</span> Always check if the query succeeded before trying to fetch results. Always use <code>mysqli_error($conn)</code> to debug failures.</div>",
+      "quiz": {
+        "question": "What should you use to check if an INSERT was successful?",
+        "options": ["Check if mysqli_query() returns TRUE", "Check if the returned value is positive", "Use mysqli_insert_id() to verify", "Wait for the database to confirm"],
+        "correct": 0
+      }
+    },
+    {
+      "id": 5,
+      "title": "mysqli_fetch_assoc() - Get Data",
+      "lesson": "<div class=\"lesson-title\">Fetching Query Results</div><div class=\"lesson-text\">After a SELECT query, you get a result object. Use <code>mysqli_fetch_assoc()</code> to extract rows one at a time.</div><div class=\"code-block\">$sql = \"SELECT id, name, email FROM students\";\n$result = mysqli_query($conn, $sql);\n\n// Get ONE row as an array\n$row = mysqli_fetch_assoc($result);\n\n// Access columns by name\necho $row[\"id\"];    // 1\necho $row[\"name\"];  // Alice\necho $row[\"email\"]; // alice@example.com</div><div class=\"lesson-text\"><strong>The Associative Array Format:</strong></div><div class=\"lesson-text\"><ul><li>Column names become array keys</li><li>Values are the data from that row</li><li>Access with <code>$row[\"columnName\"]</code></li></ul></div><div class=\"lesson-text\"><strong>Important:</strong> Each call to <code>mysqli_fetch_assoc()</code> gets the <span class=\"highlight\">next row</span>. When all rows are read, it returns <code>NULL</code>.</div>",
+      "quiz": {
+        "question": "What does mysqli_fetch_assoc() return when there are no more rows?",
+        "options": ["FALSE", "NULL", "Empty array", "0"],
+        "correct": 1
+      }
+    },
+    {
+      "id": 6,
+      "title": "Looping Through Results",
+      "lesson": "<div class=\"lesson-title\">Processing All Rows</div><div class=\"lesson-text\">Use a <code>while</code> loop to fetch all rows from a query result:</div><div class=\"code-block\">$sql = \"SELECT id, name, email FROM students\";\n$result = mysqli_query($conn, $sql);\n\n// Loop gets called for each row\nwhile ($row = mysqli_fetch_assoc($result)) {\n    echo \"ID: \" . $row[\"id\"] . \"&lt;br&gt;\";\n    echo \"Name: \" . $row[\"name\"] . \"&lt;br&gt;\";\n    echo \"Email: \" . $row[\"email\"] . \"&lt;br&gt;\";\n    echo \"---&lt;br&gt;\";\n}</div><div class=\"lesson-text\"><strong>How it works:</strong></div><div class=\"lesson-text\"><ul><li>Loop condition calls <code>mysqli_fetch_assoc()</code></li><li>If a row exists, store it in <code>$row</code> and enter loop</li><li>If <code>NULL</code> is returned, loop exits</li></ul></div><div class=\"lesson-text\">This is like reading items from a list, one by one, until you reach the end.</div>",
+      "quiz": {
+        "question": "What does the condition in while ($row = mysqli_fetch_assoc($result)) do?",
+        "options": ["Checks if $row exists", "Gets the next row and assigns to $row", "Counts the number of rows", "Deletes the current row"],
+        "correct": 1
+      }
+    },
+    {
+      "id": 7,
+      "title": "Complete CRUD Example",
+      "lesson": "<div class=\"lesson-title\">Full Database Workflow</div><div class=\"lesson-text\">Here's a complete example combining connection, insertion, and fetching:</div><div class=\"code-block\">// 1. CONNECT\n$conn = mysqli_connect(\"localhost\", \"root\", \"\", \"school_db\");\nif (!$conn) die(\"Connection failed: \" . mysqli_connect_error());\n\n// 2. INSERT\n$sql = \"INSERT INTO students (name, email) VALUES ('Charlie', 'charlie@example.com')\";\nif (mysqli_query($conn, $sql)) {\n    echo \"New student added!\";\n}\n\n// 3. SELECT\n$result = mysqli_query($conn, \"SELECT * FROM students\");\n\n// 4. FETCH &amp; DISPLAY\necho \"&lt;h2&gt;All Students:&lt;/h2&gt;\";\nwhile ($row = mysqli_fetch_assoc($result)) {\n    echo $row[\"name\"] . \" - \" . $row[\"email\"] . \"&lt;br&gt;\";\n}\n\n// 5. CLOSE\nmysqli_close($conn);</div><div class=\"lesson-text\"><span class=\"highlight\">Remember the order:</span> Connect → Validate → Query → Fetch → Close</div>",
+      "quiz": {
+        "question": "What is the correct sequence of operations?",
+        "options": ["Query → Connect → Fetch → Close", "Connect → Query → Fetch → Close", "Connect → Fetch → Query → Close", "Close → Query → Fetch → Connect"],
+        "correct": 1
+      }
+    },
+    {
+      "id": 8,
+      "title": "Security: Prevent SQL Injection",
+      "lesson": "<div class=\"lesson-title\">Protecting Your Database</div><div class=\"lesson-text\"><strong>Never</strong> put user input directly into queries. This opens you to <span class=\"highlight\">SQL injection attacks</span>.</div><div class=\"code-block\">// ❌ UNSAFE - SQL Injection Risk!\n$name = $_GET[\"name\"];\n$sql = \"SELECT * FROM students WHERE name = '$name'\";\n// If user enters: ' OR '1'='1 -- they break your security!</div><div class=\"lesson-text\"><strong>✅ SAFE - Use Prepared Statements:</strong></div><div class=\"code-block\">// Prepare statement with placeholder\n$stmt = mysqli_prepare($conn, \"SELECT * FROM students WHERE name = ?\");\n\n// Bind the parameter\nmysqli_stmt_bind_param($stmt, \"s\", $_GET[\"name\"]);\n\n// Execute\nmysqli_stmt_execute($stmt);\n\n// Get results\n$result = mysqli_stmt_get_result($stmt);</div><div class=\"lesson-text\">The <code>?</code> is a placeholder. The <code>\"s\"</code> means string type. User input is now safely escaped!</div>",
+      "quiz": {
+        "question": "What is SQL injection?",
+        "options": ["Injecting coffee into your SQL code", "Using prepared statements in PHP", "Inserting malicious SQL through user input", "A type of MySQL error"],
+        "correct": 2
+      }
+    },
+    {
+      "id": 9,
+      "title": "Other Fetch Functions",
+      "lesson": "<div class=\"lesson-title\">Beyond mysqli_fetch_assoc()</div><div class=\"lesson-text\">PHP provides other ways to fetch results:</div><div class=\"comparison\"><div class=\"comparison-col\"><div class=\"comparison-label\">mysqli_fetch_row()</div><ul><li>Returns numeric array</li><li>Use indices: $row[0], $row[1]</li><li>Slightly faster</li></ul></div><div class=\"comparison-col\"><div class=\"comparison-label\">mysqli_fetch_all()</div><ul><li>Returns all rows at once</li><li>Use for small result sets</li><li>No looping needed</li></ul></div></div><div class=\"code-block\">// Get all rows at once\n$rows = mysqli_fetch_all($result, MYSQLI_ASSOC);\nforeach ($rows as $row) {\n    echo $row[\"name\"] . \"&lt;br&gt;\";\n}</div><div class=\"lesson-text\"><span class=\"highlight\">Use Cases:</span></div><div class=\"lesson-text\"><ul><li><code>mysqli_fetch_assoc()</code>: Best for most situations (clear, readable)</li><li><code>mysqli_fetch_row()</code>: When speed matters and you know column order</li><li><code>mysqli_fetch_all()</code>: For small datasets that need all rows</li></ul></div>",
+      "quiz": {
+        "question": "Which fetch function returns all rows at once?",
+        "options": ["mysqli_fetch_assoc()", "mysqli_fetch_row()", "mysqli_fetch_all()", "mysqli_fetch_first()"],
+        "correct": 2
+      }
+    }
+  ]
+}

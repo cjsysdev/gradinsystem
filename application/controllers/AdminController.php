@@ -756,6 +756,80 @@ class AdminController extends CI_Controller
         redirect('admin/advance_excuses');
     }
 
+    // ── Discussion Management ────────────────────────────────────────────────
+
+    public function manage_discussions()
+    {
+        $this->load->model('discussions');
+
+        $data['discussions'] = $this->discussions->as_array()
+            ->order_by('class_id', 'asc')
+            ->order_by('type', 'asc')
+            ->order_by('created_at', 'desc')
+            ->get_all() ?: [];
+
+        $data['classes'] = $this->db->order_by('class_id')->get('classes')->result_array();
+
+        // Available JSON slugs for interactive discussions
+        $json_path = FCPATH . 'assets/json/';
+        $data['json_slugs'] = array_map(
+            function($f) {
+                return basename($f, '.json');
+            },
+            glob($json_path . '*.json') ?: []
+        );
+
+        $this->load->view('admin/manage_discussions', $data);
+    }
+
+    public function save_discussion()
+    {
+        $this->load->model('discussions');
+
+        $id    = (int) $this->input->post('id');
+        $type  = $this->input->post('type') === 'interactive' ? 'interactive' : 'static';
+        $link  = trim($this->input->post('link') ?? '');
+
+        // For interactive, the link field holds the slug — strip any accidental path prefix
+        if ($type === 'interactive') {
+            $link = preg_replace('/[^a-z0-9_]/', '', strtolower($link));
+        }
+
+        $row = [
+            'class_id'     => (int) $this->input->post('class_id'),
+            'type'         => $type,
+            'title'        => trim($this->input->post('title')),
+            'description'  => trim($this->input->post('description') ?? ''),
+            'link'         => $link,
+            'display_date' => $this->input->post('display_date') ?: null,
+            'updated_at'   => date('Y-m-d H:i:s'),
+        ];
+
+        if ($id) {
+            $this->discussions->update($id, $row);
+            $this->session->set_flashdata('success', 'Discussion updated.');
+        } else {
+            $row['created_at'] = date('Y-m-d H:i:s');
+            $this->discussions->insert($row);
+            $this->session->set_flashdata('success', 'Discussion added.');
+        }
+
+        redirect('AdminController/manage_discussions');
+    }
+
+    public function delete_discussion($id)
+    {
+        if ($this->input->method() !== 'post') {
+            redirect('AdminController/manage_discussions');
+            return;
+        }
+
+        $this->load->model('discussions');
+        $this->discussions->delete((int) $id);
+        $this->session->set_flashdata('success', 'Discussion deleted.');
+        redirect('AdminController/manage_discussions');
+    }
+
     public function search_students()
     {
         header('Content-Type: application/json');

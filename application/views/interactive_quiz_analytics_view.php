@@ -72,7 +72,10 @@
 </style>
 
 <div class="container mt-3 mb-5">
-    <?php $this->load->view('admin/nav_bar') ?>
+     <?php
+    $this->load->view('profile_only');
+    $this->load->view('admin/nav_bar');
+    ?>
 
     <div class="d-flex align-items-center my-3">
         <img src="<?= base_url('assets/streak.png') ?>" height="28" alt="" class="mr-2">

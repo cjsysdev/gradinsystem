@@ -75,8 +75,10 @@
 </style>
 
 <div class="container mt-3 mb-5">
-    <?php $this->load->view('admin/nav_bar') ?>
-
+  <?php
+    $this->load->view('profile_only');
+    $this->load->view('admin/nav_bar');
+    ?>
     <div class="d-flex align-items-center my-3">
         <span style="font-size:24px; margin-right:10px;">&#128218;</span>
         <h5 class="mb-0" style="color:var(--iq-primary);"><strong>Manage Topics</strong></h5>

@@ -6,7 +6,7 @@
             <a href="<?= base_url('classwork') ?>" class="btn btn-outline-success col m-2"><i class="fa fa-book" aria-hidden="true"></i> Classwork</a>
             <!-- <a href="<?= base_url('output_upload') ?>" class="btn btn-outline-secondary col m-2">Project</a> -->
             <a href="<?= base_url('grades') ?>" class="btn btn-outline-secondary col m-2"><i class="fa fa-graduation-cap" aria-hidden="true"></i> Grades</a>
-            <a href="<?= base_url('discussion') ?>" class="btn btn-outline-info col m-2"><i class="fa fa-comments" aria-hidden="true"></i> Discussion</a>
+            <a href="<?= base_url('interactive_quiz/topics') ?>" class="btn btn-outline-info col m-2"><i class="fa fa-comments" aria-hidden="true"></i> Discussion</a>
             <!-- <a href="<?= base_url('advance_excuse') ?>" class="btn btn-outline-secondary col m-2"><i class="fa fa-calendar-times" aria-hidden="true"></i> Excuses</a> -->
         </div>
     <?php else: ?>
