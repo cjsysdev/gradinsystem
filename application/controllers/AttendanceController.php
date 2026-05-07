@@ -72,6 +72,8 @@ class AttendanceController extends CI_Controller
             $date
         );
 
+        $active_poll = $this->db->where('status', 'active')->limit(1)->get('polls')->row_array();
+
         $data = [
             'class'            => $class,
             'record'           => $attendance_record,
@@ -85,6 +87,7 @@ class AttendanceController extends CI_Controller
                 $date
             ),
             'show_red_overlay' => $absences >= 10,
+            'active_poll'      => $active_poll ?: null,
         ];
 
         $this->load->view('attendance_view', $data);
