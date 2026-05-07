@@ -21,12 +21,12 @@
         <a href="<?= base_url(
                         'admin/student_violations'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Student Violations"><i class="fa fa-exclamation-triangle"></i></a>
-        <a href="<?= base_url(
+        <!-- <a href="<?= base_url(
                         'interactive_quiz/analytics'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="IQ Analytics"><i class="fa fa-chart-line"></i></a>
         <a href="<?= base_url(
                         'interactive_quiz/manage_topics'
-                    ) ?>" class="btn btn-outline-secondary col m-2" title="IQ Topics"><i class="fa fa-book"></i></a>
+                    ) ?>" class="btn btn-outline-secondary col m-2" title="IQ Topics"><i class="fa fa-book"></i></a> -->
         <a href="<?= base_url(
                         'admin/students_by_section'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Students by Section"><i class="fa fa-users"></i></a>
@@ -35,6 +35,6 @@
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Semesters"><i class="fa fa-calendar-alt"></i></a>
         <a href="<?= base_url(
                         'admin/student_requests'
-                    ) ?>" class="btn btn-outline-secondary col m-2" title="Student Requests"><i class="fa fa-sign-out-alt"></i></a>
+                    ) ?>" class="btn btn-outline-secondary col m-2" title="Student Requests"><i class="fa fa-hand"></i></a>
     </div>
 </div>

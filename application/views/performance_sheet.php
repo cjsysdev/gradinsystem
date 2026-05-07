@@ -264,7 +264,7 @@
                                         <span class="text-muted"><?= htmlspecialchars($record['reason']) ?></span>
                                     <?php endif; ?>
                                     <?php if (!empty($record['status']) && $record['status'] !== 'absent'): ?>
-                                        <span class="badge badge-info ml-1"><?= ucfirst($record['status']) ?></span>
+                                        <!-- <span class="badge badge-info ml-1"><?= ucfirst($record['status']) ?></span> -->
                                     <?php endif; ?>
                                 </div>
                             </li>
