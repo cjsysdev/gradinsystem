@@ -151,7 +151,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="fa fa-calendar-times"></i> Submit Advance Excuse</h5>
+                <h5 class="modal-title">Submit Advance Excuse</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form method="post" action="<?= base_url('advance_excuse/submit') ?>">
@@ -179,6 +179,14 @@
                         <textarea name="reason" class="form-control" rows="4"
                                   placeholder="Explain the reason for your absence…" required maxlength="1000"></textarea>
                     </div>
+                    <div class="form-group mt-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="absenceAgreement" required>
+                            <label class="form-check-label text-muted small" for="absenceAgreement">
+                                I understand and acknowledge that this absence is my own responsibility. I will coordinate with my instructor regarding any missed lessons, activities, or requirements during my absence. <span class="text-danger">*</span>
+                            </label>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -194,7 +202,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="fa fa-sign-out-alt"></i> Request Leaving Pass</h5>
+                <h5 class="modal-title">Request Leaving Pass</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form method="post" action="<?= base_url('leaving_pass/submit') ?>">
@@ -221,6 +229,14 @@
                         <label class="font-weight-bold">Reason <span class="text-danger">*</span></label>
                         <textarea name="reason" class="form-control" rows="4"
                                   placeholder="Explain why you need to leave class early…" required maxlength="1000"></textarea>
+                    </div>
+                    <div class="form-group mt-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="earlyLeaveAgreement" required>
+                            <label class="form-check-label text-muted small" for="earlyLeaveAgreement">
+                                I understand and acknowledge that leaving class early is my own decision. I take full responsibility for any missed discussions, activities, and risks that occur after my departure. <span class="text-danger">*</span>
+                            </label>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">

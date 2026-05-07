@@ -66,28 +66,14 @@ $sections_json = json_encode($topic_data['sections'] ?? [], JSON_HEX_TAG | JSON_
         <!-- Header -->
         <div class="header">
             <div class="header-top">
-                <div class="header-title"><?= $title ?></div>
-                <!-- <button class="header-close" onclick="confirmExit()">&#x2715;</button> -->
-                <a class="button header-close" href="<?= base_url('interactive_quiz/topics') ?>" style="text-decoration:none;">✕</a>
-            </div>
-
-            <div class="stats-bar">
-                <div class="stat-item">
-                    <div class="stat-label">Score</div>
-                    <div class="stat-value" id="score">0</div>
+                <button class="header-close" onclick="exitQuiz()">&#x2715;</button>
+                <div class="progress-section">
+                    <div class="progress-fill" id="progressFill"></div>
                 </div>
-                <div class="stat-item">
-                    <div class="stat-label">Streak &#x1F525;</div>
-                    <div class="stat-value" id="streak">0</div>
+                <div class="header-score">
+                    <span>&#x2B50;</span>
+                    <span id="score">0</span>
                 </div>
-                <div class="stat-item">
-                    <div class="stat-label">Progress</div>
-                    <div class="stat-value" id="progress">1/<?= $section_count ?></div>
-                </div>
-            </div>
-
-            <div class="progress-section">
-                <div class="progress-fill" id="progressFill"></div>
             </div>
         </div>
 
@@ -155,6 +141,7 @@ $sections_json = json_encode($topic_data['sections'] ?? [], JSON_HEX_TAG | JSON_
         let answered       = false;
         let currentShuffledOptions = [];
         let currentCorrectIndex    = 0;
+        let streakHighlight        = false;
 
         // ── Fisher-Yates shuffle ────────────────────────────────────
         function shuffleArray(array) {
@@ -216,6 +203,7 @@ $sections_json = json_encode($topic_data['sections'] ?? [], JSON_HEX_TAG | JSON_
         // ── Interaction ─────────────────────────────────────────────
         function selectOption(index) {
             if (answered) return;
+            enterFullscreen();
             document.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
             document.querySelector(`[data-index="${index}"]`).classList.add('selected');
             selectedOption = index;
@@ -239,13 +227,14 @@ $sections_json = json_encode($topic_data['sections'] ?? [], JSON_HEX_TAG | JSON_
                 score++;
                 streak++;
                 bestStreak = Math.max(bestStreak, streak);
-                if (streak > 0 && streak % 3 === 0) showStreakPopup(streak);
+                if (streak > 0 && streak % 3 === 0) { streakHighlight = true; showStreakPopup(streak); }
             } else {
                 document.querySelector(`[data-index="${selectedOption}"]`).classList.add('incorrect');
                 document.querySelector(`[data-index="${currentCorrectIndex}"]`).classList.add('correct');
                 feedback.className   = 'feedback show incorrect';
                 feedback.textContent = `✗ Incorrect. The correct answer is option ${currentCorrectIndex + 1}.`;
                 streak = 0;
+                streakHighlight = false;
             }
 
             updateUI();
@@ -288,8 +277,9 @@ $sections_json = json_encode($topic_data['sections'] ?? [], JSON_HEX_TAG | JSON_
 
         function restartQuiz() {
             currentSection = score = streak = bestStreak = 0;
-            selectedOption = null;
-            answered       = false;
+            selectedOption  = null;
+            answered        = false;
+            streakHighlight = false;
             document.getElementById('congratsModal').classList.remove('show');
             document.getElementById('congratsBackdrop').classList.remove('show');
             renderContent();
@@ -303,16 +293,38 @@ $sections_json = json_encode($topic_data['sections'] ?? [], JSON_HEX_TAG | JSON_
 
         // ── UI sync ─────────────────────────────────────────────────
         function updateUI() {
-            document.getElementById('score').textContent    = score;
-            document.getElementById('streak').textContent   = streak;
-            document.getElementById('progress').textContent = `${currentSection + 1}/${sections.length}`;
-            document.getElementById('progressFill').style.width =
-                `${((currentSection + 1) / sections.length) * 100}%`;
+            document.getElementById('score').textContent = score;
+
+            const fill = document.getElementById('progressFill');
+            fill.style.width = `${((currentSection + 1) / sections.length) * 100}%`;
+            fill.classList.toggle('streak-active', streakHighlight);
 
             document.getElementById('backBtn').disabled = currentSection === 0;
             document.getElementById('submitBtn').textContent = answered
                 ? (currentSection === sections.length - 1 ? 'Finish' : 'Next →')
                 : 'Submit';
+        }
+
+        // ── Fullscreen ──────────────────────────────────────────────
+        const TOPICS_URL = '<?= base_url('interactive_quiz/topics') ?>';
+
+        function enterFullscreen() {
+            const el = document.documentElement;
+            const req = el.requestFullscreen || el.webkitRequestFullscreen
+                     || el.mozRequestFullScreen || el.msRequestFullscreen;
+            if (req) req.call(el).catch(() => {});
+        }
+
+        function exitQuiz() {
+            const done = document.fullscreenElement || document.webkitFullscreenElement;
+            if (done) {
+                (document.exitFullscreen || document.webkitExitFullscreen
+                    || document.mozCancelFullScreen || document.msExitFullscreen)
+                    .call(document)
+                    .finally(() => { window.location.href = TOPICS_URL; });
+            } else {
+                window.location.href = TOPICS_URL;
+            }
         }
 
         window.addEventListener('load', renderContent);

@@ -1,0 +1,161 @@
+{
+    "topic": "php_mysql_connect",
+    "title": "PHP MySQL Connect",
+    "description": "Interactive Learning",
+    "congratsText": "You mastered PHP MySQL Connect - Procedural vs PDO!",
+    "sections": [
+        {
+            "id": 0,
+            "title": "Three Ways to Connect",
+            "lesson": "<div class=\"lesson-title\">Three Ways to Connect</div><div class=\"lesson-text\">PHP offers <span class=\"highlight\">three methods</span> to connect to a MySQL database. Each is supported in modern PHP, and each has a different style.</div><div class=\"comparison\"><div class=\"comparison-col\"><div class=\"comparison-label\">MySQLi Procedural</div><ul><li>Function-based style</li><li>Uses mysqli_connect()</li><li>MySQL-only</li><li>Beginner-friendly</li></ul></div><div class=\"comparison-col\"><div class=\"comparison-label\">PDO</div><ul><li>Object-oriented style</li><li>Uses new PDO()</li><li>Works with 12+ databases</li><li>Industry standard</li></ul></div></div><div class=\"lesson-text\">There is also <strong>MySQLi OOP</strong>, which mirrors the procedural approach in object-oriented syntax. This topic focuses on <span class=\"highlight\">Procedural and PDO</span> — the two most commonly taught approaches.</div>",
+            "quiz": {
+                "question": "Which connection method works with databases beyond just MySQL?",
+                "options": [
+                    "MySQLi Procedural, because it is the oldest",
+                    "MySQLi OOP, because objects are more flexible",
+                    "PDO, because it supports many database drivers",
+                    "All three methods support multiple databases equally"
+                ],
+                "correct": 2
+            }
+        },
+        {
+            "id": 1,
+            "title": "mysqli_connect() Parameters",
+            "lesson": "<div class=\"lesson-title\">MySQLi Procedural: mysqli_connect()</div><div class=\"lesson-text\"><code>mysqli_connect()</code> is the core function for the procedural approach. It takes four parameters and returns a connection resource.</div><div class=\"code-block\">$servername = \"localhost\";\n$username   = \"root\";\n$password   = \"\";\n$dbname     = \"school_db\";\n\n$conn = mysqli_connect($servername, $username, $password, $dbname);</div><div class=\"lesson-text\"><strong>The four parameters (in order):</strong></div><div class=\"lesson-text\"><ul><li><strong>Host</strong> — the server address, usually <code>\"localhost\"</code></li><li><strong>Username</strong> — your database user, usually <code>\"root\"</code> locally</li><li><strong>Password</strong> — empty string <code>\"\"</code> for local development</li><li><strong>Database name</strong> — the specific database to use</li></ul></div><div class=\"lesson-text\"><span class=\"highlight\">Note:</span> The database name is the 4th parameter. A common mistake is mixing up the order.</div>",
+            "quiz": {
+                "question": "What is wrong with this mysqli_connect() call?",
+                "code": "$conn = mysqli_connect(\"root\", \"localhost\", \"\", \"school_db\");",
+                "options": [
+                    "The database name should come before the password",
+                    "The host and username arguments are swapped",
+                    "The password must never be an empty string",
+                    "mysqli_connect() needs five arguments here"
+                ],
+                "correct": 1
+            }
+        },
+        {
+            "id": 2,
+            "title": "Checking a MySQLi Connection",
+            "lesson": "<div class=\"lesson-title\">MySQLi Procedural: Checking the Connection</div><div class=\"lesson-text\">Always verify the connection before running queries. Use <span class=\"highlight\">if (!$conn)</span> to detect failure and <code>mysqli_connect_error()</code> to get the error message.</div><div class=\"code-block\">$conn = mysqli_connect(\"localhost\", \"root\", \"\", \"school_db\");\n\nif (!$conn) {\n    die(\"Connection failed: \" . mysqli_connect_error());\n}\n\necho \"Connected successfully!\";</div><div class=\"lesson-text\"><strong>Key functions:</strong></div><div class=\"lesson-text\"><ul><li><code>if (!$conn)</code> — TRUE if the connection failed</li><li><code>mysqli_connect_error()</code> — returns the error as a string</li><li><code>die()</code> — outputs the message and halts the script</li></ul></div><div class=\"lesson-text\">Think of this as the <span class=\"highlight\">safety check at the door</span> — if you cannot get in, there is no point continuing.</div>",
+            "quiz": {
+                "question": "What does mysqli_connect_error() return when a connection fails?",
+                "options": [
+                    "The MySQL error code as an integer",
+                    "A string describing the connection error",
+                    "TRUE to confirm the connection has failed",
+                    "The name of the database that was missing"
+                ],
+                "correct": 1
+            }
+        },
+        {
+            "id": 3,
+            "title": "Closing a MySQLi Connection",
+            "lesson": "<div class=\"lesson-title\">MySQLi Procedural: Closing the Connection</div><div class=\"lesson-text\">When done with the database, close the connection using <code>mysqli_close()</code>. Pass the connection variable as the argument.</div><div class=\"code-block\">$conn = mysqli_connect(\"localhost\", \"root\", \"\", \"school_db\");\n\n// ... run queries here ...\n\nmysqli_close($conn);</div><div class=\"lesson-text\"><strong>Do you have to close it?</strong></div><div class=\"lesson-text\"><ul><li>PHP closes connections automatically at script end</li><li>Calling <code>mysqli_close()</code> explicitly is <span class=\"highlight\">best practice</span></li><li>Frees the MySQL server connection slot immediately</li><li>Important for scripts that open many connections</li></ul></div><div class=\"lesson-text\">MySQLi procedural uses <code>mysqli_close($conn)</code>. PDO uses <code>$conn = null</code> — we will compare these shortly.</div>",
+            "quiz": {
+                "question": "What is the correct way to close a MySQLi procedural connection?",
+                "options": [
+                    "Set the variable to null: $conn = null",
+                    "Call mysqli_close() and pass the connection",
+                    "Call mysqli_disconnect() with the resource",
+                    "Just let PHP close it; there is no function"
+                ],
+                "correct": 1
+            }
+        },
+        {
+            "id": 4,
+            "title": "PDO: new PDO() and the DSN",
+            "lesson": "<div class=\"lesson-title\">PDO: new PDO() and the DSN</div><div class=\"lesson-text\">PDO uses a <span class=\"highlight\">Data Source Name (DSN)</span> — a formatted string naming the driver and database location. You pass it to <code>new PDO()</code> with credentials.</div><div class=\"code-block\">$servername = \"localhost\";\n$username   = \"root\";\n$password   = \"\";\n$dbname     = \"school_db\";\n\n// DSN format: \"driver:host=HOST;dbname=DBNAME\"\n$dsn  = \"mysql:host=$servername;dbname=$dbname\";\n$conn = new PDO($dsn, $username, $password);</div><div class=\"lesson-text\"><strong>DSN breakdown:</strong></div><div class=\"lesson-text\"><ul><li><code>mysql:</code> — the driver prefix (swap to <code>pgsql:</code> for PostgreSQL)</li><li><code>host=localhost</code> — the server address</li><li><code>dbname=school_db</code> — the target database name</li></ul></div><div class=\"lesson-text\">Switching databases only requires <span class=\"highlight\">changing the DSN prefix</span> — the rest of your PDO code stays the same.</div>",
+            "quiz": {
+                "question": "What is the role of the DSN in a PDO connection?",
+                "options": [
+                    "It stores the username and password securely",
+                    "It identifies the driver, host, and database",
+                    "It sets the character encoding for all queries",
+                    "It defines the timeout limit for the connection"
+                ],
+                "correct": 1
+            }
+        },
+        {
+            "id": 5,
+            "title": "PDO: try/catch Error Handling",
+            "lesson": "<div class=\"lesson-title\">PDO: try/catch Error Handling</div><div class=\"lesson-text\">PDO uses <span class=\"highlight\">exceptions</span> for errors instead of a boolean check. Wrap <code>new PDO()</code> in a try/catch block to handle failures gracefully.</div><div class=\"code-block\">try {\n    $conn = new PDO(\n        \"mysql:host=localhost;dbname=school_db\",\n        \"root\", \"\"\n    );\n    $conn-&gt;setAttribute(\n        PDO::ATTR_ERRMODE,\n        PDO::ERRMODE_EXCEPTION\n    );\n    echo \"Connected successfully!\";\n} catch (PDOException $e) {\n    echo \"Connection failed: \" . $e-&gt;getMessage();\n}</div><div class=\"lesson-text\"><strong>Key parts:</strong></div><div class=\"lesson-text\"><ul><li><code>try { }</code> — code that might throw an error</li><li><code>catch (PDOException $e)</code> — catches any PDO-specific exception</li><li><code>$e-&gt;getMessage()</code> — retrieves the error description</li><li><code>PDO::ERRMODE_EXCEPTION</code> — tells PDO to throw exceptions on errors</li></ul></div>",
+            "quiz": {
+                "question": "What does this catch block print if the database name is wrong?",
+                "code": "} catch (PDOException $e) {\n    echo \"Connection failed: \" . $e->getMessage();\n}",
+                "options": [
+                    "It prints TRUE because an exception was thrown",
+                    "It prints the PDO error description as a string",
+                    "It prints nothing; catch blocks suppress output",
+                    "It prints the line number where the error occurred"
+                ],
+                "correct": 1
+            }
+        },
+        {
+            "id": 6,
+            "title": "PDO: Closing the Connection",
+            "lesson": "<div class=\"lesson-title\">PDO: Closing the Connection</div><div class=\"lesson-text\">PDO has no <code>close()</code> function. To close it, simply <span class=\"highlight\">set the variable to null</span>. This destroys the PDO object and releases the connection.</div><div class=\"code-block\">$conn = new PDO(\n    \"mysql:host=localhost;dbname=school_db\",\n    \"root\", \"\"\n);\n\n// ... run queries here ...\n\n// Close PDO connection\n$conn = null;</div><div class=\"lesson-text\"><strong>Why null and not a function?</strong></div><div class=\"lesson-text\"><ul><li>PDO is an object — PHP destroys it when no references remain</li><li>Setting <code>$conn = null</code> removes the last reference, triggering cleanup</li><li>PHP's garbage collector then frees the MySQL connection</li></ul></div><div class=\"lesson-text\">Compare: MySQLi uses <code>mysqli_close($conn)</code>; PDO uses <code>$conn = null</code>. Same outcome, very different syntax — a key <span class=\"highlight\">distinction to remember</span>.</div>",
+            "quiz": {
+                "question": "What is the correct way to close a PDO connection?",
+                "options": [
+                    "Call pdo_close() and pass the connection object",
+                    "Set the connection variable to null",
+                    "Call the connection's own close() method",
+                    "Use unset() with the PDO variable as argument"
+                ],
+                "correct": 1
+            }
+        },
+        {
+            "id": 7,
+            "title": "Side-by-Side Comparison",
+            "lesson": "<div class=\"lesson-title\">Side-by-Side Comparison</div><div class=\"lesson-text\">Here is the full connect-and-close pattern for both approaches side by side:</div><div class=\"code-block\">// === MySQLi PROCEDURAL ===\n$conn = mysqli_connect(\"localhost\", \"root\", \"\", \"school_db\");\nif (!$conn) {\n    die(\"Failed: \" . mysqli_connect_error());\n}\n// ... queries ...\nmysqli_close($conn);</div><div class=\"code-block\">// === PDO ===\ntry {\n    $conn = new PDO(\n        \"mysql:host=localhost;dbname=school_db\",\n        \"root\", \"\"\n    );\n    $conn-&gt;setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);\n    // ... queries ...\n    $conn = null;\n} catch (PDOException $e) {\n    echo \"Failed: \" . $e-&gt;getMessage();\n}</div><div class=\"lesson-text\"><span class=\"highlight\">Key differences:</span> MySQLi uses functions + if/die; PDO uses objects + try/catch. MySQLi closes with <code>mysqli_close()</code>; PDO closes with <code>$conn = null</code>.</div>",
+            "quiz": {
+                "question": "What does this MySQLi code do if the connection fails?",
+                "code": "$conn = mysqli_connect(\"localhost\", \"root\", \"\", \"school_db\");\nif (!$conn) {\n    die(\"Failed: \" . mysqli_connect_error());\n}",
+                "options": [
+                    "It silently retries the connection twice",
+                    "It prints the error and stops the script",
+                    "It throws a PDOException to be caught later",
+                    "It logs the error and continues running"
+                ],
+                "correct": 1
+            }
+        },
+        {
+            "id": 8,
+            "title": "Credentials Best Practices",
+            "lesson": "<div class=\"lesson-title\">Credentials Best Practices</div><div class=\"lesson-text\">Never hardcode database credentials in your page files. Store them in a <span class=\"highlight\">separate config file</span> and include it where needed.</div><div class=\"code-block\">// config.php — store OUTSIDE the public web folder\n&lt;?php\ndefine('DB_HOST', 'localhost');\ndefine('DB_USER', 'root');\ndefine('DB_PASS', '');\ndefine('DB_NAME', 'school_db');</div><div class=\"code-block\">// connection.php\n&lt;?php\nrequire_once 'config.php';\n\n$conn = mysqli_connect(DB_HOST, DB_USER, DB_PASS, DB_NAME);\nif (!$conn) {\n    die(\"Connection failed: \" . mysqli_connect_error());\n}</div><div class=\"lesson-text\"><strong>Security rules:</strong></div><div class=\"lesson-text\"><ul><li>Never commit credentials to version control (Git)</li><li>Place config files outside the public web root</li><li>Use a limited-permission DB user in production, <span class=\"highlight\">not root</span></li><li>Always use strong passwords on live servers</li></ul></div>",
+            "quiz": {
+                "question": "Why should database credentials be stored in a separate config file?",
+                "options": [
+                    "PHP executes faster when credentials are centralized",
+                    "Changes apply everywhere and leaks are less likely",
+                    "It prevents MySQL from rejecting plaintext passwords",
+                    "It is strictly required for PDO connections to work"
+                ],
+                "correct": 1
+            }
+        },
+        {
+            "id": 9,
+            "title": "Which Should You Use?",
+            "lesson": "<div class=\"lesson-title\">Which Should You Use?</div><div class=\"lesson-text\">Both MySQLi Procedural and PDO are valid. The right choice depends on your project:</div><div class=\"comparison\"><div class=\"comparison-col\"><div class=\"comparison-label\">Use MySQLi Procedural when...</div><ul><li>You are only using MySQL</li><li>Teaching or learning DB fundamentals</li><li>Maintaining legacy codebases</li><li>Code simplicity is the priority</li></ul></div><div class=\"comparison-col\"><div class=\"comparison-label\">Use PDO when...</div><ul><li>You might switch databases later</li><li>Building production applications</li><li>Your team uses OOP patterns</li><li>Portability matters</li></ul></div></div><div class=\"lesson-text\"><span class=\"highlight\">Bottom line:</span> For learning and MySQL-only projects, MySQLi Procedural is fine. For scalable applications that may run on different databases, <span class=\"highlight\">PDO is the better choice</span>.</div>",
+            "quiz": {
+                "question": "Which approach is best for apps that may need to switch databases?",
+                "options": [
+                    "MySQLi Procedural, because it is database-agnostic",
+                    "MySQLi OOP, because objects are more portable",
+                    "PDO, because it supports multiple database drivers",
+                    "Either one, since PHP handles switching automatically"
+                ],
+                "correct": 2
+            }
+        }
+    ]
+}

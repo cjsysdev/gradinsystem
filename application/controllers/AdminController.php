@@ -772,14 +772,19 @@ class AdminController extends CI_Controller
 
         $data['classes'] = $this->db->order_by('class_id')->get('classes')->result_array();
 
-        // Available JSON slugs for interactive discussions
+        // Build topic list: slug, title, and section count from each JSON file
         $json_path = FCPATH . 'assets/json/';
-        $data['json_slugs'] = array_map(
-            function($f) {
-                return basename($f, '.json');
-            },
-            glob($json_path . '*.json') ?: []
-        );
+        $data['json_topics'] = [];
+        foreach (glob($json_path . '*.json') ?: [] as $f) {
+            $slug = basename($f, '.json');
+            $meta = json_decode(file_get_contents($f), true);
+            $data['json_topics'][] = [
+                'slug'     => $slug,
+                'title'    => $meta['title'] ?? ucwords(str_replace('_', ' ', $slug)),
+                'sections' => count($meta['sections'] ?? []),
+            ];
+        }
+        usort($data['json_topics'], function($a, $b) { return strcmp($a['title'], $b['title']); });
 
         $this->load->view('admin/manage_discussions', $data);
     }

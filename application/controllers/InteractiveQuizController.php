@@ -79,7 +79,6 @@ class InteractiveQuizController extends CI_Controller
     // For interactive rows, discussions.link holds the JSON topic slug (e.g. '105_mysqli').
     public function list_topics()
     {
-        // classes: 1=CC105, 2=CC103, 3=CC104, 4=WS101, 5=PROFEL-3 (BI)
         $enrollment       = $this->class_student->get(['student_id' => $_SESSION['student_id']]);
         $student_class_id = $enrollment ? (int) $enrollment->class_id : null;
 
@@ -99,6 +98,7 @@ class InteractiveQuizController extends CI_Controller
                     'title'       => $d['title']       ?? '',
                     'description' => $d['description'] ?? '',
                     'url'         => $link ? site_url("InteractiveQuizController/discussion/{$link}") : '#',
+                    'format'      => 'discussion',
                 ];
             } else {
                 $static_topics[] = [
@@ -118,8 +118,45 @@ class InteractiveQuizController extends CI_Controller
     // Admin — list topics and handle uploads/deletes
     public function manage_topics()
     {
+        $this->load->database();
+
+        // All interactive rows from discussions table, grouped by slug
+        $discussion_rows = $this->db->where('type', 'interactive')->get('discussions')->result_array();
+        $linked = [];
+        foreach ($discussion_rows as $d) {
+            if (!empty($d['link'])) {
+                $linked[$d['link']][] = $d;
+            }
+        }
+
+        // Classes for label display
+        $classes = $this->db->order_by('class_id')->get('classes')->result_array();
+        $class_map = [];
+        foreach ($classes as $c) {
+            $class_map[$c['class_id']] = $c['class_code'] . ' — ' . $c['class_name'];
+        }
+
+        // Annotate each JSON topic with its linked discussion records
+        $topics = $this->_build_topic_list();
+        $topic_slugs = [];
+        foreach ($topics as &$t) {
+            $t['discussions'] = $linked[$t['slug']] ?? [];
+            $topic_slugs[] = $t['slug'];
+        }
+        unset($t);
+
+        // Orphaned: discussion record points to a slug with no JSON file
+        $orphaned = [];
+        foreach ($discussion_rows as $d) {
+            if (!empty($d['link']) && !in_array($d['link'], $topic_slugs, true)) {
+                $orphaned[] = $d;
+            }
+        }
+
         $this->load->view('interactive_quiz_manage_topics_view', [
-            'topics' => $this->_build_topic_list(),
+            'topics'    => $topics,
+            'class_map' => $class_map,
+            'orphaned'  => $orphaned,
         ]);
     }
 
@@ -594,18 +631,27 @@ class InteractiveQuizController extends CI_Controller
         $topics = [];
 
         foreach ($files as $file) {
-            $base = basename($file, '.json');
-            $raw  = file_get_contents($file);
-            $meta = json_decode($raw, true);
+            $base     = basename($file, '.json');
+            $raw      = file_get_contents($file);
+            $meta     = json_decode($raw, true);
+            $sections = $meta['sections'] ?? [];
+
+            // Detect format: sections with a 'quiz' key → discussion template;
+            // sections with 'questions' array → multi-question quiz.
+            $format = 'quiz';
+            foreach ($sections as $s) {
+                if (isset($s['quiz'])) { $format = 'discussion'; break; }
+            }
 
             $topics[] = [
                 'slug'      => $base,
                 'title'     => $meta['title']       ?? ucwords(str_replace('_', ' ', $base)),
                 'desc'      => $meta['description'] ?? '',
-                'sections'  => count($meta['sections'] ?? []),
+                'format'    => $format,
+                'sections'  => count($sections),
                 'questions' => array_sum(array_map(function ($s) {
                     return count($s['questions'] ?? []);
-                }, $meta['sections'] ?? [])),
+                }, $sections)),
                 'size'      => filesize($file),
                 'modified'  => filemtime($file),
                 'shuffle'   => !empty($meta['shuffle']),

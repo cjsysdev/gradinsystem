@@ -11,6 +11,9 @@
             <h4>Manage Discussions</h4>
         </div>
         <div class="col-auto">
+            <a href="<?= site_url('InteractiveQuizController/analytics') ?>" class="btn btn-outline-secondary mr-2">
+                <i class="fas fa-chart-bar"></i> Analytics
+            </a>
             <button class="btn btn-primary" data-toggle="modal" data-target="#discussionModal" onclick="openAdd()">
                 <i class="fas fa-plus"></i> Add Discussion
             </button>
@@ -23,6 +26,18 @@
         <?php endif; ?>
     <?php endforeach; ?>
 
+    <?php
+    // Build lookup maps
+    $class_map = [];
+    foreach ($classes as $c) {
+        $class_map[$c['class_id']] = $c['class_code'] . ' — ' . $c['class_name'];
+    }
+    $topic_map = [];
+    foreach ($json_topics as $t) {
+        $topic_map[$t['slug']] = $t;
+    }
+    ?>
+
     <div class="table-responsive mt-3">
         <table class="table table-bordered table-hover table-sm">
             <thead class="thead-light">
@@ -32,7 +47,7 @@
                     <th>Type</th>
                     <th>Title</th>
                     <th>Description</th>
-                    <th>Link / Slug</th>
+                    <th>Link / Topic</th>
                     <th>Display Date</th>
                     <th>Actions</th>
                 </tr>
@@ -41,11 +56,8 @@
             <?php if (empty($discussions)): ?>
                 <tr><td colspan="8" class="text-center text-muted">No discussions yet.</td></tr>
             <?php else: ?>
-                <?php
-                $class_map = [];
-                foreach ($classes as $c) $class_map[$c['class_id']] = $c['class_code'] . ' — ' . $c['class_name'];
-                ?>
                 <?php foreach ($discussions as $d): ?>
+                <?php $slug = $d['link']; $topic = $topic_map[$slug] ?? null; ?>
                 <tr>
                     <td><?= $d['id'] ?></td>
                     <td><span class="badge badge-secondary"><?= htmlspecialchars($class_map[$d['class_id']] ?? $d['class_id']) ?></span></td>
@@ -58,17 +70,38 @@
                     </td>
                     <td><?= htmlspecialchars($d['title']) ?></td>
                     <td class="text-muted" style="font-size:13px;"><?= htmlspecialchars($d['description']) ?></td>
-                    <td><code><?= htmlspecialchars($d['link']) ?></code></td>
+                    <td style="font-size:13px;">
+                        <?php if ($d['type'] === 'interactive' && $topic): ?>
+                            <code><?= htmlspecialchars($slug) ?></code>
+                            <div class="text-muted" style="font-size:11px;"><?= htmlspecialchars($topic['title']) ?> &bull; <?= $topic['sections'] ?> section<?= $topic['sections'] != 1 ? 's' : '' ?></div>
+                        <?php else: ?>
+                            <code><?= htmlspecialchars($slug) ?></code>
+                        <?php endif; ?>
+                    </td>
                     <td style="font-size:13px;"><?= $d['display_date'] ? date('M d, Y', strtotime($d['display_date'])) : '<span class="text-muted">—</span>' ?></td>
                     <td class="text-nowrap">
+                        <?php if ($d['type'] === 'interactive' && $slug): ?>
+                            <a href="<?= site_url('InteractiveQuizController/discussion/' . urlencode($slug)) ?>"
+                               class="btn btn-sm btn-outline-info" target="_blank" title="Preview discussion">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="<?= site_url('InteractiveQuizController/edit_topic/' . urlencode($slug)) ?>"
+                               class="btn btn-sm btn-outline-secondary" title="Edit questions">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                        <?php elseif ($d['type'] === 'static' && $slug): ?>
+                            <a href="<?= site_url($slug) ?>" class="btn btn-sm btn-outline-info" target="_blank" title="Open link">
+                                <i class="fas fa-external-link-alt"></i>
+                            </a>
+                        <?php endif; ?>
                         <button class="btn btn-sm btn-outline-primary"
                             onclick="openEdit(<?= htmlspecialchars(json_encode($d), ENT_QUOTES) ?>)">
-                            Edit
+                            <i class="fas fa-pen"></i>
                         </button>
                         <form method="post" action="<?= site_url('AdminController/delete_discussion/' . $d['id']) ?>"
                               style="display:inline;"
                               onsubmit="return confirm('Delete this discussion?')">
-                            <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                            <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
                         </form>
                     </td>
                 </tr>
@@ -106,7 +139,7 @@
                         <label>Type <span class="text-danger">*</span></label>
                         <select name="type" id="fieldType" class="form-control" onchange="toggleLinkField(this.value)">
                             <option value="static">Static</option>
-                            <option value="interactive">Interactive</option>
+                            <option value="interactive">Interactive (Discussion + Quiz)</option>
                         </select>
                     </div>
 
@@ -126,15 +159,22 @@
                         <input type="text" name="link" id="fieldLink" class="form-control" maxlength="255">
                     </div>
 
-                    <!-- Interactive: slug dropdown -->
+                    <!-- Interactive: slug dropdown with title + section count -->
                     <div class="form-group" id="linkInteractive" style="display:none;">
-                        <label>Topic Slug <small class="text-muted">(JSON file in assets/json/)</small></label>
-                        <select name="link" id="fieldSlug" class="form-control">
+                        <label>Topic <small class="text-muted">(JSON file in assets/json/)</small></label>
+                        <select name="link" id="fieldSlug" class="form-control" disabled>
                             <option value="">— select a topic —</option>
-                            <?php foreach ($json_slugs as $slug): ?>
-                            <option value="<?= htmlspecialchars($slug) ?>"><?= htmlspecialchars($slug) ?></option>
+                            <?php foreach ($json_topics as $t): ?>
+                            <option value="<?= htmlspecialchars($t['slug']) ?>">
+                                <?= htmlspecialchars($t['title']) ?>
+                                (<?= $t['sections'] ?> section<?= $t['sections'] != 1 ? 's' : '' ?>)
+                                — <?= htmlspecialchars($t['slug']) ?>
+                            </option>
                             <?php endforeach; ?>
                         </select>
+                        <small class="form-text text-muted">
+                            Opens via <code>InteractiveQuizController/discussion/{slug}</code>
+                        </small>
                     </div>
 
                     <div class="form-group">
@@ -156,8 +196,6 @@ function toggleLinkField(type) {
     const isInteractive = type === 'interactive';
     document.getElementById('linkStatic').style.display      = isInteractive ? 'none' : '';
     document.getElementById('linkInteractive').style.display = isInteractive ? '' : 'none';
-
-    // Toggle required / disabled so only the visible one is submitted
     document.getElementById('fieldLink').disabled  = isInteractive;
     document.getElementById('fieldSlug').disabled  = !isInteractive;
 }
@@ -196,7 +234,6 @@ function openEdit(d) {
     $('#discussionModal').modal('show');
 }
 
-// On load: ensure correct state
 toggleLinkField('static');
 </script>
 
