@@ -141,6 +141,9 @@ $route['interactive_quiz/delete_question/(:any)'] = 'InteractiveQuizController/d
 $route['interactive_quiz/save_topic_settings/(:any)'] = 'InteractiveQuizController/save_topic_settings/$1';
 $route['interactive_quiz/load/(:any)/(:num)'] = 'InteractiveQuizController/load/$1/$2';
 $route['interactive_quiz/load/(:any)'] = 'InteractiveQuizController/load/$1';
+$route['interactive_quiz/discussion/(:any)'] = 'InteractiveQuizController/discussion/$1';
+$route['interactive_quiz/discussion_results/(:any)'] = 'InteractiveQuizController/discussion_results/$1';
+$route['interactive_quiz/choice_stats/(:any)'] = 'InteractiveQuizController/get_choice_stats/$1';
 
 // Miscellaneous Routes
 $route['test'] = 'Main/test';

@@ -97,7 +97,7 @@ class InteractiveQuizController extends CI_Controller
                 $interactive_topics[] = [
                     'title'       => $d['title']       ?? '',
                     'description' => $d['description'] ?? '',
-                    'url'         => $link ? site_url("InteractiveQuizController/discussion/{$link}") : '#',
+                    'url'         => $link ? site_url("interactive_quiz/discussion/{$link}") : '#',
                     'format'      => 'discussion',
                 ];
             } else {
@@ -320,6 +320,7 @@ class InteractiveQuizController extends CI_Controller
         $question_index = (int) $this->input->post('question_index');
         $question_text  = $this->input->post('question_text');
         $is_correct     = $this->input->post('is_correct') === '1' ? 1 : 0;
+        $chosen_option  = $this->input->post('chosen_option');
         $student_id     = $this->session->student_id ?? 'guest';
 
         if (!$topic || !preg_match('/^[a-z0-9_]+$/', $topic)) {
@@ -338,9 +339,70 @@ class InteractiveQuizController extends CI_Controller
             'question_index' => $question_index,
             'question_text'  => mb_substr((string) $question_text, 0, 1000),
             'is_correct'     => $is_correct,
+            'chosen_option'  => $chosen_option !== null && $chosen_option !== ''
+                                    ? mb_substr((string) $chosen_option, 0, 500)
+                                    : null,
         ]);
 
         echo json_encode(['success' => true]);
+    }
+
+    // Teacher view — shows per-section answer distribution for a discussion topic
+    public function discussion_results($topic)
+    {
+        if (!preg_match('/^[a-z0-9_]+$/', $topic)) {
+            show_error('Invalid topic name.', 400);
+            return;
+        }
+
+        $json_file = $this->json_path . $topic . '.json';
+
+        if (!file_exists($json_file)) {
+            show_error('Topic not found: ' . htmlspecialchars($topic, ENT_QUOTES), 404);
+            return;
+        }
+
+        $topic_data = json_decode(file_get_contents($json_file), true);
+
+        if (!$topic_data || !isset($topic_data['sections'])) {
+            show_error('Invalid or malformed topic data.', 500);
+            return;
+        }
+
+        $validation_error = $this->_validate_discussion_structure($topic_data);
+        if ($validation_error) {
+            show_error($validation_error, 422);
+            return;
+        }
+
+        $this->load->database();
+        $this->Iq_attempts->ensure_table();
+
+        $this->load->view('interactive_quiz_discussion_results_view', [
+            'topic'      => $topic,
+            'topic_data' => $topic_data,
+            'stats'      => $this->Iq_attempts->choice_distribution_by_topic($topic),
+        ]);
+    }
+
+    // AJAX — returns JSON choice distribution for all sections of a topic (teacher refresh)
+    public function get_choice_stats($topic)
+    {
+        header('Content-Type: application/json');
+
+        if (!preg_match('/^[a-z0-9_]+$/', $topic)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Invalid topic name']);
+            return;
+        }
+
+        $this->load->database();
+        $this->Iq_attempts->ensure_table();
+
+        echo json_encode([
+            'topic'   => $topic,
+            'sections' => $this->Iq_attempts->choice_distribution_by_topic($topic),
+        ]);
     }
 
     // Admin — per-section analytics for a given topic
@@ -418,14 +480,21 @@ class InteractiveQuizController extends CI_Controller
         ]);
     }
 
-    // Save the student's score to classworks (requires valid assessment_id)
+    // Save the student's score to classworks (requires valid assessment_id).
+    // Supports both AJAX (returns JSON) and full-page form posts (redirects).
     public function save_result()
     {
         $assessment_id = (int) $this->input->post('assessment_id');
         $score         = (int) $this->input->post('score');
         $student_id    = $this->session->student_id;
+        $is_ajax       = $this->input->is_ajax_request();
 
         if (!$assessment_id || !$student_id) {
+            if ($is_ajax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Missing data']);
+                return;
+            }
             $this->session->set_flashdata('warning', 'Unable to save score — missing data.');
             redirect('attendance');
             return;
@@ -442,11 +511,18 @@ class InteractiveQuizController extends CI_Controller
                 'assessment_id' => $assessment_id,
                 'score'         => $score,
             ]);
-            $this->session->set_flashdata('success', 'Score saved successfully!');
+            $message = 'Score saved successfully!';
         } else {
-            $this->session->set_flashdata('info', 'Score already recorded.');
+            $message = 'Score already recorded.';
         }
 
+        if ($is_ajax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'message' => $message]);
+            return;
+        }
+
+        $this->session->set_flashdata($existing ? 'info' : 'success', $message);
         redirect('attendance');
     }
 

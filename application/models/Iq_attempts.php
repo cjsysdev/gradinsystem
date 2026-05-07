@@ -73,23 +73,48 @@ class Iq_attempts extends CI_Model
         )->result_array();
     }
 
+    // Per-section/question count of how many students chose each option text
+    public function choice_distribution_by_topic($topic)
+    {
+        $rows = $this->db->query(
+            "SELECT section_index, question_index, chosen_option, COUNT(*) as cnt
+             FROM {$this->table}
+             WHERE topic = ? AND chosen_option IS NOT NULL AND chosen_option != ''
+             GROUP BY section_index, question_index, chosen_option",
+            [$topic]
+        )->result_array();
+
+        $dist = [];
+        foreach ($rows as $r) {
+            $dist[(int)$r['section_index']][(int)$r['question_index']][$r['chosen_option']] = (int)$r['cnt'];
+        }
+        return $dist;
+    }
+
     public function ensure_table()
     {
         $this->db->query("
             CREATE TABLE IF NOT EXISTS iq_attempts (
-                id           INT AUTO_INCREMENT PRIMARY KEY,
-                student_id   VARCHAR(50)  NOT NULL,
-                topic        VARCHAR(100) NOT NULL,
-                section_index INT          NOT NULL,
-                section_title VARCHAR(255),
-                question_index INT         NOT NULL,
+                id             INT AUTO_INCREMENT PRIMARY KEY,
+                student_id     VARCHAR(50)  NOT NULL,
+                topic          VARCHAR(100) NOT NULL,
+                section_index  INT          NOT NULL,
+                section_title  VARCHAR(255),
+                question_index INT          NOT NULL,
                 question_text  TEXT,
-                is_correct   TINYINT(1)   NOT NULL DEFAULT 0,
-                created_at   TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+                is_correct     TINYINT(1)   NOT NULL DEFAULT 0,
+                chosen_option  VARCHAR(500) NULL,
+                created_at     TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
                 INDEX idx_topic   (topic),
                 INDEX idx_student (student_id),
                 INDEX idx_ts      (topic, section_index)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+
+        // Add chosen_option to tables created before this column existed
+        $this->db->query("
+            ALTER TABLE {$this->table}
+            ADD COLUMN IF NOT EXISTS chosen_option VARCHAR(500) NULL
         ");
     }
 }
