@@ -47,10 +47,12 @@ if (empty($topic_data)) {
     $topic_data = json_decode(file_get_contents($json_path), true);
 }
 
-$title        = htmlspecialchars($topic_data['title']        ?? 'Interactive Quiz');
+$title         = htmlspecialchars($topic_data['title']        ?? 'Interactive Quiz');
 $congrats_text = htmlspecialchars($topic_data['congratsText'] ?? 'You completed this lesson!');
 $section_count = count($topic_data['sections'] ?? []);
 $sections_json = json_encode($topic_data['sections'] ?? [], JSON_HEX_TAG | JSON_HEX_AMP);
+$topic_slug    = $topic_data['topic'] ?? '';
+$assessment_id = isset($assessment_id) ? (int) $assessment_id : 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -130,7 +132,10 @@ $sections_json = json_encode($topic_data['sections'] ?? [], JSON_HEX_TAG | JSON_
 
     <script>
         // ── Topic data (injected from PHP) ──────────────────────────
-        const sections = <?= $sections_json ?>;
+        const sections      = <?= $sections_json ?>;
+        const TOPIC_SLUG    = <?= json_encode($topic_slug) ?>;
+        const BASE_URL      = <?= json_encode(base_url()) ?>;
+        const ASSESSMENT_ID = <?= $assessment_id ?>;
 
         // ── State ───────────────────────────────────────────────────
         let currentSection = 0;
@@ -142,6 +147,7 @@ $sections_json = json_encode($topic_data['sections'] ?? [], JSON_HEX_TAG | JSON_
         let currentShuffledOptions = [];
         let currentCorrectIndex    = 0;
         let streakHighlight        = false;
+        const answeredSections     = new Set(); // prevent double-recording on back-nav
 
         // ── Fisher-Yates shuffle ────────────────────────────────────
         function shuffleArray(array) {
@@ -215,6 +221,7 @@ $sections_json = json_encode($topic_data['sections'] ?? [], JSON_HEX_TAG | JSON_
 
             const correct  = selectedOption === currentCorrectIndex;
             const feedback = document.getElementById('feedback');
+            const section  = sections[currentSection];
 
             document.querySelectorAll('.option').forEach(o => o.classList.add('disabled'));
             answered = true;
@@ -237,6 +244,24 @@ $sections_json = json_encode($topic_data['sections'] ?? [], JSON_HEX_TAG | JSON_
                 streakHighlight = false;
             }
 
+            // Record this attempt once per section (ignore back-nav re-submits)
+            if (TOPIC_SLUG && !answeredSections.has(currentSection)) {
+                answeredSections.add(currentSection);
+                fetch(BASE_URL + 'interactive_quiz/record_attempt', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        topic:          TOPIC_SLUG,
+                        section_index:  currentSection,
+                        section_title:  section.title || '',
+                        question_index: 0,
+                        question_text:  section.quiz.question || '',
+                        is_correct:     correct ? '1' : '0',
+                        chosen_option:  currentShuffledOptions[selectedOption] || ''
+                    })
+                }).catch(() => {});
+            }
+
             updateUI();
             document.getElementById('submitBtn').textContent = 'Next →';
         }
@@ -255,10 +280,22 @@ $sections_json = json_encode($topic_data['sections'] ?? [], JSON_HEX_TAG | JSON_
         }
 
         function showCongratsModal() {
-            document.getElementById('finalScore').textContent  = score;
-            document.getElementById('bestStreak').textContent  = bestStreak;
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('bestStreak').textContent = bestStreak;
             document.getElementById('congratsModal').classList.add('show');
             document.getElementById('congratsBackdrop').classList.add('show');
+
+            // Save classwork score if this discussion is linked to an assessment
+            if (ASSESSMENT_ID) {
+                fetch(BASE_URL + 'interactive_quiz/save_result', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        assessment_id: ASSESSMENT_ID,
+                        score:         score
+                    })
+                }).catch(() => {});
+            }
         }
 
         // ── Navigation ──────────────────────────────────────────────
