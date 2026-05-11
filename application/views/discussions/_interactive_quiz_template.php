@@ -289,7 +289,10 @@ $assessment_id = isset($assessment_id) ? (int) $assessment_id : 0;
             if (ASSESSMENT_ID) {
                 fetch(BASE_URL + 'interactive_quiz/save_result', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
                     body: new URLSearchParams({
                         assessment_id: ASSESSMENT_ID,
                         score:         score
