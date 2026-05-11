@@ -180,3 +180,18 @@ $route['admin/check_username'] = 'AdminController/check_username';
 $route['admin/semesters'] = 'AdminController/semesters';
 $route['admin/save_semester'] = 'AdminController/save_semester';
 $route['admin/activate_semester/(:num)'] = 'AdminController/activate_semester/$1';
+
+// Poll Routes (Mentimeter-like module)
+$route['poll/install']                   = 'PollController/install';
+$route['poll/dashboard']                 = 'PollController/dashboard';
+$route['poll/create']                    = 'PollController/create';
+$route['poll/present/(:num)']            = 'PollController/present/$1';
+$route['poll/activate_question/(:num)']  = 'PollController/activate_question/$1';
+$route['poll/toggle_results/(:num)']     = 'PollController/toggle_results/$1';
+$route['poll/close_poll/(:num)']         = 'PollController/close_poll/$1';
+$route['poll/delete_poll/(:num)']        = 'PollController/delete_poll/$1';
+$route['poll/results/(:num)']            = 'PollController/results/$1';
+$route['poll/active_poll']               = 'PollController/active_poll';
+$route['poll/answer/(:any)']             = 'PollController/answer/$1';
+$route['poll/student_state/(:any)']      = 'PollController/student_state/$1';
+$route['poll/submit_answer']             = 'PollController/submit_answer';

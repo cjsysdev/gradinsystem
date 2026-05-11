@@ -95,6 +95,38 @@
             </div>
         <?php endif; ?>
 
+        <!-- Active Poll Banner -->
+        <div id="poll-banner" style="display:none">
+            <a id="poll-banner-link" href="#" class="btn btn-block mb-3"
+               style="background:#e94560;color:#fff;font-size:1.1rem;font-weight:700;border-radius:10px;padding:14px;border:none;">
+                <i class="fas fa-poll"></i>
+                <span id="poll-banner-text">Join Active Poll</span>
+                <span class="badge badge-light ml-2" style="font-size:.85rem;animation:pulse 1.2s infinite;">LIVE</span>
+            </a>
+        </div>
+        <style>
+            @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+        </style>
+        <script>
+        (function checkActivePoll() {
+            fetch('<?= base_url('poll/active_poll') ?>')
+                .then(r => r.json())
+                .then(d => {
+                    const banner = document.getElementById('poll-banner');
+                    if (d.ok && d.poll) {
+                        document.getElementById('poll-banner-text').textContent = d.poll.title + ' — Join Now';
+                        document.getElementById('poll-banner-link').href = '<?= base_url('poll/answer/') ?>' + d.poll.pin;
+                        banner.style.display = '';
+                    } else {
+                        banner.style.display = 'none';
+                    }
+                })
+                .catch(() => {});
+            // Re-check every 5 seconds so the banner appears/disappears as teacher starts/stops polls
+            setTimeout(checkActivePoll, 5000);
+        })();
+        </script>
+
         <!-- <a class="btn alert-primary btn-block mb-3" href="./uploads/orange3.exe" download="orange3.exe" src="./uploads/orange3.exe"><i class="fa fa-download" aria-hidden="true" style="margin-right: 10px"> </i>Orange</a> -->
         <!-- <a class="btn alert-primary btn-block mb-3" href="http://192.168.1.137/cmc/public/index.php">Survey</a> -->
         <a class="btn alert-primary btn-block mb-3" href="<?= base_url('output_upload') ?>">Final Project Checkpoint</a>

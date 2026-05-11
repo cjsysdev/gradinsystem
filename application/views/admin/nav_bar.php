@@ -36,5 +36,8 @@
         <a href="<?= base_url(
                         'admin/student_requests'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Student Requests"><i class="fa fa-hand"></i></a>
+        <a href="<?= base_url(
+                        'poll/dashboard'
+                    ) ?>" class="btn btn-outline-danger col m-2" title="Polls"><i class="fa fa-poll"></i></a>
     </div>
 </div>
