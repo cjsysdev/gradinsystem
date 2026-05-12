@@ -13,14 +13,13 @@ class PollController extends CI_Controller
 
     // ── Install ──────────────────────────────────────────────────────────────
 
-    // One-time setup: creates DB tables. Admin only.
     public function install()
     {
         if (!$this->session->teacher) {
             redirect('login');
         }
         $this->Polls->install();
-        $this->session->set_flashdata('success', 'Poll tables created successfully.');
+        $this->session->set_flashdata('success', 'Poll tables ready.');
         redirect('poll/dashboard');
     }
 
@@ -60,12 +59,15 @@ class PollController extends CI_Controller
                 $q_text = trim($q['text'] ?? '');
                 if ($q_text === '') continue;
 
-                $question_id = $this->Polls->add_question($poll_id, $q_text, $qi);
+                $q_type      = ($q['type'] ?? 'multiple_choice') === 'open_ended' ? 'open_ended' : 'multiple_choice';
+                $question_id = $this->Polls->add_question($poll_id, $q_text, $q_type, $qi);
 
-                foreach (($q['options'] ?? []) as $oi => $opt) {
-                    $opt_text = trim($opt);
-                    if ($opt_text !== '') {
-                        $this->Polls->add_option($question_id, $opt_text, $oi);
+                if ($q_type === 'multiple_choice') {
+                    foreach (($q['options'] ?? []) as $oi => $opt) {
+                        $opt_text = trim($opt);
+                        if ($opt_text !== '') {
+                            $this->Polls->add_option($question_id, $opt_text, $oi);
+                        }
                     }
                 }
             }
@@ -90,49 +92,50 @@ class PollController extends CI_Controller
 
         $questions = $this->Polls->get_questions($poll_id);
         foreach ($questions as &$q) {
-            $q['options'] = $this->Polls->get_options($q['question_id']);
+            $q['options'] = ($q['question_type'] === 'multiple_choice')
+                ? $this->Polls->get_options($q['question_id'])
+                : [];
         }
         unset($q);
 
-        $data = [
+        $this->load->view('polls/teacher_present', [
             'poll'      => $poll,
             'questions' => $questions,
-        ];
-        $this->load->view('polls/teacher_present', $data);
+        ]);
     }
 
-    // AJAX: activate a question (teacher presses "Launch")
+    // AJAX: activate a question
     public function activate_question($question_id)
     {
         if (!$this->session->teacher) {
-            $this->_json(['ok' => false, 'msg' => 'Unauthorized'], 403);
+            $this->_json(['ok' => false], 403);
             return;
         }
         $question = $this->Polls->get_question($question_id);
         if (!$question) {
-            $this->_json(['ok' => false, 'msg' => 'Not found'], 404);
+            $this->_json(['ok' => false], 404);
             return;
         }
         $this->Polls->set_active_question($question['poll_id'], $question_id);
         $this->_json(['ok' => true]);
     }
 
-    // AJAX: toggle show_results for current question
+    // AJAX: toggle show_results
     public function toggle_results($question_id)
     {
         if (!$this->session->teacher) {
-            $this->_json(['ok' => false, 'msg' => 'Unauthorized'], 403);
+            $this->_json(['ok' => false], 403);
             return;
         }
         $show = $this->Polls->toggle_show_results($question_id);
         $this->_json(['ok' => true, 'show_results' => (bool) $show]);
     }
 
-    // AJAX: close the poll
+    // AJAX: close poll
     public function close_poll($poll_id)
     {
         if (!$this->session->teacher) {
-            $this->_json(['ok' => false, 'msg' => 'Unauthorized'], 403);
+            $this->_json(['ok' => false], 403);
             return;
         }
         $this->Polls->set_status($poll_id, 'closed');
@@ -140,18 +143,18 @@ class PollController extends CI_Controller
         $this->_json(['ok' => true]);
     }
 
-    // AJAX: delete a poll
+    // AJAX: delete poll
     public function delete_poll($poll_id)
     {
         if (!$this->session->teacher) {
-            $this->_json(['ok' => false, 'msg' => 'Unauthorized'], 403);
+            $this->_json(['ok' => false], 403);
             return;
         }
         $this->Polls->delete_poll($poll_id);
         $this->_json(['ok' => true]);
     }
 
-    // AJAX: live results for teacher display (polls every 2 s)
+    // AJAX: live results for teacher (polls every 2 s)
     public function results($question_id)
     {
         if (!$this->session->teacher) {
@@ -163,33 +166,37 @@ class PollController extends CI_Controller
             $this->_json(['ok' => false], 404);
             return;
         }
+
+        $is_oe = $question['question_type'] === 'open_ended';
+
         $this->_json([
-            'ok'           => true,
-            'results'      => $this->Polls->get_results($question_id),
-            'total'        => $this->Polls->get_total_responses($question_id),
-            'show_results' => (bool) $question['show_results'],
+            'ok'            => true,
+            'question_type' => $question['question_type'],
+            'results'       => $is_oe
+                ? $this->Polls->get_oe_results($question_id)
+                : $this->Polls->get_mc_results($question_id),
+            'total'         => $this->Polls->get_total_responses($question_id),
+            'show_results'  => (bool) $question['show_results'],
         ]);
     }
 
-    // AJAX: returns the first active poll (for attendance view banner)
+    // AJAX: returns active poll for attendance banner
     public function active_poll()
     {
         $poll = $this->db->where('status', 'active')->limit(1)->get('polls')->row_array();
-        if ($poll) {
-            $this->_json(['ok' => true, 'poll' => ['pin' => $poll['pin'], 'title' => $poll['title']]]);
-        } else {
-            $this->_json(['ok' => true, 'poll' => null]);
-        }
+        $this->_json([
+            'ok'   => true,
+            'poll' => $poll ? ['pin' => $poll['pin'], 'title' => $poll['title']] : null,
+        ]);
     }
 
-    // ── Student: Join (fallback PIN entry — kept for direct URL access) ──────
+    // ── Student: Join (redirect to attendance if no active poll) ─────────────
 
     public function join($pin = null)
     {
         if (!$this->session->student_id) {
             redirect('login');
         }
-
         if ($pin) {
             $poll = $this->Polls->get_poll_by_pin($pin);
             if ($poll && $poll['status'] === 'active') {
@@ -198,7 +205,6 @@ class PollController extends CI_Controller
             }
             $this->session->set_flashdata('error', 'Poll not found or not active.');
         }
-
         redirect('attendance');
     }
 
@@ -211,14 +217,13 @@ class PollController extends CI_Controller
         $poll = $this->Polls->get_poll_by_pin(strtoupper($pin));
         if (!$poll || $poll['status'] !== 'active') {
             $this->session->set_flashdata('error', 'Poll is not active.');
-            redirect('poll/join');
+            redirect('attendance');
             return;
         }
-
         $this->load->view('polls/student_answer', ['poll' => $poll]);
     }
 
-    // AJAX: student checks current state (active question, whether they answered, results if shown)
+    // AJAX: student checks current state
     public function student_state($pin)
     {
         if (!$this->session->student_id) {
@@ -244,27 +249,30 @@ class PollController extends CI_Controller
         $qid      = (int) $poll['active_question_id'];
         $sid      = $this->session->student_id;
         $question = $this->Polls->get_question($qid);
-        $options  = $this->Polls->get_options($qid);
         $answered = $this->Polls->has_answered($qid, $sid);
+        $is_oe    = $question['question_type'] === 'open_ended';
 
         $payload = [
-            'ok'          => true,
-            'status'      => 'active',
-            'question_id' => $qid,
-            'question'    => $question['question_text'],
-            'options'     => $options,
-            'answered'    => $answered,
+            'ok'            => true,
+            'status'        => 'active',
+            'question_id'   => $qid,
+            'question'      => $question['question_text'],
+            'question_type' => $question['question_type'],
+            'options'       => $is_oe ? [] : $this->Polls->get_options($qid),
+            'answered'      => $answered,
         ];
 
         if ($answered && $question['show_results']) {
-            $payload['results'] = $this->Polls->get_results($qid);
-            $payload['total']   = $this->Polls->get_total_responses($qid);
+            $payload['results'] = $is_oe
+                ? $this->Polls->get_oe_results($qid)
+                : $this->Polls->get_mc_results($qid);
+            $payload['total'] = $this->Polls->get_total_responses($qid);
         }
 
         $this->_json($payload);
     }
 
-    // AJAX: student submits an answer
+    // AJAX: student submits answer (multiple-choice or open-ended)
     public function submit_answer()
     {
         if (!$this->session->student_id) {
@@ -272,27 +280,48 @@ class PollController extends CI_Controller
             return;
         }
 
-        $question_id = (int) $this->input->post('question_id');
-        $option_id   = (int) $this->input->post('option_id');
-        $student_id  = $this->session->student_id;
+        $question_id   = (int) $this->input->post('question_id');
+        $option_id     = $this->input->post('option_id')   ?: null;
+        $response_text = trim($this->input->post('response_text') ?? '');
+        $student_id    = $this->session->student_id;
 
-        if (!$question_id || !$option_id) {
-            $this->_json(['ok' => false, 'msg' => 'Missing fields'], 400);
+        if (!$question_id) {
+            $this->_json(['ok' => false, 'msg' => 'Missing question_id'], 400);
             return;
         }
 
-        // Verify option belongs to question
-        $option = $this->db->get_where('poll_options', [
-            'option_id'   => $option_id,
-            'question_id' => $question_id,
-        ])->row_array();
-
-        if (!$option) {
-            $this->_json(['ok' => false, 'msg' => 'Invalid option'], 400);
+        $question = $this->Polls->get_question($question_id);
+        if (!$question) {
+            $this->_json(['ok' => false, 'msg' => 'Question not found'], 404);
             return;
         }
 
-        $saved = $this->Polls->submit_response($question_id, $option_id, $student_id);
+        if ($question['question_type'] === 'multiple_choice') {
+            $option_id = (int) $option_id;
+            if (!$option_id) {
+                $this->_json(['ok' => false, 'msg' => 'Missing option_id'], 400);
+                return;
+            }
+            // Verify option belongs to question
+            $opt = $this->db->get_where('poll_options', [
+                'option_id'   => $option_id,
+                'question_id' => $question_id,
+            ])->row_array();
+            if (!$opt) {
+                $this->_json(['ok' => false, 'msg' => 'Invalid option'], 400);
+                return;
+            }
+            $saved = $this->Polls->submit_response($question_id, $student_id, $option_id, null);
+        } else {
+            // open_ended
+            if ($response_text === '') {
+                $this->_json(['ok' => false, 'msg' => 'Response cannot be empty'], 400);
+                return;
+            }
+            $response_text = mb_substr($response_text, 0, 100);
+            $saved = $this->Polls->submit_response($question_id, $student_id, null, $response_text);
+        }
+
         $this->_json(['ok' => true, 'saved' => $saved]);
     }
 
