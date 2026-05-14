@@ -374,19 +374,36 @@ class GradesController extends CI_Controller
     private function buildRecommendations(array $midtermGrades, $finalGrades, float $midtermTotal, float $overallTotal): array
     {
         $recommendations = [];
-        $attendance = $this->student_master->get_attendance_summary($this->session->student_id);
-        $absences = (int)($attendance['absent_count'] ?? 0);
-        $lates   = (int)($attendance['late_count'] ?? 0);
+        $attendance  = $this->student_master->get_attendance_summary($this->session->student_id);
+        $absences    = (int)($attendance['absent_count']  ?? 0);
+        $lates       = (int)($attendance['late_count']    ?? 0);
+        $present     = (int)($attendance['present_count'] ?? 0);
+        $excused     = (int)($attendance['excuse_count']  ?? 0);
+        $totalSessions = $absences + $lates + $present + $excused;
+        $attendanceRate = $totalSessions > 0
+            ? round(($present + $excused) / $totalSessions * 100, 1)
+            : 100;
 
+        // --- Attendance ---
         if ($absences >= 4) {
             $recommendations[] = [
                 'type'    => 'danger',
-                'message' => "Critical: You have $absences absences this semester. Excessive absences may result in automatic failure.",
+                'message' => "Critical: You have $absences absences this semester (attendance rate: {$attendanceRate}%). Excessive absences may result in automatic failure.",
             ];
         } elseif ($absences >= 2) {
             $recommendations[] = [
                 'type'    => 'warning',
-                'message' => "Warning: You have $absences absences. Please improve your attendance to avoid grade penalties.",
+                'message' => "Warning: You have $absences absences (attendance rate: {$attendanceRate}%). Please improve your attendance to avoid grade penalties.",
+            ];
+        } elseif ($absences === 0 && $lates === 0) {
+            $recommendations[] = [
+                'type'    => 'success',
+                'message' => "Perfect attendance! You have no absences or tardiness this semester. Keep it up!",
+            ];
+        } elseif ($absences === 0) {
+            $recommendations[] = [
+                'type'    => 'info',
+                'message' => "Good attendance! You have no absences this semester. Your attendance rate is {$attendanceRate}%.",
             ];
         }
 
@@ -397,9 +414,18 @@ class GradesController extends CI_Controller
             ];
         }
 
+        // --- Per-component alerts + track weakest ---
+        $weakest    = null;
+        $weakestPct = PHP_INT_MAX;
+
         foreach ($midtermGrades as $grade) {
-            $pct  = (float)($grade['percentage'] ?? 0);
-            $name = $grade['iotype_name'] ?? 'Component';
+            $pct    = (float)($grade['percentage']         ?? 0);
+            $name   = $grade['iotype_name']                ?? 'Component';
+            $weight = (float)($grade['iotype_percentage']  ?? 0);
+            if ($pct < $weakestPct) {
+                $weakestPct = $pct;
+                $weakest    = ['term' => 'Midterm', 'name' => $name, 'pct' => $pct, 'weight' => $weight];
+            }
             if ($pct < 60) {
                 $recommendations[] = [
                     'type'    => 'danger',
@@ -414,9 +440,20 @@ class GradesController extends CI_Controller
         }
 
         if (!empty($finalGrades)) {
+            // Build midterm map for trend analysis
+            $midtermMap = [];
+            foreach ($midtermGrades as $g) {
+                $midtermMap[$g['iotype_name'] ?? ''] = (float)($g['percentage'] ?? 0);
+            }
+
             foreach ($finalGrades as $grade) {
-                $pct  = (float)($grade['percentage'] ?? 0);
-                $name = $grade['iotype_name'] ?? 'Component';
+                $pct    = (float)($grade['percentage']        ?? 0);
+                $name   = $grade['iotype_name']               ?? 'Component';
+                $weight = (float)($grade['iotype_percentage'] ?? 0);
+                if ($pct < $weakestPct) {
+                    $weakestPct = $pct;
+                    $weakest    = ['term' => 'Final', 'name' => $name, 'pct' => $pct, 'weight' => $weight];
+                }
                 if ($pct < 60) {
                     $recommendations[] = [
                         'type'    => 'danger',
@@ -428,9 +465,79 @@ class GradesController extends CI_Controller
                         'message' => "Final $name: Your score (" . round($pct, 1) . "%) needs improvement. Keep up your study efforts.",
                     ];
                 }
+
+                // Trend: compare final vs midterm for same component
+                if (isset($midtermMap[$name])) {
+                    $diff = $pct - $midtermMap[$name];
+                    if ($diff <= -10) {
+                        $recommendations[] = [
+                            'type'    => 'warning',
+                            'message' => "Trend — $name: Your final score (" . round($pct, 1) . "%) dropped " . round(abs($diff), 1) . "% from midterm. Identify what changed and address it.",
+                        ];
+                    } elseif ($diff >= 10) {
+                        $recommendations[] = [
+                            'type'    => 'success',
+                            'message' => "Improvement — $name: You improved by " . round($diff, 1) . "% from midterm to final. Your efforts are paying off!",
+                        ];
+                    }
+                }
             }
         }
 
+        // --- Weakest component callout (only when not already in danger zone) ---
+        if ($weakest !== null && $weakest['pct'] >= 60 && $weakest['pct'] < 80) {
+            $recommendations[] = [
+                'type'    => 'info',
+                'message' => "Focus Area — {$weakest['term']} {$weakest['name']} ({$weakest['weight']}% weight): At " . round($weakest['pct'], 1) . "%, this is your lowest-scoring component. A targeted effort here will improve your overall grade the most.",
+            ];
+        }
+
+        // --- Grade needed to pass final term (shown only before final grades exist) ---
+        if (empty($finalGrades) && $midtermTotal > 0) {
+            // overallFinalGrade = midterm * 0.5 + final * 0.5  →  final needed = (75 - midterm*0.5) / 0.5
+            $needed = (75 - $midtermTotal * 0.5) / 0.5;
+            if ($needed > 100) {
+                $recommendations[] = [
+                    'type'    => 'danger',
+                    'message' => "Even a perfect final term score may not be enough to achieve a passing grade. Speak with your instructor about your options.",
+                ];
+            } elseif ($needed > 0) {
+                $recommendations[] = [
+                    'type'    => 'info',
+                    'message' => "To achieve a passing overall grade (75%), you need at least " . round($needed, 1) . "% in the final term.",
+                ];
+            } else {
+                $recommendations[] = [
+                    'type'    => 'success',
+                    'message' => "Your midterm performance (" . round($midtermTotal, 1) . "%) ensures you will pass even with a minimum final term score. Stay consistent!",
+                ];
+            }
+        }
+
+        // --- Interactive quiz performance ---
+        $iqRow = $this->db->query(
+            "SELECT COUNT(*) AS total, SUM(is_correct) AS correct,
+                    ROUND(SUM(is_correct) / COUNT(*) * 100, 1) AS accuracy
+             FROM iq_attempts WHERE student_id = ?",
+            [$this->session->student_id]
+        )->row_array();
+
+        if (!empty($iqRow) && (int)($iqRow['total'] ?? 0) > 0) {
+            $iqAccuracy = (float)($iqRow['accuracy'] ?? 0);
+            if ($iqAccuracy < 50) {
+                $recommendations[] = [
+                    'type'    => 'warning',
+                    'message' => "Interactive Quizzes: Your overall accuracy is " . round($iqAccuracy, 1) . "%. Revisit the discussion topics to strengthen your conceptual understanding.",
+                ];
+            } elseif ($iqAccuracy >= 80) {
+                $recommendations[] = [
+                    'type'    => 'success',
+                    'message' => "Interactive Quizzes: Great work! Your overall quiz accuracy is " . round($iqAccuracy, 1) . "%. Keep reinforcing your knowledge.",
+                ];
+            }
+        }
+
+        // --- Overall grade summary ---
         $referenceGrade = !empty($finalGrades) ? $overallTotal : $midtermTotal;
         if ($referenceGrade < 60) {
             $recommendations[] = [

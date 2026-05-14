@@ -65,10 +65,20 @@
         <?php endif; ?>
 
         <?php if (!empty($recommendations)): ?>
+            <?php
+            $icons = [
+                'danger'  => 'fa-exclamation-circle',
+                'warning' => 'fa-exclamation-triangle',
+                'info'    => 'fa-info-circle',
+                'success' => 'fa-check-circle',
+            ];
+            ?>
             <div class="category-btns mt-4 mb-5">
                 <h4 class="text-center">Recommendations</h4>
                 <?php foreach ($recommendations as $rec): ?>
-                    <div class="alert alert-<?= htmlspecialchars($rec['type']) ?>">
+                    <?php $type = htmlspecialchars($rec['type']); ?>
+                    <div class="alert alert-<?= $type ?>">
+                        <i class="fas <?= $icons[$rec['type']] ?? 'fa-info-circle' ?> mr-2"></i>
                         <?= htmlspecialchars($rec['message']) ?>
                     </div>
                 <?php endforeach; ?>
