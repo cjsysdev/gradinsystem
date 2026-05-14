@@ -72,6 +72,18 @@ class AttendanceController extends CI_Controller
             $date
         );
 
+        $direct_absent_count = $this->attendance->count_direct_absences(
+            $student_id,
+            $start_date,
+            $date
+        );
+
+        $has_readmitted = $this->attendance->has_readmission(
+            $student_id,
+            $start_date,
+            $date
+        );
+
         $data = [
             'class'            => $class,
             'record'           => $attendance_record,
@@ -84,7 +96,8 @@ class AttendanceController extends CI_Controller
                 $start_date,
                 $date
             ),
-            'show_red_overlay' => $absences >= 10,
+            'show_red_overlay' => $direct_absent_count >= 3,
+            'has_readmitted'   => $has_readmitted,
         ];
 
         $this->load->view('attendance_view', $data);

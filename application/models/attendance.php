@@ -123,7 +123,7 @@ class attendance extends MY_Model
             FROM attendance a
             JOIN class_schedule cs ON a.schedule_id = cs.schedule_id 
             JOIN semester_master sem ON cs.semester_id = sem.trans_no
-            WHERE cs.section = ? AND student_id = ? AND (status = 'present' OR status = 'excuse')
+            WHERE cs.section = ? AND student_id = ? AND (status = 'present' OR status = 'excuse' OR status = 'readmitted')
             AND a.date >= ? AND a.date <= ?
             AND sem.is_active = 1
         ",
@@ -165,11 +165,11 @@ class attendance extends MY_Model
         // Calculate absences
         $absent_days = (int)$max_present_days - (int)$student_present_days;
 
-        // Check if the student has been absent for 6 or more days
-        if ($absent_days >= 6) {
+        // Check if the student has been absent for 3 or more days
+        if ($absent_days >= 3) {
             $this->session->set_flashdata(
                 'warning',
-                'You have been absent for 6 or more sessions. Please process your re-admission accourdingly'
+                'You have been absent for 3 or more sessions. Please process your re-admission accordingly.'
             );
         }
 
@@ -185,7 +185,7 @@ class attendance extends MY_Model
             JOIN class_schedule cs ON a.schedule_id = cs.schedule_id
             JOIN semester_master sem ON cs.semester_id = sem.trans_no
             JOIN classes c ON cs.class_id = c.class_id
-            WHERE cs.section = ? AND a.student_id = ? AND a.status = 'absent'
+            WHERE cs.section = ? AND a.student_id = ? AND a.status IN ('absent', 'readmitted')
             AND a.date >= ? AND a.date <= ?
             AND sem.is_active = 1
         ",
@@ -286,6 +286,41 @@ class attendance extends MY_Model
         $query = $this->db->query($sql, [$date, $schedule_id, $date, $schedule_id]);
 
         return $query->result_array();
+    }
+
+    public function count_direct_absences($student_id, $start_date, $end_date)
+    {
+        $query = $this->db->query(
+            "SELECT COUNT(*) as cnt FROM attendance a
+             JOIN class_schedule cs ON a.schedule_id = cs.schedule_id
+             JOIN semester_master sem ON cs.semester_id = sem.trans_no
+             WHERE a.student_id = ? AND a.status = 'absent'
+             AND a.date >= ? AND a.date <= ? AND sem.is_active = 1",
+            [$student_id, $start_date, $end_date]
+        );
+        return (int)$query->row()->cnt;
+    }
+
+    public function has_readmission($student_id, $start_date, $end_date)
+    {
+        $query = $this->db->query(
+            "SELECT COUNT(*) as cnt FROM attendance a
+             JOIN class_schedule cs ON a.schedule_id = cs.schedule_id
+             JOIN semester_master sem ON cs.semester_id = sem.trans_no
+             WHERE a.student_id = ? AND a.status = 'readmitted'
+             AND a.date >= ? AND a.date <= ? AND sem.is_active = 1",
+            [$student_id, $start_date, $end_date]
+        );
+        return (int)$query->row()->cnt > 0;
+    }
+
+    public function readmit_student_absences($student_id, $start_date)
+    {
+        return $this->db
+            ->where('student_id', (int)$student_id)
+            ->where('status', 'absent')
+            ->where('date >=', $start_date)
+            ->update('attendance', ['status' => 'readmitted']);
     }
 
     public function get_student_status($schedule_id, $date, $status)

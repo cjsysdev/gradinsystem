@@ -164,6 +164,7 @@ $route['manage_json_files'] = 'AdminController/manage_json_files';
 $route['all_submissions/(:num)'] = 'AdminController/all_submissions/$1';
 $route['student_submissions/(:num)'] = 'AdminController/view_student_submissions/$1';
 $route['view_attendance'] = 'AdminController/view_attendance';
+$route['admin/readmit_student'] = 'AdminController/readmit_student';
 $route['active_participation/(:num)'] = 'AdminController/active_participation/$1';
 $route['admin/check_new_submissions_by_assessment/(:num)'] = 'AdminController/check_new_submissions_by_assessment/$1';
 $route['admin/emergency_contacts'] = 'AdminController/emergency_contacts';

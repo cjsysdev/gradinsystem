@@ -479,6 +479,26 @@ class AdminController extends CI_Controller
         }
     }
 
+    public function readmit_student()
+    {
+        header('Content-Type: application/json');
+        if (!$this->input->post()) {
+            echo json_encode(['success' => false, 'message' => 'Invalid request']);
+            return;
+        }
+        $student_id = (int)$this->input->post('student_id');
+        $start_date = $this->input->post('start_date');
+        if (!$student_id || !$start_date || !preg_match('/^\d{4}-\d{2}-\d{2}/', $start_date)) {
+            echo json_encode(['success' => false, 'message' => 'Missing or invalid fields']);
+            return;
+        }
+        $result = $this->attendance->readmit_student_absences($student_id, $start_date);
+        echo json_encode($result
+            ? ['success' => true, 'message' => 'Student re-admitted successfully']
+            : ['success' => false, 'message' => 'Re-admission failed or no absent records found']
+        );
+    }
+
     public function students_by_section()
     {
         $section = $this->input->get('section');

@@ -36,7 +36,7 @@ CREATE TABLE `attendance` (
   `schedule_id` int NOT NULL,
   `student_id` int NOT NULL,
   `date` datetime DEFAULT CURRENT_TIMESTAMP,
-  `status` enum('present','absent','late','excuse','others') NOT NULL,
+  `status` enum('present','absent','late','excuse','others','readmitted') NOT NULL,
   `ip_address` varchar(32) DEFAULT NULL,
   PRIMARY KEY (`attendance_id`),
   KEY `schedule_id` (`schedule_id`),

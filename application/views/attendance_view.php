@@ -180,12 +180,21 @@
         <?php endif; ?>
         <?php foreach ($absences_dates as $absence): ?>
             <div class="row m-1">
-                <div class="col alert alert-secondary">
+                <div class="col alert <?= $absence['status'] === 'readmitted' ? 'alert-success' : 'alert-secondary' ?>">
                     <strong>
                         <?= date('l, F j, Y', strtotime($absence['date'])) ?>
                     </strong>
+                    <?php if ($absence['status'] === 'readmitted'): ?>
+                        <span class="badge badge-success ml-2">Re-admitted</span>
+                    <?php endif; ?>
                 </div>
-                <?php if (!empty($absence['reason'])): ?>
+                <?php if ($absence['status'] === 'readmitted'): ?>
+                    <div class="col-12 p-2" style="background:#d4edda; border-radius:8px; margin-bottom:8px;">
+                        <small class="text-success">
+                            <i class="fa fa-check-circle"></i> This absence has been cleared via re-admission.
+                        </small>
+                    </div>
+                <?php elseif (!empty($absence['reason'])): ?>
                     <div class="col-12 p-2" style="background:#f8f9fa; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.04); margin-bottom:8px;">
                         <div class="d-flex justify-content-between align-items-center">
                             <span><b>Reason:</b> <?= htmlspecialchars($absence['reason']) ?></span>
@@ -276,6 +285,16 @@
         </div>
     </div>
 </div>
+
+<?php if (!empty($has_readmitted) && !(isset($show_red_overlay) && $show_red_overlay)): ?>
+    <div class="alert alert-success alert-dismissible fade show mx-3 mb-3" role="alert">
+        <i class="fa fa-check-circle"></i>
+        <strong>Re-admitted.</strong> Your previous absences have been processed for re-admission.
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+<?php endif; ?>
 
 <?php if (isset($show_red_overlay) && $show_red_overlay): ?>
     <div id="redOverlay">
