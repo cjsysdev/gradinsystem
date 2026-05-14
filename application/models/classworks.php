@@ -24,6 +24,7 @@ class classworks extends MY_Model
             'local_key' => 'assessment_id'
         );
         parent::__construct();
+        $this->load->driver('cache', ['adapter' => 'memcached', 'backup' => 'file']);
     }
 
     public function get_all_submissions($assessment_id)
@@ -51,10 +52,18 @@ class classworks extends MY_Model
 
     public function add_score($classwork_id, $score)
     {
-        return $this->db->set(['score' => $score])
+        $result = $this->db->set(['score' => $score])
             ->where('classwork_id', $classwork_id)
             ->from('classworks')
             ->update();
+
+        $row = $this->db->select('student_id')->from('classworks')->where('classwork_id', $classwork_id)->get()->row();
+        if ($row) {
+            $this->cache->delete('grd_iotype_' . $row->student_id . '_midterm');
+            $this->cache->delete('grd_iotype_' . $row->student_id . '_final');
+        }
+
+        return $result;
     }
 
     public function update_score($classwork_id, $student_id, $score)
@@ -62,6 +71,9 @@ class classworks extends MY_Model
         $this->db->where('classwork_id', $classwork_id);
         $this->db->where('student_id', $student_id);
         $this->db->update('classworks', ['score' => $score]);
+
+        $this->cache->delete('grd_iotype_' . $student_id . '_midterm');
+        $this->cache->delete('grd_iotype_' . $student_id . '_final');
     }
 
     public function getActivitiesGrade($term, $iotype, $student_id)
@@ -117,8 +129,14 @@ class classworks extends MY_Model
 
     public function getGradesByIotype($term, $student_id)
     {
+        $cache_key = 'grd_iotype_' . $student_id . '_' . $term;
+        $cached = $this->cache->get($cache_key);
+        if ($cached !== FALSE) {
+            return $cached;
+        }
+
         $query = $this->db->query("
-                SELECT 
+                SELECT
                     a.iotype_id,
                     i.type AS iotype_name,
                     i.percentage AS iotype_percentage,
@@ -168,16 +186,22 @@ class classworks extends MY_Model
         $result = $query->result_array(); // Return all results grouped by iotype_id
 
         if ($result) {
+            $this->cache->save($cache_key, $result, 300);
             return $result;
-        } else {
-            return null; // or handle the case when no data is found
         }
+        return null;
     }
 
     public function getGradesBySection($term, $section)
     {
+        $cache_key = 'grd_section_' . md5($section . '_' . $term);
+        $cached = $this->cache->get($cache_key);
+        if ($cached !== FALSE) {
+            return $cached;
+        }
+
         $query = $this->db->query("
-                    SELECT 
+                    SELECT
                         cs.section,
                         class.class_code,
                         class.class_name,
@@ -290,13 +314,21 @@ class classworks extends MY_Model
                         cs.section, sm.lastname, sm.firstname;
                 ", [$section, $term]);
 
-        return $query->result_array(); // Return the result as an array of rows
+        $result = $query->result_array();
+        $this->cache->save($cache_key, $result, 300);
+        return $result;
     }
 
-     public function getAllGradesBySection($term)
+    public function getAllGradesBySection($term)
     {
+        $cache_key = 'grd_all_' . $term;
+        $cached = $this->cache->get($cache_key);
+        if ($cached !== FALSE) {
+            return $cached;
+        }
+
         $query = $this->db->query("
-                    SELECT 
+                    SELECT
                         cs.section,
                         class.class_code,
                         class.class_name,
@@ -415,7 +447,9 @@ class classworks extends MY_Model
                         cs.section, sm.lastname, sm.firstname;
                 ", [$term]);
 
-        return $query->result_array(); // Return the result as an array of rows
+        $result = $query->result_array();
+        $this->cache->save($cache_key, $result, 300);
+        return $result;
     }
 
     public function get_submissions_by_student($student_id)

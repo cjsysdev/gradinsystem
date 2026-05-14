@@ -14,6 +14,7 @@ class student_master extends MY_Model
             'local_key' => 'trans_no'
         );
         parent::__construct();
+        $this->load->driver('cache', ['adapter' => 'memcached', 'backup' => 'file']);
     }
 
     public function get_student_classworks($student_id)
@@ -74,6 +75,12 @@ class student_master extends MY_Model
 
     public function get_attendance_summary($student_id)
     {
+        $cache_key = 'att_summary_' . $student_id;
+        $cached = $this->cache->get($cache_key);
+        if ($cached !== FALSE) {
+            return $cached;
+        }
+
         $sql = "
             SELECT
                 SUM(a.status = 'present') AS present_count,
@@ -86,7 +93,9 @@ class student_master extends MY_Model
             WHERE a.student_id = ?
         ";
         $row = $this->db->query($sql, [$student_id])->row_array();
-        return $row ?: ['present_count' => 0, 'absent_count' => 0, 'late_count' => 0, 'excuse_count' => 0];
+        $result = $row ?: ['present_count' => 0, 'absent_count' => 0, 'late_count' => 0, 'excuse_count' => 0];
+        $this->cache->save($cache_key, $result, 300);
+        return $result;
     }
 
     // Fetch current course for student

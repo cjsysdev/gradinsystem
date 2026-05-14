@@ -24,28 +24,43 @@ class attendance extends MY_Model
             'local_key' => 'schedule_id',
         ];
         parent::__construct();
+        $this->load->driver('cache', ['adapter' => 'memcached', 'backup' => 'file']);
     }
 
     public function insert_data($data)
     {
-        return $this->db->insert('attendance', $data); // Insert data into the 'attendance' table
+        $result = $this->db->insert('attendance', $data);
+        if (!empty($data['student_id'])) {
+            $sid = $data['student_id'];
+            $this->cache->delete('att_record_' . $sid);
+            $this->cache->delete('att_summary_' . $sid);
+        }
+        return $result;
     }
 
     public function get_student_attendance($id)
     {
+        $cache_key = 'att_record_' . $id;
+        $cached = $this->cache->get($cache_key);
+        if ($cached !== FALSE) {
+            return $cached;
+        }
+
         $query = $this->db
-            ->query("SELECT c.class_code, c.class_name, cs.type, sm.lastname, sm.firstname, a.date 
+            ->query("SELECT c.class_code, c.class_name, cs.type, sm.lastname, sm.firstname, a.date
                 FROM attendance a
                 JOIN student_master sm ON a.student_id = sm.trans_no
                 JOIN class_schedule cs ON a.schedule_id = cs.schedule_id
-                JOIN classes c ON cs.class_id = c.class_id 
+                JOIN classes c ON cs.class_id = c.class_id
                 JOIN semester_master sem ON cs.semester_id = sem.trans_no
                 WHERE student_id = $id
                 AND a.status = 'present'
                 AND sem.is_active = 1
                 order by date desc");
 
-        return $query->result_array();
+        $result = $query->result_array();
+        $this->cache->save($cache_key, $result, 120);
+        return $result;
     }
 
     public function start_class($schedule_id, $section, $date)
@@ -79,7 +94,7 @@ class attendance extends MY_Model
 
     public function update_status($status, $ip_address, $student_id, $date)
     {
-        return $this->db
+        $result = $this->db
             ->set([
                 'status' => $status,
                 'ip_address' => $ip_address,
@@ -92,6 +107,10 @@ class attendance extends MY_Model
             ])
             ->from('attendance')
             ->update();
+
+        $this->cache->delete('att_record_' . $student_id);
+        $this->cache->delete('att_summary_' . $student_id);
+        return $result;
     }
 
     public function getMaxAttendanceDays($section, $start_date, $end_date)
