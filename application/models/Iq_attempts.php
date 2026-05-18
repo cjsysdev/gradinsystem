@@ -111,10 +111,21 @@ class Iq_attempts extends CI_Model
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
 
-        // Add chosen_option to tables created before this column existed
-        $this->db->query("
-            ALTER TABLE {$this->table}
-            ADD COLUMN IF NOT EXISTS chosen_option VARCHAR(500) NULL
-        ");
+        // Add chosen_option to tables created before this column existed.
+        // Uses information_schema for compatibility with MySQL 5.7 and MariaDB.
+        $col = $this->db->query(
+            "SELECT COUNT(*) AS cnt
+             FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME   = ?
+               AND COLUMN_NAME  = 'chosen_option'",
+            [$this->table]
+        )->row_array();
+
+        if (empty($col['cnt'])) {
+            $this->db->query(
+                "ALTER TABLE {$this->table} ADD COLUMN chosen_option VARCHAR(500) NULL"
+            );
+        }
     }
 }
