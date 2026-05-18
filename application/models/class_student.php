@@ -39,6 +39,20 @@ class class_student extends MY_Model
             ->update($this->table, ['is_cleared' => 1]);
     }
 
+    public function get_sections_with_uncleared_counts()
+    {
+        $sql = "
+            SELECT cs.section, COUNT(*) AS uncleared_count
+            FROM class_student cs
+            JOIN semester_master sm ON cs.semester_id = sm.trans_no
+            WHERE sm.is_active = 1 AND cs.is_cleared IS NULL
+            GROUP BY cs.section
+            ORDER BY cs.section
+        ";
+        $query = $this->db->query($sql);
+        return $query ? $query->result_array() : [];
+    }
+
     public function add_section($id, $section, $semester_id = null)
     {
         $semester_id = $semester_id ?: $this->_active_semester_id();
@@ -107,6 +121,29 @@ class class_student extends MY_Model
         } else {
             return [];
         }
+    }
+
+    public function get_class_student_info($student_id)
+    {
+        $sql = "
+            SELECT
+                cs.id,
+                cs.student_id,
+                cs.class_id,
+                cs.section,
+                cs.is_cleared,
+                cs.status,
+                sm.semcode,
+                sm.description AS semester_description,
+                sm.semyear
+            FROM class_student cs
+            INNER JOIN semester_master sm
+                ON cs.semester_id = sm.trans_no
+            WHERE sm.is_active = 1 AND cs.student_id = ?
+        ";
+
+        $query = $this->db->query($sql, [$student_id]);
+        return $query ? $query->row_array() : [];
     }
 
     public function get_students_with_profile_by_section($section)

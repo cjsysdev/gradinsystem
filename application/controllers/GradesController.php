@@ -281,7 +281,7 @@ class GradesController extends CI_Controller
                 $student['final_grade'] = 'INC';
             } else {
                 $student['final_grade'] = convertPercentageToGradePoint(round(($student['midterm_grade'] * 0.5) + ($student['tentative_final_grade'] * 0.5), 2));
-                if ($student['final_grade'] >= 3.05) {
+                if ($student['final_grade'] >= 3.5) {
                     $student['final_grade'] = 'INC';
                 }
             }

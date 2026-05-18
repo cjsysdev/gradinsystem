@@ -240,7 +240,7 @@
         let currentGroup = 0;
         let blurCount = 0;
         let quizStarted = false;
-        let totalTime = 60 * (<?= (int) $max_items ?>);
+        let totalTime = 60 * <?= (int) $max_items ?> * 1.2;
 
         hljs.highlightAll();
 

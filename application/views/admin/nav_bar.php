@@ -38,6 +38,9 @@
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Student Requests"><i class="fa fa-hand"></i></a>
         <a href="<?= base_url(
                         'poll/dashboard'
-                    ) ?>" class="btn btn-outline-danger col m-2" title="Polls"><i class="fa fa-poll"></i></a>
+                    ) ?>" class="btn btn-outline-secondary col m-2" title="Polls"><i class="fa fa-poll"></i></a>
+        <a href="<?= base_url(
+                        'uncleared_students'
+                    ) ?>" class="btn btn-outline-secondary col m-2" title="Uncleared Students"><i class="fa fa-user-times"></i></a>
     </div>
 </div>

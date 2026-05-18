@@ -23,12 +23,20 @@ class AssessmentController extends CI_Controller
     {
         $classwork = $this->assessments->as_array()->get($classwork_id);
 
+        $student_info = $this->class_student->get_class_student_info($this->session->student_id);
+
         if (!$classwork) {
             show_404();
         }
 
+        if(empty($student_info['is_cleared']) && $classwork['iotype_id'] == 3) {
+            $this->session->set_flashdata('warning', 'Only students with cleared clearance requirements may take the exam.');
+            redirect('attendance');
+        }
+
         $data = [
-            'classwork' => $classwork
+            'classwork' => $classwork,
+            'is_cleared' => $is_cleared
         ];
 
         $this->load->view('assessment_view_code', $data);

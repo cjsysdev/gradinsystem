@@ -32,7 +32,7 @@ class AuthenticationController extends CI_Controller
                 'username'     => $user->username,
                 'profile_pic'  => $user->profile_pic,
                 'online'       => true,
-                'exam_term'    => false,
+                'exam_term'    => true,
                 'exam_review'  => false,
             ];
 

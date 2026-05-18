@@ -16,7 +16,7 @@ class PollController extends CI_Controller
     // One-time setup: creates DB tables. Admin only.
     public function install()
     {
-        if (!$this->session->teacher) {
+        if ($this->session->role != 'admin') {
             redirect('login');
         }
         $this->Polls->install();
@@ -28,7 +28,7 @@ class PollController extends CI_Controller
 
     public function dashboard()
     {
-        if (!$this->session->teacher) {
+        if ($this->session->role != 'admin') {
             redirect('login');
         }
         $data['polls'] = $this->Polls->get_all_polls();
@@ -39,7 +39,7 @@ class PollController extends CI_Controller
 
     public function create()
     {
-        if (!$this->session->teacher) {
+        if ($this->session->role != 'admin') {
             redirect('login');
         }
 
@@ -82,7 +82,7 @@ class PollController extends CI_Controller
 
     public function present($poll_id)
     {
-        if (!$this->session->teacher) {
+        if ($this->session->role != 'admin') {
             redirect('login');
         }
         $poll = $this->Polls->get_poll($poll_id);
@@ -104,7 +104,7 @@ class PollController extends CI_Controller
     // AJAX: activate a question (teacher presses "Launch")
     public function activate_question($question_id)
     {
-        if (!$this->session->teacher) {
+        if ($this->session->role != 'admin') {
             $this->_json(['ok' => false, 'msg' => 'Unauthorized'], 403);
             return;
         }
@@ -120,7 +120,7 @@ class PollController extends CI_Controller
     // AJAX: toggle show_results for current question
     public function toggle_results($question_id)
     {
-        if (!$this->session->teacher) {
+        if ($this->session->role != 'admin') {
             $this->_json(['ok' => false, 'msg' => 'Unauthorized'], 403);
             return;
         }
@@ -131,7 +131,7 @@ class PollController extends CI_Controller
     // AJAX: close the poll
     public function close_poll($poll_id)
     {
-        if (!$this->session->teacher) {
+        if ($this->session->role != 'admin') {
             $this->_json(['ok' => false, 'msg' => 'Unauthorized'], 403);
             return;
         }
@@ -143,7 +143,7 @@ class PollController extends CI_Controller
     // AJAX: delete a poll
     public function delete_poll($poll_id)
     {
-        if (!$this->session->teacher) {
+        if ($this->session->role != 'admin') {
             $this->_json(['ok' => false, 'msg' => 'Unauthorized'], 403);
             return;
         }
@@ -154,7 +154,7 @@ class PollController extends CI_Controller
     // AJAX: live results for teacher display (polls every 2 s)
     public function results($question_id)
     {
-        if (!$this->session->teacher) {
+        if ($this->session->role != 'admin') {
             $this->_json(['ok' => false], 403);
             return;
         }
@@ -174,6 +174,10 @@ class PollController extends CI_Controller
     // AJAX: returns the first active poll (for attendance view banner)
     public function active_poll()
     {
+        if (!$this->session->role && !$this->session->student_id) {
+            $this->_json(['ok' => false], 403);
+            return;
+        }
         $poll = $this->db->where('status', 'active')->limit(1)->get('polls')->row_array();
         if ($poll) {
             $this->_json(['ok' => true, 'poll' => ['pin' => $poll['pin'], 'title' => $poll['title']]]);

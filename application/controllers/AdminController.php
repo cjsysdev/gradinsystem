@@ -297,13 +297,18 @@ class AdminController extends CI_Controller
         echo json_encode($submissions);
     }
 
+    public function uncleared_students_overview()
+    {
+        $this->load->model('class_student');
+        $data['sections'] = $this->class_student->get_sections_with_uncleared_counts();
+        $this->load->view('admin/uncleared_students_overview', $data);
+    }
+
     public function uncleared_students($section)
     {
         $this->load->model('class_student');
         $data['students'] = $this->class_student->get_uncleared_students_by_section($section);
         $data['section'] = $section;
-
-        // var_dump($data);
         $this->load->view('admin/uncleared_students', $data);
     }
 
@@ -311,7 +316,7 @@ class AdminController extends CI_Controller
     {
         $this->load->model('class_student');
         $this->class_student->clear_student($id);
-        redirect('AdminController/uncleared_students/' . $section);
+        redirect('uncleared_students/' . urlencode($section));
     }
 
     public function manage_assessments()

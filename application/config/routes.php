@@ -73,6 +73,7 @@ $route['student/section'] = 'StudentController/section';
 
 // Grades Routes
 $route['grades'] = 'GradesController/grades';
+$route['grades/all'] = 'GradesController/AllSectionGrades';
 $route['sectiongrades/(:any)'] = 'GradesController/sectionGrades/$1';
 $route['sectionFinalGrades/(:any)'] = 'GradesController/sectionFinalGrades/$1';
 
@@ -171,6 +172,8 @@ $route['admin/student_violations'] = 'AdminController/student_violations';
 $route['admin/add_violation'] = 'AdminController/add_violation';
 $route['admin/update_violation_status'] = 'AdminController/update_violation_status';
 $route['admin/search_students'] = 'AdminController/search_students';
+$route['uncleared_students'] = 'AdminController/uncleared_students_overview';
+$route['uncleared_students/clear/(:num)/(:any)'] = 'AdminController/clear_student/$1/$2';
 $route['uncleared_students/(:any)'] = 'AdminController/uncleared_students/$1';
 $route['admin/students_by_section'] = 'AdminController/students_by_section';
 $route['admin/student_summary/(:num)'] = 'AdminController/student_summary/$1';
