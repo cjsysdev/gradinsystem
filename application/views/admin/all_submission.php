@@ -20,8 +20,8 @@
                         </div>
                         <div class="row justify-content-center mt-3">
                             <div class="col text-center">
-                                <button type="button" class="btn btn-success mb-4 mr-2" onclick="randomizeStudent()"><i class="fa fa-shuffle" aria-hidden="true"></i></button>
-                                <button type="button" class="btn btn-dark mb-4 mr-2" onclick="openFullscreenRandomizer()">&#x26F6;</button>
+                                <button type="button" class="btn btn-secondary mb-4 mr-2" onclick="randomizeStudent()"><i class="fa fa-shuffle" aria-hidden="true"></i></button>
+                                <button type="button" class="btn btn-secondary mb-4 mr-2" onclick="openFullscreenRandomizer()">&#x26F6;</button>
                                 <button type="button" class="btn btn-secondary mb-4" onclick="toggleSubmissions()"><i class="fa fa-eye" aria-hidden="true"></i></button>
                             </div>
                         </div>
@@ -60,7 +60,7 @@
                                 <hr>
                                 <p class="card-text mb-3"><?= $row['created_at'] , " " , $row['file_upload'], " - ", $row['score'] ?></p>
                                 <!-- Button to open modal -->
-                                <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#viewSubmissionModal" onclick="loadSubmission(<?= htmlspecialchars(json_encode($row['code']), ENT_QUOTES, 'UTF-8') ?>, '<?= $row['file_upload'] ?>')">
+                                <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#viewSubmissionModal" onclick="loadSubmission(<?= htmlspecialchars(json_encode($row['code']), ENT_QUOTES, 'UTF-8') ?>, '<?= $row['file_upload'] ?>', <?= (int)($row['iotype_id'] ?? 0) ?>)">
                                     View Submission
                                 </button>
                                 <?php if (!isset($row['score'])): ?>
@@ -156,8 +156,36 @@
         ];
     }, $submissions)) ?>;
 
-    function loadSubmission(code, fileUpload) {
+    function loadSubmission(code, fileUpload, iotypeId) {
         const submissionContent = document.getElementById('submissionContent');
+
+        if ((iotypeId === 3 || iotypeId === 4) && code && code !== 'null') {
+            try {
+                const results = JSON.parse(code);
+                const wrong = results.filter(q => q.is_correct === false);
+                if (wrong.length === 0) {
+                    submissionContent.innerHTML = '<p class="text-success font-weight-bold"><i class="fa fa-check-circle"></i> All answers correct!</p>';
+                    return;
+                }
+                let html = `<p class="text-danger font-weight-bold mb-3"><i class="fa fa-times-circle"></i> ${wrong.length} incorrect answer${wrong.length !== 1 ? 's' : ''}:</p>`;
+                wrong.forEach((q, i) => {
+                    html += `
+                        <div class="card mb-2 border-danger">
+                            <div class="card-body py-2">
+                                <p class="mb-1"><strong>#${i + 1}:</strong> ${q.question ?? ''}</p>
+                                ${q.code ? `<pre class="bg-light p-2 rounded" style="font-size:.82rem;">${q.code}</pre>` : ''}
+                                <p class="mb-1 text-danger"><i class="fa fa-times"></i> Student answered: <strong>${q.user_answer ?? ''}</strong></p>
+                                <p class="mb-0 text-success"><i class="fa fa-check"></i> Correct answer: <strong>${q.correct_answer ?? ''}</strong></p>
+                            </div>
+                        </div>`;
+                });
+                submissionContent.innerHTML = html;
+            } catch (e) {
+                submissionContent.innerHTML = '<p class="text-danger">Could not parse submission data.</p>';
+            }
+            return;
+        }
+
         if (fileUpload && fileUpload !== 'null') {
             submissionContent.innerHTML = `<iframe src="<?= base_url('uploads/classworks/') ?>${fileUpload}" width="100%" height="600px" style="border:none;"></iframe>`;
         } else if (code && code !== 'null') {

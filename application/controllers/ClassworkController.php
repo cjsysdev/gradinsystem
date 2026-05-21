@@ -6,12 +6,13 @@ class ClassworkController extends CI_Controller
     public function __construct()
     {
         parent::__construct();
-        $this->is_offline = !isset($_SESSION['online']);
+        if (!isset($_SESSION['online'])) {
+            redirect('login');
+        }
     }
 
     public function classwork()
     {
-        if ($this->is_offline) redirect();
         $student_id = $this->session->student_id;
         $student = $this->class_student->where('student_id', $student_id)->get();
 

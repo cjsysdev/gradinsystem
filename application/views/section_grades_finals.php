@@ -122,7 +122,7 @@
                         <?php
                         // Always show one decimal place for numeric grades
                         if (is_numeric($student['final_grade'])) {
-                            echo number_format($student['final_grade'], 1);
+                            echo '<b>' . number_format($student['final_grade'], 1) . '</b>';
                         } else {
                             echo $student['final_grade'];
                         }

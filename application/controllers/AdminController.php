@@ -6,6 +6,9 @@ class AdminController extends CI_Controller
     public function __construct()
     {
         parent::__construct();
+        if ($this->session->userdata('role') !== 'admin') {
+            redirect('login');
+        }
     }
 
     public function dashboard()
@@ -62,8 +65,6 @@ class AdminController extends CI_Controller
 
         $day = date('D');
         $class = $this->class_schedule->class_today($day);
-
-        $term = 'midterm';
 
         $data['assessments'] = $this->assessments->get_for_schedule($class['schedule_id']);
 
