@@ -22,6 +22,7 @@ class Polls extends CI_Model
               `question_id`   INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
               `poll_id`       INT UNSIGNED NOT NULL,
               `question_text` TEXT NOT NULL,
+              `question_type` ENUM('multiple_choice','open_ended') NOT NULL DEFAULT 'multiple_choice',
               `sort_order`    TINYINT UNSIGNED NOT NULL DEFAULT 0,
               `show_results`  TINYINT(1) NOT NULL DEFAULT 0,
               FOREIGN KEY (`poll_id`) REFERENCES `polls`(`poll_id`) ON DELETE CASCADE
@@ -35,21 +36,28 @@ class Polls extends CI_Model
               FOREIGN KEY (`question_id`) REFERENCES `poll_questions`(`question_id`) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8",
 
+            // option_id nullable → open-ended responses have no option
             "CREATE TABLE IF NOT EXISTS `poll_responses` (
-              `response_id`  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-              `question_id`  INT UNSIGNED NOT NULL,
-              `option_id`    INT UNSIGNED NOT NULL,
-              `student_id`   VARCHAR(50) DEFAULT NULL,
-              `answered_at`  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              `response_id`   INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+              `question_id`   INT UNSIGNED NOT NULL,
+              `option_id`     INT UNSIGNED DEFAULT NULL,
+              `response_text` VARCHAR(255) DEFAULT NULL,
+              `student_id`    VARCHAR(50) DEFAULT NULL,
+              `answered_at`   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
               UNIQUE KEY `uq_student_question` (`question_id`, `student_id`),
               FOREIGN KEY (`question_id`) REFERENCES `poll_questions`(`question_id`) ON DELETE CASCADE,
-              FOREIGN KEY (`option_id`)   REFERENCES `poll_options`(`option_id`)    ON DELETE CASCADE
+              FOREIGN KEY (`option_id`)   REFERENCES `poll_options`(`option_id`)    ON DELETE SET NULL
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8",
         ];
 
         foreach ($sqls as $sql) {
             $this->db->query($sql);
         }
+
+        // Safe migrations for existing installs (errors silently ignored when db_debug=FALSE)
+        $this->db->query("ALTER TABLE poll_questions ADD COLUMN question_type ENUM('multiple_choice','open_ended') NOT NULL DEFAULT 'multiple_choice'");
+        $this->db->query("ALTER TABLE poll_responses ADD COLUMN response_text VARCHAR(255) DEFAULT NULL");
+        $this->db->query("ALTER TABLE poll_responses MODIFY COLUMN option_id INT UNSIGNED DEFAULT NULL");
     }
 
     // ── Poll CRUD ────────────────────────────────────────────────────────────
@@ -92,11 +100,12 @@ class Polls extends CI_Model
 
     // ── Question management ──────────────────────────────────────────────────
 
-    public function add_question($poll_id, $text, $sort_order = 0)
+    public function add_question($poll_id, $text, $type = 'multiple_choice', $sort_order = 0)
     {
         $this->db->insert('poll_questions', [
             'poll_id'       => $poll_id,
             'question_text' => $text,
+            'question_type' => $type,
             'sort_order'    => $sort_order,
         ]);
         return $this->db->insert_id();
@@ -116,7 +125,7 @@ class Polls extends CI_Model
 
     public function toggle_show_results($question_id)
     {
-        $q = $this->get_question($question_id);
+        $q   = $this->get_question($question_id);
         $new = $q['show_results'] ? 0 : 1;
         $this->db->where('question_id', $question_id)->update('poll_questions', ['show_results' => $new]);
         return $new;
@@ -158,12 +167,11 @@ class Polls extends CI_Model
 
     // ── Responses ────────────────────────────────────────────────────────────
 
-    public function submit_response($question_id, $option_id, $student_id)
+    public function submit_response($question_id, $student_id, $option_id = null, $response_text = null)
     {
-        // INSERT IGNORE respects the unique key — no double votes
-        $sql = "INSERT IGNORE INTO poll_responses (question_id, option_id, student_id)
-                VALUES (?, ?, ?)";
-        $this->db->query($sql, [$question_id, $option_id, $student_id]);
+        $sql = "INSERT IGNORE INTO poll_responses (question_id, option_id, response_text, student_id)
+                VALUES (?, ?, ?, ?)";
+        $this->db->query($sql, [$question_id, $option_id, $response_text, $student_id]);
         return $this->db->affected_rows() > 0;
     }
 
@@ -175,7 +183,8 @@ class Polls extends CI_Model
         ])->num_rows() > 0;
     }
 
-    public function get_results($question_id)
+    // Returns bar-chart data for multiple-choice questions
+    public function get_mc_results($question_id)
     {
         $sql = "SELECT o.option_id, o.option_text, COUNT(r.response_id) AS votes
                 FROM poll_options o
@@ -184,6 +193,17 @@ class Polls extends CI_Model
                 WHERE o.question_id = ?
                 GROUP BY o.option_id
                 ORDER BY o.sort_order ASC";
+        return $this->db->query($sql, [$question_id])->result_array();
+    }
+
+    // Returns word-frequency data for open-ended questions
+    public function get_oe_results($question_id)
+    {
+        $sql = "SELECT response_text, COUNT(*) AS count
+                FROM poll_responses
+                WHERE question_id = ? AND response_text IS NOT NULL AND response_text != ''
+                GROUP BY response_text
+                ORDER BY count DESC";
         return $this->db->query($sql, [$question_id])->result_array();
     }
 
@@ -197,7 +217,7 @@ class Polls extends CI_Model
     private function _generate_pin()
     {
         do {
-            $pin = strtoupper(substr(str_shuffle('ABCDEFGHJKLMNPQRSTUVWXYZ23456789'), 0, 6));
+            $pin    = strtoupper(substr(str_shuffle('ABCDEFGHJKLMNPQRSTUVWXYZ23456789'), 0, 6));
             $exists = $this->db->get_where('polls', ['pin' => $pin])->num_rows();
         } while ($exists);
         return $pin;
