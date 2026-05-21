@@ -90,6 +90,12 @@
                                    title="View Submissions">
                                     <i class="fas fa-list"></i>
                                 </a>
+                                <a href="<?= base_url('quiz_monitor/' . $a['assessment_id']) ?>"
+                                   target="_blank"
+                                   class="btn btn-sm btn-outline-info"
+                                   title="Live Monitor">
+                                    <i class="fas fa-broadcast-tower"></i>
+                                </a>
                             </td>
                         </tr>
                     <?php endforeach; ?>

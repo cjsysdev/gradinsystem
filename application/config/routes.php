@@ -125,6 +125,11 @@ $route['upload_activity'] = 'AssessmentController/upload_activity';
 $route['quiz/(:num)'] = 'QuizController/index/$1';
 $route['quiz/submit/(:num)'] = 'QuizController/submit/$1';
 $route['quiz/check_session'] = 'QuizController/check_session';
+$route['quiz/heartbeat'] = 'QuizController/heartbeat';
+
+// Quiz Monitor Routes
+$route['quiz_monitor/live_data/(:num)'] = 'QuizMonitorController/live_data/$1';
+$route['quiz_monitor/(:num)'] = 'QuizMonitorController/index/$1';
 
 // Interactive Quiz Routes
 $route['interactive_quiz/topics'] = 'InteractiveQuizController/list_topics';

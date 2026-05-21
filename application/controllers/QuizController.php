@@ -7,7 +7,7 @@ class QuizController extends CI_Controller
     public function __construct()
     {
         parent::__construct();
-        $this->load->model(['accounts', 'assessments', 'student_master', 'classworks', 'class_schedule', 'attendance', 'class_student']);
+        $this->load->model(['accounts', 'assessments', 'student_master', 'classworks', 'class_schedule', 'attendance', 'class_student', 'Quiz_live_status']);
         $this->load->helper(['url']);
         $this->load->library(['session', 'upload']);
         $this->is_offline = !isset($_SESSION['online']);
@@ -72,6 +72,10 @@ class QuizController extends CI_Controller
         }
 
         $data['questions'] = $questions;
+
+        $this->Quiz_live_status->ensure_table();
+        $this->Quiz_live_status->init_student($assessment_id, $this->session->student_id, (int)$query_max_items);
+
         $this->load->view('quiz_view', $data);
     }
 
@@ -140,6 +144,8 @@ class QuizController extends CI_Controller
             ]);
         }
 
+        $this->Quiz_live_status->mark_submitted($assessment_id, $this->session->student_id, $score);
+
         $data['assessment_id'] = $assessment_id;
         $this->load->view('quiz_result', $data);
     }
@@ -148,5 +154,35 @@ class QuizController extends CI_Controller
     {
         header('Content-Type: application/json');
         echo json_encode(['logged_in' => isset($_SESSION['online'])]);
+    }
+
+    public function heartbeat()
+    {
+        header('Content-Type: application/json');
+
+        if (!$this->session->student_id) {
+            echo json_encode(['ok' => false]);
+            return;
+        }
+
+        $assessment_id  = (int)$this->input->post('assessment_id');
+        $items_answered = (int)$this->input->post('items_answered');
+        $total_items    = (int)$this->input->post('total_items');
+        $blur_count     = (int)$this->input->post('blur_count');
+
+        if ($assessment_id < 1) {
+            echo json_encode(['ok' => false]);
+            return;
+        }
+
+        $this->Quiz_live_status->heartbeat(
+            $assessment_id,
+            $this->session->student_id,
+            $items_answered,
+            $blur_count,
+            $total_items
+        );
+
+        echo json_encode(['ok' => true]);
     }
 }

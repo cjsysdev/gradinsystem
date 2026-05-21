@@ -540,6 +540,34 @@
 
         startTimer(totalTime, timerElement);
         checkAllAnswered(); // Initial check to see if all questions are already answered
+
+        // Live monitoring — sends progress to admin monitor every 8 seconds
+        (function() {
+            var HB_ASSESSMENT_ID = <?= (int)$assessment_id ?>;
+            var HB_TOTAL = <?= $totalQuestions ?>;
+
+            function countAnsweredItems() {
+                var n = document.querySelectorAll('.form-check-input:checked').length;
+                document.querySelectorAll('input[data-question-type="text"]').forEach(function(inp) {
+                    if (inp.value.trim() !== '') n++;
+                });
+                return n;
+            }
+
+            function sendHeartbeat() {
+                var params = 'assessment_id=' + HB_ASSESSMENT_ID
+                    + '&items_answered=' + countAnsweredItems()
+                    + '&total_items=' + HB_TOTAL
+                    + '&blur_count=' + blurCount;
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '<?= site_url('quiz/heartbeat') ?>', true);
+                xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+                xhr.send(params);
+            }
+
+            setInterval(sendHeartbeat, 8000);
+            window.addEventListener('beforeunload', sendHeartbeat);
+        })();
     });
 </script>
 
