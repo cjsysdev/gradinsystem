@@ -189,6 +189,7 @@ class classworks extends MY_Model
                         sm.firstname,
                         sm.lastname,
                         sm.middlename,
+                        sm.student_no,
                         a.iotype_id,
                         i.type AS iotype_name,
                         i.percentage AS iotype_percentage,
@@ -308,6 +309,7 @@ class classworks extends MY_Model
                         sm.firstname,
                         sm.lastname,
                         sm.middlename,
+                        sm.student_no,
 
                         a.iotype_id,
                         i.type AS iotype_name,

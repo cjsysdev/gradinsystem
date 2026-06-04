@@ -79,9 +79,8 @@
 <table class="inc-table" style="margin-top: 10px;">
     <thead>
         <tr>
-            <!-- <th style="width:50px;">ID No.</th> -->
-            <th style="width:80px;">Student ID</th>
-            <th style="width:80px;">Last Name</th>
+            <th style="width:50px;">Student ID</th>
+            <th style="width:350px;">Last Name</th>
             <th style="width:80px;">First Name</th>
             <th style="width:80px;">Midterm Grade</th>
             <th style="width:80px;">Final Grade</th>

@@ -129,6 +129,7 @@ class GradesController extends CI_Controller
             if (!isset($studentsGrades[$studentId])) {
                 $studentsGrades[$studentId] = [
                     'student_id' => $studentId,
+                    'student_no' => $grade['student_no'],
                     'firstname' => $grade['firstname'],
                     'lastname' => $grade['lastname'],
                     'section' => $grade['section'],
@@ -153,6 +154,7 @@ class GradesController extends CI_Controller
             if (!isset($studentsGrades[$studentId])) {
                 $studentsGrades[$studentId] = [
                     'student_id' => $studentId,
+                    'student_no' => $grade['student_no'],
                     'firstname' => $grade['firstname'],
                     'lastname' => $grade['lastname'],
                     'section' => $grade['section'],
@@ -184,12 +186,12 @@ class GradesController extends CI_Controller
             }
         }
 
-        // Sort students by final_grade descending (numeric grades only, INC at the bottom)
-        // usort($studentsGrades, function ($a, $b) {
-        //     $gradeA = is_numeric($a['final_grade']) ? floatval($a['final_grade']) : 999;
-        //     $gradeB = is_numeric($b['final_grade']) ? floatval($b['final_grade']) : 999;
-        //     return $gradeA <=> $gradeB;
-        // });
+        //Sort students by final_grade descending (numeric grades only, INC at the bottom)
+        usort($studentsGrades, function ($a, $b) {
+            $gradeA = is_numeric($a['final_grade']) ? floatval($a['final_grade']) : 999;
+            $gradeB = is_numeric($b['final_grade']) ? floatval($b['final_grade']) : 999;
+            return $gradeA <=> $gradeB;
+        });
 
         $data['studentsGrades'] = $studentsGrades;
         $data['section'] = $section;
@@ -198,7 +200,6 @@ class GradesController extends CI_Controller
         $data['schedule'] = $midtermGrades[0]['schedule'] ?? '';
         $data['schedule'] = date('g:iA', strtotime($midtermGrades[0]['start'])) . ' - ' . date('g:iA', strtotime($midtermGrades[0]['end'])) . ' (' . $midtermGrades[0]['day'] . ')';
 
-        var_dump($data['studentsGrades']);
         $this->load->view('section_grades_finals', $data);
         // $this->load->view('section_inc_grades', $data);
     }
@@ -223,6 +224,7 @@ class GradesController extends CI_Controller
                     'class_name' => $grade['class_name'],
                     'schedule' => date('g:iA', strtotime($grade['start'])) . ' - ' . date('g:iA', strtotime($grade['end'])) . ' (' . $grade['day'] . ')',
                     'student_id' => $studentId,
+                    'student_no' => $grade['student_no'],
                     'firstname' => $grade['firstname'],
                     'lastname' => $grade['lastname'],
                     'section' => $grade['section'],
@@ -253,6 +255,7 @@ class GradesController extends CI_Controller
                     'class_name' => $grade['class_name'],
                     'schedule' => date('g:iA', strtotime($grade['start'])) . ' - ' . date('g:iA', strtotime($grade['end'])) . ' (' . $grade['day'] . ')',
                     'student_id' => $studentId,
+                    'student_no' => $grade['student_no'],
                     'firstname' => $grade['firstname'],
                     'lastname' => $grade['lastname'],
                     'section' => $grade['section'],
@@ -281,7 +284,7 @@ class GradesController extends CI_Controller
                 $student['final_grade'] = 'INC';
             } else {
                 $student['final_grade'] = convertPercentageToGradePoint(round(($student['midterm_grade'] * 0.5) + ($student['tentative_final_grade'] * 0.5), 2));
-                if ($student['final_grade'] >= 3.9) {
+                if ($student['final_grade'] >= 3.05) {
                     $student['final_grade'] = 'INC';
                 }
             }
@@ -302,7 +305,8 @@ class GradesController extends CI_Controller
         $data['schedule'] = date('g:iA', strtotime($midtermGrades[0]['start'])) . ' - ' . date('g:iA', strtotime($midtermGrades[0]['end'])) . ' (' . $midtermGrades[0]['day'] . ')';
 
         // $this->load->view('allgrades', $data);
-        $this->load->view('section_grades_finals', $data);
+        // $this->load->view('section_grades_finals', $data);
+        $this->load->view('section_grades_final_new', $data);
         // $this->load->view('section_grades_midterm', $data);
         // $this->load->view('section_inc_grades', $data);
     }

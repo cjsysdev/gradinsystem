@@ -203,6 +203,7 @@ function openAddModal() {
     document.getElementById('modal_due').value = '';
     document.getElementById('modal_is_groupings').checked = false;
     document.getElementById('modal_submit_btn').textContent = 'Add Assessment';
+    if (typeof $ !== 'undefined') $('#assessmentModal').modal('show');
 }
 
 function openEditModal(a) {
@@ -218,6 +219,7 @@ function openEditModal(a) {
     document.getElementById('modal_due').value = a.due ? a.due.replace(' ', 'T').substring(0, 16) : '';
     document.getElementById('modal_is_groupings').checked = parseInt(a.is_groupings) === 1;
     document.getElementById('modal_submit_btn').textContent = 'Update Assessment';
+    if (typeof $ !== 'undefined') $('#assessmentModal').modal('show');
 }
 
 function updateStatus(select) {

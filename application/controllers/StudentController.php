@@ -227,7 +227,7 @@ class StudentController extends CI_Controller
 
         $this->class_student->re_enroll($student_id, $sched['class_id'], $sched['section'], $semester_id);
         $this->session->set_flashdata('success', 'Enrolled successfully.');
-        redirect('attendance');
+        redirect();
     }
 
     public function emergency_contacts()
