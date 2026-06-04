@@ -108,7 +108,10 @@ class Polls extends CI_Model
             'question_type' => $type,
             'sort_order'    => $sort_order,
         ]);
-        return $this->db->insert_id();
+        if ($this->db->affected_rows() > 0) {
+            return $this->db->insert_id();
+        }
+        return 0;
     }
 
     public function get_questions($poll_id)
@@ -140,7 +143,10 @@ class Polls extends CI_Model
             'option_text' => $text,
             'sort_order'  => $sort_order,
         ]);
-        return $this->db->insert_id();
+        if ($this->db->affected_rows() > 0) {
+            return $this->db->insert_id();
+        }
+        return 0;
     }
 
     public function get_options($question_id)
