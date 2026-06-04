@@ -62,11 +62,22 @@ class PollController extends CI_Controller
                 $q_type      = ($q['type'] ?? 'multiple_choice') === 'open_ended' ? 'open_ended' : 'multiple_choice';
                 $question_id = $this->Polls->add_question($poll_id, $q_text, $q_type, $qi);
 
+                if (!$question_id) {
+                    $this->session->set_flashdata('error', 'Failed to add question: ' . $q_text);
+                    redirect('poll/create');
+                    return;
+                }
+
                 if ($q_type === 'multiple_choice') {
                     foreach (($q['options'] ?? []) as $oi => $opt) {
                         $opt_text = trim($opt);
                         if ($opt_text !== '') {
-                            $this->Polls->add_option($question_id, $opt_text, $oi);
+                            $option_id = $this->Polls->add_option($question_id, $opt_text, $oi);
+                            if (!$option_id) {
+                                $this->session->set_flashdata('error', 'Failed to add option: ' . $opt_text);
+                                redirect('poll/create');
+                                return;
+                            }
                         }
                     }
                 }
