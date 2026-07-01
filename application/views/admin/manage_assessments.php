@@ -179,6 +179,15 @@
                         <input type="checkbox" name="is_groupings" id="modal_is_groupings" class="form-check-input" value="1">
                         <label class="form-check-label" for="modal_is_groupings">Group Submission</label>
                     </div>
+                    <div class="form-group mt-2" id="modal_grouping_set_wrap" style="display:none">
+                        <label>Grouping Set</label>
+                        <select name="grouping_set_id" id="modal_grouping_set_id" class="form-control">
+                            <option value="">Select grouping set...</option>
+                        </select>
+                        <small class="form-text text-muted">
+                            Sets are managed under <a href="<?= base_url('Groupings') ?>" target="_blank">Groupings</a>.
+                        </small>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
@@ -190,6 +199,44 @@
 </div>
 
 <script>
+// schedule_id -> section, used to filter grouping sets to the assessment's section
+const scheduleSections = {
+    <?php foreach ($schedules as $s): ?>
+        <?= (int) $s['schedule_id'] ?>: <?= json_encode($s['section']) ?>,
+    <?php endforeach; ?>
+};
+
+// section -> [{set_id, name}], used to populate the grouping-set dropdown
+const setsBySection = {};
+<?php foreach ($grouping_sets as $gs): ?>
+    if (!setsBySection[<?= json_encode($gs['section_id']) ?>]) setsBySection[<?= json_encode($gs['section_id']) ?>] = [];
+    setsBySection[<?= json_encode($gs['section_id']) ?>].push({ set_id: <?= (int) $gs['set_id'] ?>, name: <?= json_encode($gs['name']) ?> });
+<?php endforeach; ?>
+
+function refreshGroupingSetOptions(selectedSetId) {
+    const scheduleId = document.getElementById('modal_schedule_id').value;
+    const section = scheduleSections[scheduleId];
+    const select = document.getElementById('modal_grouping_set_id');
+    const sets = (section && setsBySection[section]) || [];
+
+    select.innerHTML = '<option value="">Select grouping set...</option>';
+    sets.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.set_id;
+        opt.textContent = s.name;
+        select.appendChild(opt);
+    });
+    select.value = selectedSetId || '';
+}
+
+function toggleGroupingSetWrap() {
+    document.getElementById('modal_grouping_set_wrap').style.display =
+        document.getElementById('modal_is_groupings').checked ? '' : 'none';
+}
+
+document.getElementById('modal_schedule_id').addEventListener('change', () => refreshGroupingSetOptions());
+document.getElementById('modal_is_groupings').addEventListener('change', toggleGroupingSetWrap);
+
 function openAddModal() {
     document.getElementById('modalTitle').textContent = 'Add Assessment';
     document.getElementById('modal_assessment_id').value = '';
@@ -202,6 +249,8 @@ function openAddModal() {
     document.getElementById('modal_status').value = '0';
     document.getElementById('modal_due').value = '';
     document.getElementById('modal_is_groupings').checked = false;
+    refreshGroupingSetOptions();
+    toggleGroupingSetWrap();
     document.getElementById('modal_submit_btn').textContent = 'Add Assessment';
     if (typeof $ !== 'undefined') $('#assessmentModal').modal('show');
 }
@@ -218,6 +267,8 @@ function openEditModal(a) {
     document.getElementById('modal_status').value = (a.status === 'open' || a.status === 1 || a.status === '1') ? '1' : '0';
     document.getElementById('modal_due').value = a.due ? a.due.replace(' ', 'T').substring(0, 16) : '';
     document.getElementById('modal_is_groupings').checked = parseInt(a.is_groupings) === 1;
+    refreshGroupingSetOptions(a.grouping_set_id);
+    toggleGroupingSetWrap();
     document.getElementById('modal_submit_btn').textContent = 'Update Assessment';
     if (typeof $ !== 'undefined') $('#assessmentModal').modal('show');
 }

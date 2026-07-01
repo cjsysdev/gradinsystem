@@ -6,32 +6,60 @@ class Groupings extends CI_Controller
     public function __construct()
     {
         parent::__construct();
+        if ($this->session->userdata('role') !== 'admin') {
+            redirect('login');
+        }
         $this->load->model('Grouping_model');
         $this->load->model('Group_member_model');
-        // existing student/section models assumed:
-        $this->load->model('class_student');
-        $this->load->model('student_master');
+    }
+
+    // One-time (idempotent) schema setup/upgrade — run once as admin.
+    public function install()
+    {
+        $this->Grouping_model->install();
+        $this->session->set_flashdata('success', 'Grouping tables ready.');
+        redirect('Groupings');
     }
 
     public function index()
     {
         $data['sections'] = $this->db->select('section')->distinct()->get('class_schedule')->result_array();
-        $this->load->view('groupings/list', $data);
+        $this->load->view('groupings/index', $data);
     }
 
-    public function create()
+    // List every grouping set (e.g. "Lab Groups", "Project Teams") for a section
+    public function sets($section)
     {
-        // show form
+        $data['section'] = $section;
+        $data['sets'] = $this->Grouping_model->get_sets_by_section($section);
+        $this->load->view('groupings/sets', $data);
+    }
+
+    public function create($section = null)
+    {
         $data['sections'] = $this->db->select('section')->distinct()->get('class_schedule')->result_array();
+        $data['preselected_section'] = $section;
         $this->load->view('groupings/create', $data);
     }
 
     public function store()
     {
         $section = $this->input->post('section');
-        $min_members = max(1, (int)$this->input->post('min_members'));
-        $desired_groups = (int)$this->input->post('desired_groups'); // optional
+        $set_name = trim($this->input->post('set_name'));
+        $min_members = max(1, (int) $this->input->post('min_members'));
+        $desired_groups = (int) $this->input->post('desired_groups'); // optional
         $group_name_prefix = $this->input->post('group_name') ?: 'Group';
+
+        if (!$section) {
+            $this->session->set_flashdata('error', 'Please select a section.');
+            redirect('Groupings/create');
+            return;
+        }
+        if ($set_name === '') {
+            $this->session->set_flashdata('error', 'Please name this grouping set.');
+            redirect('Groupings/create/' . $section);
+            return;
+        }
 
         // get students in section
         $students = $this->db->select('sm.trans_no, sm.firstname, sm.lastname')
@@ -43,103 +71,72 @@ class Groupings extends CI_Controller
         $total = count($students);
         if ($total === 0) {
             $this->session->set_flashdata('error', 'No students found in selected section.');
-            redirect('Groupings/create');
+            redirect('Groupings/create/' . $section);
             return;
         }
 
         // determine number of groups
         if ($desired_groups > 0) {
             $groups = $desired_groups;
-            // ensure min_members satisfied
             if (ceil($total / $groups) < $min_members) {
-                // increase min_members or reduce groups: increase groups until ok
-                $groups = max(1, floor($total / $min_members));
+                // desired group count is too high to satisfy min_members; shrink it
+                $groups = max(1, (int) floor($total / $min_members));
             }
         } else {
-            // compute groups from min_members
-            $groups = max(1, floor($total / $min_members));
-            if ($groups === 0) $groups = 1;
+            $groups = max(1, (int) floor($total / $min_members));
         }
 
-        // ensure groups at least 1
-        $groups = max(1, $groups);
+        $set_id = $this->Grouping_model->create_set($section, $set_name, $min_members);
 
-        // shuffle students for random grouping
-        shuffle($students);
-
-        // distribute students as evenly as possible
-        $perGroupBase = intdiv($total, $groups);
-        $remainder = $total % $groups;
-
-        $groupRows = [];
-        $memberRows = [];
-        $idx = 0;
-        for ($g = 1; $g <= $groups; $g++) {
-            $size = $perGroupBase + ($remainder > 0 ? 1 : 0);
-            if ($remainder > 0) $remainder--;
-            $groupRows[] = [
-                'group_name' => $group_name_prefix . ' ' . $g,
-                'section_id' => $section,
-                'min_members' => $min_members,
-            ];
-        }
-
-        // insert groups and then members
-        foreach ($groupRows as $gr) {
-            $group_id = $this->Grouping_model->create_group($gr);
-            $currentSize = ($perGroupBase + ($remainder > 0 ? 1 : 0)); // not used now; we'll assign sequentially
-            // assign members one by one
-        }
-
-        // Alternate approach: create groups then assign sequentially
-        // Recreate groups to get IDs
-        // Delete last inserted groups for this run (simple approach: create, get ids from last N rows by created_at)
-        // Simpler: create then fetch last inserted groups for this section ordered by group_id desc limit $groups
-        // Instead, we will insert groups & members in one pass:
-        // Reset and do single-pass insertion:
-
-        // Clear any groups we just created for section (if you prefer atomic behavior you may wrap in transaction)
-        $this->db->where('section_id', $section)->where('group_name LIKE', $group_name_prefix . '%')->delete('groupings');
-
-        // create groups fresh and store ids
         $groupIds = [];
         for ($g = 1; $g <= $groups; $g++) {
-            $gid = $this->Grouping_model->create_group([
+            $groupIds[] = $this->Grouping_model->create_group([
+                'set_id'     => $set_id,
                 'group_name' => $group_name_prefix . ' ' . $g,
-                'section_id' => $section,
-                'min_members' => $min_members
             ]);
-            $groupIds[] = $gid;
         }
 
-        // distribute students round-robin to keep balanced
+        // shuffle students, then distribute round-robin to keep group sizes balanced
+        shuffle($students);
         $memberRows = [];
         $gIndex = 0;
         foreach ($students as $s) {
             $memberRows[] = [
-                'group_id' => $groupIds[$gIndex],
-                'student_id' => $s['trans_no']
+                'group_id'   => $groupIds[$gIndex],
+                'student_id' => $s['trans_no'],
             ];
-            $gIndex++;
-            if ($gIndex >= count($groupIds)) $gIndex = 0;
+            $gIndex = ($gIndex + 1) % count($groupIds);
         }
 
-        // insert members
         if (!empty($memberRows)) {
             $this->Group_member_model->add_members_batch($memberRows);
         }
 
-        $this->session->set_flashdata('success', 'Groups created: ' . count($groupIds));
-        redirect('Groupings/list/' . $section);
+        $this->session->set_flashdata('success', 'Grouping set "' . $set_name . '" created with ' . count($groupIds) . ' groups.');
+        redirect('Groupings/view_set/' . $set_id);
     }
 
-    public function list($section = null)
+    public function view_set($set_id)
     {
-        $data['groups'] = $this->Grouping_model->get_groups_by_section($section);
+        $set = $this->Grouping_model->get_set($set_id);
+        if (!$set) show_404();
+
+        $data['set'] = $set;
+        $data['groups'] = $this->Grouping_model->get_groups_by_set($set_id);
         foreach ($data['groups'] as &$g) {
             $g['members'] = $this->Group_member_model->get_members_by_group($g['group_id']);
         }
-        $data['section'] = $section;
-        $this->load->view('groupings/list', $data);
+        unset($g);
+        $this->load->view('groupings/view_set', $data);
+    }
+
+    public function delete_set($set_id)
+    {
+        $set = $this->Grouping_model->get_set($set_id);
+        if (!$set) show_404();
+
+        $this->Grouping_model->delete_set($set_id);
+        $this->session->set_flashdata('success', 'Grouping set deleted.');
+        redirect('Groupings/sets/' . $set['section_id']);
     }
 }

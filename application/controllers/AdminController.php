@@ -327,6 +327,10 @@ class AdminController extends CI_Controller
         $data['schedules'] = $this->class_schedule->get_all_active();
         $data['io_types'] = $this->db->get('io_type')->result_array();
         $data['selected_schedule'] = $schedule_id;
+
+        $this->load->model('Grouping_model');
+        $data['grouping_sets'] = $this->Grouping_model->get_all_sets();
+
         $this->load->view('admin/manage_assessments', $data);
     }
 
@@ -358,7 +362,17 @@ class AdminController extends CI_Controller
         } else {
             $data['created_at'] = date('Y-m-d H:i:s');
             $this->assessments->insert($data);
+            $assessment_id = $this->db->insert_id();
             $this->session->set_flashdata('success', 'Assessment added successfully.');
+        }
+
+        $grouping_set_id = !empty($post['grouping_set_id']) ? (int) $post['grouping_set_id'] : null;
+        $this->db->where('assessment_id', $assessment_id)->delete('assessment_groupings');
+        if ($data['is_groupings'] && $grouping_set_id) {
+            $this->db->insert('assessment_groupings', [
+                'assessment_id' => $assessment_id,
+                'set_id'        => $grouping_set_id,
+            ]);
         }
 
         $qs = !empty($post['schedule_id']) ? '?schedule_id=' . $post['schedule_id'] : '';

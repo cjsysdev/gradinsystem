@@ -1,8 +1,11 @@
 <?php $this->load->view('header'); ?>
 <div class="container mt-4">
-    <h3>Create Groupings</h3>
+    <?php $this->load->view('profile_only'); ?>
+    <?php $this->load->view('admin/nav_bar'); ?>
+
+    <h3>New Grouping Set</h3>
     <?php if ($this->session->flashdata('error')): ?>
-        <div class="alert alert-danger"><?= $this->session->flashdata('error') ?></div>
+        <div class="alert alert-danger"><?= htmlspecialchars($this->session->flashdata('error')) ?></div>
     <?php endif; ?>
     <form action="<?= base_url('Groupings/store') ?>" method="post" class="mt-3">
         <div class="form-group">
@@ -10,9 +13,16 @@
             <select name="section" class="form-control" required>
                 <option value="">Select section</option>
                 <?php foreach ($sections as $s): ?>
-                    <option value="<?= htmlspecialchars($s['section']) ?>"><?= htmlspecialchars($s['section']) ?></option>
+                    <option value="<?= htmlspecialchars($s['section']) ?>"
+                        <?= $preselected_section === $s['section'] ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($s['section']) ?>
+                    </option>
                 <?php endforeach; ?>
             </select>
+        </div>
+        <div class="form-group">
+            <label>Set name</label>
+            <input type="text" name="set_name" class="form-control" placeholder="e.g. Lab Groups, Project Teams" required>
         </div>
         <div class="form-group">
             <label>Group name prefix</label>

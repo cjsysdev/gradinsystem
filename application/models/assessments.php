@@ -112,6 +112,7 @@ class assessments extends MY_Model
                 iot.percentage,
                 cl.class_name,
                 cl.class_code,
+                ag.set_id AS grouping_set_id,
                 COUNT(cw.classwork_id) AS submission_count
             FROM assessments a
             JOIN class_schedule cs ON a.schedule_id = cs.schedule_id
@@ -119,6 +120,7 @@ class assessments extends MY_Model
             JOIN classes cl ON cs.class_id = cl.class_id
             JOIN semester_master sem ON cs.semester_id = sem.trans_no AND sem.is_active = 1
             LEFT JOIN classworks cw ON cw.assessment_id = a.assessment_id
+            LEFT JOIN assessment_groupings ag ON ag.assessment_id = a.assessment_id
         ";
 
         if ($schedule_id) {
