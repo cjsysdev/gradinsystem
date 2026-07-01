@@ -171,6 +171,26 @@ $assessment_id = isset($assessment_id) ? (int) $assessment_id : 0;
         // ── Render ──────────────────────────────────────────────────
         function renderContent() {
             const section  = sections[currentSection];
+            const quizSection = document.querySelector('.quiz-section');
+            quizSection.style.display = 'block';
+
+            const hasQuiz = section.quiz
+                && typeof section.quiz.question === 'string'
+                && Array.isArray(section.quiz.options)
+                && section.quiz.options.length >= 2;
+
+            if (!hasQuiz) {
+                document.getElementById('lessonSection').innerHTML = section.lesson;
+                document.getElementById('questionText').innerHTML  = '<div class="no-quiz-message">No quiz for this section.</div>';
+                document.getElementById('optionsContainer').innerHTML = '';
+                document.getElementById('feedback').className = 'feedback';
+                document.getElementById('feedback').textContent = '';
+                document.getElementById('submitBtn').textContent = 'Next →';
+                answered = true; // skip to next on submit
+                updateUI();
+                return;
+            }
+
             const shuffled = createShuffledOptions(section.quiz.options, section.quiz.correct);
             currentShuffledOptions = shuffled.options;
             currentCorrectIndex    = shuffled.correctIndex;

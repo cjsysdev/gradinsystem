@@ -228,8 +228,8 @@
 
         <?php if (
           isset($classwork['code']) &&
-          !$this->session->exam_term &&
-          $classwork['status'] !== 'viewed'
+          !$this->session->exam_term
+          // $classwork['status'] !== 'viewed'
         ):
         ?>
           <?php $this->classworks->update(['status' => 'viewed'], $classwork['classwork_id']); ?>

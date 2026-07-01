@@ -714,9 +714,9 @@ class InteractiveQuizController extends CI_Controller
 
             // Detect format: sections with a 'quiz' key → discussion template;
             // sections with 'questions' array → multi-question quiz.
-            $format = 'quiz';
+            $format = 'discussion';
             foreach ($sections as $s) {
-                if (isset($s['quiz'])) { $format = 'discussion'; break; }
+                if (isset($s['questions'])) { $format = 'quiz'; break; }
             }
 
             $topics[] = [
@@ -753,8 +753,11 @@ class InteractiveQuizController extends CI_Controller
             if (!isset($section['lesson'])) {
                 return "Section {$n} is missing a \"lesson\" field.";
             }
-            if (empty($section['quiz']) || !is_array($section['quiz'])) {
-                return "Section {$n} is missing a \"quiz\" object.";
+            if (!isset($section['quiz']) || $section['quiz'] === null) {
+                continue;
+            }
+            if (!is_array($section['quiz']) || empty($section['quiz'])) {
+                return "Section {$n} has an invalid \"quiz\" value; use null or omit it when there is no quiz.";
             }
             $q = $section['quiz'];
             if (empty($q['question'])) {

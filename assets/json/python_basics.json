@@ -1,0 +1,154 @@
+{
+  "topic": "py_display_variables",
+  "title": "Python: Display & Variables",
+  "description": "Learn how to print output and store values in Python",
+  "congratsText": "Great work! You now know how to display text and use variables in Python.",
+  "sections": [
+    {
+      "id": 0,
+      "title": "Objectives",
+      "quiz": null,
+      "lesson": "<div class=\"lesson-title\">What You Will Learn</div><div class=\"lesson-text\">By the end of this discussion, you will be able to:</div><div class=\"lesson-text\"><ul><li>Use the <code>print()</code> function to display text and numbers on the screen</li><li>Understand what a variable is and why we use it</li><li>Create variables and assign values using the <code>=</code> operator</li><li>Use variables inside <code>print()</code> to display stored values</li></ul></div>"
+    },
+    {
+      "id": 1,
+      "title": "The print() Function",
+      "quiz": {
+        "question": "What is the purpose of the print() function in Python?",
+        "options": [
+          "It stores a value in memory for later use",
+          "It displays output to the screen or console",
+          "It reads input typed by the user at runtime",
+          "It imports a module needed for the program"
+        ],
+        "correct": 1
+      },
+      "lesson": "<div class=\"lesson-title\">The print() Function</div><div class=\"lesson-text\"><code>print()</code> displays output on the screen — whatever you put inside the parentheses gets shown.</div><div class=\"code-block\">print(\"Hello, World!\")\n# Output: Hello, World!</div>"
+    },
+    {
+      "id": 2,
+      "title": "Printing Text (Strings)",
+      "quiz": {
+        "question": "What will this code display on the screen?",
+        "code": "print(\"Hello, World!\")",
+        "options": [
+          "\"Hello, World!\" — including the quotation marks",
+          "Hello, World! — the text without quotes",
+          "Hello — only the first word before the comma",
+          "Nothing — print() needs parentheses to work"
+        ],
+        "correct": 1
+      },
+      "lesson": "<div class=\"lesson-title\">Printing Text (Strings)</div><div class=\"lesson-text\">Text in Python is called a <span class=\"highlight\">string</span> — wrap it in single or double quotes to print it.</div><div class=\"code-block\">print(\"Hello!\")\nprint('Python is fun')\n# Quotes are not shown in the output</div>"
+    },
+    {
+      "id": 3,
+      "title": "Printing Numbers & Expressions",
+      "quiz": {
+        "question": "What does Python display when this code runs?",
+        "code": "print(10 + 5)",
+        "options": [
+          "10 + 5 — the expression as typed in the code",
+          "15 — Python evaluates the expression first",
+          "105 — the two numbers joined as a string",
+          "Error — print() cannot handle math inside it"
+        ],
+        "correct": 1
+      },
+      "lesson": "<div class=\"lesson-title\">Printing Numbers & Expressions</div><div class=\"lesson-text\">Numbers don't need quotes — Python also evaluates math expressions inside <code>print()</code> before displaying the result.</div><div class=\"code-block\">print(42)\nprint(10 + 5)\n# Output: 42 then 15</div>"
+    },
+    {
+      "id": 4,
+      "title": "Printing Multiple Values",
+      "quiz": {
+        "question": "What does this code print?",
+        "code": "print(\"Score:\", 95)",
+        "options": [
+          "Score:95 — the values joined with no space",
+          "Score: 95 — a space is added between values",
+          "Score — only the string part is displayed",
+          "Error — print() cannot mix text and numbers"
+        ],
+        "correct": 1
+      },
+      "lesson": "<div class=\"lesson-title\">Printing Multiple Values</div><div class=\"lesson-text\">Separate multiple values with commas inside <code>print()</code> — Python automatically adds a space between them.</div><div class=\"code-block\">print(\"Score:\", 95)\n# Output: Score: 95</div>"
+    },
+    {
+      "id": 5,
+      "title": "What is a Variable?",
+      "quiz": {
+        "question": "What is a variable in Python?",
+        "options": [
+          "A fixed value that cannot change after creation",
+          "A named container that stores a value in memory",
+          "A built-in function used to display output",
+          "A keyword that imports data from a file"
+        ],
+        "correct": 1
+      },
+      "lesson": "<div class=\"lesson-title\">What is a Variable?</div><div class=\"lesson-text\">A <span class=\"highlight\">variable</span> is a named container that stores a value in memory so you can reuse it later.</div><div class=\"code-block\">score = 85\nprint(score)\n# Output: 85</div>"
+    },
+    {
+      "id": 6,
+      "title": "Creating Variables",
+      "quiz": {
+        "question": "What value is stored in the variable after this line runs?",
+        "code": "score = 85",
+        "options": [
+          "The text 'score' — the variable name is stored",
+          "85 — the integer value assigned to score",
+          "Nothing — = just declares an empty variable",
+          "True — Python confirms the assignment worked"
+        ],
+        "correct": 1
+      },
+      "lesson": "<div class=\"lesson-title\">Creating Variables</div><div class=\"lesson-text\">Use <code>=</code> to create a variable and assign it a value — Python automatically detects the data type.</div><div class=\"code-block\">name  = \"Ana\"\nage   = 20\ngrade = 95.5\nprint(name, age, grade)\n# Output: Ana 20 95.5</div>"
+    },
+    {
+      "id": 7,
+      "title": "Variable Naming Rules",
+      "quiz": {
+        "question": "Which of these is a valid Python variable name?",
+        "options": [
+          "2score — starts with a number, not a letter",
+          "student_name — uses letters and underscore",
+          "my score — contains a space between words",
+          "class — this is a reserved Python keyword"
+        ],
+        "correct": 1
+      },
+      "lesson": "<div class=\"lesson-title\">Variable Naming Rules</div><div class=\"lesson-text\">Variable names must start with a letter or underscore, contain no spaces, and cannot be a Python keyword.</div><div class=\"code-block\"># Valid\nstudent_name = \"Ana\"\n\n# Invalid\n2score = 85     # starts with a number\nmy score = 20   # contains a space</div>"
+    },
+    {
+      "id": 8,
+      "title": "Printing Variables",
+      "quiz": {
+        "question": "What does this code display?",
+        "code": "name = \"Ana\"\nprint(\"Hello,\", name)",
+        "options": [
+          "Hello, name — the variable name text is displayed",
+          "Hello, Ana — the value stored in name is displayed",
+          "Hello — only the very first argument is displayed",
+          "Error — variables cannot be used inside print() here"
+        ],
+        "correct": 1
+      },
+      "lesson": "<div class=\"lesson-title\">Printing Variables</div><div class=\"lesson-text\">Use the variable name inside <code>print()</code> without quotes to display its value — or use an f-string for clean formatting.</div><div class=\"code-block\">name = \"Ana\"\nprint(\"Hello,\", name)   # Hello, Ana\nprint(f\"Hi, {name}!\")  # Hi, Ana!</div>"
+    },
+    {
+      "id": 9,
+      "title": "Recap",
+      "quiz": {
+        "question": "Which line correctly stores the text 'Python' in a variable and prints it?",
+        "options": [
+          "language == 'Python' then print(language)",
+          "language = 'Python' then print(language)",
+          "print(language) then language = 'Python'",
+          "var language = 'Python' then print(language)"
+        ],
+        "correct": 1
+      },
+      "lesson": "<div class=\"lesson-title\">Recap</div><div class=\"lesson-text\">Use <code>print()</code> to display text, numbers, and variables — and use variables with <code>=</code> to store and reuse values.</div><div class=\"code-block\">language = \"Python\"\nprint(\"I am learning\", language)\n# Output: I am learning Python</div>"
+    }
+  ]
+}
