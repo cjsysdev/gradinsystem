@@ -134,7 +134,7 @@ class PollController extends CI_Controller
     // AJAX: toggle show_results
     public function toggle_results($question_id)
     {
-        if (!$this->session->teacher) {
+        if ($this->session->role != 'admin') {
             $this->_json(['ok' => false, 'msg' => 'Unauthorized'], 403);
             return;
         }
@@ -145,7 +145,7 @@ class PollController extends CI_Controller
     // AJAX: close poll
     public function close_poll($poll_id)
     {
-        if (!$this->session->teacher) {
+        if ($this->session->role != 'admin') {
             $this->_json(['ok' => false, 'msg' => 'Unauthorized'], 403);
             return;
         }
@@ -157,7 +157,7 @@ class PollController extends CI_Controller
     // AJAX: delete poll
     public function delete_poll($poll_id)
     {
-        if (!$this->session->teacher) {
+        if ($this->session->role != 'admin') {
             $this->_json(['ok' => false, 'msg' => 'Unauthorized'], 403);
             return;
         }
@@ -198,7 +198,7 @@ class PollController extends CI_Controller
             $this->_json(['ok' => false], 403);
             return;
         }
-        $poll = $this->db->where('status', 'active')->limit(1)->get('polls')->row_array();
+        $poll = $this->db->where('status', 'active')->order_by('poll_id', 'DESC')->limit(1)->get('polls')->row_array();
         $this->_json([
             'ok'   => true,
             'poll' => $poll ? ['pin' => $poll['pin'], 'title' => $poll['title']] : null,

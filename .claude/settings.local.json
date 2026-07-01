@@ -9,7 +9,12 @@
       "Bash(xargs grep -l \"CREATE TABLE.*advance_excuse\")",
       "Bash(Get-ChildItem \"d:\\\\wamp64\\\\logs\" -Recurse -Filter \"*.log\")",
       "Bash(Sort-Object LastWriteTime -Descending)",
-      "Bash(Select-Object -First 5 FullName, LastWriteTime)"
+      "Bash(Select-Object -First 5 FullName, LastWriteTime)",
+      "Bash(php -v)",
+      "Bash(\"/c/Program Files/MySQL/MySQL Server 8.0/bin/mysql.exe\" -uroot -pcmcp@ssw0rd gradingsystem2025a -e \"SHOW TABLES LIKE 'poll%'; SELECT poll_id,title,pin,status,active_question_id FROM polls ORDER BY poll_id DESC LIMIT 5;\")",
+      "Bash(find \"/c/Program Files\" \"/c/wamp64\" -iname \"mysql.exe\" 2>/dev/null | head -10)",
+      "Read(//c/Program Files/**)",
+      "Bash(/c/tools/php85/php -l \"/d/wamp64/www/gradingSystem/application/controllers/PollController.php\")"
     ]
   }
 }
