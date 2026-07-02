@@ -23,7 +23,7 @@ class Groupings extends CI_Controller
 
     public function index()
     {
-        $data['sections'] = $this->db->select('section')->distinct()->get('class_schedule')->result_array();
+        $data['sections'] = $this->class_schedule->get_sections();
         $this->load->view('groupings/index', $data);
     }
 
@@ -37,7 +37,7 @@ class Groupings extends CI_Controller
 
     public function create($section = null)
     {
-        $data['sections'] = $this->db->select('section')->distinct()->get('class_schedule')->result_array();
+        $data['sections'] = $this->class_schedule->get_sections();
         $data['preselected_section'] = $section;
         $this->load->view('groupings/create', $data);
     }
@@ -61,11 +61,16 @@ class Groupings extends CI_Controller
             return;
         }
 
-        // get students in section
+        // get students in section — class_student keeps one row per
+        // semester a student was enrolled, so this must be scoped to the
+        // active semester or a re-enrolled student (same section across
+        // semesters) would be pulled in twice and could land in two groups.
         $students = $this->db->select('sm.trans_no, sm.firstname, sm.lastname')
             ->from('class_student cs')
             ->join('student_master sm', 'cs.student_id = sm.trans_no', 'left')
+            ->join('semester_master sem', 'cs.semester_id = sem.trans_no')
             ->where('cs.section', $section)
+            ->where('sem.is_active', 1)
             ->get()->result_array();
 
         $total = count($students);
