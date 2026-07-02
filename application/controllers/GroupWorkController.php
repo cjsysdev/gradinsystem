@@ -169,7 +169,8 @@ class GroupWorkController extends CI_Controller
             if (!$existing) {
                 $this->classworks->insert($submission_data);
             } else {
-                $this->classworks->update($existing->classwork_id, $submission_data);
+                // MY_Model::update() takes (data, where) — NOT (where, data).
+                $this->classworks->update($submission_data, $existing->classwork_id);
             }
         }
 

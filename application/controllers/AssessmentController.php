@@ -42,9 +42,17 @@ class AssessmentController extends CI_Controller
             redirect('attendance');
         }
 
+        $widget = null;
+        if (!empty($classwork['widget_id'])) {
+            $this->load->model('Widgets_model');
+            $widget = $this->Widgets_model->get($classwork['widget_id']);
+        }
+
         $data = [
             'classwork' => $classwork,
-            'is_cleared' => $is_cleared
+            'is_cleared' => $is_cleared,
+            'widget' => $widget,
+            'widget_config' => $widget ? (json_decode($classwork['given'] ?? '', true) ?: []) : [],
         ];
 
         $this->load->view('assessment_view_code', $data);
@@ -250,8 +258,9 @@ class AssessmentController extends CI_Controller
             $this->classworks->insert($submission_data);
             $this->session->set_flashdata('success', 'Classwork submitted successfully!');
         } else {
-            // Update existing submission
-            $this->classworks->update($existing_submission->classwork_id, $submission_data);
+            // Update existing submission.
+            // MY_Model::update() takes (data, where) — NOT (where, data).
+            $this->classworks->update($submission_data, $existing_submission->classwork_id);
             $this->session->set_flashdata('success', 'Classwork updated successfully!');
         }
 

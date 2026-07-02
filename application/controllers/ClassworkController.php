@@ -89,8 +89,15 @@ class ClassworkController extends CI_Controller
     {
         $submission = $this->classworks->with_assessments()->as_array()->get($classwork_id);
 
+        $widget = null;
+        if (!empty($submission['assessments'][0]->widget_id)) {
+            $this->load->model('Widgets_model');
+            $widget = $this->Widgets_model->get($submission['assessments'][0]->widget_id);
+        }
+
         $data = [
-            'classwork' => $submission
+            'classwork' => $submission,
+            'widget' => $widget,
         ];
 
         $this->load->view('student_submission', $data);

@@ -205,7 +205,15 @@
       </span>
     </div>
     <div class="card-body text-center">
-      <?php if ($classwork['file_upload']): ?>
+      <?php if (!empty($widget)): ?>
+        <?php
+        $this->load->view($widget['input_view'], [
+            'config'   => json_decode($classwork['assessments'][0]->given ?? '', true) ?: [],
+            'readonly' => true,
+            'existing' => json_decode($classwork['code'] ?? '', true) ?: [],
+        ]);
+        ?>
+      <?php elseif ($classwork['file_upload']): ?>
         <!-- Display uploaded file -->
         <h6>Uploaded File:</h6>
         <a href="#" class="btn btn-outline-primary" onclick="previewFile('<?= base_url('uploads/classworks/' . $classwork['file_upload']) ?>')">

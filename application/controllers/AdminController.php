@@ -331,6 +331,9 @@ class AdminController extends CI_Controller
         $this->load->model('Grouping_model');
         $data['grouping_sets'] = $this->Grouping_model->get_all_sets();
 
+        $this->load->model('Widgets_model');
+        $data['widgets'] = $this->Widgets_model->get_all();
+
         $this->load->view('admin/manage_assessments', $data);
     }
 
@@ -354,10 +357,13 @@ class AdminController extends CI_Controller
             'term'         => $post['term'],
             'status'       => (int)$status,
             'is_groupings' => !empty($post['is_groupings']) ? 1 : 0,
+            'widget_id'    => !empty($post['widget_id']) ? (int) $post['widget_id'] : null,
+            'given'        => !empty($post['widget_id']) ? ($post['given'] ?? null) : null,
         ];
 
         if ($assessment_id) {
-            $this->assessments->update($assessment_id, $data);
+            // MY_Model::update() takes (data, where) — NOT (where, data).
+            $this->assessments->update($data, $assessment_id);
             $this->session->set_flashdata('success', 'Assessment updated successfully.');
         } else {
             $data['created_at'] = date('Y-m-d H:i:s');
@@ -833,7 +839,8 @@ class AdminController extends CI_Controller
         ];
 
         if ($id) {
-            $this->discussions->update($id, $row);
+            // MY_Model::update() takes (data, where) — NOT (where, data).
+            $this->discussions->update($row, $id);
             $this->session->set_flashdata('success', 'Discussion updated.');
         } else {
             $row['created_at'] = date('Y-m-d H:i:s');

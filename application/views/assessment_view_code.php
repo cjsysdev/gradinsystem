@@ -68,31 +68,38 @@ if ($classwork['iotype_id'] == '4' || $classwork['iotype_id'] == '3') {
 
                 <!-- Other assessment details -->
 
-                <!-- Option to choose between code input or file upload -->
-                <div class="mb-4">
-                    <div class="dropdown">
-                        <button class="btn btn-secondary btn-block dropdown-toggle w-100" type="button" id="submissionTypeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                            Submission Type: <span id="selectedSubmissionType">Input Code</span>
-                        </button>
-                        <ul class="dropdown-menu w-100 shadow-sm" aria-labelledby="submissionTypeDropdown">
-                            <li><a class="dropdown-item" href="#" onclick="setSubmissionType('code')">Input Code</a></li>
-                            <li><a class="dropdown-item" href="#" onclick="setSubmissionType('file')">Upload File</a></li>
-                        </ul>
+                <?php if (!empty($widget)): ?>
+                    <!-- Widget-driven submission: the widget serializes its state into
+                         this hidden field right before the form submits (see submitForm()). -->
+                    <input type="hidden" id="code-editor" name="code">
+                    <?php $this->load->view($widget['input_view'], ['config' => $widget_config, 'readonly' => false, 'existing' => null]); ?>
+                <?php else: ?>
+                    <!-- Option to choose between code input or file upload -->
+                    <div class="mb-4">
+                        <div class="dropdown">
+                            <button class="btn btn-secondary btn-block dropdown-toggle w-100" type="button" id="submissionTypeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                Submission Type: <span id="selectedSubmissionType">Input Code</span>
+                            </button>
+                            <ul class="dropdown-menu w-100 shadow-sm" aria-labelledby="submissionTypeDropdown">
+                                <li><a class="dropdown-item" href="#" onclick="setSubmissionType('code')">Input Code</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="setSubmissionType('file')">Upload File</a></li>
+                            </ul>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Code input section -->
-                <div id="code-input-section" class="mb-3">
-                    <label for="code-editor" class="form-label">Enter your submission (Code/Text):</label>
-                    <textarea id="code-editor" name="code" class="form-control" rows="10"
-                        placeholder="Write your code or text here..."></textarea>
-                </div>
+                    <!-- Code input section -->
+                    <div id="code-input-section" class="mb-3">
+                        <label for="code-editor" class="form-label">Enter your submission (Code/Text):</label>
+                        <textarea id="code-editor" name="code" class="form-control" rows="10"
+                            placeholder="Write your code or text here..."></textarea>
+                    </div>
 
-                <!-- File upload section -->
-                <div id="file-upload-section" class="mb-3" style="display: none;">
-                    <label for="file-upload" class="form-label">Upload a file:</label>
-                    <input type="file" id="file-upload" name="file-upload" class="form-control">
-                </div>
+                    <!-- File upload section -->
+                    <div id="file-upload-section" class="mb-3" style="display: none;">
+                        <label for="file-upload" class="form-label">Upload a file:</label>
+                        <input type="file" id="file-upload" name="file-upload" class="form-control">
+                    </div>
+                <?php endif; ?>
                 <div class="text-center">
                     <button type="button" class="btn btn-primary btn-block" onclick="confirmSubmission()">Turn
                         In</button>
@@ -145,8 +152,10 @@ if ($classwork['iotype_id'] == '4' || $classwork['iotype_id'] == '3') {
     }
 
     function confirmSubmission() {
-        const codeEditor = document.getElementById('code-editor').value.trim();
-        const fileUpload = document.getElementById('file-upload').value;
+        const codeEditorEl = document.getElementById('code-editor');
+        const fileUploadEl = document.getElementById('file-upload');
+        const codeEditor = codeEditorEl ? codeEditorEl.value.trim() : '';
+        const fileUpload = fileUploadEl ? fileUploadEl.value : '';
 
         // if (!codeEditor || !fileUpload) {
         //   alert('Please enter code or upload a file before submitting.');
@@ -158,6 +167,11 @@ if ($classwork['iotype_id'] == '4' || $classwork['iotype_id'] == '3') {
     }
 
     function submitForm() {
+        // Widget views (see application/views/widgets/*) define this to copy
+        // their state into the hidden #code-editor field before the real submit.
+        if (typeof window.serializeWidgetBeforeSubmit === 'function') {
+            window.serializeWidgetBeforeSubmit();
+        }
         document.getElementById('submission-form').submit();
     }
 </script>

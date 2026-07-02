@@ -1,6 +1,6 @@
 # Paperless Midterm Integration Plan
 
-**Status:** Planning — no code implemented yet
+**Status:** Phase 1 implemented — widgets registry + Widget B (Worksheet Form) live; Widgets C–G not yet built
 **Scope:** IS Innovations & New Technologies course, Midterm (Weeks 1–8)
 **Related:** `docs/week1-lms-seed-example/` (SQL + JSON pilot for Week 1)
 
@@ -209,26 +209,50 @@ patterns. Build 6 reusable widgets, not 16 custom interfaces.
 
 ## 6. Database Integration
 
-Two currently-idle/underused fields cover almost everything — **zero new
-tables** for Widgets B, C, F, G, and fixed-flow E:
+**Update (implemented):** rather than a plain `assessments.widget_type
+VARCHAR`, widgets are looked up through a small registry table so adding a
+widget later is "add a row + drop a view file," not editing a controller's
+if/else chain:
 
-- **`assessments.given`** (currently unused) → instructor's widget config JSON
+```sql
+CREATE TABLE `widgets` (
+  `widget_id`         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  `widget_key`        VARCHAR(32) NOT NULL UNIQUE,   -- 'worksheet', 'card_sort', etc. — matches the JSON config's "widget" field
+  `name`              VARCHAR(64) NOT NULL,           -- shown in the admin "Widget" dropdown
+  `input_view`        VARCHAR(128) NOT NULL,          -- e.g. 'widgets/worksheet' — one file, shared by input + readonly modes via a $readonly flag
+  `admin_config_view` VARCHAR(128) DEFAULT NULL,      -- reserved for a future visual config builder; NULL today (instructor hand-writes JSON)
+  `created_at`        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+ALTER TABLE `assessments` ADD COLUMN `widget_id` INT UNSIGNED DEFAULT NULL;
+```
+
+- **`assessments.given`** → instructor's widget config JSON. **Correction:**
+  earlier drafts of this doc assumed this column already existed
+  ("currently unused"); it did not — `Widgets_model::install()` adds it
+  alongside `widget_id`.
 - **`classworks.code`** (already used for text submissions) → student's
-  widget submission JSON
-- **One new column needed:** `assessments.widget_type VARCHAR(32)` — values:
-  `worksheet`, `card_sort`, `brainstorm`, `diagram`, `decision_matrix`,
-  `calculator`, or `NULL` (today's default: plain file/text upload).
+  widget submission JSON. Unchanged — `AssessmentController::submit_classwork()`
+  needed zero modifications; each widget's JS serializes its state into the
+  existing hidden `code` field before the form submits.
+- Run `WidgetsController/install` (admin-only) once to create/upgrade the
+  schema — same pattern as `Groupings/install` and `poll/install`.
+- Only insert a `widgets` row for a widget once its `input_view` file
+  actually exists, so the admin dropdown never offers a widget with no view
+  behind it. Widget B (`worksheet`) is the only row today.
 
-Widget D (Brainstorm Board) is the exception — shared/live state across a
-class section rather than one row per student. Start with polling
-(`assessments.given` as live board state); a dedicated table is a later
-upgrade if needed.
+Widget D (Brainstorm Board) is still the exception — shared/live state
+across a group/section rather than one row per student. A generic
+`assessment_live_state` table (`application/models/live_state_model.php`,
+keyed by `assessment_id` + optional `group_id`, `group_id = NULL` meaning
+section-wide) already exists from the group-assessment-submission feature —
+reuse it (`get_or_create($assessment_id, null)`) instead of introducing
+another polling table when Widget D is built.
 
 ## 7. Build Roadmap
 
 | Phase | What to Build | Why This Order |
 |---|---|---|
-| 1 | Add `widget_type` column. Build Widget B. | Establishes the pattern; unlocks 4 sessions immediately. |
+| 1 | ~~Add `widget_type` column.~~ Add `widgets` registry table + `widget_id` column. Build Widget B. **(Done)** | Establishes the pattern; unlocks 4 sessions immediately. |
 | 2 | Build Widget C. | Second most-used pattern (5 sessions); same architecture as Phase 1. |
 | 3 | Build Widget G, and Widget F as a B enhancement. | Small, low-risk quick wins. |
 | 4 | Build Widget E — fixed-flow mode only. | Covers 2.1 and 4.1. |

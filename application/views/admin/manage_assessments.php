@@ -188,6 +188,24 @@
                             Sets are managed under <a href="<?= base_url('Groupings') ?>" target="_blank">Groupings</a>.
                         </small>
                     </div>
+
+                    <div class="form-group mt-3">
+                        <label>Widget (optional)</label>
+                        <select name="widget_id" id="modal_widget_id" class="form-control">
+                            <option value="">None &mdash; plain code/file submission</option>
+                            <?php foreach ($widgets as $w): ?>
+                                <option value="<?= $w['widget_id'] ?>"><?= htmlspecialchars($w['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="form-group" id="modal_given_wrap" style="display:none">
+                        <label>Widget Config (JSON)</label>
+                        <textarea name="given" id="modal_given" class="form-control" rows="5"
+                                  placeholder='{"columns": ["Column A", "Column B"], "min_rows": 3, "allow_add_rows": true}'></textarea>
+                        <small class="form-text text-muted">
+                            See root/docs/paperless-midterm-plan.md for each widget's config schema.
+                        </small>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
@@ -234,8 +252,14 @@ function toggleGroupingSetWrap() {
         document.getElementById('modal_is_groupings').checked ? '' : 'none';
 }
 
+function toggleGivenWrap() {
+    document.getElementById('modal_given_wrap').style.display =
+        document.getElementById('modal_widget_id').value ? '' : 'none';
+}
+
 document.getElementById('modal_schedule_id').addEventListener('change', () => refreshGroupingSetOptions());
 document.getElementById('modal_is_groupings').addEventListener('change', toggleGroupingSetWrap);
+document.getElementById('modal_widget_id').addEventListener('change', toggleGivenWrap);
 
 function openAddModal() {
     document.getElementById('modalTitle').textContent = 'Add Assessment';
@@ -251,6 +275,9 @@ function openAddModal() {
     document.getElementById('modal_is_groupings').checked = false;
     refreshGroupingSetOptions();
     toggleGroupingSetWrap();
+    document.getElementById('modal_widget_id').value = '';
+    document.getElementById('modal_given').value = '';
+    toggleGivenWrap();
     document.getElementById('modal_submit_btn').textContent = 'Add Assessment';
     if (typeof $ !== 'undefined') $('#assessmentModal').modal('show');
 }
@@ -269,6 +296,9 @@ function openEditModal(a) {
     document.getElementById('modal_is_groupings').checked = parseInt(a.is_groupings) === 1;
     refreshGroupingSetOptions(a.grouping_set_id);
     toggleGroupingSetWrap();
+    document.getElementById('modal_widget_id').value = a.widget_id || '';
+    document.getElementById('modal_given').value = a.given || '';
+    toggleGivenWrap();
     document.getElementById('modal_submit_btn').textContent = 'Update Assessment';
     if (typeof $ !== 'undefined') $('#assessmentModal').modal('show');
 }
