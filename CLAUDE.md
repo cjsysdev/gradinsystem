@@ -23,10 +23,12 @@ Full plan: **`docs/paperless-midterm-plan.md`** — read this before working on
 anything related to classwork widgets, the IS Innovations course, or new
 interactive assessment types.
 
-Quick summary: building 6 reusable classwork widgets (Worksheet Form, Card
-Sort, Brainstorm Board, Diagram/Flow Builder, Decision Matrix, Calculator) so
+Quick summary: 6 reusable classwork widgets (Worksheet Form, Card Sort,
+Brainstorm Board, Diagram/Flow Builder, Decision Matrix, Calculator) so
 every hands-on activity in a course can be done natively in the LMS instead
-of paper/photo-upload. Widgets are looked up via a `widgets` registry table
+of paper/photo-upload — all 6 are now built (plan doc §4 has an
+"Implemented" note per widget with file paths and any deviations from the
+original spec). Widgets are looked up via a `widgets` registry table
 (`application/models/widgets_model.php`) — `assessments.widget_id` points at
 a row there (`widget_key`, `name`, `input_view`) rather than a plain
 `widget_type` string, so adding a new widget later is "add a row + drop a
@@ -46,6 +48,12 @@ A second widget, **Multiple Choice Quiz** (`quiz` widget_key, not in the
 original 6-widget plan — see plan doc §10), was added as an opt-in
 alternative to the legacy `QuizController`/`json_file_path` flow; it's the
 only widget that auto-grades server-side (`Widgets_model::grade_quiz()`).
+**Brainstorm Board** (`brainstorm` widget_key) is architecturally different
+from every other widget — it's a shared, section-wide live board rather than
+a per-student form, so it doesn't render inline via `assessment_view_code.php`
+like the others; it gets its own full-page flow via `BrainstormController.php`
+(`AssessmentController::assessment_view_code()` redirects there when it
+detects this widget_key, before any of the per-student/grouping logic runs).
 
 ## Conventions
 - Follow existing controller patterns (see `AssessmentController.php`,

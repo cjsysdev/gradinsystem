@@ -198,7 +198,7 @@
                         <select name="widget_id" id="modal_widget_id" class="form-control">
                             <option value="">None &mdash; plain code/file submission</option>
                             <?php foreach ($widgets as $w): ?>
-                                <option value="<?= $w['widget_id'] ?>"><?= htmlspecialchars($w['name']) ?></option>
+                                <option value="<?= $w['widget_id'] ?>" data-key="<?= htmlspecialchars($w['widget_key']) ?>"><?= htmlspecialchars($w['name']) ?></option>
                             <?php endforeach; ?>
                         </select>
                         <small class="form-text text-muted">
@@ -208,10 +208,9 @@
                     </div>
                     <div class="form-group" id="modal_given_wrap" style="display:none">
                         <label>Widget Config (JSON)</label>
-                        <textarea name="given" id="modal_given" class="form-control" rows="5"
-                                  placeholder='{"columns": ["Column A", "Column B"], "min_rows": 3, "allow_add_rows": true}'></textarea>
-                        <small class="form-text text-muted">
-                            See root/docs/paperless-midterm-plan.md for each widget's config schema.
+                        <textarea name="given" id="modal_given" class="form-control" rows="6"></textarea>
+                        <small class="form-text text-muted" id="modal_given_hint">
+                            Select a widget above to see its example config.
                         </small>
                     </div>
                 </div>
@@ -260,9 +259,87 @@ function toggleGroupingSetWrap() {
         document.getElementById('modal_is_groupings').checked ? '' : 'none';
 }
 
+// Example config JSON per widget_key — shown as the textarea's placeholder
+// so the admin doesn't have to go dig through root/docs/paperless-midterm-plan.md
+// every time. Keep in sync with each widgets/*.php view's expected $config shape.
+const widgetExamples = {
+    worksheet: {
+        hint: 'Table-style form. "min_rows" pre-fills that many blank rows; "allow_add_rows" lets the student add more.',
+        example: {
+            columns: ['Technology', 'Problem Solved', 'Why It Succeeded'],
+            min_rows: 3,
+            allow_add_rows: true
+        }
+    },
+    quiz: {
+        hint: 'Auto-graded. Empty/omitted "choices" = free-text question (case-insensitive match).',
+        example: {
+            questions: [
+                { question: '2 + 2 = ?', choices: ['3', '4', '5'], answer: '4' },
+                { question: 'Capital of France?', choices: [], answer: 'Paris' }
+            ]
+        }
+    },
+    card_sort: {
+        hint: '"require_justification" adds a text box per placed item.',
+        example: {
+            bins: ['Incremental', 'Disruptive'],
+            items: ['Android OS', 'Netflix', 'ChatGPT', 'LED Bulbs'],
+            require_justification: true
+        }
+    },
+    diagram: {
+        hint: 'Fixed sequence of labeled boxes — student fills in the text inside each one.',
+        example: {
+            nodes: ['Sense', 'Transmit', 'Store', 'Act']
+        }
+    },
+    decision_matrix: {
+        hint: 'Fixed rows; each column is typed ("text" or "select" with "options").',
+        example: {
+            rows: ['Smart irrigation', 'Fish tank monitor', 'Offshore fishing boat'],
+            columns: [
+                { name: 'Cost', type: 'text' },
+                { name: 'Best Fit', type: 'select', options: ['WiFi', 'Bluetooth', 'LoRa', 'Cellular', 'Satellite'] }
+            ]
+        }
+    },
+    calculator: {
+        hint: '"formula" can use +, -, *, /, parentheses and each input\'s "key" as a variable name.',
+        example: {
+            inputs: [
+                { label: 'Equipment Cost (₱)', key: 'cost' },
+                { label: 'Monthly Savings (₱)', key: 'savings' }
+            ],
+            formula: 'cost / savings',
+            result_label: 'Months to Break Even'
+        }
+    },
+    brainstorm: {
+        hint: 'Shared class-wide board, not per-student — "max_votes_per_student" limits dot-voting.',
+        example: {
+            prompt: 'How could IS help Maria the farmer?',
+            max_votes_per_student: 3
+        }
+    }
+};
+
 function toggleGivenWrap() {
-    document.getElementById('modal_given_wrap').style.display =
-        document.getElementById('modal_widget_id').value ? '' : 'none';
+    const select = document.getElementById('modal_widget_id');
+    document.getElementById('modal_given_wrap').style.display = select.value ? '' : 'none';
+
+    const key = select.options[select.selectedIndex] ? select.options[select.selectedIndex].dataset.key : null;
+    const info = key && widgetExamples[key] ? widgetExamples[key] : null;
+    const textarea = document.getElementById('modal_given');
+    const hint = document.getElementById('modal_given_hint');
+
+    if (info) {
+        textarea.placeholder = JSON.stringify(info.example, null, 2);
+        hint.textContent = info.hint;
+    } else {
+        textarea.placeholder = '';
+        hint.textContent = 'Select a widget above to see its example config.';
+    }
 }
 
 document.getElementById('modal_schedule_id').addEventListener('change', () => refreshGroupingSetOptions());

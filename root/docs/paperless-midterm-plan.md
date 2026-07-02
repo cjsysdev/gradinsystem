@@ -1,11 +1,12 @@
 # Paperless Midterm Integration Plan
 
-**Status:** Phase 1 implemented — widgets registry + Widget B (Worksheet Form)
-live. Widgets C–G not yet built. One widget added outside this plan's
+**Status:** All 6 widgets (B–G) implemented, plus one added outside the
 original scope: **Multiple Choice Quiz** (see §10) — replaces the
 `json_file_path`-upload requirement of the old `QuizController` flow for any
 assessment that opts into it; that old flow is untouched and still works for
-assessments not using the widget.
+assessments not using the widget. Widget D (Brainstorm Board) is a first
+pass — see its section below for what was simplified vs. the original spec
+(no drag-to-cluster positioning; participation-only classwork tracking).
 **Scope:** IS Innovations & New Technologies course, Midterm (Weeks 1–8)
 **Related:** `docs/week1-lms-seed-example/` (SQL + JSON pilot for Week 1)
 
@@ -95,6 +96,10 @@ patterns. Build 6 reusable widgets, not 16 custom interfaces.
   }
   ```
 - **Priority: HIGH** — build second. Second most common pattern (5 sessions).
+- **Implemented:** `application/views/widgets/card_sort.php`. Config/submission
+  shape matches this spec exactly. UI uses a per-item bin `<select>` instead
+  of true drag-and-drop — more robust on mobile and needs no extra JS library
+  in this no-build-step codebase; still satisfies "tap-to-place."
 
 ### Widget D — Brainstorm & Voting Board
 - **Replaces:** poster paper + physical sticky notes
@@ -124,6 +129,29 @@ patterns. Build 6 reusable widgets, not 16 custom interfaces.
   dedicated `board_notes` table is a later upgrade if real-time feel is needed.
 - **Priority: MEDIUM** — build third/fifth. Highest classroom value but most
   complex (shared/live state).
+- **Implemented (first pass, deviates from spec):**
+  `application/controllers/BrainstormController.php` +
+  `application/views/brainstorm_board.php` + fallback
+  `application/views/widgets/brainstorm.php` (used only by the generic
+  per-student readonly views, which don't really apply here).
+  - Storage: **not** `assessments.given` (that's the instructor's config —
+    prompt + max votes — and stays read-only at runtime). Board state lives
+    in the generic `assessment_live_state` table via `Live_state_model`,
+    keyed `(assessment_id, group_id = NULL)` = section-wide, exactly the
+    reuse the plan called for in §6.
+  - Submission shape differs: `votes` is an array of student_ids (not a
+    count) so per-student vote limits can be enforced and un-voting works;
+    notes carry `author` (an individual student's name), not `author_group`
+    — this build doesn't track group-authored notes, everyone posts as
+    themselves.
+  - **Dropped: drag-to-cluster (`x`/`y` positioning).** Notes render in a
+    simple flex-wrap grid instead. Clustering is real UI complexity
+    (drag state, collision, persistence) that wasn't essential to get
+    brainstorm+voting working — candidate for a follow-up pass.
+  - Grading: each interaction (post or vote) creates/keeps one participation
+    `classworks` row (`status='submitted'`, no `code`, no `score`) so admin
+    submission lists show who took part; the actual content is the shared
+    board, not a per-student field.
 
 ### Widget E — Diagram / Flow Builder
 - **Replaces:** hand-drawn diagrams
@@ -154,6 +182,8 @@ patterns. Build 6 reusable widgets, not 16 custom interfaces.
 - **Priority: MEDIUM** — fixed-flow mode covers 2.1 and 4.1 well and is
   straightforward. Free-form canvas mode (Week 8.1, 7.2) is a later
   enhancement — defer.
+- **Implemented:** `application/views/widgets/diagram.php`, fixed-flow mode
+  only, matches spec exactly. Free-form canvas mode still deferred.
 
 ### Widget F — Decision Matrix Tool
 - **Replaces:** printed decision-matrix worksheets
@@ -172,6 +202,11 @@ patterns. Build 6 reusable widgets, not 16 custom interfaces.
   ```
 - **Priority: LOW-MEDIUM** — essentially Widget B with typed columns
   (text vs. dropdown). Build as a **B enhancement**, not standalone.
+- **Implemented:** `application/views/widgets/decision_matrix.php`, as its
+  own widget file rather than a mode of Widget B — cleaner given rows are
+  fixed (not add/removable like Worksheet's) and columns are typed.
+  Submission shape (not specified in the original spec):
+  `{"cells": {"<row label>": {"<column name>": "<value>", ...}, ...}}`.
 
 ### Widget G — Calculator Widget
 - **Replaces:** manual math on paper
@@ -190,6 +225,12 @@ patterns. Build 6 reusable widgets, not 16 custom interfaces.
   ```
 - **Priority: LOW** — only 1 session, but simple and satisfying. Good
   quick win alongside Widget B.
+- **Implemented:** `application/views/widgets/calculator.php`, config matches
+  spec exactly. Formula evaluated by a small hand-written recursive-descent
+  parser (+ - * / parentheses, variable substitution) — deliberately not
+  `eval()`/`new Function()`, even though the formula string itself is
+  admin-authored/trusted, since the *values* substituted into it are
+  student-entered. Submission shape: `{"inputs": {"<key>": "<value>", ...}, "result": <number>}`.
 
 ## 5. Full Session-to-Widget Mapping (Weeks 1–8)
 
@@ -241,27 +282,27 @@ ALTER TABLE `assessments` ADD COLUMN `widget_id` INT UNSIGNED DEFAULT NULL;
   existing hidden `code` field before the form submits.
 - Run `WidgetsController/install` (admin-only) once to create/upgrade the
   schema — same pattern as `Groupings/install` and `poll/install`.
-- Only insert a `widgets` row for a widget once its `input_view` file
-  actually exists, so the admin dropdown never offers a widget with no view
-  behind it. Widget B (`worksheet`) is the only row today.
+- All 7 rows (`worksheet`, `quiz`, `card_sort`, `diagram`,
+  `decision_matrix`, `calculator`, `brainstorm`) are seeded now — an
+  `input_view` file exists for every one before its row gets inserted.
 
-Widget D (Brainstorm Board) is still the exception — shared/live state
-across a group/section rather than one row per student. A generic
-`assessment_live_state` table (`application/models/live_state_model.php`,
+Widget D (Brainstorm Board) is the one exception, as planned — shared/live
+state across a section rather than one row per student. It reuses the
+generic `assessment_live_state` table (`application/models/live_state_model.php`,
 keyed by `assessment_id` + optional `group_id`, `group_id = NULL` meaning
-section-wide) already exists from the group-assessment-submission feature —
-reuse it (`get_or_create($assessment_id, null)`) instead of introducing
-another polling table when Widget D is built.
+section-wide) that already existed from the group-assessment-submission
+feature, via `BrainstormController` (`get_or_create($assessment_id, null)`)
+— no new table was introduced.
 
 ## 7. Build Roadmap
 
 | Phase | What to Build | Why This Order |
 |---|---|---|
 | 1 | ~~Add `widget_type` column.~~ Add `widgets` registry table + `widget_id` column. Build Widget B. **(Done)** | Establishes the pattern; unlocks 4 sessions immediately. |
-| 2 | Build Widget C. | Second most-used pattern (5 sessions); same architecture as Phase 1. |
-| 3 | Build Widget G, and Widget F as a B enhancement. | Small, low-risk quick wins. |
-| 4 | Build Widget E — fixed-flow mode only. | Covers 2.1 and 4.1. |
-| 5 | Build Widget D — simple polling version. | Most complex; covers 1.2 fully. |
+| 2 | Build Widget C. **(Done)** | Second most-used pattern (5 sessions); same architecture as Phase 1. |
+| 3 | Build Widget G, and Widget F (standalone rather than a B mode). **(Done)** | Small, low-risk quick wins. |
+| 4 | Build Widget E — fixed-flow mode only. **(Done)** | Covers 2.1 and 4.1. |
+| 5 | Build Widget D — simple polling version. **(Done, first pass — see §4 deviations)** | Most complex; covers 1.2 fully. |
 | 6 | (Stretch) Free-form canvas mode for E; storyboard mode for 7.2. | Polish once core 6 widgets are proven. |
 
 ## 8. Concrete Example: Week 1 Under This Plan

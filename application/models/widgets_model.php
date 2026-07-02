@@ -35,6 +35,17 @@ class Widgets_model extends CI_Model
             VALUES ('worksheet', 'Worksheet Form', 'widgets/worksheet', NULL)");
         $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
             VALUES ('quiz', 'Multiple Choice Quiz', 'widgets/quiz', NULL)");
+        $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
+            VALUES ('card_sort', 'Card Sort Board', 'widgets/card_sort', NULL)");
+        $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
+            VALUES ('diagram', 'Diagram / Flow Builder', 'widgets/diagram', NULL)");
+        $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
+            VALUES ('decision_matrix', 'Decision Matrix', 'widgets/decision_matrix', NULL)");
+        $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
+            VALUES ('calculator', 'Calculator', 'widgets/calculator', NULL)");
+        // Brainstorm Board is not a per-student submission — see BrainstormController.
+        $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
+            VALUES ('brainstorm', 'Brainstorm & Voting Board', 'widgets/brainstorm', NULL)");
     }
 
     public function get_all()

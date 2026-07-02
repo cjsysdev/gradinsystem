@@ -29,6 +29,20 @@ class AssessmentController extends CI_Controller
             show_404();
         }
 
+        $widget = null;
+        if (!empty($classwork['widget_id'])) {
+            $this->load->model('Widgets_model');
+            $widget = $this->Widgets_model->get($classwork['widget_id']);
+        }
+
+        // Brainstorm Board is a shared, section-wide board, not a per-student
+        // "fill this in and submit" form — it gets its own full-page flow
+        // regardless of grouping/iotype.
+        if ($widget && $widget['widget_key'] === 'brainstorm') {
+            redirect('BrainstormController/board/' . $classwork_id);
+            return;
+        }
+
         if (!empty($classwork['is_groupings'])) {
             $this->load->model('Grouping_model');
             if ($this->Grouping_model->get_set_for_assessment($classwork_id)) {
@@ -40,12 +54,6 @@ class AssessmentController extends CI_Controller
         if(empty($student_info['is_cleared']) && $classwork['iotype_id'] == 3) {
             $this->session->set_flashdata('warning', 'Only students with cleared clearance requirements may take the exam.');
             redirect('attendance');
-        }
-
-        $widget = null;
-        if (!empty($classwork['widget_id'])) {
-            $this->load->model('Widgets_model');
-            $widget = $this->Widgets_model->get($classwork['widget_id']);
         }
 
         $data = [
