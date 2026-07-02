@@ -234,11 +234,27 @@ class AssessmentController extends CI_Controller
             $assessment = $this->assessments->as_array()->get($assessment_id);
 
             if (!empty($assessment['widget_id'])) {
-                // Widget submissions are structured JSON — keep them in the
-                // code column so student_submission.php / grading can read
-                // them back, instead of writing to a file like plain text.
-                $submission_data['code'] = $post['code'];
-                $submission_data['file_upload'] = null;
+                $this->load->model('Widgets_model');
+                $widget = $this->Widgets_model->get($assessment['widget_id']);
+
+                if (!empty($widget) && $widget['widget_key'] === 'quiz') {
+                    // Auto-graded: never trust a client-computed score — grade
+                    // server-side from the assessment's own config.
+                    $config = json_decode($assessment['given'] ?? '', true) ?: [];
+                    $answers = json_decode($post['code'], true)['answers'] ?? [];
+                    $graded = $this->Widgets_model->grade_quiz($config, $answers);
+
+                    $submission_data['code'] = json_encode($graded['results']);
+                    $submission_data['score'] = $graded['score'];
+                    $submission_data['file_upload'] = null;
+                    $redirect_to_result = true;
+                } else {
+                    // Widget submissions are structured JSON — keep them in the
+                    // code column so student_submission.php / grading can read
+                    // them back, instead of writing to a file like plain text.
+                    $submission_data['code'] = $post['code'];
+                    $submission_data['file_upload'] = null;
+                }
             } else {
                 // Handle textarea submission: save code as a text file and store filename
                 $section = $this->class_student->get(['student_id' => $student_id])->section;
@@ -265,13 +281,19 @@ class AssessmentController extends CI_Controller
 
         if (!$existing_submission) {
             // Insert new submission
-            $this->classworks->insert($submission_data);
+            $classwork_id = $this->classworks->insert($submission_data);
             $this->session->set_flashdata('success', 'Classwork submitted successfully!');
         } else {
             // Update existing submission.
             // MY_Model::update() takes (data, where) — NOT (where, data).
             $this->classworks->update($submission_data, $existing_submission->classwork_id);
+            $classwork_id = $existing_submission->classwork_id;
             $this->session->set_flashdata('success', 'Classwork updated successfully!');
+        }
+
+        if (!empty($redirect_to_result)) {
+            redirect('student_submission/' . $classwork_id);
+            return;
         }
 
         redirect('classwork');

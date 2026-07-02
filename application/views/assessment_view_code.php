@@ -1,5 +1,8 @@
 <?php
-if ($classwork['iotype_id'] == '4' || $classwork['iotype_id'] == '3') {
+// Assessment Type (Major Exam/Quiz) and Widget are independent settings — a
+// widget, if one's assigned, always takes priority. Only fall back to the
+// legacy json_file_path quiz flow when there's no widget to render instead.
+if (empty($widget) && ($classwork['iotype_id'] == '4' || $classwork['iotype_id'] == '3')) {
     redirect('quiz/' . $classwork['assessment_id']);
 } ?>
 
@@ -70,8 +73,11 @@ if ($classwork['iotype_id'] == '4' || $classwork['iotype_id'] == '3') {
 
                 <?php if (!empty($widget)): ?>
                     <!-- Widget-driven submission: the widget serializes its state into
-                         this hidden field right before the form submits (see submitForm()). -->
-                    <input type="hidden" id="code-editor" name="code">
+                         this hidden field right before the form submits (see submitForm()).
+                         Deliberately NOT id="code-editor" — footer.php auto-attaches
+                         CodeMirror to that id on every page, which would render an
+                         empty editor box next to the widget. -->
+                    <input type="hidden" id="widget-code-value" name="code">
                     <?php $this->load->view($widget['input_view'], ['config' => $widget_config, 'readonly' => false, 'existing' => null]); ?>
                 <?php else: ?>
                     <!-- Option to choose between code input or file upload -->
@@ -168,7 +174,7 @@ if ($classwork['iotype_id'] == '4' || $classwork['iotype_id'] == '3') {
 
     function submitForm() {
         // Widget views (see application/views/widgets/*) define this to copy
-        // their state into the hidden #code-editor field before the real submit.
+        // their state into the hidden #widget-code-value field before the real submit.
         if (typeof window.serializeWidgetBeforeSubmit === 'function') {
             window.serializeWidgetBeforeSubmit();
         }

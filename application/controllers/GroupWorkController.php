@@ -151,8 +151,22 @@ class GroupWorkController extends CI_Controller
 
         $is_widget = !empty($resolved['assessment']['widget_id']);
 
+        $widget = $is_widget ? $this->Widgets_model->get($resolved['assessment']['widget_id']) : null;
+        $is_quiz = $widget && $widget['widget_key'] === 'quiz';
+
         $filename = null;
-        if (!$is_widget) {
+        $quiz_score = null;
+        $quiz_results_json = null;
+
+        if ($is_quiz) {
+            // Auto-graded, shared across the whole group — never trust a
+            // client-computed score, grade server-side from the config.
+            $config = json_decode($resolved['assessment']['given'] ?? '', true) ?: [];
+            $answers = json_decode($state['content'] ?? '', true)['answers'] ?? [];
+            $graded = $this->Widgets_model->grade_quiz($config, $answers);
+            $quiz_score = $graded['score'];
+            $quiz_results_json = json_encode($graded['results']);
+        } elseif (!$is_widget) {
             // Plain text/code drafts are written to one shared file — matches
             // how AssessmentController::submit_classwork() stores individual
             // text submissions.
@@ -166,6 +180,8 @@ class GroupWorkController extends CI_Controller
             file_put_contents($upload_path . $filename, (string) $state['content']);
         }
 
+        $my_classwork_id = null;
+
         foreach ($members as $member) {
             $submission_data = [
                 'student_id'    => $member['student_id'],
@@ -176,8 +192,11 @@ class GroupWorkController extends CI_Controller
                 // Widget submissions are structured JSON — kept in the code
                 // column (like the solo widget path) instead of a shared file.
                 'file_upload'   => $is_widget ? null : $filename,
-                'code'          => $is_widget ? $state['content'] : null,
+                'code'          => $is_quiz ? $quiz_results_json : ($is_widget ? $state['content'] : null),
             ];
+            if ($is_quiz) {
+                $submission_data['score'] = $quiz_score;
+            }
 
             $existing = $this->classworks->where([
                 'student_id'    => $member['student_id'],
@@ -185,14 +204,25 @@ class GroupWorkController extends CI_Controller
             ])->get();
 
             if (!$existing) {
-                $this->classworks->insert($submission_data);
+                $classwork_id = $this->classworks->insert($submission_data);
             } else {
                 // MY_Model::update() takes (data, where) — NOT (where, data).
                 $this->classworks->update($submission_data, $existing->classwork_id);
+                $classwork_id = $existing->classwork_id;
+            }
+
+            if ((string) $member['student_id'] === (string) $this->session->student_id) {
+                $my_classwork_id = $classwork_id;
             }
         }
 
         $this->session->set_flashdata('success', 'Submitted for the whole group!');
+
+        if ($is_quiz && $my_classwork_id) {
+            redirect('student_submission/' . $my_classwork_id);
+            return;
+        }
+
         redirect('classwork');
     }
 

@@ -132,10 +132,11 @@ if (!$readonly && empty($rows)) {
     };
 
     // Called by the host page right before it submits the form — serializes
-    // this widget's state into the hidden #code-editor field so the existing
-    // AssessmentController::submit_classwork() needs zero changes.
+    // this widget's state into the hidden #widget-code-value field so the
+    // existing AssessmentController::submit_classwork() needs zero changes
+    // (it only cares about the "code" POST field name, not this element's id).
     window.serializeWidgetBeforeSubmit = function () {
-        const codeField = document.getElementById('code-editor');
+        const codeField = document.getElementById('widget-code-value');
         if (codeField) codeField.value = window.getWidgetState();
     };
 })();

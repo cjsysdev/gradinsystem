@@ -29,11 +29,12 @@ class Widgets_model extends CI_Model
         $this->_add_column_if_missing('assessments', 'given', 'LONGTEXT DEFAULT NULL');
         $this->_add_column_if_missing('assessments', 'widget_id', 'INT UNSIGNED DEFAULT NULL');
 
-        // Only Widget B (Worksheet Form) is built so far — other widget_key
-        // rows get added when their input_view actually exists, so the admin
-        // dropdown never offers a widget with no view behind it.
+        // widget_key rows get added when their input_view actually exists, so
+        // the admin dropdown never offers a widget with no view behind it.
         $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
             VALUES ('worksheet', 'Worksheet Form', 'widgets/worksheet', NULL)");
+        $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
+            VALUES ('quiz', 'Multiple Choice Quiz', 'widgets/quiz', NULL)");
     }
 
     public function get_all()
@@ -44,6 +45,40 @@ class Widgets_model extends CI_Model
     public function get($widget_id)
     {
         return $this->db->where('widget_id', $widget_id)->get('widgets')->row_array();
+    }
+
+    // Server-side grading for the quiz widget — never trust a client-computed
+    // score. $answers is index-keyed to $config['questions'] (same shape the
+    // widget's getWidgetState() produces: {"answers": {"0": "...", ...}}).
+    // Mirrors QuizController::submit()'s comparison logic so results look the
+    // same whether an assessment uses the old json_file_path quiz or this widget.
+    public function grade_quiz($config, $answers)
+    {
+        $questions = $config['questions'] ?? [];
+        $score = 0;
+        $results = [];
+
+        foreach ($questions as $i => $q) {
+            $user_answer = $answers[$i] ?? 'No answer';
+            $choices = array_filter($q['choices'] ?? [], function ($c) { return trim($c) !== ''; });
+
+            if (!empty($choices)) {
+                $is_correct = trim((string) $user_answer) === trim((string) $q['answer']);
+            } else {
+                $is_correct = mb_strtolower(trim((string) $user_answer)) === mb_strtolower(trim((string) $q['answer']));
+            }
+
+            if ($is_correct) $score++;
+
+            $results[] = [
+                'question'       => $q['question'],
+                'user_answer'    => $user_answer,
+                'correct_answer' => $q['answer'],
+                'is_correct'     => $is_correct,
+            ];
+        }
+
+        return ['score' => $score, 'results' => $results];
     }
 
     private function _add_column_if_missing($table, $column, $definition)

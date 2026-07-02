@@ -136,6 +136,10 @@
                                     <option value="<?= $t['iotype_id'] ?>"><?= htmlspecialchars($t['type']) ?> (<?= $t['percentage'] ?>%)</option>
                                 <?php endforeach; ?>
                             </select>
+                            <small class="form-text text-muted">
+                                Only affects grade weighting &mdash; independent of the submission interface below.
+                                "Major Exam"/"Quiz" only trigger the legacy JSON-upload quiz if no Widget is selected.
+                            </small>
                         </div>
                     </div>
 
@@ -197,6 +201,10 @@
                                 <option value="<?= $w['widget_id'] ?>"><?= htmlspecialchars($w['name']) ?></option>
                             <?php endforeach; ?>
                         </select>
+                        <small class="form-text text-muted">
+                            Controls the actual submission interface, e.g. pick "Multiple Choice Quiz" here for an
+                            auto-graded quiz regardless of Assessment Type above &mdash; no JSON file upload needed.
+                        </small>
                     </div>
                     <div class="form-group" id="modal_given_wrap" style="display:none">
                         <label>Widget Config (JSON)</label>

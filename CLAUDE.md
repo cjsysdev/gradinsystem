@@ -42,6 +42,10 @@ one file shared by both editable-input and readonly-display modes via a
 (input), `ClassworkController::student_submission()` (readonly review), and
 the "Widget" dropdown + JSON config textarea in `manage_assessments.php`.
 Run `WidgetsController/install` once as admin to create/upgrade the schema.
+A second widget, **Multiple Choice Quiz** (`quiz` widget_key, not in the
+original 6-widget plan — see plan doc §10), was added as an opt-in
+alternative to the legacy `QuizController`/`json_file_path` flow; it's the
+only widget that auto-grades server-side (`Widgets_model::grade_quiz()`).
 
 ## Conventions
 - Follow existing controller patterns (see `AssessmentController.php`,

@@ -1,5 +1,8 @@
 <?php
-if ($assessment['iotype_id'] == '4' || $assessment['iotype_id'] == '3') {
+// Assessment Type (Major Exam/Quiz) and Widget are independent settings — a
+// widget, if one's assigned, always takes priority. Only fall back to the
+// legacy json_file_path quiz flow when there's no widget to render instead.
+if (empty($widget) && ($assessment['iotype_id'] == '4' || $assessment['iotype_id'] == '3')) {
     redirect('quiz/' . $assessment['assessment_id']);
 } ?>
 

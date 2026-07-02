@@ -1,6 +1,11 @@
 # Paperless Midterm Integration Plan
 
-**Status:** Phase 1 implemented — widgets registry + Widget B (Worksheet Form) live; Widgets C–G not yet built
+**Status:** Phase 1 implemented — widgets registry + Widget B (Worksheet Form)
+live. Widgets C–G not yet built. One widget added outside this plan's
+original scope: **Multiple Choice Quiz** (see §10) — replaces the
+`json_file_path`-upload requirement of the old `QuizController` flow for any
+assessment that opts into it; that old flow is untouched and still works for
+assessments not using the widget.
 **Scope:** IS Innovations & New Technologies course, Midterm (Weeks 1–8)
 **Related:** `docs/week1-lms-seed-example/` (SQL + JSON pilot for Week 1)
 
@@ -278,3 +283,49 @@ another polling table when Widget D is built.
    Innovation Hunt worksheet, as a working pilot.
 4. Once Week 1 is validated with real student use, proceed to Weeks 2–8
    using the same widgets, then Widget C and beyond per the roadmap.
+
+## 10. Widget — Multiple Choice Quiz (added outside original scope)
+
+**Why:** the pre-existing quiz mechanism (`QuizController`, iotype 3/4
+"Major Exam"/"Quiz") requires the admin to upload a `.json` file
+(`assessments.json_file_path`) before a quiz can run. That flow is left
+completely untouched — this widget is an **opt-in alternative** so a quiz
+can instead be authored the same way as every other widget: config as JSON
+in `assessments.given`, no file upload.
+
+**Unlike every other widget, this one auto-grades.** Client never computes
+or sends a score — `Widgets_model::grade_quiz($config, $answers)` is the
+single source of truth, called from both `AssessmentController::submit_classwork()`
+(solo) and `GroupWorkController::submit_group()` (group, one shared score
+applied to every member). Mirrors `QuizController::submit()`'s exact
+matching rules (case-insensitive trimmed match for free-text questions,
+trimmed exact match for multiple-choice) so grading behaves identically to
+the legacy flow.
+
+- **Config (`assessments.given`):**
+  ```json
+  {
+    "questions": [
+      {"question": "2 + 2 = ?", "choices": ["3", "4", "5"], "answer": "4"},
+      {"question": "Capital of France?", "choices": [], "answer": "Paris"}
+    ]
+  }
+  ```
+  Empty/omitted `choices` → free-text question. No question shuffling or
+  random-subset selection (unlike `QuizController`) — kept deliberately
+  simple; the full fixed list in `given` is what's shown, in that order.
+- **Raw submission** (what the widget posts, pre-grading):
+  `{"answers": {"0": "4", "1": "paris"}}` — index-keyed to `questions`.
+- **Stored submission (`classworks.code`), post-grading:** an array of
+  `{question, user_answer, correct_answer, is_correct}` — the exact same
+  shape `QuizController::submit()` already stores, so the review UI
+  (`widgets/quiz.php` in readonly mode) looks the same regardless of which
+  flow produced it. `classworks.score` is set automatically.
+- **View:** `application/views/widgets/quiz.php` — one file, three states:
+  blank input, prefilled input (resuming a group draft via `Live_state_model`),
+  and readonly graded review (correct/incorrect per question, shown
+  immediately after submit per the "show results right away" decision).
+- Student is redirected straight to `student_submission/{classwork_id}`
+  after submitting (instead of the `classwork` list) specifically for this
+  widget, so results are visible immediately — matches `quiz_result.php`'s
+  existing behavior for the legacy flow.
