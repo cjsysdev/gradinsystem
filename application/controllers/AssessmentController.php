@@ -29,6 +29,14 @@ class AssessmentController extends CI_Controller
             show_404();
         }
 
+        if (!empty($classwork['is_groupings'])) {
+            $this->load->model('Grouping_model');
+            if ($this->Grouping_model->get_set_for_assessment($classwork_id)) {
+                redirect('GroupWorkController/workspace/' . $classwork_id);
+                return;
+            }
+        }
+
         if(empty($student_info['is_cleared']) && $classwork['iotype_id'] == 3) {
             $this->session->set_flashdata('warning', 'Only students with cleared clearance requirements may take the exam.');
             redirect('attendance');

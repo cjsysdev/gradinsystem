@@ -47,6 +47,33 @@ class Grouping_model extends CI_Model
             FOREIGN KEY (`assessment_id`) REFERENCES `assessments`(`assessment_id`) ON DELETE CASCADE,
             FOREIGN KEY (`set_id`) REFERENCES `grouping_sets`(`set_id`) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        // Generic, reusable live/collaborative state: one row per
+        // (assessment, optional group). group_id NULL = section-wide shared
+        // state (e.g. a future brainstorm-board widget); group_id set = one
+        // group's private live draft (used by group assessment submission).
+        $this->db->query("CREATE TABLE IF NOT EXISTS `assessment_live_state` (
+            `state_id`       INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            `assessment_id`  INT NOT NULL,
+            `group_id`       INT UNSIGNED DEFAULT NULL,
+            `content`        LONGTEXT,
+            `last_edited_by` VARCHAR(50) DEFAULT NULL,
+            `updated_at`     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY `uq_assessment_group` (`assessment_id`, `group_id`),
+            FOREIGN KEY (`assessment_id`) REFERENCES `assessments`(`assessment_id`) ON DELETE CASCADE,
+            FOREIGN KEY (`group_id`) REFERENCES `groupings`(`group_id`) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        // Soft "ready to submit" flag per student per live-state row.
+        $this->db->query("CREATE TABLE IF NOT EXISTS `assessment_live_state_ready` (
+            `id`         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            `state_id`   INT UNSIGNED NOT NULL,
+            `student_id` VARCHAR(50) NOT NULL,
+            `ready`      TINYINT(1) NOT NULL DEFAULT 0,
+            `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY `uq_state_student` (`state_id`, `student_id`),
+            FOREIGN KEY (`state_id`) REFERENCES `assessment_live_state`(`state_id`) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     }
 
     // ── Grouping sets ────────────────────────────────────────────────────────
@@ -100,5 +127,23 @@ class Grouping_model extends CI_Model
     public function get($group_id)
     {
         return $this->db->where('group_id', $group_id)->get($this->table)->row_array();
+    }
+
+    // ── Assessment linkage ──────────────────────────────────────────────────
+
+    public function get_set_for_assessment($assessment_id)
+    {
+        $row = $this->db->where('assessment_id', $assessment_id)->get('assessment_groupings')->row_array();
+        return $row ? (int) $row['set_id'] : null;
+    }
+
+    public function get_student_group($student_id, $set_id)
+    {
+        return $this->db->select('g.*')
+            ->from('groupings g')
+            ->join('group_members gm', 'gm.group_id = g.group_id')
+            ->where('g.set_id', $set_id)
+            ->where('gm.student_id', $student_id)
+            ->get()->row_array();
     }
 }
