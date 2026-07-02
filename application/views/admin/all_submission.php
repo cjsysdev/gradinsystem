@@ -60,9 +60,18 @@
                                 <hr>
                                 <p class="card-text mb-3"><?= $row['created_at'] , " " , $row['file_upload'], " - ", $row['score'] ?></p>
                                 <!-- Button to open modal -->
-                                <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#viewSubmissionModal" onclick="loadSubmission(<?= htmlspecialchars(json_encode($row['code']), ENT_QUOTES, 'UTF-8') ?>, '<?= $row['file_upload'] ?>', <?= (int)($row['iotype_id'] ?? 0) ?>)">
+                                <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#viewSubmissionModal" onclick="loadSubmission(<?= htmlspecialchars(json_encode($row['code']), ENT_QUOTES, 'UTF-8') ?>, '<?= $row['file_upload'] ?>', <?= (int)($row['iotype_id'] ?? 0) ?>, <?= (int) $row['classwork_id'] ?>)">
                                     View Submission
                                 </button>
+                                <?php if ($widget): ?>
+                                    <template class="widget-submission-html" data-classwork-id="<?= $row['classwork_id'] ?>">
+                                        <?php $this->load->view($widget['input_view'], [
+                                            'config'   => $widget_config,
+                                            'readonly' => true,
+                                            'existing' => json_decode($row['code'] ?? '', true) ?: [],
+                                        ]); ?>
+                                    </template>
+                                <?php endif; ?>
                                 <?php if (!isset($row['score'])): ?>
                                     <form action="<?= base_url('ClassworkController/add_score') ?>" method="POST">
                                         <input type="hidden" name="classwork_id" value="<?= $row['classwork_id'] ?>">
@@ -156,8 +165,14 @@
         ];
     }, $submissions)) ?>;
 
-    function loadSubmission(code, fileUpload, iotypeId) {
+    function loadSubmission(code, fileUpload, iotypeId, classworkId) {
         const submissionContent = document.getElementById('submissionContent');
+
+        const widgetTemplate = document.querySelector('.widget-submission-html[data-classwork-id="' + classworkId + '"]');
+        if (widgetTemplate) {
+            submissionContent.innerHTML = widgetTemplate.innerHTML;
+            return;
+        }
 
         if ((iotypeId === 3 || iotypeId === 4) && code && code !== 'null') {
             try {

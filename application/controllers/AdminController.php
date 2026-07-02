@@ -69,11 +69,21 @@ class AdminController extends CI_Controller
         $data['assessments'] = $this->assessments->get_for_schedule($class['schedule_id']);
 
         // Fetch submissions for the selected assessment
+        $data['widget'] = null;
+        $data['widget_config'] = [];
+
         if ($assessment_id) {
             $data['submissions'] = $this->classworks->get_all_submissions(
                 $assessment_id
             );
             $data['selected_assessment_id'] = $assessment_id;
+
+            $assessment = $this->assessments->as_array()->get($assessment_id);
+            if (!empty($assessment['widget_id'])) {
+                $this->load->model('Widgets_model');
+                $data['widget'] = $this->Widgets_model->get($assessment['widget_id']);
+                $data['widget_config'] = json_decode($assessment['given'] ?? '', true) ?: [];
+            }
         } else {
             $data['submissions'] = [];
             $data['selected_assessment_id'] = null;

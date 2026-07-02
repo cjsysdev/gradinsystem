@@ -57,8 +57,18 @@ if ($assessment['iotype_id'] == '4' || $assessment['iotype_id'] == '3') {
                     <label class="form-label">
                         Shared draft &mdash; everyone in your group edits this together
                     </label>
-                    <textarea id="shared-draft" class="form-control" rows="14"
-                        placeholder="Write your group's answer here..."><?= htmlspecialchars($state['content']) ?></textarea>
+                    <div id="shared-widget-wrap">
+                        <?php if (!empty($widget)): ?>
+                            <?php $this->load->view($widget['input_view'], [
+                                'config'   => $widget_config,
+                                'readonly' => false,
+                                'existing' => json_decode($state['content'] ?? '', true) ?: null,
+                            ]); ?>
+                        <?php else: ?>
+                            <textarea id="shared-draft" class="form-control" rows="14"
+                                placeholder="Write your group's answer here..."><?= htmlspecialchars($state['content']) ?></textarea>
+                        <?php endif; ?>
+                    </div>
                     <p class="text-muted small mt-1" id="save-status">&nbsp;</p>
                 </div>
                 <div class="col-md-4 mb-3">
@@ -100,31 +110,60 @@ if ($assessment['iotype_id'] == '4' || $assessment['iotype_id'] == '3') {
     const BASE = '<?= base_url() ?>';
     const assessmentId = <?= (int) $assessment['assessment_id'] ?>;
     const myStudentId = <?= json_encode((string) $student_id) ?>;
+    const hasWidget = <?= !empty($widget) ? 'true' : 'false' ?>;
 
-    const draft = document.getElementById('shared-draft');
+    const widgetWrap = document.getElementById('shared-widget-wrap');
+    const draft = document.getElementById('shared-draft'); // only present when there's no widget
     const saveStatus = document.getElementById('save-status');
     const readyToggle = document.getElementById('ready-toggle');
 
+    // Generic content contract: a widget view defines window.getWidgetState()/
+    // setWidgetState()/isWidgetFocused(); the plain shared textarea (no widget
+    // configured) implements the same contract inline as the default case.
+    function getCurrentContent() {
+        if (hasWidget && typeof window.getWidgetState === 'function') return window.getWidgetState();
+        return draft ? draft.value : '';
+    }
+    function applyRemoteContent(content) {
+        if (hasWidget && typeof window.setWidgetState === 'function') {
+            window.setWidgetState(content);
+        } else if (draft && document.activeElement !== draft) {
+            draft.value = content;
+        }
+    }
+    function isEditing() {
+        if (hasWidget && typeof window.isWidgetFocused === 'function') return window.isWidgetFocused();
+        return draft && document.activeElement === draft;
+    }
+
     let saveTimer = null;
-    let lastSavedContent = draft.value;
+    let lastSavedContent = getCurrentContent();
 
     function saveDraft() {
-        if (draft.value === lastSavedContent) return;
-        lastSavedContent = draft.value;
+        const content = getCurrentContent();
+        if (content === lastSavedContent) return;
+        lastSavedContent = content;
         saveStatus.textContent = 'Saving...';
         fetch(BASE + 'GroupWorkController/save_draft/' + assessmentId, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'content=' + encodeURIComponent(draft.value),
+            body: 'content=' + encodeURIComponent(content),
         })
         .then(r => r.json())
         .then(d => { saveStatus.textContent = d.ok ? 'Saved' : 'Failed to save'; });
     }
 
-    draft.addEventListener('input', () => {
+    function queueSave() {
         clearTimeout(saveTimer);
         saveStatus.textContent = 'Typing...';
         saveTimer = setTimeout(saveDraft, 800);
+    }
+
+    // Event delegation so this works whether the wrap contains the plain
+    // textarea or an arbitrary widget's own inputs/buttons.
+    widgetWrap.addEventListener('input', queueSave);
+    widgetWrap.addEventListener('click', (e) => {
+        if (e.target.closest('button')) queueSave();
     });
 
     if (readyToggle) {
@@ -143,9 +182,11 @@ if ($assessment['iotype_id'] == '4' || $assessment['iotype_id'] == '3') {
             .then(d => {
                 if (!d.ok) return;
 
-                // Don't clobber the draft while the student is actively typing.
-                if (document.activeElement !== draft && d.content !== draft.value) {
-                    draft.value = d.content;
+                // Don't clobber the widget/draft while the student is actively editing,
+                // and don't wipe the freshly-rendered default state with an empty
+                // "nothing saved yet" response from the server.
+                if (!isEditing() && d.content && d.content !== lastSavedContent) {
+                    applyRemoteContent(d.content);
                     lastSavedContent = d.content;
                 }
 

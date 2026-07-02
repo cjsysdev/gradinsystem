@@ -100,18 +100,43 @@ if (!$readonly && empty($rows)) {
     const addBtn = document.getElementById('worksheet-add-row');
     if (addBtn) addBtn.addEventListener('click', () => addRow());
 
-    // Called by the host page right before it submits the form — serializes
-    // this widget's state into the hidden #code-editor field so the existing
-    // AssessmentController::submit_classwork() needs zero changes.
-    window.serializeWidgetBeforeSubmit = function () {
+    function serializeRows() {
         const rows = [];
         tbody.querySelectorAll('tr').forEach(tr => {
             const row = {};
             tr.querySelectorAll('.ws-cell').forEach(input => { row[input.dataset.col] = input.value; });
             if (Object.keys(row).length) rows.push(row);
         });
+        return rows;
+    }
+
+    // Generic contract used by group_workspace.php to drive this widget as a
+    // shared/live-collaborative editor (see application/views/group_workspace.php).
+    window.getWidgetState = function () {
+        return JSON.stringify({ rows: serializeRows() });
+    };
+
+    window.setWidgetState = function (content) {
+        let rows = [];
+        try {
+            rows = JSON.parse(content || '{}').rows || [];
+        } catch (e) {
+            return;
+        }
+        tbody.innerHTML = '';
+        rows.forEach(row => addRow(row));
+    };
+
+    window.isWidgetFocused = function () {
+        return document.getElementById('worksheet-widget').contains(document.activeElement);
+    };
+
+    // Called by the host page right before it submits the form — serializes
+    // this widget's state into the hidden #code-editor field so the existing
+    // AssessmentController::submit_classwork() needs zero changes.
+    window.serializeWidgetBeforeSubmit = function () {
         const codeField = document.getElementById('code-editor');
-        if (codeField) codeField.value = JSON.stringify({ rows });
+        if (codeField) codeField.value = window.getWidgetState();
     };
 })();
 </script>

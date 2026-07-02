@@ -9,7 +9,7 @@ class GroupWorkController extends CI_Controller
         if (!isset($_SESSION['online'])) {
             redirect('login');
         }
-        $this->load->model(['Grouping_model', 'Group_member_model', 'Live_state_model']);
+        $this->load->model(['Grouping_model', 'Group_member_model', 'Live_state_model', 'Widgets_model']);
     }
 
     // Resolves the assessment + the current student's group for it.
@@ -50,13 +50,20 @@ class GroupWorkController extends CI_Controller
         $members = $this->Group_member_model->get_members_by_group($group['group_id']);
         $ready_map = $this->Live_state_model->get_ready_map($state['state_id']);
 
+        $widget = null;
+        if (!empty($resolved['assessment']['widget_id'])) {
+            $widget = $this->Widgets_model->get($resolved['assessment']['widget_id']);
+        }
+
         $this->load->view('group_workspace', [
-            'assessment' => $resolved['assessment'],
-            'group'      => $group,
-            'state'      => $state,
-            'members'    => $members,
-            'ready_map'  => $ready_map,
-            'student_id' => $this->session->student_id,
+            'assessment'    => $resolved['assessment'],
+            'group'         => $group,
+            'state'         => $state,
+            'members'       => $members,
+            'ready_map'     => $ready_map,
+            'student_id'    => $this->session->student_id,
+            'widget'        => $widget,
+            'widget_config' => $widget ? (json_decode($resolved['assessment']['given'] ?? '', true) ?: []) : [],
         ]);
     }
 
@@ -120,8 +127,9 @@ class GroupWorkController extends CI_Controller
     }
 
     // Fans out the shared draft into a per-student classworks row for every
-    // group member, all referencing the same file — classworks itself keeps
-    // its normal per-student insert/update shape untouched.
+    // group member (same shared file for plain text, same JSON in the code
+    // column for widget submissions) — classworks itself keeps its normal
+    // per-student insert/update shape untouched.
     public function submit_group($assessment_id)
     {
         $resolved = $this->_resolve($assessment_id);
@@ -141,14 +149,22 @@ class GroupWorkController extends CI_Controller
             return;
         }
 
-        $section = $this->class_student->get(['student_id' => $this->session->student_id])->section;
-        $safe_group_name = preg_replace('/[^A-Za-z0-9_-]/', '', $group['group_name']);
-        $filename = $section . '-group' . $group['group_id'] . '-' . $safe_group_name . '-' . time() . '.txt';
-        $upload_path = './uploads/classworks/';
-        if (!is_dir($upload_path)) {
-            mkdir($upload_path, 0777, true);
+        $is_widget = !empty($resolved['assessment']['widget_id']);
+
+        $filename = null;
+        if (!$is_widget) {
+            // Plain text/code drafts are written to one shared file — matches
+            // how AssessmentController::submit_classwork() stores individual
+            // text submissions.
+            $section = $this->class_student->get(['student_id' => $this->session->student_id])->section;
+            $safe_group_name = preg_replace('/[^A-Za-z0-9_-]/', '', $group['group_name']);
+            $filename = $section . '-group' . $group['group_id'] . '-' . $safe_group_name . '-' . time() . '.txt';
+            $upload_path = './uploads/classworks/';
+            if (!is_dir($upload_path)) {
+                mkdir($upload_path, 0777, true);
+            }
+            file_put_contents($upload_path . $filename, (string) $state['content']);
         }
-        file_put_contents($upload_path . $filename, (string) $state['content']);
 
         foreach ($members as $member) {
             $submission_data = [
@@ -157,8 +173,10 @@ class GroupWorkController extends CI_Controller
                 'status'        => 'submitted',
                 'submitted_at'  => date('Y-m-d H:i:s'),
                 'created_at'    => date('Y-m-d H:i:s'),
-                'file_upload'   => $filename,
-                'code'          => null,
+                // Widget submissions are structured JSON — kept in the code
+                // column (like the solo widget path) instead of a shared file.
+                'file_upload'   => $is_widget ? null : $filename,
+                'code'          => $is_widget ? $state['content'] : null,
             ];
 
             $existing = $this->classworks->where([

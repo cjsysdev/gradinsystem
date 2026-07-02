@@ -231,16 +231,26 @@ class AssessmentController extends CI_Controller
                 $submission_data['code'] = null; // Clear the code field for file submissions
             }
         } elseif (!empty($post['code'])) {
-            // Handle textarea submission: save code as a text file and store filename
-            $section = $this->class_student->get(['student_id' => $student_id])->section;
-            $filename = $section . '-' . $this->session->lastname . '-' . time() . '.txt';
-            $upload_path = './uploads/classworks/';
-            if (!is_dir($upload_path)) {
-                mkdir($upload_path, 0777, true);
+            $assessment = $this->assessments->as_array()->get($assessment_id);
+
+            if (!empty($assessment['widget_id'])) {
+                // Widget submissions are structured JSON — keep them in the
+                // code column so student_submission.php / grading can read
+                // them back, instead of writing to a file like plain text.
+                $submission_data['code'] = $post['code'];
+                $submission_data['file_upload'] = null;
+            } else {
+                // Handle textarea submission: save code as a text file and store filename
+                $section = $this->class_student->get(['student_id' => $student_id])->section;
+                $filename = $section . '-' . $this->session->lastname . '-' . time() . '.txt';
+                $upload_path = './uploads/classworks/';
+                if (!is_dir($upload_path)) {
+                    mkdir($upload_path, 0777, true);
+                }
+                file_put_contents($upload_path . $filename, $post['code']);
+                $submission_data['file_upload'] = $filename;
+                $submission_data['code'] = null; // Optionally clear the code field
             }
-            file_put_contents($upload_path . $filename, $post['code']);
-            $submission_data['file_upload'] = $filename;
-            $submission_data['code'] = null; // Optionally clear the code field
         } else {
             // No file or code submitted
             $this->session->set_flashdata('error', 'Please enter code or upload a file before submitting.');
