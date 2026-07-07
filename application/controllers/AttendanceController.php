@@ -37,7 +37,9 @@ class AttendanceController extends CI_Controller
 
         $day = date('D');
         $date = date('Y-m-d');
-        $start_date = '2026-01-13';
+
+        $active_semester = $this->db->where('is_active', 1)->get('semester_master')->row_array();
+        $start_date = ($active_semester['class_started'] ?? null) ?: '2026-01-13';
 
         $class = $this->class_schedule->class_today($day);
         $student_id = $this->session->student_id;

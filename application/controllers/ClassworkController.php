@@ -14,7 +14,7 @@ class ClassworkController extends CI_Controller
     public function classwork()
     {
         $student_id = $this->session->student_id;
-        $student = $this->class_student->where('student_id', $student_id)->get();
+        $student = $this->class_student->get_class_student_info($student_id);
 
         if (!$student) {
             $this->session->set_flashdata('error', 'Student section not found');
@@ -23,7 +23,7 @@ class ClassworkController extends CI_Controller
 
         $missing = $this->assessments->get_students_assessments(
             $student_id,
-            $student->section
+            $student['section']
         );
 
         $submitted = $this->assessments->get_submitted_assessments(
