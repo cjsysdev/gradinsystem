@@ -21,6 +21,9 @@
         <a href="<?= base_url(
                         'admin/student_violations'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Student Violations"><i class="fa fa-exclamation-triangle"></i></a>
+        <a href="<?= base_url(
+                        'AdminController/manage_discussions'
+                    ) ?>" class="btn btn-outline-secondary col m-2" title="Discussions"><i class="fa fa-comments"></i></a>
         <!-- <a href="<?= base_url(
                         'interactive_quiz/analytics'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="IQ Analytics"><i class="fa fa-chart-line"></i></a>

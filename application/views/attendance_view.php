@@ -127,7 +127,7 @@
         })();
         </script>
 
-        <!-- <a class="btn alert-primary btn-block mb-3" href="./uploads/orange3.exe" download="orange3.exe" src="./uploads/orange3.exe"><i class="fa fa-download" aria-hidden="true" style="margin-right: 10px"> </i>Orange</a> -->
+        <a class="btn alert-primary btn-block mb-3" href="./uploads/bcit-ci.zip" download="bcit-ci.zip" src="./uploads/bcit-ci.zip"><i class="fa fa-download" aria-hidden="true" style="margin-right: 10px"> </i>Codeigniter Framework</a>
         <!-- <a class="btn alert-primary btn-block mb-3" href="http://192.168.1.137/cmc/public/index.php">Survey</a> -->
         <!-- <a class="btn alert-primary btn-block mb-3" href="<?= base_url('output_upload') ?>">Final Project Checkpoint</a> -->
         <!-- <a class="btn alert-secondary btn-block mb-3" href="./uploads/im_final.docx" download="im_final.docx" src="./uploads/im_final.docx"><i class="fa fa-download" aria-hidden="true" style="margin-right: 10px"> </i>Project Template</a> -->

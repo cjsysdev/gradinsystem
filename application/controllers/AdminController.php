@@ -811,11 +811,34 @@ class AdminController extends CI_Controller
     {
         $this->load->model('discussions');
 
-        $data['discussions'] = $this->discussions->as_array()
+        $filter_class_id = $this->input->get('class_id') ?: '';
+        $filter_type      = $this->input->get('type') ?: '';
+        $filter_q         = trim($this->input->get('q') ?? '');
+
+        $this->db->select('*')->from('discussions');
+        if ($filter_class_id !== '') {
+            $this->db->where('class_id', (int) $filter_class_id);
+        }
+        if ($filter_type === 'static' || $filter_type === 'interactive') {
+            $this->db->where('type', $filter_type);
+        }
+        if ($filter_q !== '') {
+            $this->db->group_start()
+                ->like('title', $filter_q)
+                ->or_like('description', $filter_q)
+                ->or_like('link', $filter_q)
+                ->group_end();
+        }
+        $data['discussions'] = $this->db
             ->order_by('class_id', 'asc')
             ->order_by('type', 'asc')
             ->order_by('created_at', 'desc')
-            ->get_all() ?: [];
+            ->get()
+            ->result_array();
+
+        $data['selected_class_id'] = $filter_class_id;
+        $data['selected_type']     = $filter_type;
+        $data['search_q']          = $filter_q;
 
         $data['classes'] = $this->db->order_by('class_id')->get('classes')->result_array();
 
@@ -833,6 +856,26 @@ class AdminController extends CI_Controller
         }
         usort($data['json_topics'], function($a, $b) { return strcmp($a['title'], $b['title']); });
 
+        // Static topic files, grouped by subfolder (application/views/discussions/{folder}/*.php)
+        $discussions_view_path = APPPATH . 'views/discussions/';
+        $data['static_topics'] = [];
+        foreach (glob($discussions_view_path . '*', GLOB_ONLYDIR) ?: [] as $dir) {
+            $folder = basename($dir);
+            $files = [];
+            foreach (glob($dir . '/*.php') ?: [] as $f) {
+                $base = basename($f, '.php');
+                $files[] = [
+                    'path'  => "DiscussionController/topic/{$folder}/{$base}",
+                    'label' => $base,
+                ];
+            }
+            usort($files, function($a, $b) { return strcmp($a['label'], $b['label']); });
+            if ($files) {
+                $data['static_topics'][$folder] = $files;
+            }
+        }
+        ksort($data['static_topics']);
+
         $this->load->view('admin/manage_discussions', $data);
     }
 
@@ -844,9 +887,21 @@ class AdminController extends CI_Controller
         $type  = $this->input->post('type') === 'interactive' ? 'interactive' : 'static';
         $link  = trim($this->input->post('link') ?? '');
 
-        // For interactive, the link field holds the slug — strip any accidental path prefix
         if ($type === 'interactive') {
-            $link = preg_replace('/[^a-z0-9_]/', '', strtolower($link));
+            if ($this->input->post('json_source') === 'new') {
+                $slug = $this->_save_pasted_topic_json(
+                    trim($this->input->post('new_slug') ?? ''),
+                    $this->input->post('json_text') ?? ''
+                );
+                if ($slug === false) {
+                    redirect('AdminController/manage_discussions');
+                    return;
+                }
+                $link = $slug;
+            } else {
+                // Existing topic — the link field holds the slug — strip any accidental path prefix
+                $link = preg_replace('/[^a-z0-9_]/', '', strtolower($link));
+            }
         }
 
         $row = [
@@ -870,6 +925,92 @@ class AdminController extends CI_Controller
         }
 
         redirect('AdminController/manage_discussions');
+    }
+
+    // Validates a pasted interactive-discussion JSON template and writes it to
+    // assets/json/{slug}.json. Returns the slug on success, or false (with a
+    // flashdata error already set) on failure.
+    private function _save_pasted_topic_json($slug, $json_text)
+    {
+        $slug = preg_replace('/[^a-z0-9_]/', '', strtolower($slug));
+        if (!preg_match('/^[a-z0-9_]{1,100}$/', $slug)) {
+            $this->session->set_flashdata('error', 'Slug is required and may only contain lowercase letters, digits, and underscores.');
+            return false;
+        }
+
+        $data = json_decode(trim($json_text), true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            $this->session->set_flashdata('error', 'Invalid JSON: ' . json_last_error_msg());
+            return false;
+        }
+
+        $validation_error = $this->_validate_discussion_json($data);
+        if ($validation_error) {
+            $this->session->set_flashdata('error', $validation_error);
+            return false;
+        }
+
+        $json_path = FCPATH . 'assets/json/';
+        if (!is_writable($json_path)) {
+            $this->session->set_flashdata('error', 'assets/json/ is not writable. Contact your administrator.');
+            return false;
+        }
+
+        $data['topic'] = $slug;
+        $pretty = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        $dest = $json_path . $slug . '.json';
+        $overwrite = file_exists($dest);
+        if (file_put_contents($dest, $pretty) === false) {
+            $this->session->set_flashdata('error', 'Failed to save JSON file. Check directory permissions.');
+            return false;
+        }
+
+        $this->session->set_flashdata('success', $overwrite
+            ? "Topic file \"{$slug}.json\" overwritten."
+            : "Topic file \"{$slug}.json\" created.");
+        return $slug;
+    }
+
+    // Same schema InteractiveQuizController::discussion() renders:
+    // sections[].quiz = { question, options[], correct (index), code? }
+    private function _validate_discussion_json($data)
+    {
+        if (!is_array($data)) {
+            return 'JSON must decode to an object.';
+        }
+        if (empty($data['title']) || !is_string($data['title'])) {
+            return 'JSON must have a non-empty "title" string field.';
+        }
+        if (empty($data['sections']) || !is_array($data['sections'])) {
+            return 'JSON must have a non-empty "sections" array.';
+        }
+        foreach ($data['sections'] as $i => $section) {
+            $n = $i + 1;
+            if (empty($section['title'])) {
+                return "Section {$n} is missing a \"title\" field.";
+            }
+            if (!isset($section['lesson'])) {
+                return "Section {$n} is missing a \"lesson\" field.";
+            }
+            if (!isset($section['quiz']) || $section['quiz'] === null) {
+                continue;
+            }
+            if (!is_array($section['quiz']) || empty($section['quiz'])) {
+                return "Section {$n} has an invalid \"quiz\" value; use null or omit it when there is no quiz.";
+            }
+            $q = $section['quiz'];
+            if (empty($q['question'])) {
+                return "Section {$n} quiz is missing a \"question\" field.";
+            }
+            if (empty($q['options']) || !is_array($q['options']) || count($q['options']) < 2) {
+                return "Section {$n} quiz must have at least 2 \"options\".";
+            }
+            if (!isset($q['correct']) || !is_int($q['correct']) || $q['correct'] < 0 || $q['correct'] >= count($q['options'])) {
+                return "Section {$n} quiz \"correct\" must be a valid option index.";
+            }
+        }
+        return '';
     }
 
     public function delete_discussion($id)

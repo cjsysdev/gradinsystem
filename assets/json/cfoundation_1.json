@@ -1,0 +1,137 @@
+{
+    "topic": "cfoundation_1",
+    "title": "CC104 Week 1: C Foundations I",
+    "description": "Learn what data structures and algorithms are, and write your first C program",
+    "congratsText": "Great work! You now understand what data structures and algorithms are, and you've written and compiled your first C program.",
+    "sections": [
+        {
+            "id": 0,
+            "title": "Objectives",
+            "quiz": null,
+            "lesson": "<div class=\"lesson-title\">What You Will Learn</div><div class=\"lesson-text\">By the end of this discussion, you will be able to:</div><div class=\"lesson-text\"><ul><li>Explain, in plain terms, what a data structure is and what an algorithm is</li><li>Explain why C is used to learn these concepts close to the machine</li><li>Write and compile a first C program (Hello World)</li><li>Understand the compile → run cycle</li><li>Recognize the 3 most common beginner compile errors</li></ul></div>"
+        },
+        {
+            "id": 1,
+            "title": "What is a Data Structure?",
+            "quiz": {
+                "question": "Which everyday example best matches the idea of a 'data structure'?",
+                "options": [
+                    "A filing cabinet that organizes papers so you can find them fast",
+                    "The act of searching through papers to find one name",
+                    "A recipe that lists cooking steps in order",
+                    "A calculator used to add two numbers"
+                ],
+                "correct": 0
+            },
+            "lesson": "<div class=\"lesson-title\">What is a Data Structure?</div><div class=\"lesson-text\">A <span class=\"highlight\">data structure</span> is an organized way to store information — like a filing cabinet, a row of lockers, or a contact list. It's 'the box' that holds your data.</div>"
+        },
+        {
+            "id": 2,
+            "title": "What is an Algorithm?",
+            "quiz": {
+                "question": "What is an algorithm, in relation to a data structure?",
+                "options": [
+                    "It is the same thing as a data structure",
+                    "It is the steps used to work with the data in the structure (e.g. searching it)",
+                    "It is only used for math problems, not real programs",
+                    "It is a type of variable in C"
+                ],
+                "correct": 1
+            },
+            "lesson": "<div class=\"lesson-title\">What is an Algorithm?</div><div class=\"lesson-text\">An <span class=\"highlight\">algorithm</span> is the set of steps that uses a data structure to do something — like searching a contact list for a name. Data structure = the box. Algorithm = the steps to use the box.</div>"
+        },
+        {
+            "id": 3,
+            "title": "Your First C Program",
+            "quiz": {
+                "question": "What does this program do when it runs?",
+                "code": "#include <stdio.h>\n\nint main() {\n    printf(\"Hello, World!\");\n    return 0;\n}",
+                "options": [
+                    "It displays 'Hello, World!' on the screen",
+                    "It asks the user to type 'Hello, World!'",
+                    "It stores 'Hello, World!' in a variable named main",
+                    "It produces an error because printf is undefined"
+                ],
+                "correct": 0
+            },
+            "lesson": "<div class=\"lesson-title\">Your First C Program</div><div class=\"lesson-text\"><code>#include &lt;stdio.h&gt;</code> loads the tools needed for input/output. <code>main()</code> is where the program starts. <code>printf()</code> displays text on the screen.</div><div class=\"code-block\">#include <stdio.h>\n\nint main() {\n    printf(\"Hello, World!\");\n    return 0;\n}\n// Output: Hello, World!</div>"
+        },
+        {
+            "id": 4,
+            "title": "The Compile → Run Cycle",
+            "quiz": {
+                "question": "What does 'compiling' a C program actually do?",
+                "options": [
+                    "It runs the program immediately without any translation",
+                    "It translates your source code into a program the computer can execute",
+                    "It deletes any variables you no longer need",
+                    "It automatically fixes any typos in your code"
+                ],
+                "correct": 1
+            },
+            "lesson": "<div class=\"lesson-title\">The Compile → Run Cycle</div><div class=\"lesson-text\">Compiling is like translating a recipe written in English into a language the kitchen robot understands. The cycle is: <span class=\"highlight\">source code → compiler → executable → run</span>.</div>"
+        },
+        {
+            "id": 5,
+            "title": "Variables & Data Types",
+            "quiz": {
+                "question": "Which line correctly creates a variable that stores a whole number?",
+                "code": "int age = 20;",
+                "options": [
+                    "It stores the text 'age' as a value",
+                    "It creates a variable named age and stores the whole number 20",
+                    "It prints the number 20 to the screen",
+                    "It causes an error since 'int' is not a valid word"
+                ],
+                "correct": 1
+            },
+            "lesson": "<div class=\"lesson-title\">Variables & Data Types</div><div class=\"lesson-text\">A variable is a named container that stores a value in memory. C requires you to state the type: <code>int</code> for whole numbers, <code>float</code> for decimals, <code>char</code> for a single character.</div><div class=\"code-block\">int age = 20;\nfloat grade = 95.5;\nchar initial = 'A';</div>"
+        },
+        {
+            "id": 6,
+            "title": "printf and scanf",
+            "quiz": {
+                "question": "What is the difference between printf() and scanf() in C?",
+                "options": [
+                    "printf() reads input; scanf() displays output",
+                    "printf() displays output; scanf() reads input from the user",
+                    "They both only display output, never read input",
+                    "scanf() is used only for whole numbers, printf() only for text"
+                ],
+                "correct": 1
+            },
+            "lesson": "<div class=\"lesson-title\">printf and scanf</div><div class=\"lesson-text\"><code>printf()</code> displays output on the screen. <code>scanf()</code> reads input the user types in. Together they let a program talk to the user.</div><div class=\"code-block\">int age;\nprintf(\"Enter your age: \");\nscanf(\"%d\", &age);\nprintf(\"You are %d years old.\", age);</div>"
+        },
+        {
+            "id": 7,
+            "title": "Reading Error Messages",
+            "quiz": {
+                "question": "This code is missing something. What kind of error will the compiler most likely report?",
+                "code": "printf(\"Hello, World!\")\nreturn 0;",
+                "options": [
+                    "A logic error because the greeting is spelled wrong",
+                    "A missing semicolon error after the printf() line",
+                    "An error because printf() cannot be used in C",
+                    "No error — the code will run exactly as shown"
+                ],
+                "correct": 1
+            },
+            "lesson": "<div class=\"lesson-title\">Reading Error Messages</div><div class=\"lesson-text\">Compile errors are common and normal — they're clues, not failures. The 3 most common beginner errors are: a <span class=\"highlight\">missing semicolon</span>, a <span class=\"highlight\">missing bracket</span>, and a <span class=\"highlight\">misspelled function name</span> (e.g. <code>printf</code> typed as <code>pintf</code>).</div>"
+        },
+        {
+            "id": 8,
+            "title": "Recap",
+            "quiz": {
+                "question": "Which statement best summarizes today's session?",
+                "options": [
+                    "Data structures store information, algorithms act on it, and C lets us build both starting with variables and printf/scanf",
+                    "C is only useful for advanced programmers and has no beginner use cases",
+                    "Compiling and running a program are the exact same step",
+                    "Data structures and algorithms are unrelated concepts in programming"
+                ],
+                "correct": 0
+            },
+            "lesson": "<div class=\"lesson-title\">Recap</div><div class=\"lesson-text\">A data structure organizes information; an algorithm is the steps that use it. In C, we start close to the machine — writing, compiling, and debugging a simple program using <code>printf()</code>, <code>scanf()</code>, and variables.</div><div class=\"code-block\">#include <stdio.h>\n\nint main() {\n    int age;\n    printf(\"Enter your age: \");\n    scanf(\"%d\", &age);\n    printf(\"You are %d years old.\", age);\n    return 0;\n}</div>"
+        }
+    ]
+}

@@ -83,7 +83,7 @@ class InteractiveQuizController extends CI_Controller
         $student_class_id = $enrollment ? (int) $enrollment['class_id'] : null;
 
         $all = $student_class_id
-            ? $this->discussions->as_array()->order_by('created_at', 'desc')->get_all(['class_id' => $student_class_id]) ?: []
+            ? $this->discussions->get_visible_by_class($student_class_id)
             : [];
 
         $static_topics      = [];

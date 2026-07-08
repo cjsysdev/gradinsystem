@@ -11,14 +11,14 @@ class DiscussionController extends CI_Controller
 
     public function index()
     {
-        $cc105 = $this->discussions->as_array()->order_by('created_at', 'desc')->get_all(['class_id' => 1]);
-        $business_intelligence = $this->discussions->as_array()->order_by('created_at', 'desc')->get_all(['class_id' => 5]);
+        $cc105 = $this->discussions->get_visible_by_class(1);
+        $business_intelligence = $this->discussions->get_visible_by_class(5);
 
         $enrollment = $this->class_student->get_class_student_info($_SESSION['student_id']);
         $class = $enrollment ? $enrollment['class_id'] : null;
 
-        $cc104 = $this->discussions->as_array()->order_by('created_at', 'desc')->get_all(['class_id' => 3]);
-        $ws101 = $this->discussions->as_array()->order_by('created_at', 'desc')->get_all(['class_id' => 4]);
+        $cc104 = $this->discussions->get_visible_by_class(3);
+        $ws101 = $this->discussions->get_visible_by_class(4);
 
         $topics = ($class == '3') ? $cc105 : $business_intelligence;
 
@@ -31,11 +31,22 @@ class DiscussionController extends CI_Controller
         if ($this->session->role != 'admin') {
             redirect();
         }
-        $this->load->view('discussions/css_cascading_activity');
+        $this->load->view('discussions/frontend/css_cascading_activity');
     }
 
-    public function topic($title)
+    // URI segments after the method name are passed as separate positional
+    // arguments by CI3's default routing (NOT as one slash-joined string), so
+    // "topic/105/105_constraints" arrives as topic('105', '105_constraints')
+    // rather than topic('105/105_constraints'). Reassemble them here. Falls
+    // back to a flat single segment for any old-style bookmarked links.
+    public function topic($folder, $file = null)
     {
+        $title = $file === null ? $folder : $folder . '/' . $file;
+
+        if (!preg_match('#^[a-zA-Z0-9_\-]+(/[a-zA-Z0-9_\-]+)*$#', $title)) {
+            show_error('Invalid topic name.', 400);
+            return;
+        }
         $this->load->view('discussions/' . $title);
     }
 }
