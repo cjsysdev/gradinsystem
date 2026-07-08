@@ -14,7 +14,8 @@ class DiscussionController extends CI_Controller
         $cc105 = $this->discussions->as_array()->order_by('created_at', 'desc')->get_all(['class_id' => 1]);
         $business_intelligence = $this->discussions->as_array()->order_by('created_at', 'desc')->get_all(['class_id' => 5]);
 
-        $class = $this->class_student->get(['student_id' => $_SESSION['student_id']])->class_id;
+        $enrollment = $this->class_student->get_class_student_info($_SESSION['student_id']);
+        $class = $enrollment ? $enrollment['class_id'] : null;
 
         $cc104 = $this->discussions->as_array()->order_by('created_at', 'desc')->get_all(['class_id' => 3]);
         $ws101 = $this->discussions->as_array()->order_by('created_at', 'desc')->get_all(['class_id' => 4]);

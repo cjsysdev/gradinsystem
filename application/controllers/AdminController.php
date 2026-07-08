@@ -565,6 +565,7 @@ class AdminController extends CI_Controller
             $student_no = trim($this->input->post('student_no'));
             $lastname   = trim($this->input->post('lastname'));
             $firstname  = trim($this->input->post('firstname'));
+            $middlename = trim($this->input->post('middlename'));
             $username   = trim($this->input->post('username'));
             $password   = $this->input->post('password');
             $confirm    = $this->input->post('confirm_password');
@@ -587,11 +588,20 @@ class AdminController extends CI_Controller
                 return;
             }
 
+            if ($this->db->where('lastname', $lastname)
+                         ->where('firstname', $firstname)
+                         ->where('middlename', $middlename)
+                         ->count_all_results('student_master')) {
+                $this->session->set_flashdata('error', "A student named \"{$firstname} {$middlename} {$lastname}\" is already registered.");
+                $this->load->view('admin/register_student', $data);
+                return;
+            }
+
             $student_data = [
                 'student_no'    => $student_no,
                 'lastname'      => $lastname,
                 'firstname'     => $firstname,
-                'middlename'    => trim($this->input->post('middlename')),
+                'middlename'    => $middlename,
                 'extname'       => trim($this->input->post('extname')),
                 'gender'        => $this->input->post('gender'),
                 'birthday'      => $this->input->post('birthday') ?: null,
@@ -624,6 +634,7 @@ class AdminController extends CI_Controller
                     $this->db->insert('class_student', [
                         'student_id'  => $student_id,
                         'class_id'    => $sched['class_id'],
+                        'schedule_id' => $sched['schedule_id'],
                         'section'     => $sched['section'],
                         'semester_id' => $sem_id,
                         'status'      => 'enrolled',

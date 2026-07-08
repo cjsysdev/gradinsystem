@@ -107,19 +107,12 @@
       <!-- Personal Information -->
       <div class="section-label mt-2">Personal Information</div>
       <div class="form-row">
-        <div class="form-group col-sm-4">
-          <label>Student No. <span class="text-danger">*</span></label>
-          <input type="text" name="student_no" id="student_no" class="form-control"
-                 required maxlength="12"
-                 value="<?= htmlspecialchars($this->input->post('student_no') ?? '') ?>">
-          <div id="student_no_fb"></div>
-        </div>
-        <div class="form-group col-sm-4">
+        <div class="form-group col-sm-6">
           <label>Last Name <span class="text-danger">*</span></label>
           <input type="text" name="lastname" class="form-control" required maxlength="35"
                  value="<?= htmlspecialchars($this->input->post('lastname') ?? '') ?>">
         </div>
-        <div class="form-group col-sm-4">
+        <div class="form-group col-sm-6">
           <label>First Name <span class="text-danger">*</span></label>
           <input type="text" name="firstname" class="form-control" required maxlength="35"
                  value="<?= htmlspecialchars($this->input->post('firstname') ?? '') ?>">
@@ -272,20 +265,6 @@
     el.textContent = msg;
     el.className = ok ? 'feedback-ok' : 'feedback-err';
   }
-
-  document.getElementById('student_no').addEventListener('input', function () {
-    var val = this.value.trim();
-    var fb = document.getElementById('student_no_fb');
-    if (!val) { fb.textContent = ''; return; }
-    debounce(function () {
-      fetch('<?= base_url('check_student_no_public') ?>?student_no=' + encodeURIComponent(val))
-        .then(function (r) { return r.json(); })
-        .then(function (d) {
-          d.exists ? setFb(fb, 'Already registered.', false)
-                   : setFb(fb, 'Available.', true);
-        });
-    });
-  });
 
   document.getElementById('username').addEventListener('input', function () {
     var val = this.value.trim();

@@ -79,8 +79,8 @@ class InteractiveQuizController extends CI_Controller
     // For interactive rows, discussions.link holds the JSON topic slug (e.g. '105_mysqli').
     public function list_topics()
     {
-        $enrollment       = $this->class_student->get(['student_id' => $_SESSION['student_id']]);
-        $student_class_id = $enrollment ? (int) $enrollment->class_id : null;
+        $enrollment       = $this->class_student->get_class_student_info($_SESSION['student_id']);
+        $student_class_id = $enrollment ? (int) $enrollment['class_id'] : null;
 
         $all = $student_class_id
             ? $this->discussions->as_array()->order_by('created_at', 'desc')->get_all(['class_id' => $student_class_id]) ?: []

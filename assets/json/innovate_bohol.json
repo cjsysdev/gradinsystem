@@ -1,0 +1,103 @@
+{
+    "topic": "week1_s2_innovation_in_bohol",
+    "title": "Session 1.2: Innovation in Bohol",
+    "shuffle": false,
+    "description": "Applying innovation thinking to local Bohol industries — agriculture, tourism, and transport — through Maria the calamansi farmer's problem.",
+    "sections": [
+        {
+            "title": "Bohol's Innovation Landscape",
+            "lesson": "<h2 class=\"discussion-title\">Bohol's Innovation Landscape</h2>\n\n<p class=\"discussion-intro\">\n    Session 1.1 looked at national and global examples. Now we bring innovation home: what does\n    invention-vs-adoption look like in Bohol's own agriculture, tourism, and transport sectors?\n</p>\n\n<hr>\n\n<h4>Three Local Industries, Three Different Innovation Challenges</h4>\n<ul>\n    <li><b>Agriculture:</b> Farmers (rice, calamansi, coconut) often deal with unpredictable yields,\n        limited access to credit, and middlemen who capture most of the profit margin.</li>\n    <li><b>Tourism:</b> Bohol depends heavily on visitors reaching sites like the Chocolate Hills and\n        Loboc River — information and booking systems directly affect visitor experience and local\n        income.</li>\n    <li><b>Transport:</b> Inter-island and inter-town connectivity affects how quickly goods and\n        people move, and how much that costs.</li>\n</ul>\n\n<div class=\"alert alert-info\">\n    <b>Key idea:</b> The same invention-vs-innovation lens from Session 1.1 applies here — the\n    question is always: what technology exists, and would the people who need it here actually\n    adopt it?\n</div>\n\n<hr>\n\n<h4>Why \"Local\" Innovation Is Different</h4>\n<p>\n    A solution built for Manila or Metro Cebu doesn't automatically work in a rural Bohol\n    barangay. Internet connectivity, income levels, smartphone access, and trust in digital\n    payments can all be different. Good local innovation starts with a real local problem, not a\n    borrowed solution.\n</p>\n\n<div class=\"alert alert-warning\">\n    <b>Key idea:</b> Innovation is creative problem-solving for a specific context — not simply\n    copying what worked somewhere else.\n</div>",
+            "questions": [
+                {
+                    "question": "Why might a digital solution designed for Metro Manila fail to work well in a rural Bohol barangay without changes?",
+                    "choices": [
+                        "Differences in internet connectivity, income, and digital trust levels",
+                        "Bohol has no farmers or businesses at all",
+                        "Rural areas always reject any new technology on principle",
+                        "Metro Manila solutions are technically impossible to copy"
+                    ],
+                    "answer": "Differences in internet connectivity, income, and digital trust levels",
+                    "explanation": "Local context — connectivity, income, smartphone access, and trust — shapes whether an imported solution will actually be adopted."
+                },
+                {
+                    "question": "Which of the following is identified as a common challenge for Bohol's agriculture sector?",
+                    "choices": [
+                        "Middlemen capturing most of the profit margin from farmers",
+                        "Too much government subsidy for farmers",
+                        "An oversupply of digital payment options",
+                        "No demand for locally grown produce"
+                    ],
+                    "answer": "Middlemen capturing most of the profit margin from farmers",
+                    "explanation": "Farmers often sell to middlemen at low prices, while the middlemen resell at a much higher markup — a recurring problem in Philippine agriculture."
+                }
+            ]
+        },
+        {
+            "title": "The Calamansi Farmer's Problem",
+            "lesson": "<h2 class=\"discussion-title\">The Calamansi Farmer's Problem</h2>\n\n<p class=\"discussion-intro\">\n    Meet Maria: a calamansi farmer in Tagbilaran. Her situation is a realistic composite of\n    challenges documented among Filipino smallholder farmers.\n</p>\n\n<hr>\n\n<h4>Maria's Situation</h4>\n<div class=\"alert alert-secondary\">\n    Maria grows calamansi on a small plot. She has no access to fertilizer credit, so she can't\n    invest ahead of harvest season. She can't reliably predict her yield from season to season.\n    When it's time to sell, middlemen who control transport to the market pay her a fraction of\n    the eventual retail price &mdash; often taking the majority of the final profit for themselves.\n</div>\n\n<p>\n    This is not a fictional exaggeration. Documented Filipino farmer cases show markups where a\n    middleman may buy produce for a small fraction of what it later resells for down the supply\n    chain &mdash; sometimes several times the price paid to the farmer.\n</p>\n\n<hr>\n\n<h4>The Core Question</h4>\n<div class=\"alert alert-info\">\n    <b>What technology or system could actually help Maria — and would she realistically be able\n    to use it?</b>\n</div>\n\n<p>Some directions worth exploring (don't filter yet — just generate ideas):</p>\n<ul>\n    <li>A shared farmer database to track yield history and plan credit needs</li>\n    <li>A yield-tracking or weather-alert app for planning harvest timing</li>\n    <li>A cooperative or blockchain-based supply chain to cut out layers of middlemen</li>\n    <li>Drone-based pest monitoring to reduce crop loss</li>\n</ul>\n\n<div class=\"alert alert-warning\">\n    <b>Key idea:</b> Notice that some of these ideas need heavy tech investment, and some barely\n    need new technology at all — they need better organization and a direct buyer relationship.\n    Keep that tension in mind; you'll formalize it as the Innovation Triangle in Session 2.1.\n</div>",
+            "questions": [
+                {
+                    "question": "What is the central problem in Maria's situation?",
+                    "choices": [
+                        "Limited access to credit, unpredictable yield, and middlemen taking most of the profit",
+                        "She has too much access to credit and doesn't know how to spend it",
+                        "There is no demand at all for calamansi",
+                        "She refuses to sell her calamansi to anyone"
+                    ],
+                    "answer": "Limited access to credit, unpredictable yield, and middlemen taking most of the profit",
+                    "explanation": "Maria's case combines three real constraints common to smallholder farmers: credit access, yield predictability, and an unfavorable supply chain."
+                },
+                {
+                    "question": "Which brainstormed idea for Maria would need the LEAST new technology investment, relying instead mostly on organization and relationships?",
+                    "choices": [
+                        "A cooperative connecting directly to a buyer, cutting out middlemen",
+                        "Drone-based pest monitoring",
+                        "A blockchain supply chain platform",
+                        "A yield-tracking mobile app"
+                    ],
+                    "answer": "A cooperative connecting directly to a buyer, cutting out middlemen",
+                    "explanation": "Organizing farmers into a cooperative and securing a direct buyer relationship addresses the profit-margin problem with people and process changes more than new hardware or software."
+                }
+            ]
+        },
+        {
+            "title": "From Brainstorm to Innovation Triangle Preview",
+            "lesson": "<h2 class=\"discussion-title\">From Brainstorm to Innovation Triangle Preview</h2>\n\n<p class=\"discussion-intro\">\n    Before you run the full Innovation Ideation Mural activity in groups, here's the lens you'll be\n    using to judge your own ideas.\n</p>\n\n<hr>\n\n<h4>Three Questions, Every Time</h4>\n<p>Whatever idea your group votes as its top pick for Maria, test it against three questions:</p>\n\n<table class=\"table table-bordered\">\n    <thead class=\"thead-light\">\n        <tr><th>Factor</th><th>Question to Ask</th></tr>\n    </thead>\n    <tbody>\n        <tr><td><b>Tech</b></td><td>Does the technology actually work reliably in Maria's environment?</td></tr>\n        <tr><td><b>People</b></td><td>Will Maria (and farmers like her) actually use it day to day?</td></tr>\n        <tr><td><b>Business</b></td><td>Can Maria afford it, and does someone profit enough to keep supporting it?</td></tr>\n    </tbody>\n</table>\n\n<div class=\"alert alert-success\">\n    <b>Key idea:</b> An idea that's missing even one of these three legs is at risk of staying a\n    mere invention instead of becoming a real innovation for Maria.\n</div>\n\n<hr>\n\n<h4>Running the Mural Activity</h4>\n<ol>\n    <li><b>Brainstorm (10 min):</b> In groups of 4&ndash;5, generate wild ideas without filtering.</li>\n    <li><b>Cluster (5 min):</b> Group similar ideas together on your poster.</li>\n    <li><b>Vote (5 min):</b> Pick your team's top 3 ideas, ranked.</li>\n    <li><b>Gallery walk:</b> Visit other groups' posters and leave sticky-note feedback — \"Cost?\"\n        \"Who uses it?\"</li>\n</ol>\n\n<div class=\"alert alert-warning\">\n    <b>Bridge to Week 2:</b> You've now generated ideas and started judging them informally. Next\n    week you'll learn the formal Innovation Triangle framework (Tech + People + Business) and see\n    real cases of ideas that succeeded, and ideas that failed, on exactly this test.\n</div>",
+            "questions": [
+                {
+                    "question": "The three factors previewed for judging an idea for Maria are:",
+                    "choices": [
+                        "Tech, People, Business",
+                        "Cost, Speed, Marketing",
+                        "Hardware, Software, Cloud",
+                        "Design, Testing, Launch"
+                    ],
+                    "answer": "Tech, People, Business",
+                    "explanation": "This three-factor lens (formally named the Innovation Triangle in Session 2.1) checks whether a solution works, will be used, and can be sustained financially."
+                },
+                {
+                    "question": "According to this preview, what happens to an idea that's strong on Tech and Business but weak on People (nobody wants to use it)?",
+                    "choices": [
+                        "It's at risk of failing to become a real innovation despite the working technology",
+                        "It automatically succeeds because the tech works",
+                        "It becomes disruptive innovation by default",
+                        "It doesn't matter as long as it's profitable on paper"
+                    ],
+                    "answer": "It's at risk of failing to become a real innovation despite the working technology",
+                    "explanation": "All three legs of the triangle are needed — a solution missing genuine user adoption stays an invention, not an innovation, no matter how sound the tech or business case looks."
+                },
+                {
+                    "question": "What is the purpose of the gallery walk step in the Mural activity?",
+                    "choices": [
+                        "To get feedback from other groups on cost and usability of an idea",
+                        "To grade each group immediately with a numeric score",
+                        "To replace the brainstorming step entirely",
+                        "To vote on which group used the most sticky notes"
+                    ],
+                    "answer": "To get feedback from other groups on cost and usability of an idea",
+                    "explanation": "The gallery walk exposes each group's top ideas to outside scrutiny — surfacing questions about cost and real-world usability before Session 2.1 formalizes the evaluation."
+                }
+            ]
+        }
+    ]
+}

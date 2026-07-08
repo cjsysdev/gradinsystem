@@ -71,7 +71,7 @@ class class_student extends MY_Model
             ->update($this->table, ['class_id' => $class]);
     }
 
-    public function re_enroll($student_id, $class_id, $section, $semester_id)
+    public function re_enroll($student_id, $class_id, $section, $semester_id, $schedule_id = null)
     {
         $exists = $this->db
             ->where('student_id', $student_id)
@@ -83,20 +83,31 @@ class class_student extends MY_Model
                 ->where('student_id', $student_id)
                 ->where('semester_id', $semester_id)
                 ->update($this->table, [
-                    'class_id' => $class_id,
-                    'section'  => $section,
-                    'status'   => 'enrolled',
+                    'class_id'    => $class_id,
+                    'schedule_id' => $schedule_id,
+                    'section'     => $section,
+                    'status'      => 'enrolled',
                 ]);
         }
 
         return $this->db->insert($this->table, [
             'student_id'  => $student_id,
             'class_id'    => $class_id,
+            'schedule_id' => $schedule_id,
             'section'     => $section,
             'semester_id' => $semester_id,
             'status'      => 'enrolled',
             'is_cleared'  => 0,
         ]);
+    }
+
+    public function is_enrolled_in_schedule($student_id, $schedule_id)
+    {
+        return $this->db
+            ->where('student_id', $student_id)
+            ->where('schedule_id', $schedule_id)
+            ->where('status', 'enrolled')
+            ->count_all_results($this->table) > 0;
     }
 
     private function _active_semester_id()

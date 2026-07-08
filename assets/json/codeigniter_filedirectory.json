@@ -1,0 +1,149 @@
+{
+  "topic": "ws_week01_session01",
+  "title": "Week 1: CodeIgniter Setup & Framework Intro",
+  "description": "Web Systems & Technologies – Session 1",
+  "congratsText": "Session 1 complete! You're ready for the lab.",
+  "sections": [
+    {
+      "id": 0,
+      "title": "Session Objectives",
+      "lesson": "<div class=\"lesson-title\">Session Objectives</div><div class=\"lesson-text\">By the end of this session, you will be able to:</div><div class=\"lesson-text\"><ul><li>Explain what CodeIgniter is and why we use a framework over procedural PHP</li><li>Identify the key folders in the CodeIgniter project structure and their purpose</li><li>Describe what MVC means and how the three components connect</li><li>Trace a request from a browser URL all the way to HTML output</li><li>Configure <code>config.php</code> (base URL) and <code>database.php</code> for local development</li><li>Verify that CodeIgniter is installed and the welcome page loads correctly</li></ul></div><div class=\"lesson-text\"><strong>What we are building toward:</strong> Over 16 weeks you will build a <span class=\"highlight\">complete full-stack web application</span> — backend with CodeIgniter (Weeks 1–8), then frontend with CSS, Bootstrap, and JavaScript (Weeks 9–16). This week lays the foundation.</div><div class=\"lesson-text\"><strong>Session structure:</strong> Work through all 10 sections in order. Section 9 is a recap. Take your time — each concept builds on the previous one.</div>",
+      "quiz": null
+    },
+    {
+      "id": 1,
+      "title": "What is a PHP Framework?",
+      "lesson": "<div class=\"lesson-title\">What is a PHP Framework?</div><div class=\"lesson-text\">A <span class=\"highlight\">PHP framework</span> is a pre-built structure that gives your project a standard way to organize code, handle requests, and interact with the database.</div><div class=\"lesson-text\"><strong>Without a framework (procedural PHP):</strong></div><div class=\"lesson-text\"><ul><li>You write everything from scratch — connection, queries, output all in one file</li><li>No enforced structure — files grow messy and hard to maintain quickly</li><li>Security and validation must be coded manually every single time</li></ul></div><div class=\"lesson-text\"><strong>With a framework:</strong></div><div class=\"lesson-text\"><ul><li>Structure is defined — you follow conventions the team already knows</li><li>Common tasks (DB connection, input handling, validation) are built-in</li><li>Security features like CSRF protection are included by default</li></ul></div><div class=\"lesson-text\">Think of a framework as a <span class=\"highlight\">building blueprint</span>. Instead of designing the layout from scratch, you follow an established plan and focus on what makes your app unique.</div>",
+      "quiz": {
+        "question": "What is the main advantage of using a PHP framework?",
+        "options": [
+          "Frameworks make PHP apps run much faster",
+          "Frameworks provide structure and built-in tools",
+          "Frameworks eliminate writing any SQL at all here",
+          "Frameworks auto-deploy your project to production"
+        ],
+        "correct": 1
+      }
+    },
+    {
+      "id": 2,
+      "title": "Why CodeIgniter?",
+      "lesson": "<div class=\"lesson-title\">Why CodeIgniter?</div><div class=\"lesson-text\"><span class=\"highlight\">CodeIgniter 3</span> is a lightweight PHP framework known for its simplicity and gentle learning curve — an excellent first framework for developers who already know basic PHP.</div><div class=\"lesson-text\"><strong>Key reasons we use CodeIgniter in this course:</strong></div><div class=\"lesson-text\"><ul><li><strong>Simple to learn</strong> — minimal configuration to get started</li><li><strong>Clear MVC structure</strong> — separates database, logic, and display into folders</li><li><strong>Built-in security</strong> — CSRF protection, input filtering, SQL injection prevention</li><li><strong>Configure once</strong> — set database credentials one time and use them in all models</li><li><strong>Transferable knowledge</strong> — patterns here apply directly to Laravel, Symfony, and other frameworks</li></ul></div><div class=\"lesson-text\">Once you understand CodeIgniter, learning any other framework becomes <span class=\"highlight\">much easier</span> — the core MVC concepts are the same everywhere.</div>",
+      "quiz": {
+        "question": "Which CodeIgniter feature replaces mysqli_connect() on every page?",
+        "options": [
+          "The built-in session management library handles it",
+          "The URL routing config file manages all connections",
+          "Configure the database once; all models share it",
+          "The automatic query builder removes the connection"
+        ],
+        "correct": 2
+      }
+    },
+    {
+      "id": 3,
+      "title": "CodeIgniter Folder Structure",
+      "lesson": "<div class=\"lesson-title\">CodeIgniter Folder Structure</div><div class=\"lesson-text\">When you download CodeIgniter, you get a set of folders with specific purposes. Knowing where things go is the <span class=\"highlight\">first step</span> to working with the framework.</div><div class=\"code-block\">your_project/\n├── application/          ← YOUR code lives here\n│   ├── controllers/      ← Handle requests, call models\n│   ├── models/           ← All database code goes here\n│   ├── views/            ← HTML templates for output\n│   └── config/           ← config.php, database.php, etc.\n├── system/               ← CodeIgniter core (don't touch!)\n├── assets/               ← CSS, JS, images (you create this)\n└── index.php             ← Entry point for all requests</div><div class=\"lesson-text\"><strong>The golden rule:</strong> You work almost entirely inside <span class=\"highlight\">application/</span>. The <code>system/</code> folder is CodeIgniter's engine — never modify it.</div><div class=\"lesson-text\"><ul><li><code>controllers/</code> — one file per feature area (e.g., Students.php)</li><li><code>models/</code> — one file per database table (e.g., Student_model.php)</li><li><code>views/</code> — HTML files with embedded PHP for display only</li></ul></div>",
+      "quiz": {
+        "question": "Where do your own controllers, models, and views go?",
+        "options": [
+          "Inside the system/ folder with the CI core files",
+          "Inside application/ in the matching subfolders",
+          "In the project root folder next to index.php here",
+          "Inside a new src/ folder you create from scratch"
+        ],
+        "correct": 1
+      }
+    },
+    {
+      "id": 4,
+      "title": "MVC Architecture: The Big Picture",
+      "lesson": "<div class=\"lesson-title\">MVC Architecture: The Big Picture</div><div class=\"lesson-text\"><span class=\"highlight\">MVC (Model-View-Controller)</span> is the architectural pattern at the heart of CodeIgniter. It separates an application into three distinct responsibilities.</div><div class=\"comparison\"><div class=\"comparison-col\"><div class=\"comparison-label\">Component</div><ul><li><strong>Model</strong></li><li><strong>View</strong></li><li><strong>Controller</strong></li></ul></div><div class=\"comparison-col\"><div class=\"comparison-label\">Responsibility</div><ul><li>All database interaction</li><li>Display only — HTML output</li><li>Logic that connects M and V</li></ul></div></div><div class=\"lesson-text\"><strong>Analogy — a restaurant:</strong></div><div class=\"lesson-text\"><ul><li><strong>Model</strong> = the kitchen — prepares and handles the food (data)</li><li><strong>View</strong> = the dining area — presents the meal to the customer (HTML)</li><li><strong>Controller</strong> = the waiter — takes the order, talks to kitchen, brings food out</li></ul></div><div class=\"lesson-text\">This separation means you can change how data is displayed <span class=\"highlight\">without touching database code</span> — the key benefit of MVC.</div>",
+      "quiz": {
+        "question": "Which MVC component handles all database interaction?",
+        "options": [
+          "The View, because it displays data to users",
+          "The Controller, because it handles every request",
+          "The Model, because it encapsulates database code",
+          "The Router, because it maps URLs to tables"
+        ],
+        "correct": 2
+      }
+    },
+    {
+      "id": 5,
+      "title": "The MVC Request Flow",
+      "lesson": "<div class=\"lesson-title\">The MVC Request Flow</div><div class=\"lesson-text\">Every request in CodeIgniter follows the same path. Understanding this flow is <span class=\"highlight\">fundamental</span> to working with any MVC framework.</div><div class=\"code-block\">Browser visits: http://localhost/students/index\n\n1. index.php     ← All requests pass through here first\n2. Router        ← Maps URL segments to controller + method\n3. Controller    ← students.php → index() method is called\n4. Model         ← Controller calls model to fetch data\n5. Database      ← Model runs query, returns result array\n6. Controller    ← Receives data back from the model\n7. View          ← Controller loads view and passes data\n8. Browser       ← View renders HTML and sends to user</div><div class=\"lesson-text\">The URL maps directly to PHP code:</div><div class=\"code-block\">http://localhost/[controller]/[method]/[parameter]\n\n/students/index    → Students.php → index()\n/students/view/5   → Students.php → view($id=5)\n/products/delete/9 → Products.php → delete($id=9)</div><div class=\"lesson-text\">Notice: <span class=\"highlight\">no file extensions in the URL</span> — CodeIgniter handles all routing internally via index.php.</div>",
+      "quiz": {
+        "question": "What does the URL /students/view/5 tell CodeIgniter?",
+        "options": [
+          "Open the file students_view_5.php in views/",
+          "Run Students controller's view() with argument 5",
+          "Display row 5 from the students table directly",
+          "Search models/ for a method called students_view"
+        ],
+        "correct": 1
+      }
+    },
+    {
+      "id": 6,
+      "title": "Configuring config.php",
+      "lesson": "<div class=\"lesson-title\">Configuring config.php</div><div class=\"lesson-text\">The file <code>application/config/config.php</code> holds global settings. The most critical one for local development is the <span class=\"highlight\">base URL</span>.</div><div class=\"code-block\">// Found in: application/config/config.php\n\n// Set this to match your local project folder\n$config['base_url'] = 'http://localhost/your_project_name/';\n\n// Example for a project named 'school_system':\n$config['base_url'] = 'http://localhost/school_system/';</div><div class=\"lesson-text\"><strong>Why base_url matters:</strong></div><div class=\"lesson-text\"><ul><li>Used by CodeIgniter helpers to build correct links and form actions</li><li>Incorrectly set → CSS files, links, and forms break across the site</li><li>Must match the exact folder name inside your WAMP/XAMPP <code>htdocs/</code></li><li>Always include the trailing slash at the end</li></ul></div><div class=\"lesson-text\"><strong>Other settings you may need:</strong></div><div class=\"lesson-text\"><ul><li><code>$config['encryption_key']</code> — required if you use sessions</li><li><code>$config['index_page']</code> — set to <code>''</code> to remove <code>index.php</code> from URLs</li></ul></div>",
+      "quiz": {
+        "question": "What breaks if base_url is set incorrectly in config.php?",
+        "options": [
+          "PHP throws a fatal error and the page goes blank",
+          "Links, form actions, and asset paths break sitewide",
+          "The database connection silently fails each request",
+          "CodeIgniter switches to procedural mode by itself"
+        ],
+        "correct": 1
+      }
+    },
+    {
+      "id": 7,
+      "title": "Configuring database.php",
+      "lesson": "<div class=\"lesson-title\">Configuring database.php</div><div class=\"lesson-text\">The file <code>application/config/database.php</code> stores your MySQL credentials. Configure it <span class=\"highlight\">once</span> and CodeIgniter uses it in every model automatically.</div><div class=\"code-block\">// Found in: application/config/database.php\n\n$db['default'] = array(\n    'hostname' => 'localhost',\n    'username' => 'root',\n    'password' => '',           // Empty for local WAMP/XAMPP\n    'database' => 'school_db',  // ← Change this to your DB name\n    'dbdriver' => 'mysqli',\n    'db_debug' => TRUE,         // Show errors during development\n    'char_set' => 'utf8',\n);</div><div class=\"lesson-text\"><strong>The four fields you actually change:</strong></div><div class=\"lesson-text\"><ul><li><code>hostname</code> → almost always <code>'localhost'</code></li><li><code>username</code> → usually <code>'root'</code> on WAMP/XAMPP</li><li><code>password</code> → empty string <code>''</code> for local development</li><li><code>database</code> → the name of your MySQL database</li></ul></div><div class=\"lesson-text\">Compare: procedural PHP needs <code>mysqli_connect()</code> on every page. CI reads <span class=\"highlight\">database.php once</span> and shares it with all models.</div>",
+      "quiz": {
+        "question": "What is the key advantage of configuring database.php once?",
+        "options": [
+          "MySQL queries run faster through the CI database",
+          "All models share credentials without repeating them",
+          "The database.php file encrypts your password safely",
+          "CodeIgniter auto-creates the database from this file"
+        ],
+        "correct": 1
+      }
+    },
+    {
+      "id": 8,
+      "title": "Procedural PHP vs CodeIgniter",
+      "lesson": "<div class=\"lesson-title\">Procedural PHP vs CodeIgniter: A Direct Comparison</div><div class=\"lesson-text\">Let's compare both approaches handling the same task: <span class=\"highlight\">fetch and display all students</span>.</div><div class=\"code-block\">// === PROCEDURAL PHP (one file does everything) ===\n$conn   = mysqli_connect(\"localhost\", \"root\", \"\", \"school_db\");\n$result = mysqli_query($conn, \"SELECT * FROM students\");\nwhile ($row = mysqli_fetch_assoc($result)) {\n    echo $row[\"name\"] . \"&lt;br&gt;\";\n}\nmysqli_close($conn);</div><div class=\"code-block\">// === CODEIGNITER (split across MVC) ===\n\n// Model → Student_model.php\npublic function get_all() {\n    return $this->db->get('students')->result_array();\n}\n\n// Controller → Students.php\npublic function index() {\n    $data['students'] = $this->Student_model->get_all();\n    $this->load->view('students/list', $data);\n}\n\n// View → students/list.php\nforeach ($students as $row) {\n    echo $row['name'] . '&lt;br&gt;';\n}</div><div class=\"lesson-text\">CodeIgniter means <span class=\"highlight\">more files for the same output</span> — but as your project grows to dozens of features, the separation keeps everything clean, testable, and maintainable.</div>",
+      "quiz": {
+        "question": "What is the trade-off of using CodeIgniter over procedural PHP?",
+        "options": [
+          "CodeIgniter pages render more slowly overall",
+          "More files upfront, but the project scales cleanly",
+          "CodeIgniter fully removes the need to learn SQL at all",
+          "Procedural PHP supports more database types than CI"
+        ],
+        "correct": 1
+      }
+    },
+    {
+      "id": 9,
+      "title": "Session Recap",
+      "lesson": "<div class=\"lesson-title\">Session 1 Recap</div><div class=\"lesson-text\">Here is everything covered in this session at a glance:</div><div class=\"lesson-text\"><ul><li><strong>PHP Framework</strong> — a structure that organizes code and provides built-in tools for common tasks</li><li><strong>CodeIgniter</strong> — lightweight, beginner-friendly PHP framework; configure credentials once, use everywhere</li><li><strong>Folder structure</strong> — your code lives in <code>application/</code>; never touch <code>system/</code></li><li><strong>MVC</strong> — Model (database) · View (HTML output) · Controller (logic that connects them)</li><li><strong>Request flow</strong> — URL → Router → Controller → Model → Database → Controller → View → Browser</li><li><strong>URL routing</strong> — <code>/controller/method/parameter</code> maps directly to PHP class methods</li><li><strong>config.php</strong> — set <code>base_url</code> to your local project folder path with a trailing slash</li><li><strong>database.php</strong> — set hostname, username, password, and database name once for all models</li><li><strong>Procedural vs CI</strong> — more files and structure upfront, but cleaner and safer as the project grows</li></ul></div><div class=\"lesson-text\"><strong>Lab activity (Week 1):</strong> Download and install CodeIgniter 3, configure both config files, and verify the welcome page loads correctly. See you in the lab!</div>",
+      "quiz": {
+        "question": "Which items are central to a new CodeIgniter project setup?",
+        "options": [
+          "index.php, system/, and the assets/ folder are core",
+          "application/, config.php, and database.php are key",
+          "controllers/, mysqli_connect(), and views/ come first",
+          "database.php, .htaccess, and system/ are set up first"
+        ],
+        "correct": 1
+      }
+    }
+  ]
+}

@@ -50,9 +50,7 @@ class AttendanceController extends CI_Controller
             return;
         }
 
-        $account = (object)['section' => $student_section];
-
-        if ($this->shouldDenyAttendance($class, $student_id, $admin_id, $account)) {
+        if ($this->shouldDenyAttendance($class, $student_id, $admin_id)) {
             $this->session->set_flashdata('error', 'No available class');
         } else {
             $this->handleStudentAttendance($class, $student_id, $date);
@@ -95,16 +93,11 @@ class AttendanceController extends CI_Controller
         $this->load->view('attendance_view', $data);
     }
 
-    private function shouldDenyAttendance(
-        $class,
-        $student_id,
-        $admin_id,
-        $account
-    ) {
+    private function shouldDenyAttendance($class, $student_id, $admin_id)
+    {
         return !$class ||
             $student_id == $admin_id ||
-            (isset($account->section) &&
-                $account->section != $class['section']);
+            !$this->class_student->is_enrolled_in_schedule($student_id, $class['schedule_id']);
     }
 
     private function handleStudentAttendance($class, $student_id, $date)

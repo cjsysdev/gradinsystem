@@ -151,7 +151,6 @@ $route['test'] = 'Main/test';
 $route['signup'] = 'Main/signup';
 $route['signup_submit'] = 'Main/signup_submit';
 $route['register'] = 'Main/register';
-$route['check_student_no_public'] = 'Main/check_student_no_public';
 $route['check_username_public'] = 'Main/check_username_public';
 $route['input_submit'] = 'Main/input_submit';
 $route['output_upload'] = 'Main/output_upload';

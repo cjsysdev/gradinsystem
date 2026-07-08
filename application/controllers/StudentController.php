@@ -225,7 +225,7 @@ class StudentController extends CI_Controller
         $active_semester = $this->db->where('is_active', 1)->get('semester_master')->row_array();
         $semester_id = $active_semester ? $active_semester['trans_no'] : $sched['semester_id'];
 
-        $this->class_student->re_enroll($student_id, $sched['class_id'], $sched['section'], $semester_id);
+        $this->class_student->re_enroll($student_id, $sched['class_id'], $sched['section'], $semester_id, $sched['schedule_id']);
         $this->session->set_flashdata('success', 'Enrolled successfully.');
         redirect();
     }

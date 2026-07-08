@@ -53,9 +53,9 @@ class Main extends CI_Controller
         $data['active_semester'] = $this->db->where('is_active', 1)->get('semester_master')->row_array();
 
         if ($this->input->post()) {
-            $student_no = trim($this->input->post('student_no'));
             $lastname   = trim($this->input->post('lastname'));
             $firstname  = trim($this->input->post('firstname'));
+            $middlename = trim($this->input->post('middlename'));
             $username   = trim($this->input->post('username'));
             $password   = $this->input->post('password');
             $confirm    = $this->input->post('confirm_password');
@@ -66,23 +66,29 @@ class Main extends CI_Controller
                 return;
             }
 
-            if ($this->db->where('student_no', $student_no)->count_all_results('student_master')) {
-                $this->session->set_flashdata('error', "Student number {$student_no} is already registered.");
-                $this->load->view('register', $data);
-                return;
-            }
-
             if ($this->db->where('username', $username)->count_all_results('accounts')) {
                 $this->session->set_flashdata('error', "Username \"{$username}\" is already taken.");
                 $this->load->view('register', $data);
                 return;
             }
 
+            if ($this->db->where('lastname', $lastname)
+                         ->where('firstname', $firstname)
+                         ->where('middlename', $middlename)
+                         ->count_all_results('student_master')) {
+                $this->session->set_flashdata('error', "A student named \"{$firstname} {$middlename} {$lastname}\" is already registered.");
+                $this->load->view('register', $data);
+                return;
+            }
+
+            $temp_no = $this->generate_next_temp_no();
+
             $student_data = [
-                'student_no'    => $student_no,
+                'temp_no'       => $temp_no,
+                'student_no'    => $temp_no,
                 'lastname'      => $lastname,
                 'firstname'     => $firstname,
-                'middlename'    => trim($this->input->post('middlename')),
+                'middlename'    => $middlename,
                 'extname'       => trim($this->input->post('extname')),
                 'gender'        => $this->input->post('gender'),
                 'birthday'      => $this->input->post('birthday') ?: null,
@@ -115,6 +121,7 @@ class Main extends CI_Controller
                     $this->db->insert('class_student', [
                         'student_id'  => $student_id,
                         'class_id'    => $sched['class_id'],
+                        'schedule_id' => $sched['schedule_id'],
                         'section'     => $sched['section'],
                         'semester_id' => $sem_id,
                         'status'      => 'enrolled',
@@ -131,12 +138,13 @@ class Main extends CI_Controller
         $this->load->view('register', $data);
     }
 
-    public function check_student_no_public()
+    private function generate_next_temp_no()
     {
-        header('Content-Type: application/json');
-        $student_no = $this->input->get('student_no');
-        $exists = $student_no && $this->db->where('student_no', $student_no)->count_all_results('student_master') > 0;
-        echo json_encode(['exists' => $exists]);
+        $row = $this->db
+            ->query("SELECT MAX(CAST(REPLACE(temp_no, 'TMP', '') AS UNSIGNED)) AS max_seq FROM student_master WHERE temp_no LIKE '%TMP'")
+            ->row_array();
+        $next = (int)($row['max_seq'] ?? 0) + 1;
+        return str_pad($next, 6, '0', STR_PAD_LEFT) . 'TMP';
     }
 
     public function check_username_public()
