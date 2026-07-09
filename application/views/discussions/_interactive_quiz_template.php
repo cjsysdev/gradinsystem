@@ -58,7 +58,7 @@ $assessment_id = isset($assessment_id) ? (int) $assessment_id : 0;
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title><?= $title ?> - Interactive Learning</title>
     <link rel="stylesheet" href="<?= base_url('assets/interactive-quiz-style.css') ?>">
 </head>
