@@ -64,6 +64,53 @@ class classworks extends MY_Model
         $this->db->update('classworks', ['score' => $score]);
     }
 
+    // Bulk-creates a blank (no score/code) classworks row for every enrolled
+    // student in $schedule_id who doesn't already have one for $assessment_id
+    // — used for participation-style assessments where the admin scores
+    // students directly (e.g. via randomizing) instead of students submitting
+    // work. Mirrors BrainstormController::_mark_participated()'s row shape.
+    public function create_blank_for_schedule($assessment_id, $schedule_id)
+    {
+        $enrolled = $this->db->select('student_id')
+            ->where('schedule_id', $schedule_id)
+            ->where('status', 'enrolled')
+            ->get('class_student')
+            ->result_array();
+
+        if (empty($enrolled)) {
+            return 0;
+        }
+
+        $existing_ids = array_column(
+            $this->db->select('student_id')
+                ->where('assessment_id', $assessment_id)
+                ->get('classworks')
+                ->result_array(),
+            'student_id'
+        );
+
+        $now = date('Y-m-d H:i:s');
+        $rows = [];
+        foreach (array_unique(array_column($enrolled, 'student_id')) as $student_id) {
+            if (in_array($student_id, $existing_ids)) {
+                continue;
+            }
+            $rows[] = [
+                'student_id'    => $student_id,
+                'assessment_id' => $assessment_id,
+                'status'        => 'submitted',
+                'submitted_at'  => $now,
+                'created_at'    => $now,
+            ];
+        }
+
+        if (!empty($rows)) {
+            $this->db->insert_batch('classworks', $rows);
+        }
+
+        return count($rows);
+    }
+
     public function getActivitiesGrade($term, $iotype, $student_id)
     {
         $query = $this->db->query("

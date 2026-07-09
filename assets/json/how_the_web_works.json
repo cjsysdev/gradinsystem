@@ -1,0 +1,149 @@
+{
+  "topic": "how_the_web_works",
+  "title": "How the Web Works",
+  "description": "The core concepts behind every website you visit",
+  "congratsText": "You now understand how the web works end to end!",
+  "sections": [
+    {
+      "id": 0,
+      "title": "Objectives",
+      "quiz": null,
+      "lesson": "<div class=\"lesson-title\">What You Will Learn</div><div class=\"lesson-text\">By the end of this discussion, you will be able to:</div><div class=\"lesson-text\"><ul><li>Explain the difference between the <strong>Internet</strong> and the <strong>Web</strong></li><li>Describe the <strong>client-server model</strong> and the role of each side</li><li>Read and understand the parts of a <strong>URL</strong></li><li>Explain what <strong>DNS</strong> does and why it matters</li><li>Describe what <strong>HTTP and HTTPS</strong> are and why HTTPS is preferred</li><li>Trace the full <strong>request-response cycle</strong> from browser to server and back</li><li>Understand the roles of <strong>HTML, CSS, and JavaScript</strong> in a web page</li><li>Describe what a <strong>web browser</strong> actually does under the hood</li></ul></div><div class=\"lesson-text\"><strong>Why this matters:</strong> Every time you open a website, a precise sequence of events happens in milliseconds. Understanding this sequence helps you think like a web developer — and it explains <span class=\"highlight\">why things go wrong</span> when they do.</div>"
+    },
+    {
+      "id": 1,
+      "title": "The Internet vs The Web",
+      "quiz": {
+        "question": "What is the Internet?",
+        "options": [
+          "The global network of cables, routers, and devices",
+          "A single website hosted on one computer somewhere",
+          "The browser software you use to visit websites here",
+          "The company that provides your internet connection"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">The Internet vs The Web</div><div class=\"lesson-text\">These two terms are often used interchangeably, but they are different things.</div><div class=\"comparison\"><div class=\"comparison-col\"><div class=\"comparison-label\">The Internet</div><ul><li>The physical infrastructure</li><li>Cables, routers, satellites</li><li>Connects billions of devices</li><li>Carries all kinds of data (email, calls, streaming, web)</li></ul></div><div class=\"comparison-col\"><div class=\"comparison-label\">The Web</div><ul><li>A service that runs <em>on top of</em> the Internet</li><li>Web pages, links, and media</li><li>Accessed using a browser</li><li>Uses the HTTP/HTTPS protocol</li></ul></div></div><div class=\"lesson-text\"><strong>Analogy:</strong> The Internet is like the <span class=\"highlight\">road network</span> — the physical infrastructure. The Web is like one of the services that uses those roads, similar to how courier delivery uses roads but is not the same as the roads themselves.</div><div class=\"lesson-text\">Other services that use the Internet include email, online gaming, video calls, and file transfer — none of which are the Web, but all of which depend on the Internet.</div>"
+    },
+    {
+      "id": 2,
+      "title": "Client & Server",
+      "quiz": {
+        "question": "What is the role of a client and a server?",
+        "options": [
+          "The client sends requests; the server responds to them",
+          "The server asks the client what pages to display first",
+          "Both the client and server store the website HTML files",
+          "The client and server always run on the same machine"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Client & Server</div><div class=\"lesson-text\">The web is built on a simple two-party model: a <span class=\"highlight\">client</span> that asks for things, and a <span class=\"highlight\">server</span> that provides them.</div><div class=\"comparison\"><div class=\"comparison-col\"><div class=\"comparison-label\">Client</div><ul><li>Your browser (Chrome, Firefox…)</li><li>Makes requests for web pages</li><li>Receives and displays the response</li><li>Runs on your device</li></ul></div><div class=\"comparison-col\"><div class=\"comparison-label\">Server</div><ul><li>A computer in a data center</li><li>Stores and serves web files</li><li>Listens for incoming requests</li><li>Sends back the requested resource</li></ul></div></div><div class=\"lesson-text\"><strong>The interaction is always initiated by the client:</strong></div><div class=\"lesson-text\"><ol><li>You type a URL and press Enter</li><li>Your browser (client) sends a request to the server</li><li>The server finds the requested file</li><li>The server sends it back to the client</li><li>Your browser displays the page</li></ol></div><div class=\"lesson-text\">A single server can handle millions of clients simultaneously. And a single client can talk to many different servers — one for every website you visit.</div>"
+    },
+    {
+      "id": 3,
+      "title": "What is a URL?",
+      "quiz": {
+        "question": "What is a URL?",
+        "options": [
+          "The local file path to the HTML file on your computer",
+          "A unique address that identifies a resource on the web",
+          "The name of the browser software used to view the page",
+          "The IP address of the user who is currently visiting"
+        ],
+        "correct": 1
+      },
+      "lesson": "<div class=\"lesson-title\">What is a URL?</div><div class=\"lesson-text\">A <span class=\"highlight\">URL (Uniform Resource Locator)</span> is the unique address of a resource on the web. Every web page, image, video, or file has one.</div><div class=\"code-block\">https://www.example.com:443/about/team?id=5#contact\n│       │               │   │           │  │\n│       │               │   │           │  └─ Fragment (section anchor)\n│       │               │   │           └──── Query string (parameters)\n│       │               │   └──────────────── Path (specific page/file)\n│       │               └──────────────────── Port (optional, 443 = HTTPS)\n│       └──────────────────────────────────── Domain name\n└──────────────────────────────────────────── Protocol (HTTPS)</div><div class=\"lesson-text\"><strong>Breaking it down:</strong></div><div class=\"lesson-text\"><ul><li><strong>Protocol</strong> — <code>https://</code> — how data is transferred (HTTP or HTTPS)</li><li><strong>Domain</strong> — <code>www.example.com</code> — human-readable name of the server</li><li><strong>Path</strong> — <code>/about/team</code> — which specific page or file on that server</li><li><strong>Query string</strong> — <code>?id=5</code> — extra data sent to the server (e.g. search terms)</li><li><strong>Fragment</strong> — <code>#contact</code> — jumps to a specific section on the page</li></ul></div><div class=\"lesson-text\">Most URLs you use daily only have the protocol, domain, and path. The query string and fragment are optional.</div>"
+    },
+    {
+      "id": 4,
+      "title": "DNS — The Web's Phone Book",
+      "quiz": {
+        "question": "What does the Domain Name System (DNS) do?",
+        "options": [
+          "It translates domain names into IP addresses for routing",
+          "It encrypts web traffic so that nobody can read it at all",
+          "It stores copies of websites to speed up loading times",
+          "It controls which users are allowed to access a website"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">DNS — The Web's Phone Book</div><div class=\"lesson-text\">Computers communicate using <span class=\"highlight\">IP addresses</span> — numerical identifiers like <code>142.250.190.46</code>. Humans use domain names like <code>google.com</code>. DNS bridges the gap.</div><div class=\"lesson-text\"><strong>The DNS lookup process:</strong></div><div class=\"lesson-text\"><ol><li>You type <code>www.google.com</code> in your browser</li><li>Your browser checks its local cache — has it looked this up before?</li><li>If not, it asks a <strong>DNS resolver</strong> (usually your ISP's server)</li><li>The resolver finds the IP address: <code>142.250.190.46</code></li><li>Your browser now knows where to send the request</li></ol></div><div class=\"lesson-text\"><strong>Analogy:</strong> DNS is like a <span class=\"highlight\">phone book</span>. You look up \"Google\" to find the actual phone number. Without DNS, you would have to memorize a string of numbers for every website you visit.</div><div class=\"lesson-text\"><strong>DNS is also why:</strong></div><div class=\"lesson-text\"><ul><li>A website can move to a new server without changing its domain name</li><li>One domain can point to multiple servers for load balancing</li><li>You can block websites by manipulating DNS at the router level</li></ul></div>"
+    },
+    {
+      "id": 5,
+      "title": "HTTP & HTTPS",
+      "quiz": {
+        "question": "What is the difference between HTTP and HTTPS?",
+        "options": [
+          "HTTPS encrypts data; HTTP sends it in plain text only",
+          "HTTP is faster; HTTPS only works on mobile devices",
+          "HTTPS requires a paid browser plugin to even function",
+          "HTTP is newer and more secure than HTTPS always here"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">HTTP & HTTPS</div><div class=\"lesson-text\"><span class=\"highlight\">HTTP (HyperText Transfer Protocol)</span> is the set of rules that governs how web data is requested and sent between clients and servers. It is the language of the web.</div><div class=\"lesson-text\"><strong>HTTP Methods — the most common:</strong></div><div class=\"lesson-text\"><ul><li><strong>GET</strong> — retrieve a resource (loading a page, fetching data)</li><li><strong>POST</strong> — send data to the server (submitting a form, logging in)</li><li><strong>PUT / PATCH</strong> — update existing data on the server</li><li><strong>DELETE</strong> — remove a resource from the server</li></ul></div><div class=\"lesson-text\"><strong>HTTPS = HTTP + Encryption</strong></div><div class=\"comparison\"><div class=\"comparison-col\"><div class=\"comparison-label\">HTTP</div><ul><li>Data sent in plain text</li><li>Anyone between you and the server can read it</li><li>No padlock in the browser bar</li><li>Unsafe for passwords or payments</li></ul></div><div class=\"comparison-col\"><div class=\"comparison-label\">HTTPS</div><ul><li>Data is encrypted with TLS</li><li>Interceptors see scrambled data only</li><li>Padlock icon in the browser bar</li><li>Required for login, payments, forms</li></ul></div></div><div class=\"lesson-text\">Modern browsers warn users when a site uses HTTP instead of HTTPS, and search engines rank HTTPS sites higher.</div>"
+    },
+    {
+      "id": 6,
+      "title": "The Request–Response Cycle",
+      "quiz": {
+        "question": "What is the correct order of the request-response cycle?",
+        "options": [
+          "Client → DNS → Server → Browser renders the response",
+          "Server → DNS → Client → Server sends the response",
+          "DNS → Client → Server → Client forwards to another server",
+          "Browser → Server → DNS → Client renders the page"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">The Request–Response Cycle</div><div class=\"lesson-text\">Every page load is a conversation between your browser and a server. Here is the full sequence:</div><div class=\"lesson-text\"><ol><li><strong>You enter a URL</strong> — e.g. <code>https://www.example.com/about</code></li><li><strong>DNS lookup</strong> — browser translates <code>example.com</code> to an IP address</li><li><strong>TCP connection</strong> — browser establishes a connection to the server</li><li><strong>TLS handshake</strong> — (HTTPS only) browser and server agree on encryption</li><li><strong>HTTP Request sent</strong> — browser asks: <code>GET /about HTTP/1.1</code></li><li><strong>Server processes</strong> — finds the file or runs code to build the response</li><li><strong>HTTP Response sent</strong> — server replies with a status code + the content</li><li><strong>Browser renders</strong> — parses HTML, loads CSS and JS, displays the page</li></ol></div><div class=\"lesson-text\"><strong>HTTP Status Codes — what the server replies with:</strong></div><div class=\"lesson-text\"><ul><li><code>200 OK</code> — success, here is the content you requested</li><li><code>301 Moved Permanently</code> — the URL has changed, go to this new one</li><li><code>404 Not Found</code> — the requested page does not exist on this server</li><li><code>500 Internal Server Error</code> — the server crashed trying to handle the request</li></ul></div>"
+    },
+    {
+      "id": 7,
+      "title": "HTML, CSS & JavaScript",
+      "quiz": {
+        "question": "What are the roles of HTML, CSS, and JavaScript?",
+        "options": [
+          "HTML adds style; CSS defines structure; JS handles logic",
+          "HTML defines structure; CSS adds style; JS adds behavior",
+          "CSS defines structure; HTML adds color; JS renders HTML",
+          "JS builds the page; HTML handles clicks; CSS sends data"
+        ],
+        "correct": 1
+      },
+      "lesson": "<div class=\"lesson-title\">HTML, CSS & JavaScript</div><div class=\"lesson-text\">When the server sends back a web page, it is made of three core technologies. The browser knows how to read all three.</div><div class=\"comparison\"><div class=\"comparison-col\"><div class=\"comparison-label\">HTML</div><ul><li>Structure &amp; content</li><li>Headings, paragraphs, images, links, buttons</li><li>The skeleton of the page</li></ul></div><div class=\"comparison-col\"><div class=\"comparison-label\">CSS</div><ul><li>Style &amp; layout</li><li>Colors, fonts, spacing, animations</li><li>The appearance of the page</li></ul></div></div><div class=\"lesson-text\"><strong>JavaScript</strong> — behavior and interactivity:</div><div class=\"lesson-text\"><ul><li>Responds to user actions (clicks, typing, scrolling)</li><li>Fetches new data from the server without reloading the page (AJAX)</li><li>Validates forms, shows/hides content, animates elements</li><li>Runs in the browser — no page reload needed</li></ul></div><div class=\"lesson-text\"><strong>A house analogy:</strong></div><div class=\"lesson-text\"><ul><li><strong>HTML</strong> = the walls, floors, and rooms (structure)</li><li><strong>CSS</strong> = the paint, furniture, and lighting (style)</li><li><strong>JavaScript</strong> = the electricity and plumbing (what makes it interactive)</li></ul></div>"
+    },
+    {
+      "id": 8,
+      "title": "What Does a Browser Do?",
+      "quiz": {
+        "question": "What does a web browser actually do?",
+        "options": [
+          "A browser reads HTML, CSS, JS and renders them visually",
+          "A browser stores web pages permanently on your hard drive",
+          "A browser is a server that sends web pages to clients",
+          "A browser writes HTML code for the web server to run"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">What Does a Web Browser Do?</div><div class=\"lesson-text\">A <span class=\"highlight\">web browser</span> is software that retrieves resources from the web, understands HTML, CSS, and JavaScript, and renders them into what you see on screen.</div><div class=\"lesson-text\"><strong>What happens inside the browser after receiving a page:</strong></div><div class=\"lesson-text\"><ol><li><strong>Parse HTML</strong> — reads the HTML and builds the DOM (Document Object Model), a tree of all elements on the page</li><li><strong>Parse CSS</strong> — reads style rules and calculates how each element should look</li><li><strong>Render tree</strong> — combines the DOM with CSS to determine the final visual layout</li><li><strong>Paint</strong> — draws every pixel on the screen</li><li><strong>Run JavaScript</strong> — executes scripts that may update the DOM or fetch more data</li></ol></div><div class=\"lesson-text\"><strong>Browsers also handle:</strong></div><div class=\"lesson-text\"><ul><li><strong>Caching</strong> — storing copies of files locally to speed up future visits</li><li><strong>Cookies</strong> — small data files that websites use to remember you</li><li><strong>Security</strong> — blocking unsafe sites, enforcing HTTPS, sandboxing JS code</li><li><strong>Dev Tools</strong> — built-in tools for inspecting, debugging, and profiling pages</li></ul></div>"
+    },
+    {
+      "id": 9,
+      "title": "Recap: The Full Journey",
+      "quiz": {
+        "question": "What is the correct order of events when you visit a website?",
+        "options": [
+          "DNS lookup → HTTP request → Server → Response → Render",
+          "Browser renders → Server → DNS lookup → HTTP response",
+          "HTTP request → Browser renders → DNS → Server responds",
+          "Server → DNS → Browser renders → HTTP request is sent"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Recap: The Full Journey of a Web Request</div><div class=\"lesson-text\">Let's trace everything from start to finish. You type <code>https://www.example.com</code> and press Enter.</div><div class=\"lesson-text\"><ol><li><span class=\"highlight\">DNS Lookup</span> — Browser asks DNS: \"What is the IP address of example.com?\" → gets <code>93.184.216.34</code></li><li><span class=\"highlight\">TCP + TLS</span> — Browser opens a secure connection to that IP address</li><li><span class=\"highlight\">HTTP GET Request</span> — Browser asks the server: \"Give me the homepage\"</li><li><span class=\"highlight\">Server responds</span> — Status <code>200 OK</code> + sends back the HTML file</li><li><span class=\"highlight\">Browser parses HTML</span> — Discovers it needs a CSS file and a JS file</li><li><span class=\"highlight\">More requests</span> — Browser fetches the CSS, JS, images (each one is a new request)</li><li><span class=\"highlight\">Render</span> — Browser builds the DOM, applies styles, runs scripts, paints the screen</li><li><span class=\"highlight\">Page is visible</span> — All in typically under 2 seconds</li></ol></div><div class=\"lesson-text\"><strong>Key concepts at a glance:</strong></div><div class=\"lesson-text\"><ul><li><strong>Internet</strong> — the physical network that carries all data</li><li><strong>Web</strong> — a service on the Internet using HTTP/HTTPS</li><li><strong>Client</strong> — your browser; makes requests</li><li><strong>Server</strong> — a computer in a data center; responds to requests</li><li><strong>URL</strong> — the unique address of a resource</li><li><strong>DNS</strong> — translates domain names to IP addresses</li><li><strong>HTTP/HTTPS</strong> — the rules for how data is requested and sent</li><li><strong>HTML / CSS / JS</strong> — the three building blocks of every web page</li><li><strong>Browser</strong> — parses and renders everything into what you see</li></ul></div>"
+    }
+  ]
+}

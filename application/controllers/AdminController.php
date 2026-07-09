@@ -338,6 +338,13 @@ class AdminController extends CI_Controller
         $data['io_types'] = $this->db->get('io_type')->result_array();
         $data['selected_schedule'] = $schedule_id;
 
+        // Distinct classes behind those active sections, for the "Entire Class" apply mode.
+        $seen_classes = [];
+        foreach ($data['schedules'] as $s) {
+            $seen_classes[$s['class_id']] = ['class_id' => $s['class_id'], 'class_code' => $s['class_code'], 'class_name' => $s['class_name']];
+        }
+        $data['classes'] = array_values($seen_classes);
+
         $this->load->model('Grouping_model');
         $data['grouping_sets'] = $this->Grouping_model->get_all_sets();
 
@@ -351,35 +358,78 @@ class AdminController extends CI_Controller
     {
         $post = $this->input->post();
         $assessment_id = !empty($post['assessment_id']) ? (int)$post['assessment_id'] : null;
+        $apply_mode = $post['apply_mode'] ?? 'section';
 
         $status = isset($post['status']) ? $post['status'] : 0;
         if ($status === 'open' || $status === 'closed') {
             $status = $status === 'open' ? '1' : '0';
         }
 
-        $data = [
-            'iotype_id'    => $post['iotype_id'],
+        $base = [
+            'iotype_id'   => $post['iotype_id'],
+            'title'       => $post['title'],
+            'description' => $post['description'],
+            'max_score'   => $post['max_score'],
+            'due'         => $post['due'],
+            'term'        => $post['term'],
+            'status'      => (int)$status,
+            'widget_id'   => !empty($post['widget_id']) ? (int) $post['widget_id'] : null,
+            'given'       => !empty($post['widget_id']) ? ($post['given'] ?? null) : null,
+        ];
+        $auto_create = !empty($post['auto_create_submissions']);
+
+        // "Entire class" creates one assessment per active section of that
+        // class this semester, instead of the admin repeating the form per
+        // section. Only offered for brand-new assessments — an existing
+        // assessment row is already tied to one schedule_id. Group Submission
+        // isn't offered in this mode since grouping sets are section-scoped
+        // (see manage_assessments.php JS).
+        if (!$assessment_id && $apply_mode === 'class' && !empty($post['class_id'])) {
+            $schedules = $this->class_schedule->get_active_schedules_by_class((int) $post['class_id']);
+            if (empty($schedules)) {
+                $this->session->set_flashdata('error', 'That class has no active sections this semester.');
+                redirect('manage_assessments');
+            }
+
+            $created_count = 0;
+            $submissions_created = 0;
+            foreach ($schedules as $sched) {
+                $data = $base + [
+                    'schedule_id'  => $sched['schedule_id'],
+                    'is_groupings' => 0,
+                    'created_at'   => date('Y-m-d H:i:s'),
+                ];
+                $this->assessments->insert($data);
+                $new_assessment_id = $this->db->insert_id();
+                $created_count++;
+
+                if ($auto_create) {
+                    $submissions_created += $this->classworks->create_blank_for_schedule($new_assessment_id, $sched['schedule_id']);
+                }
+            }
+
+            $flash = "Created $created_count assessment(s), one per section.";
+            if ($auto_create) {
+                $flash .= " Created $submissions_created blank submission(s) across those sections.";
+            }
+            $this->session->set_flashdata('success', $flash);
+            redirect('manage_assessments');
+        }
+
+        $data = $base + [
             'schedule_id'  => $post['schedule_id'],
-            'title'        => $post['title'],
-            'description'  => $post['description'],
-            'max_score'    => $post['max_score'],
-            'due'          => $post['due'],
-            'term'         => $post['term'],
-            'status'       => (int)$status,
             'is_groupings' => !empty($post['is_groupings']) ? 1 : 0,
-            'widget_id'    => !empty($post['widget_id']) ? (int) $post['widget_id'] : null,
-            'given'        => !empty($post['widget_id']) ? ($post['given'] ?? null) : null,
         ];
 
         if ($assessment_id) {
             // MY_Model::update() takes (data, where) — NOT (where, data).
             $this->assessments->update($data, $assessment_id);
-            $this->session->set_flashdata('success', 'Assessment updated successfully.');
+            $flash = 'Assessment updated successfully.';
         } else {
             $data['created_at'] = date('Y-m-d H:i:s');
             $this->assessments->insert($data);
             $assessment_id = $this->db->insert_id();
-            $this->session->set_flashdata('success', 'Assessment added successfully.');
+            $flash = 'Assessment added successfully.';
         }
 
         $grouping_set_id = !empty($post['grouping_set_id']) ? (int) $post['grouping_set_id'] : null;
@@ -391,8 +441,57 @@ class AdminController extends CI_Controller
             ]);
         }
 
+        // Participation-style assessments: pre-create a blank (no score/code)
+        // classworks row for every enrolled student in the section so the
+        // admin can grade/randomize directly instead of students submitting.
+        if ($auto_create) {
+            $created = $this->classworks->create_blank_for_schedule($assessment_id, $data['schedule_id']);
+            $flash .= $created > 0
+                ? " Created $created blank submission(s) for the section."
+                : ' All enrolled students already have a submission for this assessment.';
+        }
+
+        $this->session->set_flashdata('success', $flash);
+
         $qs = !empty($post['schedule_id']) ? '?schedule_id=' . $post['schedule_id'] : '';
         redirect('manage_assessments' . $qs);
+    }
+
+    // Renders a widget's own input_view against admin-authored "given" JSON so
+    // the Add/Edit Assessment modal can show a live preview underneath the
+    // config textarea — same view file the student sees, just with
+    // readonly=false/existing=null (a blank, unsubmitted form).
+    public function preview_widget()
+    {
+        $widget_id = $this->input->post('widget_id');
+        $given = $this->input->post('given');
+
+        if (empty($widget_id)) {
+            echo '<p class="text-muted mb-0">Select a widget above to see a preview.</p>';
+            return;
+        }
+
+        $this->load->model('Widgets_model');
+        $widget = $this->Widgets_model->get((int) $widget_id);
+        if (!$widget) {
+            echo '<p class="text-danger mb-0">Unknown widget.</p>';
+            return;
+        }
+
+        $config = [];
+        if (trim((string) $given) !== '') {
+            $config = json_decode($given, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                echo '<p class="text-danger mb-0"><i class="fas fa-exclamation-triangle"></i> Invalid JSON &mdash; fix the config above to see a preview.</p>';
+                return;
+            }
+        }
+
+        echo $this->load->view($widget['input_view'], [
+            'config'   => $config ?: [],
+            'readonly' => false,
+            'existing' => null,
+        ], true);
     }
 
     public function update_assessment_status()
@@ -427,14 +526,19 @@ class AdminController extends CI_Controller
         echo json_encode(['success' => $result]);
     }
 
-    public function add_rand_score_incremental($classwork_id)
+    public function add_rand_score_incremental($classwork_id, $points = 2)
     {
+        $points = (int) $points;
+        if ($points < 1) {
+            $points = 1;
+        }
+
         $result = $this->db->query(
             "UPDATE classworks c
              JOIN assessments a ON a.assessment_id = c.assessment_id
-             SET c.score = LEAST(COALESCE(c.score, 0) + 2, a.max_score)
+             SET c.score = LEAST(COALESCE(c.score, 0) + ?, a.max_score)
              WHERE c.classwork_id = ?",
-            [$classwork_id]
+            [$points, $classwork_id]
         );
         echo json_encode(['success' => (bool)$result]);
     }

@@ -5,13 +5,33 @@
         <?php $this->load->view('profile_only'); ?>
         <?php $this->load->view('admin/nav_bar'); ?>
 
+        <?php
+        // get_for_schedule() returns a flat array (a.*, cs.*, iot.type AS iotype),
+        // so section/type/term/due are top-level keys, not a ->class_schedule relation.
+        $selected_assessment = null;
+        if (!empty($selected_assessment_id)) {
+            foreach ($assessments as $a) {
+                if ((int) $a['assessment_id'] === (int) $selected_assessment_id) {
+                    $selected_assessment = $a;
+                    break;
+                }
+            }
+        }
+        ?>
         <!-- Dropdown to select an assessment -->
         <div class="row justify-content-center mt-5">
             <div class="col-md-6">
                 <div class="mb-4">
                     <div class="dropdown">
                         <button class="btn btn-secondary btn-block dropdown-toggle w-100" type="button" id="assessmentDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                            <?= isset($selected_assessment_id) ? "Selected: Assessment ID $selected_assessment_id" : "Select an Assessment" ?>
+                            <?php if ($selected_assessment): ?>
+                                <?= htmlspecialchars($selected_assessment['title']) ?>
+                                <small>(ID: <?= $selected_assessment['assessment_id'] ?><?= !empty($selected_assessment['section']) ? ' · Sec ' . htmlspecialchars($selected_assessment['section']) : '' ?>)</small>
+                            <?php elseif (isset($selected_assessment_id)): ?>
+                                Selected: Assessment ID <?= $selected_assessment_id ?>
+                            <?php else: ?>
+                                Select an Assessment
+                            <?php endif; ?>
                         </button>
                         <div class="card mb-3 shadow-sm mt-2">
                             <div class="card-body">
@@ -25,15 +45,38 @@
                                 <button type="button" class="btn btn-secondary mb-4" onclick="toggleSubmissions()"><i class="fa fa-eye" aria-hidden="true"></i></button>
                             </div>
                         </div>
-                        <ul class="dropdown-menu w-100 shadow-sm" aria-labelledby="assessmentDropdown">
-                            <?php foreach ($assessments as $assessment): ?>
-                                <li>
-                                    <a class="dropdown-item" href="<?= base_url("AdminController/all_submissions/" . $assessment['assessment_id']) ?>">
-                                        <?= $assessment['title'] ?> (ID: <?= $assessment['assessment_id'] ?>) <?= $assessment['class_schedule']->section ?? "" ?>
-                                    </a>
-                                </li>
-                            <?php endforeach; ?>
-                        </ul>
+                        <div class="dropdown-menu w-100 shadow-sm p-2" aria-labelledby="assessmentDropdown">
+                            <input type="text" class="form-control mb-2" id="assessmentSearchInput"
+                                placeholder="Search assessments by title, ID, or section..."
+                                onkeyup="filterAssessments()" onclick="event.stopPropagation()">
+                            <ul class="list-unstyled mb-0" id="assessmentList" style="max-height: 320px; overflow-y: auto;">
+                                <?php foreach ($assessments as $assessment): ?>
+                                    <?php
+                                    $searchBits = [
+                                        $assessment['title'],
+                                        $assessment['assessment_id'],
+                                        $assessment['section'] ?? '',
+                                        $assessment['type'] ?? '',
+                                        $assessment['iotype'] ?? '',
+                                        $assessment['term'] ?? '',
+                                    ];
+                                    ?>
+                                    <li data-search-text="<?= htmlspecialchars(strtolower(implode(' ', $searchBits))) ?>">
+                                        <a class="dropdown-item" href="<?= base_url("AdminController/all_submissions/" . $assessment['assessment_id']) ?>">
+                                            <div><?= htmlspecialchars($assessment['title']) ?> <small class="text-muted">(ID: <?= $assessment['assessment_id'] ?>)</small></div>
+                                            <div class="small text-muted">
+                                                <?php if (!empty($assessment['section'])): ?><span class="badge badge-secondary mr-1">Sec <?= htmlspecialchars($assessment['section']) ?></span><?php endif; ?>
+                                                <?php if (!empty($assessment['type'])): ?><span class="badge badge-light border mr-1"><?= htmlspecialchars($assessment['type']) ?></span><?php endif; ?>
+                                                <?php if (!empty($assessment['iotype'])): ?><span class="badge badge-info mr-1"><?= htmlspecialchars($assessment['iotype']) ?></span><?php endif; ?>
+                                                <?php if (!empty($assessment['term'])): ?><span class="badge badge-dark mr-1"><?= htmlspecialchars(ucwords(str_replace('-', ' ', $assessment['term']))) ?></span><?php endif; ?>
+                                                <?php if (!empty($assessment['due'])): ?><span>Due <?= date('M j, Y', strtotime($assessment['due'])) ?></span><?php endif; ?>
+                                            </div>
+                                        </a>
+                                    </li>
+                                <?php endforeach; ?>
+                                <li id="assessmentNoResults" class="text-muted px-3 py-2" style="display:none;">No matching assessments.</li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -42,10 +85,19 @@
         <!-- Filter buttons -->
         <div class="row justify-content-center">
             <div class="col-md-6 text-center">
+                <div class="input-group mb-3">
+                    <input type="text" class="form-control" id="studentSearchInput"
+                        placeholder="Search student by name or classwork ID..."
+                        onkeyup="handleStudentSearch(event)">
+                    <div class="input-group-append">
+                        <button type="button" class="btn btn-outline-secondary" id="clearStudentSearch" onclick="clearStudentSearch()">&times;</button>
+                    </div>
+                </div>
                 <div class="btn-group mb-3" role="group">
                     <button type="button" class="btn btn-primary active" id="filterAll" onclick="filterSubmissions('all')">Show All</button>
                     <button type="button" class="btn btn-outline-primary" id="filterNoScore" onclick="filterSubmissions('no_score')">No Score Only</button>
                 </div>
+                <div id="submissionSearchCount" class="text-muted small"></div>
             </div>
         </div>
 
@@ -54,7 +106,10 @@
             <div id="submissionsContainer" class="col">
                 <?php if (!empty($submissions)): ?>
                     <?php foreach ($submissions as $row): ?>
-                        <div class="card mb-3 shadow-sm submission-card" data-has-score="<?= isset($row['score']) && $row['score'] !== null ? 'true' : 'false' ?>">
+                        <div class="card mb-3 shadow-sm submission-card"
+                            data-has-score="<?= isset($row['score']) && $row['score'] !== null ? 'true' : 'false' ?>"
+                            data-student-name="<?= htmlspecialchars(strtolower($row['lastname'] . ' ' . $row['firstname']), ENT_QUOTES, 'UTF-8') ?>"
+                            data-classwork-id="<?= $row['classwork_id'] ?>">
                             <div class="card-body">
                                 <h3 class="card-title mb-1"><?= $row['classwork_id'] . " - " . $row['lastname'] . ", " . $row['firstname'] ?></h3>
                                 <hr>
@@ -80,6 +135,8 @@
                                         <div class="input-group mb-3">
                                             <a href="<?= base_url('add_rand_score/' . $row['classwork_id'] . '/5' . "/$selected_assessment_id") ?>" type="button" class="btn btn-outline-secondary mr-1 ml-1" name="score" value="good">Late</a>
                                             <input type="decimal" name="score" class="form-control mr-1 ml-1" placeholder="Enter score" min="0" required>
+                                            <a href="<?= base_url('add_rand_score/' . $row['classwork_id'] . '/3' . "/$selected_assessment_id") ?>" type="button" class="btn btn-outline-secondary mr-1 ml-1" name="score" value="good">3</a>
+                                            <a href="<?= base_url('add_rand_score/' . $row['classwork_id'] . '/2' . "/$selected_assessment_id") ?>" type="button" class="btn btn-outline-secondary mr-1 ml-1" name="score" value="good">2</a>
                                             <a href="<?= base_url('add_rand_score/' . $row['classwork_id'] . "/{$row['max_score']}" . "/$selected_assessment_id") ?>" type="button" class="btn btn-outline-secondary mr-1 ml-1" name="score" value="good"><?= $row['max_score'] ?></a><button type="submit" class="btn btn-info mr-1 ml-1">Submit</button>
                                         </div>
                                         <?php if (isset($row['file_upload']) && !str_contains($row['file_upload'], 'zip')): ?>
@@ -218,12 +275,70 @@
         btn.innerHTML = hidden ? '<i class="fa fa-eye" aria-hidden="true"></i>' : '<i class="fa fa-eye-slash" aria-hidden="true"></i>';
     }
 
-    function filterSubmissions(mode) {
-        document.querySelectorAll('.submission-card').forEach(card => {
-            card.style.display = (mode === 'no_score' && card.dataset.hasScore === 'true') ? 'none' : '';
+    // Search box for the assessment dropdown (filters by title, ID, section)
+    function filterAssessments() {
+        const query = document.getElementById('assessmentSearchInput').value.toLowerCase().trim();
+        let visibleCount = 0;
+        document.querySelectorAll('#assessmentList > li[data-search-text]').forEach(li => {
+            const match = li.dataset.searchText.includes(query);
+            li.style.display = match ? '' : 'none';
+            if (match) visibleCount++;
         });
+        document.getElementById('assessmentNoResults').style.display = visibleCount === 0 ? '' : 'none';
+    }
+
+    document.getElementById('assessmentDropdown').addEventListener('shown.bs.dropdown', () => {
+        const input = document.getElementById('assessmentSearchInput');
+        input.value = '';
+        filterAssessments();
+        input.focus();
+    });
+
+    let currentFilterMode = 'all';
+
+    // Combines the score filter (all / no score) with the live student-name search
+    function filterSubmissions(mode) {
+        currentFilterMode = mode;
+        const searchTerm = document.getElementById('studentSearchInput').value.toLowerCase().trim();
+        let visibleCards = [];
+
+        document.querySelectorAll('.submission-card').forEach(card => {
+            const matchesScoreFilter = !(mode === 'no_score' && card.dataset.hasScore === 'true');
+            const matchesSearch = !searchTerm
+                || card.dataset.studentName.includes(searchTerm)
+                || card.dataset.classworkId.includes(searchTerm);
+            const visible = matchesScoreFilter && matchesSearch;
+            card.style.display = visible ? '' : 'none';
+            if (visible) visibleCards.push(card);
+        });
+
         document.getElementById('filterAll').className      = mode === 'all'      ? 'btn btn-primary active' : 'btn btn-outline-primary';
         document.getElementById('filterNoScore').className  = mode === 'no_score' ? 'btn btn-primary active' : 'btn btn-outline-primary';
+
+        const countEl = document.getElementById('submissionSearchCount');
+        countEl.textContent = searchTerm ? `${visibleCards.length} match${visibleCards.length !== 1 ? 'es' : ''}` : '';
+
+        return visibleCards;
+    }
+
+    function handleStudentSearch(event) {
+        const visibleCards = filterSubmissions(currentFilterMode);
+
+        // Enter jumps straight to the first match's score input for faster submission
+        if (event.key === 'Enter' && visibleCards.length >= 1) {
+            const scoreInput = visibleCards[0].querySelector('input[name="score"]');
+            if (scoreInput) {
+                scoreInput.focus();
+                scoreInput.select();
+            }
+            visibleCards[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+
+    function clearStudentSearch() {
+        document.getElementById('studentSearchInput').value = '';
+        filterSubmissions(currentFilterMode);
+        document.getElementById('studentSearchInput').focus();
     }
 
     function openFullscreenRandomizer() {
@@ -300,17 +415,24 @@
             nameElem.style.animation  = 'fsReveal 0.55s cubic-bezier(0.34,1.56,0.64,1) forwards';
             nameElem.textContent = `${student.lastname}, ${student.firstname}`;
             badgeArea.innerHTML = `
-                <a href="#" onclick="addRandScoreIncremental(${student.classwork_id}); return false;"
+                <a href="#" onclick="addRandScoreIncremental(${student.classwork_id}, 2); return false;"
                    style="display:inline-block;background:linear-gradient(135deg,#276749,#38a169);color:#fff;font-size:2rem;font-weight:800;padding:14px 52px;border-radius:50px;text-decoration:none;box-shadow:0 4px 24px rgba(56,161,105,0.5);letter-spacing:2px;transition:transform 0.15s,box-shadow 0.15s;"
                    onmouseover="this.style.transform='scale(1.08)';this.style.boxShadow='0 8px 32px rgba(56,161,105,0.65)'"
                    onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 4px 24px rgba(56,161,105,0.5)'">
-                    +2
+                    II
+                </a>
+                <a href="#" onclick="addRandScoreIncremental(${student.classwork_id}, 1); return false;"
+                   style="display:inline-block;background:linear-gradient(135deg,#2b6cb0,#4299e1);color:#fff;font-size:1.4rem;font-weight:800;padding:14px 36px;border-radius:50px;text-decoration:none;box-shadow:0 4px 24px rgba(66,153,225,0.5);letter-spacing:2px;margin-left:16px;transition:transform 0.15s,box-shadow 0.15s;"
+                   onmouseover="this.style.transform='scale(1.08)';this.style.boxShadow='0 8px 32px rgba(66,153,225,0.65)'"
+                   onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 4px 24px rgba(66,153,225,0.5)'">
+                    I
                 </a>`;
             launchConfetti();
         } else {
             nameElem.innerHTML = `
                 <b>${student.lastname}, ${student.firstname}</b>
-                <a class="badge bg-success m-2 text-white" href="#" onclick="addRandScoreIncremental(${student.classwork_id}); return false;">+2</a>`;
+                <a class="badge bg-success m-2 text-white" href="#" onclick="addRandScoreIncremental(${student.classwork_id}, 2); return false;">II</a>
+                <a class="badge bg-primary m-2 text-white" href="#" onclick="addRandScoreIncremental(${student.classwork_id}, 1); return false;">I</a>`;
         }
     }
 
@@ -350,11 +472,11 @@
         draw();
     }
 
-    function addRandScoreIncremental(classwork_id) {
+    function addRandScoreIncremental(classwork_id, points = 2) {
         const oldAlert = document.getElementById('score-alert');
         if (oldAlert) oldAlert.remove();
 
-        fetch('<?= base_url('AdminController/add_rand_score_incremental/') ?>' + classwork_id, {
+        fetch('<?= base_url('AdminController/add_rand_score_incremental/') ?>' + classwork_id + '/' + points, {
                 method: 'POST'
             })
             .then(response => response.json())
@@ -366,7 +488,7 @@
                 alertDiv.style.right = '20px';
                 alertDiv.style.zIndex = '9999';
                 alertDiv.innerHTML = `
-            <strong>+2 points added!</strong>
+            <strong>+${points} point${points !== 1 ? 's' : ''} added!</strong>
             <button type="button" class="close" data-dismiss="alert" aria-label="Close">
                 <span aria-hidden="true">&times;</span>
             </button>

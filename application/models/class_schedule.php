@@ -42,6 +42,15 @@ class class_schedule extends MY_Model
         return $this->db->query($sql)->result_array();
     }
 
+    public function get_active_schedules_by_class($class_id)
+    {
+        $sql = "SELECT cs.schedule_id
+                FROM class_schedule cs
+                JOIN semester_master sm ON cs.semester_id = sm.trans_no AND sm.is_active = 1
+                WHERE cs.class_id = ?";
+        return $this->db->query($sql, [$class_id])->result_array();
+    }
+
     public function get_sections()
     {
         $sql = "SELECT distinct(section) FROM class_schedule

@@ -116,14 +116,42 @@
                     <input type="hidden" name="assessment_id" id="modal_assessment_id">
                     <input type="hidden" name="schedule_id_filter" value="<?= $selected_schedule ?>">
 
+                    <div class="form-group" id="modal_apply_mode_wrap">
+                        <label>Apply To</label>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="apply_mode" id="modal_apply_mode_section" value="section" checked>
+                            <label class="form-check-label" for="modal_apply_mode_section">One Section</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="apply_mode" id="modal_apply_mode_class" value="class">
+                            <label class="form-check-label" for="modal_apply_mode_class">Entire Class (all sections, this semester)</label>
+                        </div>
+                        <small class="form-text text-muted">
+                            "Entire Class" creates one copy of this assessment per active section of the chosen class
+                            this semester, instead of repeating this form per section. Only available when adding a
+                            new assessment &mdash; editing always applies to the one section it's already on.
+                        </small>
+                    </div>
+
                     <div class="form-row">
-                        <div class="form-group col-md-6">
+                        <div class="form-group col-md-6" id="modal_schedule_wrap">
                             <label>Section <span class="text-danger">*</span></label>
                             <select name="schedule_id" id="modal_schedule_id" class="form-control" required>
                                 <option value="">Select section...</option>
                                 <?php foreach ($schedules as $s): ?>
                                     <option value="<?= $s['schedule_id'] ?>">
                                         <?= htmlspecialchars($s['section']) ?> &mdash; <?= htmlspecialchars($s['class_code']) ?> (<?= $s['type'] ?>)
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="form-group col-md-6" id="modal_class_wrap" style="display:none">
+                            <label>Class <span class="text-danger">*</span></label>
+                            <select name="class_id" id="modal_class_id" class="form-control">
+                                <option value="">Select class...</option>
+                                <?php foreach ($classes as $c): ?>
+                                    <option value="<?= $c['class_id'] ?>">
+                                        <?= htmlspecialchars($c['class_code']) ?> &mdash; <?= htmlspecialchars($c['class_name']) ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
@@ -179,19 +207,25 @@
                         </div>
                     </div>
 
-                    <div class="form-check">
-                        <input type="checkbox" name="is_groupings" id="modal_is_groupings" class="form-check-input" value="1">
-                        <label class="form-check-label" for="modal_is_groupings">Group Submission</label>
+                    <div id="modal_groupings_section_wrap">
+                        <div class="form-check">
+                            <input type="checkbox" name="is_groupings" id="modal_is_groupings" class="form-check-input" value="1">
+                            <label class="form-check-label" for="modal_is_groupings">Group Submission</label>
+                        </div>
+                        <div class="form-group mt-2" id="modal_grouping_set_wrap" style="display:none">
+                            <label>Grouping Set</label>
+                            <select name="grouping_set_id" id="modal_grouping_set_id" class="form-control">
+                                <option value="">Select grouping set...</option>
+                            </select>
+                            <small class="form-text text-muted">
+                                Sets are managed under <a href="<?= base_url('Groupings') ?>" target="_blank">Groupings</a>.
+                            </small>
+                        </div>
                     </div>
-                    <div class="form-group mt-2" id="modal_grouping_set_wrap" style="display:none">
-                        <label>Grouping Set</label>
-                        <select name="grouping_set_id" id="modal_grouping_set_id" class="form-control">
-                            <option value="">Select grouping set...</option>
-                        </select>
-                        <small class="form-text text-muted">
-                            Sets are managed under <a href="<?= base_url('Groupings') ?>" target="_blank">Groupings</a>.
-                        </small>
-                    </div>
+                    <small class="form-text text-muted" id="modal_groupings_class_note" style="display:none">
+                        Group Submission isn't available for "Entire Class" &mdash; grouping sets are per-section.
+                        Create the assessment per-section instead if you need groups.
+                    </small>
 
                     <div class="form-group mt-3">
                         <label>Widget (optional)</label>
@@ -211,6 +245,23 @@
                         <textarea name="given" id="modal_given" class="form-control" rows="6"></textarea>
                         <small class="form-text text-muted" id="modal_given_hint">
                             Select a widget above to see its example config.
+                        </small>
+                    </div>
+                    <div class="form-group" id="modal_widget_preview_wrap" style="display:none">
+                        <label>Preview <small class="text-muted">(how students will see it)</small></label>
+                        <div id="modal_widget_preview" class="border rounded p-3 bg-light"></div>
+                    </div>
+
+                    <div class="form-check mt-3">
+                        <input type="checkbox" name="auto_create_submissions" id="modal_auto_create_submissions" class="form-check-input" value="1">
+                        <label class="form-check-label" for="modal_auto_create_submissions">
+                            Participation: auto-create a blank submission for every enrolled student in the section
+                        </label>
+                        <small class="form-text text-muted">
+                            For assessments where students don't submit anything (e.g. class participation) &mdash;
+                            creates one ungraded slot per enrolled student on save, so you can score them directly
+                            from All Submissions / the randomizer instead of waiting for uploads. Safe to check again
+                            later (e.g. after new students enroll) &mdash; only missing students get a slot.
                         </small>
                     </div>
                 </div>
@@ -257,6 +308,24 @@ function refreshGroupingSetOptions(selectedSetId) {
 function toggleGroupingSetWrap() {
     document.getElementById('modal_grouping_set_wrap').style.display =
         document.getElementById('modal_is_groupings').checked ? '' : 'none';
+}
+
+function toggleApplyMode() {
+    const isClassMode = document.getElementById('modal_apply_mode_class').checked;
+
+    document.getElementById('modal_schedule_wrap').style.display = isClassMode ? 'none' : '';
+    document.getElementById('modal_class_wrap').style.display = isClassMode ? '' : 'none';
+    document.getElementById('modal_schedule_id').required = !isClassMode;
+    document.getElementById('modal_class_id').required = isClassMode;
+
+    // Grouping sets are per-section, so Group Submission isn't offered when
+    // creating across a whole class at once (server also forces it off).
+    document.getElementById('modal_groupings_section_wrap').style.display = isClassMode ? 'none' : '';
+    document.getElementById('modal_groupings_class_note').style.display = isClassMode ? '' : 'none';
+    if (isClassMode) {
+        document.getElementById('modal_is_groupings').checked = false;
+        toggleGroupingSetWrap();
+    }
 }
 
 // Example config JSON per widget_key — shown as the textarea's placeholder
@@ -324,6 +393,11 @@ const widgetExamples = {
     }
 };
 
+// Tracks the last example JSON we auto-filled into the textarea, so switching
+// widgets can safely replace it — but real config (typed by hand, loaded from
+// an existing assessment, or edited from the example) is never clobbered.
+let lastAutoFilledExample = null;
+
 function toggleGivenWrap() {
     const select = document.getElementById('modal_widget_id');
     document.getElementById('modal_given_wrap').style.display = select.value ? '' : 'none';
@@ -334,22 +408,80 @@ function toggleGivenWrap() {
     const hint = document.getElementById('modal_given_hint');
 
     if (info) {
-        textarea.placeholder = JSON.stringify(info.example, null, 2);
-        hint.textContent = info.hint;
+        const exampleJson = JSON.stringify(info.example, null, 2);
+        if (!textarea.value.trim() || textarea.value === lastAutoFilledExample) {
+            textarea.value = exampleJson;
+            lastAutoFilledExample = exampleJson;
+        }
+        hint.textContent = info.hint + ' Edit the example below to fit your assessment.';
     } else {
-        textarea.placeholder = '';
         hint.textContent = 'Select a widget above to see its example config.';
     }
+
+    fetchWidgetPreview();
+}
+
+// <script> tags inserted via innerHTML don't execute — re-create them so the
+// widget's own interactivity (Add Row, live calculator, etc.) works in the preview.
+function runScriptsIn(container) {
+    container.querySelectorAll('script').forEach(oldScript => {
+        const newScript = document.createElement('script');
+        Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+        newScript.textContent = oldScript.textContent;
+        oldScript.replaceWith(newScript);
+    });
+}
+
+function fetchWidgetPreview() {
+    const widgetId = document.getElementById('modal_widget_id').value;
+    const wrap = document.getElementById('modal_widget_preview_wrap');
+    const box = document.getElementById('modal_widget_preview');
+
+    if (!widgetId) {
+        wrap.style.display = 'none';
+        box.innerHTML = '';
+        return;
+    }
+
+    wrap.style.display = '';
+    const given = document.getElementById('modal_given').value;
+
+    fetch('<?= base_url('AdminController/preview_widget') ?>', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'widget_id=' + encodeURIComponent(widgetId) + '&given=' + encodeURIComponent(given)
+    })
+        .then(r => r.text())
+        .then(html => {
+            box.innerHTML = html;
+            runScriptsIn(box);
+        })
+        .catch(() => {
+            box.innerHTML = '<p class="text-danger mb-0">Preview failed to load.</p>';
+        });
+}
+
+let widgetPreviewTimer = null;
+function refreshWidgetPreviewDebounced() {
+    clearTimeout(widgetPreviewTimer);
+    widgetPreviewTimer = setTimeout(fetchWidgetPreview, 400);
 }
 
 document.getElementById('modal_schedule_id').addEventListener('change', () => refreshGroupingSetOptions());
 document.getElementById('modal_is_groupings').addEventListener('change', toggleGroupingSetWrap);
 document.getElementById('modal_widget_id').addEventListener('change', toggleGivenWrap);
+document.getElementById('modal_given').addEventListener('input', refreshWidgetPreviewDebounced);
+document.getElementById('modal_apply_mode_section').addEventListener('change', toggleApplyMode);
+document.getElementById('modal_apply_mode_class').addEventListener('change', toggleApplyMode);
 
 function openAddModal() {
     document.getElementById('modalTitle').textContent = 'Add Assessment';
     document.getElementById('modal_assessment_id').value = '';
+    document.getElementById('modal_apply_mode_wrap').style.display = '';
+    document.getElementById('modal_apply_mode_section').checked = true;
     document.getElementById('modal_schedule_id').value = '<?= $selected_schedule ?: '' ?>';
+    document.getElementById('modal_class_id').value = '';
+    toggleApplyMode();
     document.getElementById('modal_iotype_id').value = '';
     document.getElementById('modal_title').value = '';
     document.getElementById('modal_description').value = '';
@@ -362,7 +494,9 @@ function openAddModal() {
     toggleGroupingSetWrap();
     document.getElementById('modal_widget_id').value = '';
     document.getElementById('modal_given').value = '';
+    lastAutoFilledExample = null;
     toggleGivenWrap();
+    document.getElementById('modal_auto_create_submissions').checked = false;
     document.getElementById('modal_submit_btn').textContent = 'Add Assessment';
     if (typeof $ !== 'undefined') $('#assessmentModal').modal('show');
 }
@@ -370,6 +504,11 @@ function openAddModal() {
 function openEditModal(a) {
     document.getElementById('modalTitle').textContent = 'Edit Assessment';
     document.getElementById('modal_assessment_id').value = a.assessment_id;
+    // Editing always applies to the one section the assessment is already on.
+    document.getElementById('modal_apply_mode_wrap').style.display = 'none';
+    document.getElementById('modal_apply_mode_section').checked = true;
+    document.getElementById('modal_class_id').value = '';
+    toggleApplyMode();
     document.getElementById('modal_schedule_id').value = a.schedule_id;
     document.getElementById('modal_iotype_id').value = a.iotype_id;
     document.getElementById('modal_title').value = a.title;
@@ -383,7 +522,9 @@ function openEditModal(a) {
     toggleGroupingSetWrap();
     document.getElementById('modal_widget_id').value = a.widget_id || '';
     document.getElementById('modal_given').value = a.given || '';
+    lastAutoFilledExample = null;
     toggleGivenWrap();
+    document.getElementById('modal_auto_create_submissions').checked = false;
     document.getElementById('modal_submit_btn').textContent = 'Update Assessment';
     if (typeof $ !== 'undefined') $('#assessmentModal').modal('show');
 }

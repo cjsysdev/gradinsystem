@@ -57,15 +57,17 @@ class attendance extends MY_Model
         if ($check_duplicate_query->row() === null) {
             $sql = "
             INSERT INTO attendance (schedule_id, student_id, status)
-                    SELECT 
-                        ?, 
-                        student_id, 
+                    SELECT
+                        ?,
+                        student_id,
                         'absent'
                     FROM class_student
-                    WHERE section = ?;
+                    WHERE section = ?
+                    AND schedule_id = ?
+                    AND status = 'enrolled';
             ";
 
-            $query = $this->db->query($sql, [$schedule_id, $section]);
+            $query = $this->db->query($sql, [$schedule_id, $section, $schedule_id]);
 
             if ($query === false) {
                 $error = $this->db->error();
@@ -269,6 +271,9 @@ class attendance extends MY_Model
                 ON a.student_id = sm.trans_no
                 JOIN class_schedule cs ON a.schedule_id = cs.schedule_id
                 JOIN semester_master sem ON cs.semester_id = sem.trans_no
+                JOIN class_student cst ON cst.student_id = a.student_id
+                    AND cst.schedule_id = a.schedule_id
+                    AND cst.status = 'enrolled'
                 WHERE ip_address IN (
                     SELECT ip_address
                     FROM attendance
@@ -297,17 +302,23 @@ class attendance extends MY_Model
                 s.lastname,
                 a.status,
                 a.date
-            FROM 
+            FROM
                 attendance a
-            JOIN 
-                student_master s 
-            ON 
+            JOIN
+                student_master s
+            ON
                 a.student_id = s.trans_no
-            WHERE 
-                a.schedule_id = ? 
-            AND 
+            JOIN
+                class_student cst
+            ON
+                cst.student_id = a.student_id
+                AND cst.schedule_id = a.schedule_id
+                AND cst.status = 'enrolled'
+            WHERE
+                a.schedule_id = ?
+            AND
                 a.status = ?
-            AND 
+            AND
                 DATE(a.date) = ?
         ";
 
