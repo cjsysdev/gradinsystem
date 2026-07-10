@@ -51,8 +51,10 @@ $title         = htmlspecialchars($topic_data['title']        ?? 'Interactive Qu
 $congrats_text = htmlspecialchars($topic_data['congratsText'] ?? 'You completed this lesson!');
 $section_count = count($topic_data['sections'] ?? []);
 $sections_json = json_encode($topic_data['sections'] ?? [], JSON_HEX_TAG | JSON_HEX_AMP);
-$topic_slug    = $topic_data['topic'] ?? '';
-$assessment_id = isset($assessment_id) ? (int) $assessment_id : 0;
+$topic_slug        = $topic_data['topic'] ?? '';
+$assessment_id     = isset($assessment_id) ? (int) $assessment_id : 0;
+$already_submitted = !empty($already_submitted);
+$previous_score    = $previous_score ?? null;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -78,6 +80,13 @@ $assessment_id = isset($assessment_id) ? (int) $assessment_id : 0;
                 </div>
             </div>
         </div>
+
+        <?php if ($already_submitted): ?>
+            <div class="already-submitted-banner" id="alreadySubmittedBanner">
+                Already completed &mdash; recorded score: <strong><?= (int) $previous_score ?></strong>.
+                You can retake for practice, but it won't change your recorded score.
+            </div>
+        <?php endif; ?>
 
         <!-- Main Content -->
         <div class="content-wrapper">
@@ -146,6 +155,7 @@ $assessment_id = isset($assessment_id) ? (int) $assessment_id : 0;
         let answered       = false;
         let currentShuffledOptions = [];
         let currentCorrectIndex    = 0;
+        let quizAnswers            = []; // per-question record, sent to save_result so it can be reviewed later
         let streakHighlight        = false;
         const answeredSections     = new Set(); // prevent double-recording on back-nav
 
@@ -267,6 +277,16 @@ $assessment_id = isset($assessment_id) ? (int) $assessment_id : 0;
             // Record this attempt once per section (ignore back-nav re-submits)
             if (TOPIC_SLUG && !answeredSections.has(currentSection)) {
                 answeredSections.add(currentSection);
+
+                quizAnswers.push({
+                    section:        currentSection,
+                    section_title:  section.title || '',
+                    question:       section.quiz.question || '',
+                    chosen:         currentShuffledOptions[selectedOption] || '',
+                    correct_answer: currentShuffledOptions[currentCorrectIndex] || '',
+                    is_correct:     correct
+                });
+
                 fetch(BASE_URL + 'interactive_quiz/record_attempt', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -315,7 +335,8 @@ $assessment_id = isset($assessment_id) ? (int) $assessment_id : 0;
                     },
                     body: new URLSearchParams({
                         assessment_id: ASSESSMENT_ID,
-                        score:         score
+                        score:         score,
+                        answers:       JSON.stringify(quizAnswers)
                     })
                 }).catch(() => {});
             }

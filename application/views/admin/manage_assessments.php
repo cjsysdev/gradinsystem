@@ -240,6 +240,19 @@
                             auto-graded quiz regardless of Assessment Type above &mdash; no JSON file upload needed.
                         </small>
                     </div>
+                    <div class="form-group" id="modal_iq_topic_wrap" style="display:none">
+                        <label>Topic</label>
+                        <select id="modal_iq_topic" class="form-control">
+                            <option value="">Select a topic...</option>
+                            <?php foreach ($iq_topics as $slug => $topic_title): ?>
+                                <option value="<?= htmlspecialchars($slug) ?>"><?= htmlspecialchars($topic_title) ?> (<?= htmlspecialchars($slug) ?>)</option>
+                            <?php endforeach; ?>
+                        </select>
+                        <small class="form-text text-muted">
+                            Only lesson+quiz topics (uploaded under Interactive Quiz &rarr; Manage Topics) are listed here.
+                            Students are redirected straight to this topic; their score is recorded on first completion only.
+                        </small>
+                    </div>
                     <div class="form-group" id="modal_given_wrap" style="display:none">
                         <label>Widget Config (JSON)</label>
                         <textarea name="given" id="modal_given" class="form-control" rows="6"></textarea>
@@ -390,6 +403,10 @@ const widgetExamples = {
             prompt: 'How could IS help Maria the farmer?',
             max_votes_per_student: 3
         }
+    },
+    iq_discussion: {
+        hint: 'Pick the topic from the dropdown below — not per-student either, students are redirected to the topic.',
+        example: null
     }
 };
 
@@ -398,11 +415,28 @@ const widgetExamples = {
 // an existing assessment, or edited from the example) is never clobbered.
 let lastAutoFilledExample = null;
 
+// Interactive Discussion/Quiz doesn't take free-form JSON — it's driven by
+// the topic <select> below, which writes {"topic": slug} into the (hidden)
+// given textarea so save_assessment/preview_widget don't need special-casing.
+function syncIqTopicToGiven() {
+    const topic = document.getElementById('modal_iq_topic').value;
+    document.getElementById('modal_given').value = topic ? JSON.stringify({ topic: topic }) : '';
+    fetchWidgetPreview();
+}
+
 function toggleGivenWrap() {
     const select = document.getElementById('modal_widget_id');
-    document.getElementById('modal_given_wrap').style.display = select.value ? '' : 'none';
-
     const key = select.options[select.selectedIndex] ? select.options[select.selectedIndex].dataset.key : null;
+    const isIqDiscussion = key === 'iq_discussion';
+
+    document.getElementById('modal_given_wrap').style.display = (select.value && !isIqDiscussion) ? '' : 'none';
+    document.getElementById('modal_iq_topic_wrap').style.display = isIqDiscussion ? '' : 'none';
+
+    if (isIqDiscussion) {
+        fetchWidgetPreview();
+        return;
+    }
+
     const info = key && widgetExamples[key] ? widgetExamples[key] : null;
     const textarea = document.getElementById('modal_given');
     const hint = document.getElementById('modal_given_hint');
@@ -471,6 +505,7 @@ document.getElementById('modal_schedule_id').addEventListener('change', () => re
 document.getElementById('modal_is_groupings').addEventListener('change', toggleGroupingSetWrap);
 document.getElementById('modal_widget_id').addEventListener('change', toggleGivenWrap);
 document.getElementById('modal_given').addEventListener('input', refreshWidgetPreviewDebounced);
+document.getElementById('modal_iq_topic').addEventListener('change', syncIqTopicToGiven);
 document.getElementById('modal_apply_mode_section').addEventListener('change', toggleApplyMode);
 document.getElementById('modal_apply_mode_class').addEventListener('change', toggleApplyMode);
 
@@ -486,7 +521,7 @@ function openAddModal() {
     document.getElementById('modal_title').value = '';
     document.getElementById('modal_description').value = '';
     document.getElementById('modal_max_score').value = '';
-    document.getElementById('modal_term').value = 'final';
+    document.getElementById('modal_term').value = 'midterm';
     document.getElementById('modal_status').value = '0';
     document.getElementById('modal_due').value = '';
     document.getElementById('modal_is_groupings').checked = false;
@@ -494,6 +529,7 @@ function openAddModal() {
     toggleGroupingSetWrap();
     document.getElementById('modal_widget_id').value = '';
     document.getElementById('modal_given').value = '';
+    document.getElementById('modal_iq_topic').value = '';
     lastAutoFilledExample = null;
     toggleGivenWrap();
     document.getElementById('modal_auto_create_submissions').checked = false;
@@ -523,6 +559,11 @@ function openEditModal(a) {
     document.getElementById('modal_widget_id').value = a.widget_id || '';
     document.getElementById('modal_given').value = a.given || '';
     lastAutoFilledExample = null;
+    let givenTopic = '';
+    if (a.given) {
+        try { givenTopic = JSON.parse(a.given).topic || ''; } catch (e) {}
+    }
+    document.getElementById('modal_iq_topic').value = givenTopic;
     toggleGivenWrap();
     document.getElementById('modal_auto_create_submissions').checked = false;
     document.getElementById('modal_submit_btn').textContent = 'Update Assessment';

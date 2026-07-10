@@ -474,9 +474,31 @@ class InteractiveQuizController extends CI_Controller
             return;
         }
 
+        $assessment_id      = $assessment_id ? (int) $assessment_id : null;
+        $already_submitted  = false;
+        $previous_score     = null;
+
+        // First-try-only grading: if this student already has a classworks row
+        // for this assessment, this is a retake — show their recorded score
+        // instead of letting them think a re-play would change it (save_result()
+        // already refuses to overwrite; this just makes that visible up front).
+        if ($assessment_id && !empty($this->session->student_id)) {
+            $existing = $this->classworks->where([
+                'student_id'    => $this->session->student_id,
+                'assessment_id' => $assessment_id,
+            ])->get();
+
+            if ($existing) {
+                $already_submitted = true;
+                $previous_score    = $existing->score;
+            }
+        }
+
         $this->load->view('discussions/_interactive_quiz_template', [
-            'topic_data'    => $topic_data,
-            'assessment_id' => $assessment_id ? (int) $assessment_id : null,
+            'topic_data'        => $topic_data,
+            'assessment_id'     => $assessment_id,
+            'already_submitted' => $already_submitted,
+            'previous_score'    => $previous_score,
         ]);
     }
 
@@ -486,6 +508,7 @@ class InteractiveQuizController extends CI_Controller
     {
         $assessment_id = (int) $this->input->post('assessment_id');
         $score         = (int) $this->input->post('score');
+        $answers       = $this->input->post('answers'); // JSON string — per-question choices, for later review
         $student_id    = $this->session->student_id;
         $is_ajax       = $this->input->is_ajax_request();
 
@@ -510,6 +533,12 @@ class InteractiveQuizController extends CI_Controller
                 'student_id'    => $student_id,
                 'assessment_id' => $assessment_id,
                 'score'         => $score,
+                // Stored as-is like every other widget's classworks.code — keeps
+                // the student's original picks reviewable later without needing
+                // a second table. Client-computed, same trust level this
+                // endpoint already had for $score (unlike the "quiz" widget,
+                // this isn't re-graded server-side).
+                'code'          => $answers ?: null,
             ]);
             $message = 'Score saved successfully!';
         } else {

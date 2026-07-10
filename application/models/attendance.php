@@ -263,9 +263,22 @@ class attendance extends MY_Model
         return $this->db->update($this->table, $data);
     }
 
-    public function get_double_entry($date, $schedule_id)
+    public function set_status($attendance_id, $status)
     {
-        $sql = "SELECT a.student_id, sm.lastname, sm.firstname, a.date, a.status, a.ip_address
+        $this->db->where('attendance_id', $attendance_id);
+        return $this->db->update($this->table, ['status' => $status]);
+    }
+
+    // $schedule_id = null browses every active section for that date instead
+    // of just one — used when filtering by date without picking a section.
+    // Duplicate-IP detection still groups per-schedule so students in
+    // different sections sharing a campus IP aren't flagged against each other.
+    public function get_double_entry($date, $schedule_id = null)
+    {
+        $inner_filter = $schedule_id ? 'AND schedule_id = ?' : '';
+        $outer_filter = $schedule_id ? 'AND a.schedule_id = ?' : '';
+
+        $sql = "SELECT a.attendance_id, a.student_id, sm.lastname, sm.firstname, a.date, a.status, a.ip_address, cs.section
                 FROM attendance a
                 JOIN student_master sm
                 ON a.student_id = sm.trans_no
@@ -274,34 +287,43 @@ class attendance extends MY_Model
                 JOIN class_student cst ON cst.student_id = a.student_id
                     AND cst.schedule_id = a.schedule_id
                     AND cst.status = 'enrolled'
-                WHERE ip_address IN (
-                    SELECT ip_address
+                WHERE (a.ip_address, a.schedule_id) IN (
+                    SELECT ip_address, schedule_id
                     FROM attendance
                     WHERE DATE(date) = ?  -- Same date filter
-                    AND schedule_id = ?
-                    GROUP BY ip_address
+                    $inner_filter
+                    GROUP BY ip_address, schedule_id
                     HAVING COUNT(*) > 1
                 )
                 AND DATE(a.date) = ?  -- Apply date filter to main query too
-                AND a.schedule_id = ?
+                $outer_filter
                 AND sem.is_active = 1
-                ORDER BY a.ip_address, date;
+                ORDER BY cs.section, a.ip_address, date;
                 ";
 
-        $query = $this->db->query($sql, [$date, $schedule_id, $date, $schedule_id]);
+        $params = [$date];
+        if ($schedule_id) $params[] = $schedule_id;
+        $params[] = $date;
+        if ($schedule_id) $params[] = $schedule_id;
+
+        $query = $this->db->query($sql, $params);
 
         return $query->result_array();
     }
 
     public function get_student_status($schedule_id, $date, $status)
     {
+        $filter = $schedule_id ? 'AND a.schedule_id = ?' : '';
+
         $sql = "
-            SELECT 
+            SELECT
+                  a.attendance_id,
                   a.student_id,
-                s.firstname, 
+                s.firstname,
                 s.lastname,
                 a.status,
-                a.date
+                a.date,
+                cs.section
             FROM
                 attendance a
             JOIN
@@ -309,20 +331,31 @@ class attendance extends MY_Model
             ON
                 a.student_id = s.trans_no
             JOIN
+                class_schedule cs
+            ON
+                a.schedule_id = cs.schedule_id
+            JOIN
                 class_student cst
             ON
                 cst.student_id = a.student_id
                 AND cst.schedule_id = a.schedule_id
                 AND cst.status = 'enrolled'
             WHERE
-                a.schedule_id = ?
+                1 = 1
+            $filter
             AND
                 a.status = ?
             AND
                 DATE(a.date) = ?
+            ORDER BY cs.section, a.date
         ";
 
-        $query = $this->db->query($sql, [$schedule_id, $status, $date]);
+        $params = [];
+        if ($schedule_id) $params[] = $schedule_id;
+        $params[] = $status;
+        $params[] = $date;
+
+        $query = $this->db->query($sql, $params);
 
         return $query->result_array();
     }

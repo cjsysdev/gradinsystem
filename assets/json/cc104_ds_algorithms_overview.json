@@ -1,0 +1,164 @@
+{
+  "topic": "cc104_ds_algorithms_overview",
+  "title": "CC104: Data Structures & Algorithms — Overview",
+  "description": "A big-picture look at what data structures and algorithms are, the common types you'll meet, and why they matter",
+  "congratsText": "Great work! You now have a solid overview of data structures and algorithms and how they fit together.",
+  "sections": [
+    {
+      "id": 0,
+      "title": "Objectives",
+      "quiz": null,
+      "lesson": "<div class=\"lesson-title\">What You Will Learn</div><div class=\"lesson-text\">By the end of this discussion, you will be able to:</div><div class=\"lesson-text\"><ul><li>Define data structure and algorithm, and explain how they work together</li><li>Name and describe common data structures: arrays, linked lists, stacks, and queues</li><li>Name and describe common algorithm types: searching and sorting</li><li>Explain, informally, why some solutions are 'better' than others (efficiency)</li><li>Explain why this course builds its foundation on arrays</li></ul></div>"
+    },
+    {
+      "id": 1,
+      "title": "What is a Data Structure?",
+      "quiz": {
+        "question": "Which best describes a data structure?",
+        "options": [
+          "A set of steps a program follows to solve a problem",
+          "An organized way to store and arrange data so it can be used efficiently",
+          "A type of error message shown by the compiler",
+          "A function that only prints text to the screen"
+        ],
+        "correct": 1
+      },
+      "lesson": "<div class=\"lesson-title\">What is a Data Structure?</div><div class=\"lesson-text\">A <span class=\"highlight\">data structure</span> is a way of organizing and storing data so it can be accessed and used efficiently — like a filing cabinet, a row of numbered lockers, or a stack of trays. The right structure makes the data easy to work with.</div>"
+    },
+    {
+      "id": 2,
+      "title": "What is an Algorithm?",
+      "quiz": {
+        "question": "Which best describes an algorithm?",
+        "options": [
+          "A container that holds values in memory",
+          "A step-by-step procedure for solving a problem or completing a task",
+          "A keyword used to declare a variable",
+          "A synonym for 'data structure'"
+        ],
+        "correct": 1
+      },
+      "lesson": "<div class=\"lesson-title\">What is an Algorithm?</div><div class=\"lesson-text\">An <span class=\"highlight\">algorithm</span> is a clear, ordered set of steps for solving a problem — like the instructions for finding a name in a contact list, or sorting a stack of papers by date.</div>"
+    },
+    {
+      "id": 3,
+      "title": "How They Work Together",
+      "quiz": {
+        "question": "In the pair 'contact list + searching a name,' which part is the data structure and which is the algorithm?",
+        "options": [
+          "Contact list = algorithm; searching a name = data structure",
+          "Contact list = data structure; searching a name = algorithm",
+          "Both are data structures — searching isn't an algorithm",
+          "Both are algorithms — a contact list is just a list of steps"
+        ],
+        "correct": 1
+      },
+      "lesson": "<div class=\"lesson-title\">How They Work Together</div><div class=\"lesson-text\">Data structures and algorithms are a team: the structure is <span class=\"highlight\">the box</span>, the algorithm is <span class=\"highlight\">the steps to use the box</span>. A contact list (structure) is only useful once you can search it (algorithm).</div>"
+    },
+    {
+      "id": 4,
+      "title": "Common Data Structures: Array",
+      "quiz": {
+        "question": "What makes an array a useful data structure?",
+        "options": [
+          "It stores one single value with no way to access it by position",
+          "It stores a fixed row of values, each reachable instantly by an index number",
+          "It only works for text, never for numbers",
+          "It automatically sorts itself whenever a value is added"
+        ],
+        "correct": 1
+      },
+      "lesson": "<div class=\"lesson-title\">Common Data Structures: Array</div><div class=\"lesson-text\">An <span class=\"highlight\">array</span> is a row of numbered 'lockers' — a fixed set of values you can reach instantly using an index (starting at 0). Arrays are the foundation of this course.</div>"
+    },
+    {
+      "id": 5,
+      "title": "Common Data Structures: Linked List, Stack & Queue",
+      "quiz": {
+        "question": "A cafeteria tray stack, where the last tray placed is the first one taken, is an example of which structure?",
+        "options": [
+          "Queue (FIFO — first in, first out)",
+          "Array (fixed, indexed row)",
+          "Stack (LIFO — last in, first out)",
+          "Linked list (a chain of connected pieces)"
+        ],
+        "correct": 2
+      },
+      "lesson": "<div class=\"lesson-title\">Common Data Structures: Linked List, Stack & Queue</div><div class=\"lesson-text\">Beyond arrays, other structures solve different problems:</div><div class=\"lesson-text\"><ul><li><span class=\"highlight\">Linked list</span> — a chain of pieces, each pointing to the next, like a human chain holding hands</li><li><span class=\"highlight\">Stack (LIFO)</span> — last in, first out, like a stack of cafeteria trays or the 'undo' button</li><li><span class=\"highlight\">Queue (FIFO)</span> — first in, first out, like a store line or a printer's job queue</li></ul></div>"
+    },
+    {
+      "id": 6,
+      "title": "Common Algorithms: Searching",
+      "quiz": {
+        "question": "What does a search algorithm do?",
+        "options": [
+          "It rearranges data into a specific order",
+          "It looks through data to find whether (and where) a target value exists",
+          "It permanently deletes unused variables",
+          "It only works on data structures with fewer than 5 elements"
+        ],
+        "correct": 1
+      },
+      "lesson": "<div class=\"lesson-title\">Common Algorithms: Searching</div><div class=\"lesson-text\">A <span class=\"highlight\">search algorithm</span> finds whether a value exists in a structure, and where. The simplest form, <span class=\"highlight\">linear search</span>, checks each item in order until it finds a match (or runs out of items).</div>"
+    },
+    {
+      "id": 7,
+      "title": "Common Algorithms: Sorting",
+      "quiz": {
+        "question": "Why would a program sort its data before searching it?",
+        "options": [
+          "Sorting has no effect on how searching works",
+          "A sorted arrangement can make searching faster or allow it to stop early",
+          "Sorting deletes duplicate values automatically",
+          "Sorting is only useful for printing data, not searching it"
+        ],
+        "correct": 1
+      },
+      "lesson": "<div class=\"lesson-title\">Common Algorithms: Sorting</div><div class=\"lesson-text\">A <span class=\"highlight\">sort algorithm</span> puts data in order (ascending or descending). Once sorted, other tasks — like searching — can often be done faster or more simply, since you can stop looking once you've passed where a value should be.</div>"
+    },
+    {
+      "id": 8,
+      "title": "Why Efficiency Matters",
+      "quiz": {
+        "question": "Two search methods both find the right answer, but one checks every item while the other skips half the remaining items each time. Why does this difference matter?",
+        "options": [
+          "It doesn't — both are always equally fast in practice",
+          "The method that skips more items is generally more efficient on large data",
+          "Efficiency only matters for algorithms that produce wrong answers",
+          "The one that checks every item is always faster"
+        ],
+        "correct": 1
+      },
+      "lesson": "<div class=\"lesson-title\">Why Efficiency Matters</div><div class=\"lesson-text\">Different algorithms can solve the same problem with very different amounts of work. Counting comparisons (like in linear search) is an early, intuitive way to notice this — it's the seed of what's formally called <span class=\"highlight\">Big-O</span> efficiency, covered later in the course.</div>"
+    },
+    {
+      "id": 9,
+      "title": "Why This Course Builds on Arrays",
+      "quiz": {
+        "question": "Why does CC104's midterm focus almost entirely on arrays rather than linked lists, stacks, and queues?",
+        "options": [
+          "Because arrays are the only real data structure in computer science",
+          "Because arrays are simpler for beginners, avoid pointer-chasing, and still solve most beginner-level problems",
+          "Because linked lists, stacks, and queues cannot be implemented in C",
+          "Because arrays are unrelated to algorithms like searching and sorting"
+        ],
+        "correct": 1
+      },
+      "lesson": "<div class=\"lesson-title\">Why This Course Builds on Arrays</div><div class=\"lesson-text\">Arrays give beginners a simple, fixed structure to practice core ideas — traversal, searching, sorting — without the added complexity of pointer-chasing. Other structures (linked lists, stacks, queues) are introduced by name and analogy, so you recognize them, before deeper study later.</div>"
+    },
+    {
+      "id": 10,
+      "title": "Recap",
+      "quiz": {
+        "question": "Which statement best summarizes this overview?",
+        "options": [
+          "Data structures organize data, algorithms act on it, and different structures/algorithms trade off simplicity and efficiency — this course starts with arrays",
+          "Data structures and algorithms are two names for the same idea",
+          "Only sorting counts as an algorithm; searching is a data structure",
+          "Efficiency is not something beginner programmers need to think about"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Recap</div><div class=\"lesson-text\">Data structures organize information (arrays, linked lists, stacks, queues); algorithms act on that information (searching, sorting). Different choices trade off simplicity and efficiency. This course starts with arrays because they're the clearest foundation for learning these ideas in C.</div>"
+    }
+  ]
+}

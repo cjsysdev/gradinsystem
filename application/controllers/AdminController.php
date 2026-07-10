@@ -13,27 +13,76 @@ class AdminController extends CI_Controller
 
     public function dashboard()
     {
-        $class = $this->class_schedule->class_today(date('D'));
+        $today = date('Y-m-d');
+        $requested_date = $this->input->get('date');
+        $requested_schedule_id = $this->input->get('schedule_id');
+        $is_filtering = ($requested_date !== null && $requested_date !== '') || !empty($requested_schedule_id);
 
-        if (!$class) {
-            $data['attendance'] = [];
-            $data['lates'] = [];
-            $data['discussion_mode'] = false;
-            $this->load->view('admin/dashboard', $data);
-            return;
-        }
+        $data['schedules'] = $this->class_schedule->get_all_active();
 
-        // Get the current discussion mode from the database
+        // Discussion mode is a global toggle, independent of whether a class
+        // happens to be in session — fetch it up front for both branches.
         $query = $this->db->get_where('global_settings', [
             'setting_key' => 'discussion_mode',
         ]);
         $data['discussion_mode'] = $query->row()->setting_value === '1';
 
-        $data['attendance'] = $this->attendance->get_double_entry(date('Y-m-d'), $class['schedule_id']);
-        $data['lates'] = $this->attendance->get_student_status($class['schedule_id'], date('Y-m-d'), 'late');
-        $data['absents'] = $this->attendance->get_student_status($class['schedule_id'], date('Y-m-d'), 'absent');
+        if (!$is_filtering) {
+            // Default view: whatever class is live right now, exactly as before.
+            $class = $this->class_schedule->class_today(date('D'));
+
+            $data['selected_date'] = $today;
+            $data['selected_schedule_id'] = '';
+
+            if (!$class) {
+                $data['attendance'] = [];
+                $data['lates'] = [];
+                $data['absents'] = [];
+                $this->load->view('admin/dashboard', $data);
+                return;
+            }
+
+            $data['attendance'] = $this->attendance->get_double_entry($today, $class['schedule_id']);
+            $data['lates'] = $this->attendance->get_student_status($class['schedule_id'], $today, 'late');
+            $data['absents'] = $this->attendance->get_student_status($class['schedule_id'], $today, 'absent');
+
+            $this->load->view('admin/dashboard', $data);
+            return;
+        }
+
+        // Browsing another date (and/or a specific section) — no "currently
+        // in session" gate; leaving the section blank spans every active one.
+        $selected_date = ($requested_date && DateTime::createFromFormat('Y-m-d', $requested_date))
+            ? $requested_date
+            : $today;
+        $selected_schedule_id = $requested_schedule_id ?: null;
+
+        $data['selected_date'] = $selected_date;
+        $data['selected_schedule_id'] = $selected_schedule_id ?? '';
+
+        $data['attendance'] = $this->attendance->get_double_entry($selected_date, $selected_schedule_id);
+        $data['lates'] = $this->attendance->get_student_status($selected_schedule_id, $selected_date, 'late');
+        $data['absents'] = $this->attendance->get_student_status($selected_schedule_id, $selected_date, 'absent');
 
         $this->load->view('admin/dashboard', $data);
+    }
+
+    // AJAX — inline-edit an attendance row's status from the dashboard
+    public function update_attendance_status()
+    {
+        header('Content-Type: application/json');
+
+        $attendance_id = $this->input->post('attendance_id');
+        $status        = $this->input->post('status');
+        $allowed       = ['present', 'absent', 'late', 'excuse', 'others'];
+
+        if (!$attendance_id || !in_array($status, $allowed, true)) {
+            echo json_encode(['success' => false]);
+            return;
+        }
+
+        $result = $this->attendance->set_status($attendance_id, $status);
+        echo json_encode(['success' => (bool) $result]);
     }
 
     // Toggle discussion mode
@@ -350,6 +399,29 @@ class AdminController extends CI_Controller
 
         $this->load->model('Widgets_model');
         $data['widgets'] = $this->Widgets_model->get_all();
+
+        // Topics available to the "Interactive Discussion/Quiz" widget — only
+        // the lesson+quiz format InteractiveQuizController::discussion() can
+        // render (sections[].quiz), not the multi-question sections[].questions
+        // format used by the older topics/analytics flow.
+        $data['iq_topics'] = [];
+        foreach (glob(FCPATH . 'assets/json/*.json') ?: [] as $file) {
+            $meta = json_decode(file_get_contents($file), true);
+            if (!$meta || empty($meta['sections'])) {
+                continue;
+            }
+            $is_discussion_format = true;
+            foreach ($meta['sections'] as $s) {
+                if (isset($s['questions'])) {
+                    $is_discussion_format = false;
+                    break;
+                }
+            }
+            if ($is_discussion_format) {
+                $slug = basename($file, '.json');
+                $data['iq_topics'][$slug] = $meta['title'] ?? ucwords(str_replace('_', ' ', $slug));
+            }
+        }
 
         $this->load->view('admin/manage_assessments', $data);
     }

@@ -46,6 +46,12 @@ class Widgets_model extends CI_Model
         // Brainstorm Board is not a per-student submission — see BrainstormController.
         $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
             VALUES ('brainstorm', 'Brainstorm & Voting Board', 'widgets/brainstorm', NULL)");
+        // Interactive Discussion/Quiz wraps an existing assets/json/{topic}.json
+        // lesson+quiz topic (see InteractiveQuizController) as a gradable
+        // assessment. Like Brainstorm, it's not a per-student form — see the
+        // redirect in AssessmentController::assessment_view_code().
+        $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
+            VALUES ('iq_discussion', 'Interactive Discussion/Quiz', 'widgets/iq_discussion', NULL)");
     }
 
     public function get_all()

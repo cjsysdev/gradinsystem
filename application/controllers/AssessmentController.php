@@ -43,6 +43,18 @@ class AssessmentController extends CI_Controller
             return;
         }
 
+        // Interactive Discussion/Quiz wraps an assets/json/{topic}.json lesson,
+        // not a form either — hand off to InteractiveQuizController, which
+        // records the score/answers on first completion (see save_result()).
+        if ($widget && $widget['widget_key'] === 'iq_discussion') {
+            $config = json_decode($classwork['given'] ?? '', true) ?: [];
+            $topic  = $config['topic'] ?? '';
+            if ($topic) {
+                redirect('interactive_quiz/discussion/' . $topic . '/' . $classwork_id);
+                return;
+            }
+        }
+
         if (!empty($classwork['is_groupings'])) {
             $this->load->model('Grouping_model');
             if ($this->Grouping_model->get_set_for_assessment($classwork_id)) {
