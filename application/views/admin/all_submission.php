@@ -96,6 +96,14 @@
                 <div class="btn-group mb-3" role="group">
                     <button type="button" class="btn btn-primary active" id="filterAll" onclick="filterSubmissions('all')">Show All</button>
                     <button type="button" class="btn btn-outline-primary" id="filterNoScore" onclick="filterSubmissions('no_score')">No Score Only</button>
+                    <button type="button" class="btn btn-outline-secondary" id="toggleBulkScore" onclick="toggleBulkScore()">All</button>
+                </div>
+                <div class="input-group mb-3" id="bulkScoreGroup" style="display:none;">
+                    <input type="number" step="any" class="form-control" id="bulkScoreInput"
+                        placeholder="Score to apply (blank = max score)" min="0">
+                    <div class="input-group-append">
+                        <button type="button" class="btn btn-outline-success" id="bulkScoreBtn" onclick="addScoreToAll()">Add</button>
+                    </div>
                 </div>
                 <div id="submissionSearchCount" class="text-muted small"></div>
             </div>
@@ -109,11 +117,12 @@
                         <div class="card mb-3 shadow-sm submission-card"
                             data-has-score="<?= isset($row['score']) && $row['score'] !== null ? 'true' : 'false' ?>"
                             data-student-name="<?= htmlspecialchars(strtolower($row['lastname'] . ' ' . $row['firstname']), ENT_QUOTES, 'UTF-8') ?>"
-                            data-classwork-id="<?= $row['classwork_id'] ?>">
+                            data-classwork-id="<?= $row['classwork_id'] ?>"
+                            data-max-score="<?= htmlspecialchars($row['max_score'], ENT_QUOTES, 'UTF-8') ?>">
                             <div class="card-body">
                                 <h3 class="card-title mb-1"><?= $row['classwork_id'] . " - " . $row['lastname'] . ", " . $row['firstname'] ?></h3>
                                 <hr>
-                                <p class="card-text mb-3"><?= $row['created_at'] , " " , $row['file_upload'], " - ", $row['score'] ?></p>
+                                <p class="card-text mb-3"><?= $row['created_at'] , " " , $row['file_upload'], " - " ?><span class="current-score"><?= isset($row['score']) ? $row['score'] : 'No score yet' ?></span></p>
                                 <!-- Button to open modal -->
                                 <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#viewSubmissionModal" onclick="loadSubmission(<?= htmlspecialchars(json_encode($row['code']), ENT_QUOTES, 'UTF-8') ?>, '<?= $row['file_upload'] ?>', <?= (int)($row['iotype_id'] ?? 0) ?>, <?= (int) $row['classwork_id'] ?>)">
                                     View Submission
@@ -127,22 +136,18 @@
                                         ]); ?>
                                     </template>
                                 <?php endif; ?>
-                                <?php if (!isset($row['score'])): ?>
-                                    <form action="<?= base_url('ClassworkController/add_score') ?>" method="POST">
-                                        <input type="hidden" name="classwork_id" value="<?= $row['classwork_id'] ?>">
-                                        <input type="hidden" name="student_id" value="<?= $row['trans_no'] ?>">
-                                        <input type="hidden" name="assessment_id" value="<?= $selected_assessment_id ?>">
-                                        <div class="input-group mb-3">
-                                            <a href="<?= base_url('add_rand_score/' . $row['classwork_id'] . '/5' . "/$selected_assessment_id") ?>" type="button" class="btn btn-outline-secondary mr-1 ml-1" name="score" value="good">Late</a>
-                                            <input type="decimal" name="score" class="form-control mr-1 ml-1" placeholder="Enter score" min="0" required>
-                                            <a href="<?= base_url('add_rand_score/' . $row['classwork_id'] . '/3' . "/$selected_assessment_id") ?>" type="button" class="btn btn-outline-secondary mr-1 ml-1" name="score" value="good">3</a>
-                                            <a href="<?= base_url('add_rand_score/' . $row['classwork_id'] . '/2' . "/$selected_assessment_id") ?>" type="button" class="btn btn-outline-secondary mr-1 ml-1" name="score" value="good">2</a>
-                                            <a href="<?= base_url('add_rand_score/' . $row['classwork_id'] . "/{$row['max_score']}" . "/$selected_assessment_id") ?>" type="button" class="btn btn-outline-secondary mr-1 ml-1" name="score" value="good"><?= $row['max_score'] ?></a><button type="submit" class="btn btn-info mr-1 ml-1">Submit</button>
-                                        </div>
-                                        <?php if (isset($row['file_upload']) && !str_contains($row['file_upload'], 'zip')): ?>
-                                            <iframe src="<?= base_url("uploads/classworks/{$row['file_upload']}") ?>" width="100%" height="600px" style="border: none;"></iframe>
-                                        <?php endif; ?>
-                                    </form>
+                                <div class="score-entry" data-classwork-id="<?= $row['classwork_id'] ?>">
+                                    <div class="input-group mb-3">
+                                        <button type="button" class="btn btn-outline-secondary mr-1 ml-1" onclick="addScore(<?= $row['classwork_id'] ?>, 5)">Late</button>
+                                        <input type="number" step="any" class="form-control mr-1 ml-1 manual-score-input" placeholder="Enter score" min="0" value="<?= isset($row['score']) ? $row['score'] : '' ?>">
+                                        <button type="button" class="btn btn-outline-secondary mr-1 ml-1" onclick="addScore(<?= $row['classwork_id'] ?>, 3)">3</button>
+                                        <button type="button" class="btn btn-outline-secondary mr-1 ml-1" onclick="addScore(<?= $row['classwork_id'] ?>, 2)">2</button>
+                                        <button type="button" class="btn btn-outline-secondary mr-1 ml-1" onclick="addScore(<?= $row['classwork_id'] ?>, <?= $row['max_score'] ?>)"><?= $row['max_score'] ?></button>
+                                        <button type="button" class="btn btn-info mr-1 ml-1" onclick="submitManualScore(this)">Submit</button>
+                                    </div>
+                                </div>
+                                <?php if (isset($row['file_upload']) && !str_contains($row['file_upload'], 'zip')): ?>
+                                    <iframe src="<?= base_url("uploads/classworks/{$row['file_upload']}") ?>" width="100%" height="600px" style="border: none;"></iframe>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -326,7 +331,7 @@
 
         // Enter jumps straight to the first match's score input for faster submission
         if (event.key === 'Enter' && visibleCards.length >= 1) {
-            const scoreInput = visibleCards[0].querySelector('input[name="score"]');
+            const scoreInput = visibleCards[0].querySelector('.manual-score-input');
             if (scoreInput) {
                 scoreInput.focus();
                 scoreInput.select();
@@ -472,98 +477,119 @@
         draw();
     }
 
-    function addRandScoreIncremental(classwork_id, points = 2) {
+    // Shared success/error toast for every score-saving action on this page.
+    function showScoreAlert(success, message) {
         const oldAlert = document.getElementById('score-alert');
         if (oldAlert) oldAlert.remove();
 
+        const alertDiv = document.createElement('div');
+        alertDiv.id = 'score-alert';
+        alertDiv.className = 'alert ' + (success ? 'alert-success' : 'alert-danger') + ' alert-dismissible fade show position-fixed';
+        alertDiv.style.top = '20px';
+        alertDiv.style.right = '20px';
+        alertDiv.style.zIndex = '9999';
+        alertDiv.innerHTML = `
+            <strong>${message}</strong>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        `;
+        document.body.appendChild(alertDiv);
+        setTimeout(() => { $(alertDiv).alert('close'); }, 2000);
+    }
+
+    function addRandScoreIncremental(classwork_id, points = 2) {
         fetch('<?= base_url('AdminController/add_rand_score_incremental/') ?>' + classwork_id + '/' + points, {
                 method: 'POST'
             })
             .then(response => response.json())
             .then(data => {
-                const alertDiv = document.createElement('div');
-                alertDiv.id = 'score-alert';
-                alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed';
-                alertDiv.style.top = '20px';
-                alertDiv.style.right = '20px';
-                alertDiv.style.zIndex = '9999';
-                alertDiv.innerHTML = `
-            <strong>+${points} point${points !== 1 ? 's' : ''} added!</strong>
-            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
-            </button>
-        `;
-                document.body.appendChild(alertDiv);
-                setTimeout(() => { $(alertDiv).alert('close'); }, 2000);
+                if (!data.success) { showScoreAlert(false, 'Failed to add points.'); return; }
+                showScoreAlert(true, `+${points} point${points !== 1 ? 's' : ''} added!`);
             })
-            .catch(() => {
-                const alertDiv = document.createElement('div');
-                alertDiv.id = 'score-alert';
-                alertDiv.className = 'alert alert-danger alert-dismissible fade show position-fixed';
-                alertDiv.style.top = '20px';
-                alertDiv.style.right = '20px';
-                alertDiv.style.zIndex = '9999';
-                alertDiv.innerHTML = `
-            <strong>Error adding score.</strong>
-            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
-            </button>
-        `;
-                document.body.appendChild(alertDiv);
-                setTimeout(() => { $(alertDiv).alert('close'); }, 2000);
-            });
+            .catch(() => showScoreAlert(false, 'Error adding score.'));
     }
 
-    // AJAX call to add score using classworks->add_score
+    // AJAX call to add/update a score via classworks->add_score — works
+    // whether the classwork already has a score or not, since add_score()
+    // is an unconditional UPDATE, not an insert-if-missing.
     function addScore(classwork_id, score) {
-        // Remove any existing alert
-        const oldAlert = document.getElementById('score-alert');
-        if (oldAlert) oldAlert.remove();
-
         fetch('<?= base_url('AdminController/add_score/') ?>' + classwork_id + '/' + score, {
                 method: 'POST'
             })
             .then(response => response.json())
             .then(data => {
-                // Bootstrap 4 alert
-                const alertDiv = document.createElement('div');
-                alertDiv.id = 'score-alert';
-                alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed';
-                alertDiv.style.top = '20px';
-                alertDiv.style.right = '20px';
-                alertDiv.style.zIndex = '9999';
-                alertDiv.innerHTML = `
-            <strong>Score added!</strong>
-            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
-            </button>
-        `;
-                document.body.appendChild(alertDiv);
+                if (!data.success) { showScoreAlert(false, 'Failed to save score.'); return; }
 
-                // Auto-dismiss after 2 seconds
-                setTimeout(() => {
-                    $(alertDiv).alert('close');
-                }, 2000);
+                // Reflect the new score in the card + randomizer data without
+                // a full page reload.
+                const card = document.querySelector('.submission-card[data-classwork-id="' + classwork_id + '"]');
+                if (card) {
+                    card.dataset.hasScore = 'true';
+                    const currentScoreEl = card.querySelector('.current-score');
+                    if (currentScoreEl) currentScoreEl.textContent = score;
+                    const manualInput = card.querySelector('.manual-score-input');
+                    if (manualInput) manualInput.value = score;
+                }
+                const student = allStudents.find(s => String(s.classwork_id) === String(classwork_id));
+                if (student) student.score = score;
+
+                showScoreAlert(true, 'Score saved: ' + score);
+                filterSubmissions(currentFilterMode);
             })
-            .catch(error => {
-                const alertDiv = document.createElement('div');
-                alertDiv.id = 'score-alert';
-                alertDiv.className = 'alert alert-danger alert-dismissible fade show position-fixed';
-                alertDiv.style.top = '20px';
-                alertDiv.style.right = '20px';
-                alertDiv.style.zIndex = '9999';
-                alertDiv.innerHTML = `
-            <strong>Error adding score.</strong>
-            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
-            </button>
-        `;
-                document.body.appendChild(alertDiv);
+            .catch(() => showScoreAlert(false, 'Error saving score.'));
+    }
 
-                setTimeout(() => {
-                    $(alertDiv).alert('close');
-                }, 2000);
-            });
+    function toggleBulkScore() {
+        const group = document.getElementById('bulkScoreGroup');
+        const hidden = group.style.display === 'none';
+        group.style.display = hidden ? '' : 'none';
+        if (hidden) document.getElementById('bulkScoreInput').focus();
+    }
+
+    // Applies a single score to every currently visible submission card
+    // (respects the Show All / No Score Only filter and the name search),
+    // so filtering to "No Score Only" first + leaving the input blank is
+    // the normal "give everyone who hasn't submitted their max score" flow.
+    function addScoreToAll() {
+        const input = document.getElementById('bulkScoreInput');
+        const override = input.value.trim();
+
+        if (override !== '' && (isNaN(override) || Number(override) < 0)) {
+            showScoreAlert(false, 'Enter a valid score.');
+            return;
+        }
+
+        const visibleCards = Array.from(document.querySelectorAll('.submission-card'))
+            .filter(card => card.style.display !== 'none');
+
+        if (visibleCards.length === 0) {
+            showScoreAlert(false, 'No visible submissions to score.');
+            return;
+        }
+
+        const label = override !== '' ? override : 'each submission\'s max score';
+        if (!confirm(`Apply ${label} to ${visibleCards.length} visible submission${visibleCards.length !== 1 ? 's' : ''}?`)) {
+            return;
+        }
+
+        visibleCards.forEach(card => {
+            const score = override !== '' ? override : card.dataset.maxScore;
+            addScore(card.dataset.classworkId, score);
+        });
+    }
+
+    function submitManualScore(button) {
+        const wrap = button.closest('.score-entry');
+        const classworkId = wrap.dataset.classworkId;
+        const input = wrap.querySelector('.manual-score-input');
+        const score = input.value.trim();
+
+        if (score === '' || isNaN(score) || Number(score) < 0) {
+            showScoreAlert(false, 'Enter a valid score.');
+            return;
+        }
+        addScore(classworkId, score);
     }
 
     const assessmentId = <?= json_encode($selected_assessment_id) ?>;
