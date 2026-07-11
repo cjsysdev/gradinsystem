@@ -85,6 +85,16 @@
         <!-- Filter buttons -->
         <div class="row justify-content-center">
             <div class="col-md-6 text-center">
+                <?php if ($selected_assessment_id): ?>
+                    <div class="mb-3">
+                        <span class="badge badge-success p-2 mr-2">Submitted: <?= count($submissions) ?></span>
+                        <?php if (!empty($missing_students)): ?>
+                            <a href="#" class="badge badge-danger p-2" data-bs-toggle="modal" data-bs-target="#missingStudentsModal">Missing: <?= count($missing_students) ?></a>
+                        <?php else: ?>
+                            <span class="badge badge-secondary p-2">Missing: 0</span>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
                 <div class="input-group mb-3">
                     <input type="text" class="form-control" id="studentSearchInput"
                         placeholder="Search student by name or classwork ID..."
@@ -155,6 +165,34 @@
                 <?php else: ?>
                     <div class="alert alert-warning">No submissions found for the selected assessment.</div>
                 <?php endif; ?>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal listing enrolled students who have not submitted -->
+<div class="modal fade" id="missingStudentsModal" tabindex="-1" aria-labelledby="missingStudentsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="missingStudentsModalLabel">Students Who Have Not Submitted</h5>
+                <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <?php if (!empty($missing_students)): ?>
+                    <ul class="list-group">
+                        <?php foreach ($missing_students as $student): ?>
+                            <li class="list-group-item"><?= htmlspecialchars($student['lastname'] . ', ' . $student['firstname']) ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                <?php else: ?>
+                    <p class="text-muted mb-0">Everyone has submitted.</p>
+                <?php endif; ?>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>

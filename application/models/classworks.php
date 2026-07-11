@@ -49,6 +49,34 @@ class classworks extends MY_Model
         return $query->result_array();
     }
 
+    // Enrolled students (for the assessment's schedule) who have no
+    // classworks row for this assessment yet — i.e. haven't submitted.
+    public function get_missing_submissions($assessment_id)
+    {
+        $sql = "SELECT s.trans_no, s.firstname, s.lastname
+                FROM class_student cst
+                JOIN student_master s ON s.trans_no = cst.student_id
+                JOIN assessments a ON a.schedule_id = cst.schedule_id
+                WHERE a.assessment_id = ?
+                AND cst.status = 'enrolled'
+                AND NOT EXISTS (
+                    SELECT 1 FROM classworks c
+                    WHERE c.assessment_id = a.assessment_id
+                    AND c.student_id = cst.student_id
+                )
+                ORDER BY s.lastname, s.firstname";
+
+        $query = $this->db->query($sql, [$assessment_id]);
+
+        if ($query === false) {
+            $error = $this->db->error();
+            log_message('error', 'Database error: ' . $error['message']);
+            return [];
+        }
+
+        return $query->result_array();
+    }
+
     public function add_score($classwork_id, $score)
     {
         return $this->db->set(['score' => $score])

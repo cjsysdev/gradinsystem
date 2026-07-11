@@ -125,6 +125,7 @@ class AdminController extends CI_Controller
             $data['submissions'] = $this->classworks->get_all_submissions(
                 $assessment_id
             );
+            $data['missing_students'] = $this->classworks->get_missing_submissions($assessment_id);
             $data['selected_assessment_id'] = $assessment_id;
 
             $assessment = $this->assessments->as_array()->get($assessment_id);
@@ -135,6 +136,7 @@ class AdminController extends CI_Controller
             }
         } else {
             $data['submissions'] = [];
+            $data['missing_students'] = [];
             $data['selected_assessment_id'] = null;
         }
 
