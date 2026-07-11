@@ -53,4 +53,34 @@ class AuthenticationController extends CI_Controller
         $this->session->sess_destroy();
         redirect();
     }
+
+    // Restores the admin session stashed by AdminController::login_as_student()
+    // before it was overwritten with the impersonated student's session.
+    public function return_to_admin()
+    {
+        $impersonator = $this->session->userdata('impersonator');
+        if (!$impersonator) {
+            redirect('login');
+            return;
+        }
+
+        $admin = $this->accounts->as_array()->get(['account_id' => $impersonator['account_id']]);
+        if (!$admin) {
+            $this->session->sess_destroy();
+            redirect('login');
+            return;
+        }
+
+        $this->session->unset_userdata('impersonator');
+        $this->session->set_userdata([
+            'account_id'   => $admin['account_id'],
+            'student_id'   => $admin['student_id'],
+            'role'         => $admin['role'],
+            'username'     => $admin['username'],
+            'profile_pic'  => $admin['profile_pic'],
+            'online'       => true,
+        ]);
+
+        redirect('dashboard');
+    }
 }

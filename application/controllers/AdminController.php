@@ -407,7 +407,7 @@ class AdminController extends CI_Controller
         // render (sections[].quiz), not the multi-question sections[].questions
         // format used by the older topics/analytics flow.
         $data['iq_topics'] = [];
-        foreach (glob(FCPATH . 'assets/json/*.json') ?: [] as $file) {
+        foreach ($this->_glob_json_topics() as $file) {
             $meta = json_decode(file_get_contents($file), true);
             if (!$meta || empty($meta['sections'])) {
                 continue;
@@ -725,6 +725,7 @@ class AdminController extends CI_Controller
         $this->load->model('classworks');
         $data['student']      = $student;
         $data['profile_pic']  = $account ? $account['profile_pic'] : null;
+        $data['has_account']  = $account && $account['role'] === 'student';
         $data['attendance']   = $this->student_master->get_attendance_summary($student_id);
         $data['classworks']   = $this->classworks->get_submissions_by_student($student_id);
         $data['violations']   = $this->violation->get_all_violations(['student_id' => $student_id]);
@@ -732,6 +733,59 @@ class AdminController extends CI_Controller
         $data['contacts']     = $this->emergency_contact->get_by_student($student_id);
 
         $this->load->view('admin/student_summary', $data);
+    }
+
+    // Admin-only "log in as" this student, for testing features from the
+    // student's point of view. Stashes the admin's own account_id in
+    // session['impersonator'] first so AuthenticationController::return_to_admin()
+    // can restore it — otherwise the admin would be stuck as the student
+    // once their own session data is overwritten below.
+    public function login_as_student($student_id = null)
+    {
+        if (!$student_id) {
+            redirect('admin/students_by_section');
+        }
+
+        $user = $this->accounts->with_student()->get(['student_id' => $student_id, 'role' => 'student']);
+        if (!$user) {
+            $this->session->set_flashdata('error', 'This student has no login account to log in as.');
+            redirect('admin/student_summary/' . $student_id);
+        }
+
+        $active_semester = $this->db->where('is_active', 1)->get('semester_master')->row_array();
+        $enrollment = null;
+        if ($active_semester) {
+            $enrollment = $this->class_student->get([
+                'student_id'  => $user->student_id,
+                'semester_id' => $active_semester['trans_no'],
+            ]);
+        }
+
+        if (!$this->session->userdata('impersonator')) {
+            $this->session->set_userdata('impersonator', [
+                'account_id' => $this->session->userdata('account_id'),
+                'username'   => $this->session->userdata('username'),
+            ]);
+        }
+
+        $this->session->set_userdata([
+            'account_id'   => $user->account_id,
+            'student_id'   => $user->student_id,
+            'student_no'   => $user->student->student_no,
+            'lastname'     => $user->student->lastname,
+            'firstname'    => $user->student->firstname,
+            'course'       => $user->student->course,
+            'current_year' => $user->student->current_year,
+            'section'      => $enrollment ? $enrollment->section : null,
+            'role'         => $user->role,
+            'username'     => $user->username,
+            'profile_pic'  => $user->profile_pic,
+            'online'       => true,
+            'exam_term'    => false,
+            'exam_review'  => false,
+        ]);
+
+        redirect($enrollment ? 'attendance' : 'student/add_section');
     }
 
     public function register_student()
@@ -1021,9 +1075,8 @@ class AdminController extends CI_Controller
         $data['classes'] = $this->db->order_by('class_id')->get('classes')->result_array();
 
         // Build topic list: slug, title, and section count from each JSON file
-        $json_path = FCPATH . 'assets/json/';
         $data['json_topics'] = [];
-        foreach (glob($json_path . '*.json') ?: [] as $f) {
+        foreach ($this->_glob_json_topics() as $f) {
             $slug = basename($f, '.json');
             $meta = json_decode(file_get_contents($f), true);
             $data['json_topics'][] = [
@@ -1061,13 +1114,15 @@ class AdminController extends CI_Controller
     {
         $this->load->model('discussions');
 
-        $id    = (int) $this->input->post('id');
-        $type  = $this->input->post('type') === 'interactive' ? 'interactive' : 'static';
-        $link  = trim($this->input->post('link') ?? '');
+        $id       = (int) $this->input->post('id');
+        $type     = $this->input->post('type') === 'interactive' ? 'interactive' : 'static';
+        $link     = trim($this->input->post('link') ?? '');
+        $class_id = (int) $this->input->post('class_id');
 
         if ($type === 'interactive') {
             if ($this->input->post('json_source') === 'new') {
                 $slug = $this->_save_pasted_topic_json(
+                    $class_id,
                     trim($this->input->post('new_slug') ?? ''),
                     $this->input->post('json_text') ?? ''
                 );
@@ -1083,7 +1138,7 @@ class AdminController extends CI_Controller
         }
 
         $row = [
-            'class_id'     => (int) $this->input->post('class_id'),
+            'class_id'     => $class_id,
             'type'         => $type,
             'title'        => trim($this->input->post('title')),
             'description'  => trim($this->input->post('description') ?? ''),
@@ -1105,10 +1160,23 @@ class AdminController extends CI_Controller
         redirect('AdminController/manage_discussions');
     }
 
+    // JSON topic files live either directly in assets/json/ (legacy/unfiled)
+    // or one level down in a class-code folder (assets/json/{CLASS_CODE}/) —
+    // see _save_pasted_topic_json(). Topic slugs stay globally unique and
+    // unaware of the folder, so callers just need every *.json under either.
+    private function _glob_json_topics()
+    {
+        $json_path = FCPATH . 'assets/json/';
+        $root      = glob($json_path . '*.json') ?: [];
+        $nested    = glob($json_path . '*/*.json') ?: [];
+        return array_merge($root, $nested);
+    }
+
     // Validates a pasted interactive-discussion JSON template and writes it to
-    // assets/json/{slug}.json. Returns the slug on success, or false (with a
-    // flashdata error already set) on failure.
-    private function _save_pasted_topic_json($slug, $json_text)
+    // assets/json/{CLASS_CODE}/{slug}.json (falls back to assets/json/{slug}.json
+    // if the class can't be resolved). Returns the slug on success, or false
+    // (with a flashdata error already set) on failure.
+    private function _save_pasted_topic_json($class_id, $slug, $json_text)
     {
         $slug = preg_replace('/[^a-z0-9_]/', '', strtolower($slug));
         if (!preg_match('/^[a-z0-9_]{1,100}$/', $slug)) {
@@ -1134,10 +1202,22 @@ class AdminController extends CI_Controller
             return false;
         }
 
+        $dest_dir = $json_path;
+        if ($class_id) {
+            $class = $this->db->select('class_code')->where('class_id', $class_id)->get('classes')->row_array();
+            if (!empty($class['class_code'])) {
+                $folder = preg_replace('/[^A-Za-z0-9_-]/', '_', $class['class_code']);
+                $candidate = $json_path . $folder . '/';
+                if (is_dir($candidate) || @mkdir($candidate, 0775, true)) {
+                    $dest_dir = $candidate;
+                }
+            }
+        }
+
         $data['topic'] = $slug;
         $pretty = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
-        $dest = $json_path . $slug . '.json';
+        $dest = $dest_dir . $slug . '.json';
         $overwrite = file_exists($dest);
         if (file_put_contents($dest, $pretty) === false) {
             $this->session->set_flashdata('error', 'Failed to save JSON file. Check directory permissions.');

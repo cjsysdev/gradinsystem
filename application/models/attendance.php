@@ -257,6 +257,28 @@ class attendance extends MY_Model
         return $query->result_array();
     }
 
+    // Students enrolled in $section whose attendance for $date (across any of
+    // that section's class schedules) is marked present or late — used by
+    // Groupings::store() so group sets only include students who actually
+    // showed up that day, instead of every enrolled student.
+    public function get_present_student_ids_by_section($section, $date)
+    {
+        $sql = "
+            SELECT DISTINCT a.student_id
+            FROM attendance a
+            JOIN class_schedule cs ON a.schedule_id = cs.schedule_id
+            JOIN semester_master sem ON cs.semester_id = sem.trans_no
+            WHERE cs.section = ?
+            AND DATE(a.date) = ?
+            AND a.status IN ('present', 'late')
+            AND sem.is_active = 1
+        ";
+
+        $query = $this->db->query($sql, [$section, $date]);
+
+        return array_column($query->result_array(), 'student_id');
+    }
+
     public function add_reason($attendance_id, $data)
     {
         $this->db->where('attendance_id', $attendance_id);

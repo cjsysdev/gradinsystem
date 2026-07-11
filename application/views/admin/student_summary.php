@@ -207,6 +207,12 @@
         <a href="<?= base_url('admin/emergency_contacts?student_id=' . $student['trans_no']) ?>" class="btn btn-outline-secondary btn-sm">
             <i class="fa fa-phone"></i> Contacts
         </a>
+        <?php if ($has_account): ?>
+            <a href="<?= base_url('AdminController/login_as_student/' . $student['trans_no']) ?>" class="btn btn-outline-danger btn-sm"
+               onclick="return confirm('Log in as <?= htmlspecialchars(addslashes($student['firstname'] . ' ' . $student['lastname'])) ?>? You\'ll leave the admin panel until you click \'Return to Admin\'.');">
+                <i class="fa fa-user-secret"></i> Login as Student
+            </a>
+        <?php endif; ?>
     </div>
 </div>
 

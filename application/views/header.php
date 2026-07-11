@@ -31,3 +31,9 @@
 </style>
 
 <body>
+<?php if ($this->session->userdata('impersonator')): ?>
+    <div style="background:#dc3545;color:#fff;text-align:center;padding:6px 12px;font-size:.9rem;">
+        Logged in as <strong><?= htmlspecialchars($this->session->userdata('firstname') . ' ' . $this->session->userdata('lastname')) ?></strong> (testing)
+        &mdash; <a href="<?= base_url('AuthenticationController/return_to_admin') ?>" style="color:#fff;text-decoration:underline;">Return to Admin</a>
+    </div>
+<?php endif; ?>

@@ -23,9 +23,9 @@ class InteractiveQuizController extends CI_Controller
             return;
         }
 
-        $json_file = $this->json_path . $topic . '.json';
+        $json_file = $this->_resolve_topic_file($topic);
 
-        if (!file_exists($json_file)) {
+        if (!$json_file) {
             show_error('Topic not found: ' . htmlspecialchars($topic, ENT_QUOTES), 404);
             return;
         }
@@ -235,7 +235,10 @@ class InteractiveQuizController extends CI_Controller
             return;
         }
 
-        $dest      = $this->json_path . $slug . '.json';
+        // Overwrite in place if the slug already lives in a class subfolder;
+        // otherwise it's a brand new topic with no class context here, so it
+        // lands in assets/json/ root until an admin files it under a class.
+        $dest      = $this->_resolve_topic_file($slug) ?: ($this->json_path . $slug . '.json');
         $overwrite = file_exists($dest);
 
         // Ensure the topic field is stored in the file
@@ -269,9 +272,9 @@ class InteractiveQuizController extends CI_Controller
             return;
         }
 
-        $file = $this->json_path . $topic . '.json';
+        $file = $this->_resolve_topic_file($topic);
 
-        if (!file_exists($file)) {
+        if (!$file) {
             $this->session->set_flashdata('error', "Topic <code>{$topic}</code> not found.");
             redirect('interactive_quiz/manage_topics');
             return;
@@ -298,9 +301,9 @@ class InteractiveQuizController extends CI_Controller
             return;
         }
 
-        $json_file = $this->json_path . $topic . '.json';
+        $json_file = $this->_resolve_topic_file($topic);
 
-        if (!file_exists($json_file)) {
+        if (!$json_file) {
             http_response_code(404);
             echo json_encode(['error' => 'Topic not found']);
             return;
@@ -355,9 +358,9 @@ class InteractiveQuizController extends CI_Controller
             return;
         }
 
-        $json_file = $this->json_path . $topic . '.json';
+        $json_file = $this->_resolve_topic_file($topic);
 
-        if (!file_exists($json_file)) {
+        if (!$json_file) {
             show_error('Topic not found: ' . htmlspecialchars($topic, ENT_QUOTES), 404);
             return;
         }
@@ -411,7 +414,7 @@ class InteractiveQuizController extends CI_Controller
         $this->load->database();
         $this->Iq_attempts->ensure_table();
 
-        $files            = glob($this->json_path . '*.json') ?: [];
+        $files            = $this->_glob_topic_files();
         $available_topics = [];
         foreach ($files as $f) {
             $base                    = basename($f, '.json');
@@ -454,9 +457,9 @@ class InteractiveQuizController extends CI_Controller
             return;
         }
 
-        $json_file = $this->json_path . $topic . '.json';
+        $json_file = $this->_resolve_topic_file($topic);
 
-        if (!file_exists($json_file)) {
+        if (!$json_file) {
             show_error('Topic not found: ' . htmlspecialchars($topic, ENT_QUOTES), 404);
             return;
         }
@@ -562,8 +565,8 @@ class InteractiveQuizController extends CI_Controller
             show_error('Invalid topic name.', 400);
             return;
         }
-        $file = $this->json_path . $topic . '.json';
-        if (!file_exists($file)) {
+        $file = $this->_resolve_topic_file($topic);
+        if (!$file) {
             show_error('Topic not found.', 404);
             return;
         }
@@ -613,8 +616,8 @@ class InteractiveQuizController extends CI_Controller
             return;
         }
 
-        $file = $this->json_path . $topic . '.json';
-        if (!file_exists($file)) {
+        $file = $this->_resolve_topic_file($topic);
+        if (!$file) {
             echo json_encode(['success' => false, 'error' => 'Topic not found.']);
             return;
         }
@@ -669,8 +672,8 @@ class InteractiveQuizController extends CI_Controller
         $section_index  = isset($payload['section_index'])  ? (int)$payload['section_index']  : -1;
         $question_index = isset($payload['question_index']) ? (int)$payload['question_index'] : -1;
 
-        $file = $this->json_path . $topic . '.json';
-        if (!file_exists($file)) {
+        $file = $this->_resolve_topic_file($topic);
+        if (!$file) {
             echo json_encode(['success' => false, 'error' => 'Topic not found.']);
             return;
         }
@@ -706,9 +709,9 @@ class InteractiveQuizController extends CI_Controller
         }
 
         $payload = json_decode(file_get_contents('php://input'), true);
-        $file    = $this->json_path . $topic . '.json';
+        $file    = $this->_resolve_topic_file($topic);
 
-        if (!file_exists($file)) {
+        if (!$file) {
             echo json_encode(['success' => false, 'error' => 'Topic not found.']);
             return;
         }
@@ -730,9 +733,33 @@ class InteractiveQuizController extends CI_Controller
 
     // ── Private helpers ──────────────────────────────────────────────────────
 
+    // Topic JSON files live either directly in assets/json/ (legacy/unfiled)
+    // or one level down in a class-code folder (assets/json/{CLASS_CODE}/) —
+    // see AdminController::_save_pasted_topic_json(). Folder is purely
+    // organizational: topic slugs stay globally unique and unaware of it.
+    private function _glob_topic_files()
+    {
+        $root = glob($this->json_path . '*.json') ?: [];
+        $nested = glob($this->json_path . '*/*.json') ?: [];
+        return array_merge($root, $nested);
+    }
+
+    // Finds the actual path for a topic slug, wherever it currently lives.
+    private function _resolve_topic_file($topic)
+    {
+        $direct = $this->json_path . $topic . '.json';
+        if (file_exists($direct)) {
+            return $direct;
+        }
+        foreach (glob($this->json_path . '*/' . $topic . '.json') ?: [] as $match) {
+            return $match;
+        }
+        return false;
+    }
+
     private function _build_topic_list()
     {
-        $files  = glob($this->json_path . '*.json') ?: [];
+        $files  = $this->_glob_topic_files();
         $topics = [];
 
         foreach ($files as $file) {

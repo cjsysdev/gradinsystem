@@ -11,6 +11,7 @@ class Groupings extends CI_Controller
         }
         $this->load->model('Grouping_model');
         $this->load->model('Group_member_model');
+        $this->load->model('attendance');
     }
 
     // One-time (idempotent) schema setup/upgrade — run once as admin.
@@ -72,9 +73,24 @@ class Groupings extends CI_Controller
             ->where('sem.is_active', 1)
             ->get()->result_array();
 
+        if (count($students) === 0) {
+            $this->session->set_flashdata('error', 'No students found in selected section.');
+            redirect('Groupings/create/' . $section);
+            return;
+        }
+
+        // only group students marked present (or late) today — absent/excused
+        // students aren't in class to take part in the grouped activity.
+        date_default_timezone_set('Asia/Manila');
+        $today = date('Y-m-d');
+        $present_ids = $this->attendance->get_present_student_ids_by_section($section, $today);
+        $students = array_values(array_filter($students, function ($s) use ($present_ids) {
+            return in_array($s['trans_no'], $present_ids);
+        }));
+
         $total = count($students);
         if ($total === 0) {
-            $this->session->set_flashdata('error', 'No students found in selected section.');
+            $this->session->set_flashdata('error', 'No present students found in selected section for today.');
             redirect('Groupings/create/' . $section);
             return;
         }
