@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CC104 — Data Structures & Algorithms Roadmap</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --board:#16261C;
+    --board-2:#1D3226;
+    --chalk:#F3EFE2;
+    --chalk-dim:#B9C4B7;
+    --chalk-faint:#7C8C82;
+    --yellow:#E9D65E;
+    --clay:#E38B5D;
+    --rule: rgba(243,239,226,0.14);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--board);
+    color:var(--chalk);
+    font-family:'Inter',sans-serif;
+    line-height:1.5;
+  }
+  .grain{
+    position:fixed; inset:0; pointer-events:none; opacity:.05; z-index:1;
+    background-image:radial-gradient(circle at 1px 1px, #fff 1px, transparent 0);
+    background-size:3px 3px;
+  }
+  h1,h2,h3,.mono{font-family:'Space Grotesk',sans-serif;}
+  .num{font-family:'IBM Plex Mono',monospace;}
+
+  header{
+    padding:5.5rem 1.5rem 4rem;
+    text-align:center;
+    border-bottom:1px dashed var(--rule);
+    position:relative;
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:.78rem;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--yellow);
+    margin-bottom:1.1rem;
+  }
+  header h1{
+    font-size:clamp(2rem,5vw,3rem);
+    font-weight:700;
+    margin:0 0 .9rem;
+    max-width:19ch;
+    margin-inline:auto;
+    line-height:1.1;
+  }
+  header p{
+    color:var(--chalk-dim);
+    max-width:50ch;
+    margin:0 auto;
+    font-size:1.02rem;
+  }
+
+  .lockers{
+    display:flex;
+    justify-content:center;
+    gap:6px;
+    margin-top:2.6rem;
+    flex-wrap:wrap;
+  }
+  .locker{
+    width:26px; height:26px;
+    border:1px solid var(--rule);
+    border-radius:3px;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:.62rem;
+    color:var(--chalk-faint);
+  }
+  .locker.on{ background:var(--yellow); color:var(--board); border-color:var(--yellow); font-weight:600;}
+  .locker.exam{ background:var(--clay); color:var(--board); border-color:var(--clay); font-weight:700;}
+  .locker.theory{ background:transparent; border-color:var(--chalk-faint); color:var(--chalk-dim);}
+  .locker.found{ background:transparent; border-style:dotted; color:var(--chalk-dim);}
+
+  main{max-width:880px; margin:0 auto; padding:3.5rem 1.5rem 6rem;}
+
+  .phase-head{
+    display:flex; align-items:baseline; gap:.9rem;
+    margin:4.5rem 0 .4rem;
+  }
+  .phase-head:first-of-type{margin-top:0;}
+  .phase-head .tag{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:.72rem;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    color:var(--board);
+    background:var(--yellow);
+    padding:.25rem .55rem;
+    border-radius:3px;
+  }
+  .phase-head .tag.finals{background:var(--clay);}
+  .phase-head .tag.found{background:transparent; color:var(--chalk-dim); border:1px solid var(--chalk-faint);}
+  .phase-head h2{font-size:1.5rem; margin:0; font-weight:700;}
+  .phase-sub{color:var(--chalk-faint); font-size:.92rem; margin:0 0 2.2rem; max-width:62ch;}
+
+  .tracker{
+    display:flex; gap:4px; margin-bottom:2.2rem; flex-wrap:wrap;
+  }
+  .tracker span{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:.64rem;
+    color:var(--chalk-faint);
+    border:1px dashed var(--rule);
+    border-radius:4px;
+    padding:.3rem .55rem;
+  }
+
+  .rail{position:relative; padding-left:2.4rem;}
+  .rail::before{
+    content:""; position:absolute; left:9px; top:6px; bottom:6px;
+    width:1px; background:var(--rule);
+  }
+
+  .week{
+    position:relative;
+    padding:1.4rem 1.5rem 1.5rem;
+    margin-bottom:1rem;
+    background:var(--board-2);
+    border:1px solid var(--rule);
+    border-radius:8px;
+  }
+  .week::before{
+    content:attr(data-n);
+    position:absolute; left:-2.4rem; top:1.5rem;
+    width:19px; height:19px;
+    background:var(--board);
+    border:1px solid var(--chalk-faint);
+    border-radius:50%;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:.62rem;
+    display:flex; align-items:center; justify-content:center;
+    color:var(--chalk-dim);
+  }
+  .week.exam::before{ background:var(--clay); border-color:var(--clay); color:var(--board); font-weight:700;}
+  .week.exam{border-color:rgba(227,139,93,.4);}
+  .week.theory::before{ border-style:dashed; }
+  .week.found{opacity:.82;}
+  .week.new{border-color:rgba(233,214,94,.45);}
+  .week.new::before{ box-shadow:0 0 0 3px rgba(233,214,94,.18); }
+
+  .week-top{display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap;}
+  .week-top h3{margin:0; font-size:1.08rem;}
+  .week-meta{font-family:'IBM Plex Mono',monospace; font-size:.7rem; color:var(--chalk-faint); white-space:nowrap;}
+
+  .theme{color:var(--chalk-dim); font-size:.92rem; margin:.5rem 0 .8rem;}
+  .theme em{color:var(--yellow); font-style:normal;}
+  .week.exam .theme em, .week.theory .theme em{color:var(--clay);}
+
+  .sessions{display:grid; grid-template-columns:1fr 1fr; gap:.6rem; margin-top:.7rem;}
+  @media (max-width:560px){.sessions{grid-template-columns:1fr;}}
+  .sess{
+    border:1px dashed var(--rule);
+    border-radius:6px;
+    padding:.6rem .75rem;
+    font-size:.84rem;
+  }
+  .sess .sess-label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:.68rem;
+    color:var(--yellow);
+    margin-bottom:.2rem;
+    display:block;
+  }
+  .week.exam .sess .sess-label{color:var(--clay);}
+  .sess p{margin:0 0 .5rem; color:var(--chalk-dim);}
+  .sess p:last-child{margin-bottom:0;}
+  .proj{
+    display:inline-block;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:.64rem;
+    color:var(--board);
+    background:var(--yellow);
+    padding:.15rem .4rem;
+    border-radius:3px;
+    margin-top:.15rem;
+  }
+
+  .note{
+    margin-top:1.4rem;
+    font-size:.85rem;
+    color:var(--chalk-faint);
+    border-left:2px solid var(--clay);
+    padding-left:.9rem;
+    max-width:62ch;
+  }
+
+  footer{
+    text-align:center;
+    padding:3rem 1.5rem 4rem;
+    color:var(--chalk-faint);
+    font-size:.82rem;
+    border-top:1px dashed var(--rule);
+  }
+</style>
+</head>
+<body>
+<div class="grain"></div>
+
+<header>
+  <div class="eyebrow">CC104 · Data Structures &amp; Algorithms</div>
+  <h1>From your first program to a working project.</h1>
+  <p>Seventeen weeks, session by session — C basics, then arrays, then the same arrays powering a real CRUD program you build piece by piece.</p>
+  <div class="lockers" aria-hidden="true">
+    <div class="locker found">1</div><div class="locker found">2</div><div class="locker found">3</div>
+    <div class="locker on">4</div><div class="locker on">5</div><div class="locker on">6</div>
+    <div class="locker on">7</div><div class="locker on">8</div><div class="locker exam">9</div>
+    <div class="locker on">10</div><div class="locker on">11</div><div class="locker on">12</div>
+    <div class="locker on">13</div><div class="locker on">14</div><div class="locker on">15</div>
+    <div class="locker theory">16</div><div class="locker exam">17</div>
+  </div>
+</header>
+
+<main>
+
+  <!-- FOUNDATIONS -->
+  <div class="phase-head"><span class="tag found">Foundations</span><h2>Weeks 1–3 · Just enough C to reach arrays</h2></div>
+  <p class="phase-sub">Variables, decisions, loops, and functions — the minimum toolkit needed before arrays make sense.</p>
+
+  <div class="rail">
+
+    <div class="week found" data-n="1">
+      <div class="week-top"><h3>Week 1 — C Foundations I</h3><span class="week-meta">Sessions 1A–1B</span></div>
+      <p class="theme">Every big program is just small, precise instructions. <em>What is a data structure vs. an algorithm?</em></p>
+      <div class="sessions">
+        <div class="sess"><span class="sess-label">1A</span><p>What are DS &amp; Algorithms? First Hello World.</p></div>
+        <div class="sess"><span class="sess-label">1B</span><p>Compiler/editor setup, reading error messages, first debugging.</p></div>
+      </div>
+    </div>
+
+    <div class="week found" data-n="2">
+      <div class="week-top"><h3>Week 2 — C Foundations II</h3><span class="week-meta">Sessions 2A–2B</span></div>
+      <p class="theme">Programs need to decide and repeat. <em>How do we avoid retyping the same steps?</em></p>
+      <div class="sessions">
+        <div class="sess"><span class="sess-label">2A</span><p>if/else, switch — branching on a condition.</p></div>
+        <div class="sess"><span class="sess-label">2B</span><p>for vs. while loops, accumulating a running total.</p></div>
+      </div>
+    </div>
+
+    <div class="week found" data-n="3">
+      <div class="week-top"><h3>Week 3 — C Foundations III</h3><span class="week-meta">Sessions 3A–3B</span></div>
+      <p class="theme">Don't repeat yourself. <em>Name a block of steps once, reuse it anywhere.</em></p>
+      <div class="sessions">
+        <div class="sess"><span class="sess-label">3A</span><p>Defining &amp; calling functions with parameters and return values.</p></div>
+        <div class="sess"><span class="sess-label">3B</span><p>Consolidation: variables + loops + functions in one program.</p></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MIDTERM: ARRAYS -->
+  <div class="phase-head"><span class="tag">Midterm</span><h2>Weeks 4–9 · Arrays, start to finish</h2></div>
+  <p class="phase-sub">Six weeks building every array skill you'll need — storing, working through functions, finding, ordering, and gridding data — closing with a full review and the midterm exam.</p>
+
+  <div class="rail">
+
+    <div class="week" data-n="4">
+      <div class="week-top"><h3>Week 4 — Arrays I</h3><span class="week-meta">Sessions 4A–4B</span></div>
+      <p class="theme">One box can hold one thing. <em>What if we need a whole row of them?</em></p>
+      <div class="sessions">
+        <div class="sess"><span class="sess-label">4A</span><p>Declaration, indexing, pointers as addresses.</p></div>
+        <div class="sess"><span class="sess-label">4B</span><p>Aggregation: sum, average, conditional count.</p></div>
+      </div>
+    </div>
+
+    <div class="week new" data-n="5">
+      <div class="week-top"><h3>Week 5 — Functions + Arrays</h3><span class="week-meta">Sessions 5A–5B</span></div>
+      <p class="theme">Week 3 built functions with single values. <em>Now a function needs to work with a whole row of lockers.</em></p>
+      <div class="sessions">
+        <div class="sess">
+          <span class="sess-label">5A</span>
+          <p>How to create a function, revisited: multiple parameters, return types, functions calling other functions — the shape every array function will follow.</p>
+        </div>
+        <div class="sess">
+          <span class="sess-label">5B</span>
+          <p>How to use an array in a function: passing <code>arr[]</code> + <code>size</code>, why the original array changes when the function modifies it, rewriting Week 4's sum/average as standalone functions.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="week" data-n="6">
+      <div class="week-top"><h3>Week 6 — Arrays II: Searching Variations</h3><span class="week-meta">Sessions 6A–6B</span></div>
+      <p class="theme">Data is stored. <em>Now how do we find something in it — as a function?</em></p>
+      <div class="sessions">
+        <div class="sess"><span class="sess-label">6A</span><p>Linear search — the basic loop-and-compare pattern, built as its own function.</p></div>
+        <div class="sess"><span class="sess-label">6B</span><p>Variations: first match, all matches, min/max.</p></div>
+      </div>
+    </div>
+
+    <div class="week" data-n="7">
+      <div class="week-top"><h3>Week 7 — Arrays III: Sorting Variations</h3><span class="week-meta">Sessions 7A–7B</span></div>
+      <p class="theme">An organized line is easier to search. <em>How do we put data in order ourselves?</em></p>
+      <div class="sessions">
+        <div class="sess"><span class="sess-label">7A</span><p>Bubble sort — by hand, then in code.</p></div>
+        <div class="sess"><span class="sess-label">7B</span><p>Descending order, sort + search combined.</p></div>
+      </div>
+    </div>
+
+    <div class="week" data-n="8">
+      <div class="week-top"><h3>Week 8 — 2D Arrays / Matrices</h3><span class="week-meta">Sessions 8A–8B</span></div>
+      <p class="theme">What if our row of lockers needs its own rows? <em>Representing a grid.</em></p>
+      <div class="sessions">
+        <div class="sess"><span class="sess-label">8A</span><p>grid[row][col], row-major layout, grid traversal.</p></div>
+        <div class="sess"><span class="sess-label">8B</span><p>Matrix addition, grid search, diagonal sum.</p></div>
+      </div>
+    </div>
+
+    <div class="week exam" data-n="9">
+      <div class="week-top"><h3>Week 9 — Beyond Arrays + Review</h3><span class="week-meta">Sessions 9A–9B · MIDTERM EXAM</span></div>
+      <p class="theme">Recognize the rest of the toolbox by name. <em>Then prove what you've built.</em></p>
+      <div class="sessions">
+        <div class="sess"><span class="sess-label">9A</span><p>Linked lists, stacks &amp; queues — theory only, no code.</p></div>
+        <div class="sess"><span class="sess-label">9B</span><p>Full array review, midterm exam. Submit Concept Brief — the record your CRUD project will manage.</p></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FINALS -->
+  <div class="phase-head"><span class="tag finals">Finals</span><h2>Weeks 10–17 · Your CRUD project, one piece per session</h2></div>
+  <p class="phase-sub">Starting Week 10, almost every session ends with a worksheet that adds one real, working piece to the same arrays-only CRUD program — no separate "project week" at the end. Everything stays arrays: parallel arrays for records, no structs, no pointers beyond what Weeks 4–5 already covered.</p>
+
+  <div class="tracker" aria-hidden="true">
+    <span>Create</span><span>Read</span><span>Update</span><span>Delete</span><span>Search</span><span>Filter</span><span>Sort</span><span>Fast Lookup</span><span>Recursive Feature</span><span>Menu / Integration</span>
+  </div>
+
+  <div class="rail">
+
+    <div class="week" data-n="10">
+      <div class="week-top"><h3>Week 10 — CRUD I: Create &amp; Read</h3><span class="week-meta">Sessions 10A–10B</span></div>
+      <p class="theme">Your Concept Brief becomes real code. <em>Design the record, then get data in and out.</em></p>
+      <div class="sessions">
+        <div class="sess">
+          <span class="sess-label">10A</span>
+          <p>Design the record as parallel arrays (e.g. <code>names[]</code>, <code>scores[]</code>, plus a <code>count</code>) sized to a max capacity.</p>
+          <span class="proj">Worksheet → addRecord()</span>
+        </div>
+        <div class="sess">
+          <span class="sess-label">10B</span>
+          <p>Build and test a function that lists every current record, formatted and aligned.</p>
+          <span class="proj">Worksheet → displayAll()</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="week" data-n="11">
+      <div class="week-top"><h3>Week 11 — CRUD II: Update &amp; Delete</h3><span class="week-meta">Sessions 11A–11B</span></div>
+      <p class="theme">Finding a record is one thing. <em>Now change it — or take it out cleanly.</em></p>
+      <div class="sessions">
+        <div class="sess">
+          <span class="sess-label">11A</span>
+          <p>Locate a record by field, then edit the matching slot(s) across the parallel arrays.</p>
+          <span class="proj">Worksheet → updateRecord()</span>
+        </div>
+        <div class="sess">
+          <span class="sess-label">11B</span>
+          <p>Remove a record and shift the remaining elements left to close the gap; decrement <code>count</code>.</p>
+          <span class="proj">Worksheet → deleteRecord()</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="week" data-n="12">
+      <div class="week-top"><h3>Week 12 — CRUD III: Search Your Records</h3><span class="week-meta">Sessions 12A–12B</span></div>
+      <p class="theme">Week 6's search patterns, pointed at your own data. <em>Find one record — or every record that fits.</em></p>
+      <div class="sessions">
+        <div class="sess">
+          <span class="sess-label">12A</span>
+          <p>Reuse the linear-search pattern to find a record by name or ID and return its index.</p>
+          <span class="proj">Worksheet → searchByField()</span>
+        </div>
+        <div class="sess">
+          <span class="sess-label">12B</span>
+          <p>Reuse the find-all pattern to list every record matching a condition (e.g. score above X).</p>
+          <span class="proj">Worksheet → filterRecords()</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="week" data-n="13">
+      <div class="week-top"><h3>Week 13 — CRUD IV: Sort Your Records</h3><span class="week-meta">Sessions 13A–13B</span></div>
+      <p class="theme">Bubble sort gets a name for how fast it is. <em>Then it goes to work ordering your list.</em></p>
+      <div class="sessions">
+        <div class="sess">
+          <span class="sess-label">13A</span>
+          <p>Big-O, formalized: count comparisons/swaps in your own bubble sort code from Week 7.</p>
+          <span class="proj">Worksheet → measure it</span>
+        </div>
+        <div class="sess">
+          <span class="sess-label">13B</span>
+          <p>Sort the record list by a chosen field, ascending or descending, keeping parallel arrays in sync.</p>
+          <span class="proj">Worksheet → sortRecords()</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="week" data-n="14">
+      <div class="week-top"><h3>Week 14 — CRUD V: Fast Lookup</h3><span class="week-meta">Sessions 14A–14B</span></div>
+      <p class="theme">A sorted list unlocks a faster search. <em>Binary search, on your own data.</em></p>
+      <div class="sessions">
+        <div class="sess">
+          <span class="sess-label">14A</span>
+          <p>Divide-and-conquer logic: check the middle, discard half, repeat — traced by hand first.</p>
+          <span class="proj">Lecture → binary search logic</span>
+        </div>
+        <div class="sess">
+          <span class="sess-label">14B</span>
+          <p>Add binary search as a "fast lookup" option on the now-sorted record list; compare comparison counts to linear search.</p>
+          <span class="proj">Worksheet → fastLookup()</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="week" data-n="15">
+      <div class="week-top"><h3>Week 15 — CRUD VI: One Recursive Feature</h3><span class="week-meta">Sessions 15A–15B</span></div>
+      <p class="theme">One new idea: a function that calls itself. <em>Then it earns a real spot in the project.</em></p>
+      <div class="sessions">
+        <div class="sess">
+          <span class="sess-label">15A</span>
+          <p>Base case + recursive case, practiced on familiar array tasks (recursive sum, recursive count).</p>
+          <span class="proj">Lecture → recursion basics</span>
+        </div>
+        <div class="sess">
+          <span class="sess-label">15B</span>
+          <p>Add one recursive function to the project (e.g. recursive count of matching records, or recursive display).</p>
+          <span class="proj">Worksheet → recursive feature</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="week theory" data-n="16">
+      <div class="week-top"><h3>Week 16 — Beyond Arrays (Theory Only)</h3><span class="week-meta">Sessions 16A–16B</span></div>
+      <p class="theme">Meet the rest of the toolbox by name. <em>Then spend the lab tying your project into one program.</em></p>
+      <div class="sessions">
+        <div class="sess">
+          <span class="sess-label">16A</span>
+          <p>Linked lists, stacks (LIFO) &amp; queues (FIFO) — analogies and real-world examples, no code, not tested.</p>
+        </div>
+        <div class="sess">
+          <span class="sess-label">16B</span>
+          <p>Trees &amp; graphs, by name only. Lab time: wire every piece so far into one menu-driven main() loop.</p>
+          <span class="proj">Worksheet → menu integration</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="week exam" data-n="17">
+      <div class="week-top"><h3>Week 17 — Final Review + FINAL EXAM</h3><span class="week-meta">Sessions 17A–17B · FINALS</span></div>
+      <p class="theme">Everything since Week 1, in one working program. <em>Show it, then defend it.</em></p>
+      <div class="sessions">
+        <div class="sess"><span class="sess-label">17A</span><p>Full-course review: arrays, sorting, searching, recursion — code-tracing drills.</p></div>
+        <div class="sess"><span class="sess-label">17B</span><p>Final exam, plus presentation/defense of the completed CRUD project.</p></div>
+      </div>
+    </div>
+
+  </div>
+
+  <p class="note">Week 5 (Functions + Arrays) is a new insertion — everything from the old Week 5 onward shifted back one week, so the course is now 17 weeks total and the midterm exam lands in Week 9 instead of Week 8. Weeks 10–17 remain a proposed finals plan, not pulled from an existing document. Flag any week you'd want re-paced, re-ordered, or trimmed back down to 16.</p>
+
+</main>
+
+<footer>CC104: Data Structures &amp; Algorithms — Arrays-first track, CMC</footer>
+
+</body>
+</html>

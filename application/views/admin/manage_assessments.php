@@ -185,6 +185,9 @@
                         <div class="form-group col-md-3">
                             <label>Max Score <span class="text-danger">*</span></label>
                             <input type="number" name="max_score" id="modal_max_score" class="form-control" min="1" required>
+                            <small class="form-text text-muted" id="modal_max_score_hint" style="display:none">
+                                Auto-set to the topic's question count (1 point each).
+                            </small>
                         </div>
                         <div class="form-group col-md-3">
                             <label>Term <span class="text-danger">*</span></label>
@@ -294,6 +297,11 @@ const scheduleSections = {
         <?= (int) $s['schedule_id'] ?>: <?= json_encode($s['section']) ?>,
     <?php endforeach; ?>
 };
+
+// topic slug -> question count, used to auto-fill Max Score for Interactive
+// Discussion/Quiz (one point per question — see AdminController::save_assessment()
+// for the server-side derivation this mirrors).
+const iqTopicQuestionCounts = <?= json_encode($iq_topic_question_counts) ?>;
 
 // section -> [{set_id, name}], used to populate the grouping-set dropdown
 const setsBySection = {};
@@ -407,6 +415,36 @@ const widgetExamples = {
     iq_discussion: {
         hint: 'Pick the topic from the dropdown below — not per-student either, students are redirected to the topic.',
         example: null
+    },
+    lab_worksheet: {
+        hint: 'Fixed sequence of experiments (instructions + Predict/Observe/Explain prompts). Not auto-graded — score it manually like Worksheet Form.',
+        example: {
+            intro: '<p>Optional objectives/timeline HTML shown above the experiments.</p>',
+            experiments: [
+                {
+                    title: 'Experiment 1.1 — Declare an array and print the first element',
+                    instructions: '<p>Inside <code>main()</code>, type:</p><pre><code>int scores[5] = {85, 90, 78, 92, 88};\n\nprintf("%d\\n", scores[0]);</code></pre>',
+                    warning: false,
+                    prompts: [
+                        { tag: 'predict', label: 'PREDICT', text: 'What number will print?' },
+                        { tag: 'observe', label: 'OBSERVE', text: 'Compile. Run. What actually printed?' },
+                        { tag: 'explain', label: 'EXPLAIN', text: 'Why does scores[0] give the first value?' }
+                    ]
+                },
+                {
+                    title: 'Experiment 1.2 — Go out of bounds',
+                    instructions: '<p>Change the printf line to print <code>scores[5]</code>.</p>',
+                    warning: true,
+                    prompts: [
+                        { tag: 'predict', label: 'PREDICT', text: 'Error, crash, or a number?' },
+                        { tag: 'observe', label: 'OBSERVE', text: 'What actually happened?' },
+                        { tag: 'explain', label: 'EXPLAIN', text: 'Why did C let you ask for a index that does not exist?' }
+                    ],
+                    note: 'Fix it back: change scores[5] back to scores[4] before continuing.'
+                }
+            ],
+            exit_question: 'In one or two sentences: what surprised you the most today, and why?'
+        }
     }
 };
 
@@ -421,7 +459,24 @@ let lastAutoFilledExample = null;
 function syncIqTopicToGiven() {
     const topic = document.getElementById('modal_iq_topic').value;
     document.getElementById('modal_given').value = topic ? JSON.stringify({ topic: topic }) : '';
+    applyIqMaxScoreLock(true);
     fetchWidgetPreview();
+}
+
+// Max Score isn't hand-entered for this widget — it's the topic's question
+// count (1 point per question, matching the +1-per-correct-answer scoring in
+// _interactive_quiz_template.php). Locked read-only here purely so the admin
+// isn't misled into typing a value that save_assessment() will overwrite
+// server-side anyway (see AdminController::save_assessment()).
+function applyIqMaxScoreLock(isIqDiscussion) {
+    const input = document.getElementById('modal_max_score');
+    const hint = document.getElementById('modal_max_score_hint');
+    input.readOnly = isIqDiscussion;
+    hint.style.display = isIqDiscussion ? '' : 'none';
+    if (isIqDiscussion) {
+        const topic = document.getElementById('modal_iq_topic').value;
+        input.value = topic && iqTopicQuestionCounts[topic] !== undefined ? iqTopicQuestionCounts[topic] : '';
+    }
 }
 
 function toggleGivenWrap() {
@@ -431,6 +486,7 @@ function toggleGivenWrap() {
 
     document.getElementById('modal_given_wrap').style.display = (select.value && !isIqDiscussion) ? '' : 'none';
     document.getElementById('modal_iq_topic_wrap').style.display = isIqDiscussion ? '' : 'none';
+    applyIqMaxScoreLock(isIqDiscussion);
 
     if (isIqDiscussion) {
         fetchWidgetPreview();

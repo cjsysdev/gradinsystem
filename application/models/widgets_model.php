@@ -43,6 +43,11 @@ class Widgets_model extends CI_Model
             VALUES ('decision_matrix', 'Decision Matrix', 'widgets/decision_matrix', NULL)");
         $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
             VALUES ('calculator', 'Calculator', 'widgets/calculator', NULL)");
+        // Lab Worksheet: fixed sequence of experiments, each with admin-authored
+        // instructions and Predict/Observe/Explain-style prompts. Not auto-graded
+        // (manual score entry, like Worksheet Form/Card Sort).
+        $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
+            VALUES ('lab_worksheet', 'Lab Worksheet', 'widgets/lab_worksheet', NULL)");
         // Brainstorm Board is not a per-student submission — see BrainstormController.
         $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
             VALUES ('brainstorm', 'Brainstorm & Voting Board', 'widgets/brainstorm', NULL)");

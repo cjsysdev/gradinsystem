@@ -1,0 +1,163 @@
+{
+  "topic": "html_forms",
+  "title": "HTML Forms",
+  "description": "Learn how to build a real HTML form: inputs, labels, required fields, radio buttons, checkboxes, dropdowns, and submitting data.",
+  "congratsText": "Great work! You can now build a real HTML form.",
+  "sections": [
+    {
+      "id": 0,
+      "title": "What Is a Form?",
+      "quiz": {
+        "question": "What is the main job of the <form> tag?",
+        "options": [
+          "It groups input fields so they can be sent together",
+          "It changes the page's background color",
+          "It loads a new page automatically every second",
+          "It stores images for faster page loading"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">What Is a Form?</div><div class=\"lesson-text\">A form lets users type information and send it somewhere — like a search box, a login screen, or a signup page. The <span class=\"highlight\">&lt;form&gt;</span> tag wraps all the input fields together.</div><div class=\"lesson-text\"><strong>Forms are how a page collects data</strong> from a real person, instead of just showing static text.</div><div class=\"code-block\">&lt;form&gt;\n  Name: &lt;input type=\"text\"&gt;\n&lt;/form&gt;</div>"
+    },
+    {
+      "id": 1,
+      "title": "The <input> Tag",
+      "quiz": {
+        "question": "Which attribute controls what kind of input field this is?",
+        "code": "<input type=\"text\">",
+        "options": [
+          "type",
+          "name",
+          "value",
+          "class"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">The &lt;input&gt; Tag</div><div class=\"lesson-text\">&lt;input&gt; creates a field a user can fill in. The <span class=\"highlight\">type</span> attribute decides what kind of field it is.</div><div class=\"code-block\">&lt;input type=\"text\"&gt;</div><div class=\"lesson-text\"><strong>Note:</strong> &lt;input&gt; is a self-closing tag — it has no separate closing tag like &lt;/input&gt;.</div>"
+    },
+    {
+      "id": 2,
+      "title": "Labels and Accessibility",
+      "quiz": {
+        "question": "Why will clicking this label NOT move the cursor into the input?",
+        "code": "<label for=\"email\">Email:</label>\n<input type=\"text\" id=\"username\">",
+        "options": [
+          "The label's for value does not match the input's id",
+          "Labels never connect to input fields at all",
+          "The input is missing its type attribute",
+          "The label text is spelled wrong"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Labels and Accessibility</div><div class=\"lesson-text\">A <span class=\"highlight\">&lt;label&gt;</span> tag connects text to an input field. Clicking the label text moves the cursor into the matching field.</div><div class=\"code-block\">&lt;label for=\"email\"&gt;Email:&lt;/label&gt;\n&lt;input type=\"text\" id=\"email\"&gt;</div><div class=\"lesson-text\"><strong>The connection works through matching values:</strong> the label's <span class=\"highlight\">for</span> must exactly match the input's <span class=\"highlight\">id</span>.</div><div class=\"lesson-text\">Without a matching label, users of screen readers may not know what a field is for.</div>"
+    },
+    {
+      "id": 3,
+      "title": "Common Input Types",
+      "quiz": {
+        "question": "What will the browser do with this unknown input type?",
+        "code": "<input type=\"banana\">",
+        "options": [
+          "Treat it as a plain text field",
+          "Refuse to load the whole page",
+          "Delete the input tag automatically",
+          "Show a red error box on screen"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Common Input Types</div><div class=\"lesson-text\">The <span class=\"highlight\">type</span> attribute changes both the look and the behavior of an input, not just its label.</div><div class=\"lesson-text\"><ul><li>type=\"email\" checks for a valid email pattern</li><li>type=\"password\" hides the typed characters</li><li>type=\"number\" only accepts numbers</li></ul></div><div class=\"code-block\">&lt;input type=\"email\"&gt;\n&lt;input type=\"password\"&gt;\n&lt;input type=\"number\"&gt;</div><div class=\"lesson-text\">If the browser does not know a type, it quietly treats the field as plain text.</div>"
+    },
+    {
+      "id": 4,
+      "title": "The required Attribute",
+      "quiz": {
+        "question": "When does the required attribute stop a form from submitting?",
+        "options": [
+          "When the field is empty and the user clicks submit",
+          "Only after the page has fully reloaded",
+          "Only if the server sends back an error",
+          "It never actually stops a form from submitting"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">The required Attribute</div><div class=\"lesson-text\">Adding <span class=\"highlight\">required</span> to an input tells the browser: don't let the form submit until this field has a value.</div><div class=\"code-block\">&lt;input type=\"text\" required&gt;</div><div class=\"lesson-text\"><strong>This check happens in the browser</strong>, before any data is sent anywhere. No extra code is needed to turn it on.</div><div class=\"lesson-text\">required is a good first check, but a real system should also check data again on the server, since browser checks can be skipped.</div>"
+    },
+    {
+      "id": 5,
+      "title": "Placeholder Text",
+      "quiz": {
+        "question": "If a user never types in a field but it shows placeholder text, is the field empty or filled?",
+        "options": [
+          "Empty — placeholder text is only a hint",
+          "Filled — placeholder text counts as the value",
+          "Filled, but only for email-type fields",
+          "It depends on the browser being used"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Placeholder Text</div><div class=\"lesson-text\"><span class=\"highlight\">placeholder</span> shows light gray hint text inside an empty field. It disappears the moment the user starts typing.</div><div class=\"code-block\">&lt;input type=\"text\" placeholder=\"e.g. Juan Dela Cruz\"&gt;</div><div class=\"lesson-text\"><strong>Placeholder is not a value.</strong> If the user never types anything, the field is still considered empty when the form is sent.</div>"
+    },
+    {
+      "id": 6,
+      "title": "Radio Buttons",
+      "quiz": {
+        "question": "Can a user pick both of these radio buttons at the same time?",
+        "code": "<input type=\"radio\" name=\"size\" value=\"S\"> Small\n<input type=\"radio\" name=\"color\" value=\"M\"> Medium",
+        "options": [
+          "Yes, because they have different name values",
+          "No, radio buttons never allow two picks",
+          "No, because their value attributes differ",
+          "Yes, but only in older browsers"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Radio Buttons</div><div class=\"lesson-text\">Radio buttons let a user pick <span class=\"highlight\">only one</span> option from a group. Every button in the same group must share the same <span class=\"highlight\">name</span>.</div><div class=\"code-block\">&lt;input type=\"radio\" name=\"size\" value=\"S\"&gt; Small\n&lt;input type=\"radio\" name=\"size\" value=\"M\"&gt; Medium</div><div class=\"lesson-text\">If the buttons have different names, the browser treats them as separate groups — and more than one can be picked at once.</div>"
+    },
+    {
+      "id": 7,
+      "title": "Checkboxes",
+      "quiz": {
+        "question": "What is the main difference between a checkbox and a radio button?",
+        "options": [
+          "A checkbox allows more than one choice at once",
+          "A checkbox always requires a matching label",
+          "A checkbox cannot use the name attribute",
+          "A checkbox only works inside a table"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Checkboxes</div><div class=\"lesson-text\">Checkboxes let a user pick <span class=\"highlight\">any number</span> of options — none, one, or several at once. This is the main difference from radio buttons.</div><div class=\"code-block\">&lt;input type=\"checkbox\" name=\"topping\" value=\"cheese\"&gt; Cheese\n&lt;input type=\"checkbox\" name=\"topping\" value=\"bacon\"&gt; Bacon</div><div class=\"lesson-text\">Checkboxes can share the same name too — the server just receives a list of every one the user checked.</div>"
+    },
+    {
+      "id": 8,
+      "title": "Dropdown Lists",
+      "quiz": {
+        "question": "Why might you choose <select> over many radio buttons?",
+        "options": [
+          "It saves space when there are many choices",
+          "It is the only way to make a choice required",
+          "It lets users pick more than one item by default",
+          "It removes the need for a name attribute"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Dropdown Lists</div><div class=\"lesson-text\"><span class=\"highlight\">&lt;select&gt;</span> shows a list of choices that opens when clicked, saving space compared to many radio buttons.</div><div class=\"code-block\">&lt;select name=\"course\"&gt;\n  &lt;option value=\"ws\"&gt;Web Systems&lt;/option&gt;\n  &lt;option value=\"cc104\"&gt;Data Structures&lt;/option&gt;\n&lt;/select&gt;</div><div class=\"lesson-text\">Each choice is an <span class=\"highlight\">&lt;option&gt;</span> tag. Only one option can be picked unless the multiple attribute is added.</div>"
+    },
+    {
+      "id": 9,
+      "title": "Submitting a Form",
+      "quiz": {
+        "question": "Why is GET a poor choice for submitting a password field?",
+        "code": "<form>\n  <input type=\"text\" name=\"q\">\n  <button type=\"submit\">Search</button>\n</form>\n\n<!-- After submit, the URL may look like: -->\n<!-- page.html?q=hello -->",
+        "options": [
+          "GET puts the data in the visible URL and history",
+          "GET only works with checkbox and radio inputs",
+          "GET cannot be used with a submit button",
+          "GET always deletes the form after submitting"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Submitting a Form</div><div class=\"lesson-text\">Clicking a <span class=\"highlight\">submit</span> button sends the form's data somewhere. By default, a form uses the <span class=\"highlight\">GET</span> method, which adds the data to the end of the URL.</div><div class=\"code-block\">&lt;form&gt;\n  &lt;input type=\"text\" name=\"q\"&gt;\n  &lt;button type=\"submit\"&gt;Search&lt;/button&gt;\n&lt;/form&gt;\n\n&lt;!-- After submit, the URL may look like: --&gt;\n&lt;!-- page.html?q=hello --&gt;</div><div class=\"lesson-text\"><strong>Best practice:</strong> GET is fine for searches, but never use it for passwords or private data — the data is visible right in the address bar and browser history. Use POST instead for sensitive data.</div>"
+    }
+  ]
+}

@@ -61,9 +61,9 @@ class assessments extends MY_Model
                 semester_master sem
                 ON cs.semester_id = sem.trans_no
                 AND sem.is_active = 1
-            WHERE 
-                c.classwork_id IS NULL AND cs.section = ?
-            ORDER BY 
+            WHERE
+                c.classwork_id IS NULL AND cs.section = ? AND a.status = 1
+            ORDER BY
                 a.created_at DESC
         ";
 

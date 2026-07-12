@@ -1,12 +1,14 @@
 # Paperless Midterm Integration Plan
 
-**Status:** All 6 widgets (B–G) implemented, plus one added outside the
+**Status:** All 6 widgets (B–G) implemented, plus two added outside the
 original scope: **Multiple Choice Quiz** (see §10) — replaces the
 `json_file_path`-upload requirement of the old `QuizController` flow for any
 assessment that opts into it; that old flow is untouched and still works for
-assessments not using the widget. Widget D (Brainstorm Board) is a first
-pass — see its section below for what was simplified vs. the original spec
-(no drag-to-cluster positioning; participation-only classwork tracking).
+assessments not using the widget — and **Widget H — Lab Worksheet** (see §4)
+for Predict/Observe/Explain-style programming lab activities. Widget D
+(Brainstorm Board) is a first pass — see its section below for what was
+simplified vs. the original spec (no drag-to-cluster positioning;
+participation-only classwork tracking).
 **Scope:** IS Innovations & New Technologies course, Midterm (Weeks 1–8)
 **Related:** `docs/week1-lms-seed-example/` (SQL + JSON pilot for Week 1)
 
@@ -231,6 +233,61 @@ patterns. Build 6 reusable widgets, not 16 custom interfaces.
   `eval()`/`new Function()`, even though the formula string itself is
   admin-authored/trusted, since the *values* substituted into it are
   student-entered. Submission shape: `{"inputs": {"<key>": "<value>", ...}, "result": <number>}`.
+
+### Widget H — Lab Worksheet (added outside original scope)
+- **Why:** hands-on programming labs (e.g. CC104 "Introduction to Arrays")
+  follow a Predict → Compile/Run → Observe → Explain loop per experiment,
+  often with a deliberate "break it on purpose" step — not covered well by
+  Worksheet Form's free-row table, since each experiment has fixed
+  instructions/code plus a *different* small set of prompts, not repeatable
+  columns.
+- **Replaces:** paper/HTML lab worksheets like
+  `CC104_Lab_Intro_to_Arrays_60min.html` — students previously would have
+  had to fill this out on paper or in a separate doc and upload a photo/file.
+- **UI:** fixed sequence of experiment cards (title, admin-authored
+  instructions/code block, optional "breaking it on purpose" styling), each
+  with a few free-text prompts (Predict/Observe/Explain, or custom tags);
+  an optional exit question after the last experiment. A lightweight
+  progress indicator (X/N answered) is computed client-side from filled
+  fields — not a separate saved flag.
+- **Config (`assessments.given`):**
+  ```json
+  {
+    "widget": "lab_worksheet",
+    "intro": "<p>optional HTML shown above the experiments</p>",
+    "experiments": [
+      {
+        "title": "Experiment 1.1 — Declare an array and print the first element",
+        "instructions": "<p>...</p><pre><code>...</code></pre>",
+        "warning": false,
+        "prompts": [
+          {"tag": "predict", "label": "PREDICT", "text": "What number will print?"},
+          {"tag": "observe", "label": "OBSERVE", "text": "What actually printed?"},
+          {"tag": "explain", "label": "EXPLAIN", "text": "Why?"}
+        ],
+        "note": "Fix it back: ..."
+      }
+    ],
+    "exit_question": "optional single free-text question shown after all experiments"
+  }
+  ```
+- **Submission (`classworks.code`):**
+  ```json
+  {
+    "answers": { "0": {"predict": "...", "observe": "...", "explain": "..."} },
+    "exit_question": "..."
+  }
+  ```
+  Keyed by experiment index (string, since JSON object keys are strings) —
+  same indexing convention as Widget F's `cells` object.
+- **Not auto-graded** — manual score entry, like Worksheet Form/Card Sort.
+  `instructions`/`intro` are trusted admin-authored HTML rendered as-is
+  (same trust model as `_interactive_quiz_template.php`'s `section.lesson`),
+  not escaped like Worksheet Form's plain-text columns.
+- **Implemented:** `application/views/widgets/lab_worksheet.php`. Renders
+  inline via the standard `assessment_view_code.php` flow (no special-case
+  redirect, unlike Brainstorm/Interactive Discussion) since it's a normal
+  per-student form widget.
 
 ## 5. Full Session-to-Widget Mapping (Weeks 1–8)
 

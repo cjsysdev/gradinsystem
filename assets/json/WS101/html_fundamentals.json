@@ -1,0 +1,162 @@
+{
+  "topic": "html_fundamentals",
+  "title": "HTML Fundamentals",
+  "description": "Learn the basic tags that build every web page: structure, headings, paragraphs, lists, links, and images.",
+  "congratsText": "Great work! You now know the basics of building an HTML page.",
+  "sections": [
+    {
+      "id": 0,
+      "title": "What Is HTML?",
+      "quiz": {
+        "question": "What does HTML mainly do on a web page?",
+        "options": [
+          "It describes a page's structure and content",
+          "It calculates values and stores server data",
+          "It controls the page's loading speed",
+          "It encrypts data sent to the site"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">What Is HTML?</div><div class=\"lesson-text\">HTML stands for HyperText Markup Language. It is the <span class=\"highlight\">standard language</span> for building web pages. HTML tags describe the structure of a page: headings, paragraphs, lists, links, and more.</div><div class=\"lesson-text\"><strong>Key idea:</strong> HTML is not a programming language. It marks up content — it does not calculate or decide anything on its own.</div><div class=\"lesson-text\">Browsers read HTML and turn it into the page you see. Every website you visit sends HTML to your browser first.</div>"
+    },
+    {
+      "id": 1,
+      "title": "The Basic Page Structure",
+      "quiz": {
+        "question": "Where will the text \"My Page\" show up?",
+        "code": "<head>\n    <title>My Page</title>\n</head>\n<body>\n    Hello!\n</body>",
+        "options": [
+          "In the browser tab, not on the page",
+          "At the very top of the page",
+          "In the page's search results only",
+          "Nowhere — the browser will show an error"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">The Basic Page Structure</div><div class=\"lesson-text\">Every HTML page starts with a few required tags. The <span class=\"highlight\">&lt;!DOCTYPE html&gt;</span> line tells the browser which version of HTML to expect.</div><div class=\"lesson-text\"><strong>The main tags:</strong></div><div class=\"lesson-text\"><ul><li>&lt;html&gt; wraps the whole page</li><li>&lt;head&gt; holds info about the page, not content you see</li><li>&lt;body&gt; holds everything visible on the page</li></ul></div><div class=\"code-block\">&lt;!DOCTYPE html&gt;\n&lt;html&gt;\n&lt;head&gt;\n    &lt;title&gt;My Page&lt;/title&gt;\n&lt;/head&gt;\n&lt;body&gt;\n    Hello!\n&lt;/body&gt;\n&lt;/html&gt;</div><div class=\"lesson-text\">The &lt;title&gt; tag sets the text shown in the browser tab, not on the page itself.</div>"
+    },
+    {
+      "id": 2,
+      "title": "Headings",
+      "quiz": {
+        "question": "Why should you avoid skipping heading levels?",
+        "options": [
+          "It can confuse screen readers and accessibility tools",
+          "The browser will refuse to show the page",
+          "It makes the page load much slower",
+          "It removes the page's title from the tab"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Headings</div><div class=\"lesson-text\">HTML has six heading tags, &lt;h1&gt; through &lt;h6&gt;. <span class=\"highlight\">&lt;h1&gt;</span> is the biggest and most important. &lt;h6&gt; is the smallest.</div><div class=\"lesson-text\"><strong>Use headings for structure, not just size:</strong></div><div class=\"lesson-text\"><ul><li>&lt;h1&gt; for the page's main title</li><li>&lt;h2&gt; for major sections</li><li>&lt;h3&gt; and smaller for sub-sections</li></ul></div><div class=\"code-block\">&lt;h1&gt;Welcome&lt;/h1&gt;\n&lt;h2&gt;About Us&lt;/h2&gt;\n&lt;h3&gt;Our Team&lt;/h3&gt;</div><div class=\"lesson-text\">Skipping levels, like going from &lt;h1&gt; straight to &lt;h4&gt;, can confuse screen readers and hurt accessibility.</div>"
+    },
+    {
+      "id": 3,
+      "title": "Paragraphs and Whitespace",
+      "quiz": {
+        "question": "How will the browser show the extra spaces in this code?",
+        "code": "<p>Hello        World</p>",
+        "options": [
+          "As a single space between the words",
+          "As all the spaces, exactly as typed",
+          "As a line break between the words",
+          "As an error message on the page"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Paragraphs and Whitespace</div><div class=\"lesson-text\">Use &lt;p&gt; to group text into a paragraph. Browsers add space above and below each &lt;p&gt; automatically.</div><div class=\"lesson-text\"><strong>Whitespace collapsing:</strong> browsers ignore extra spaces and blank lines in your code. Many spaces become one space on the page.</div><div class=\"code-block\">&lt;p&gt;Hello        World&lt;/p&gt;</div><div class=\"lesson-text\">To force a line break inside a paragraph without starting a new one, use <span class=\"highlight\">&lt;br&gt;</span>.</div>"
+    },
+    {
+      "id": 4,
+      "title": "Text-Level Tags",
+      "quiz": {
+        "question": "What is the real difference between <strong> and just making text bold with styling?",
+        "options": [
+          "<strong> carries meaning that screen readers can detect",
+          "<strong> only works inside a <head> tag",
+          "<strong> makes text bigger, not just bold",
+          "There is no difference at all"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Text-Level Tags</div><div class=\"lesson-text\">Some tags change small pieces of text inside a paragraph. &lt;strong&gt; marks text as important. &lt;em&gt; marks text as emphasized.</div><div class=\"lesson-text\"><strong>Common text tags:</strong></div><div class=\"lesson-text\"><ul><li>&lt;strong&gt; — bold, means \"important\"</li><li>&lt;em&gt; — italic, means \"emphasis\"</li><li>&lt;mark&gt; — highlighted like a highlighter pen</li></ul></div><div class=\"code-block\">&lt;p&gt;This is &lt;strong&gt;important&lt;/strong&gt; and this is &lt;em&gt;emphasized&lt;/em&gt;.&lt;/p&gt;</div><div class=\"lesson-text\">These tags carry <span class=\"highlight\">meaning</span>, not just looks. A screen reader announces &lt;strong&gt; text differently than plain text.</div>"
+    },
+    {
+      "id": 5,
+      "title": "Lists: Ordered and Unordered",
+      "quiz": {
+        "question": "You are listing steps to install software. Which list tag fits best?",
+        "options": [
+          "<ol>, because the order of steps matters",
+          "<ul>, because bullets look cleaner",
+          "<li>, because it lists items directly",
+          "<ol> and <ul> work exactly the same"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Lists: Ordered and Unordered</div><div class=\"lesson-text\">Use &lt;ul&gt; for a list where order does not matter. Use &lt;ol&gt; for a list where the order matters, like steps.</div><div class=\"lesson-text\"><strong>Both use &lt;li&gt; for each item:</strong></div><div class=\"code-block\">&lt;ul&gt;\n  &lt;li&gt;Milk&lt;/li&gt;\n  &lt;li&gt;Eggs&lt;/li&gt;\n&lt;/ul&gt;\n\n&lt;ol&gt;\n  &lt;li&gt;Preheat oven&lt;/li&gt;\n  &lt;li&gt;Mix batter&lt;/li&gt;\n&lt;/ol&gt;</div><div class=\"lesson-text\">&lt;ul&gt; shows bullets. &lt;ol&gt; shows numbers that update automatically if you add or remove items.</div>"
+    },
+    {
+      "id": 6,
+      "title": "Nested Lists",
+      "quiz": {
+        "question": "Where must the inner <ul> go for the nesting to work?",
+        "code": "<ul>\n  <li>Web Systems\n    <ul>\n      <li>HTML</li>\n      <li>CSS</li>\n    </ul>\n  </li>\n</ul>",
+        "options": [
+          "Inside the outer <li>, before it closes",
+          "After the outer </ul> tag closes",
+          "Inside the <head> section only",
+          "It can go anywhere on the page"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Nested Lists</div><div class=\"lesson-text\">You can put a list inside a list item to show sub-items. This is called <span class=\"highlight\">nesting</span>.</div><div class=\"code-block\">&lt;ul&gt;\n  &lt;li&gt;Web Systems\n    &lt;ul&gt;\n      &lt;li&gt;HTML&lt;/li&gt;\n      &lt;li&gt;CSS&lt;/li&gt;\n    &lt;/ul&gt;\n  &lt;/li&gt;\n&lt;/ul&gt;</div><div class=\"lesson-text\">The inner list must sit inside the &lt;li&gt; of the outer list, before that &lt;li&gt;'s closing tag. Browsers usually show the inner list indented, often with a different bullet style.</div>"
+    },
+    {
+      "id": 7,
+      "title": "Links",
+      "quiz": {
+        "question": "What does target=\"_blank\" do to this link?",
+        "code": "<a href=\"page.html\" target=\"_blank\">Open</a>",
+        "options": [
+          "Opens the linked page in a new tab",
+          "Makes the link text invisible on the page",
+          "Stops the link from working at all",
+          "Turns the link into a button instead"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Links</div><div class=\"lesson-text\">The &lt;a&gt; tag creates a link. The <span class=\"highlight\">href</span> attribute sets where the link goes.</div><div class=\"code-block\">&lt;a href=\"https://codeigniter.com\"&gt;CodeIgniter&lt;/a&gt;</div><div class=\"lesson-text\"><strong>Useful attributes:</strong></div><div class=\"lesson-text\"><ul><li>target=\"_blank\" opens the link in a new tab</li><li>An empty href=\"\" links back to the same page</li></ul></div><div class=\"lesson-text\">A visited link often changes color, so users can tell which links they already clicked.</div>"
+    },
+    {
+      "id": 8,
+      "title": "Images and Accessibility",
+      "quiz": {
+        "question": "Why should every <img> tag include an alt attribute?",
+        "options": [
+          "Screen readers use it and it shows if loading fails",
+          "It makes the image load faster on slow networks",
+          "It is required for the HTML to be valid at all",
+          "It changes the size of the image on the page"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Images and Accessibility</div><div class=\"lesson-text\">The &lt;img&gt; tag shows a picture. It needs a <span class=\"highlight\">src</span> attribute pointing to the image file.</div><div class=\"code-block\">&lt;img src=\"photo.jpg\" alt=\"A student presenting a project\"&gt;</div><div class=\"lesson-text\"><strong>Always include alt text:</strong></div><div class=\"lesson-text\"><ul><li>Screen readers read alt text out loud for blind users</li><li>Alt text shows if the image fails to load</li></ul></div><div class=\"lesson-text\">A missing or wrong src makes the image fail to load — alt text is the only thing users still get.</div>"
+    },
+    {
+      "id": 9,
+      "title": "Putting It All Together",
+      "quiz": {
+        "question": "What is the fastest way to check the exact HTML code behind any page?",
+        "options": [
+          "Right-click the page and choose View Page Source",
+          "Open the browser's download folder",
+          "Search the page's title on the web",
+          "Zoom into the page as far as possible"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Putting It All Together</div><div class=\"lesson-text\">A real page combines all these pieces: the basic structure, headings, paragraphs, lists, links, and images, all inside one &lt;body&gt;.</div><div class=\"code-block\">&lt;!DOCTYPE html&gt;\n&lt;html&gt;\n&lt;head&gt;&lt;title&gt;My Site&lt;/title&gt;&lt;/head&gt;\n&lt;body&gt;\n  &lt;h1&gt;Welcome&lt;/h1&gt;\n  &lt;p&gt;This is my &lt;strong&gt;first&lt;/strong&gt; page.&lt;/p&gt;\n  &lt;ul&gt;&lt;li&gt;About&lt;/li&gt;&lt;li&gt;Contact&lt;/li&gt;&lt;/ul&gt;\n  &lt;a href=\"about.html\"&gt;Learn more&lt;/a&gt;\n&lt;/body&gt;\n&lt;/html&gt;</div><div class=\"lesson-text\">You can check your own raw code anytime with <span class=\"highlight\">View Page Source</span> in your browser — a fast way to see exactly what you typed.</div>"
+    }
+  ]
+}

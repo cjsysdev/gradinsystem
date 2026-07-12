@@ -54,6 +54,14 @@ a per-student form, so it doesn't render inline via `assessment_view_code.php`
 like the others; it gets its own full-page flow via `BrainstormController.php`
 (`AssessmentController::assessment_view_code()` redirects there when it
 detects this widget_key, before any of the per-student/grouping logic runs).
+A third widget, **Lab Worksheet** (`lab_worksheet` widget_key, not in the
+original 6-widget plan — see plan doc §4 "Widget H"), covers Predict/Observe/
+Explain-style lab activities: a fixed sequence of admin-authored experiments
+(instructions + code snippets + a few free-text prompts each), plus an
+optional exit question. Not auto-graded — same manual-score-entry pattern as
+Worksheet Form/Card Sort. Renders inline via the standard
+`assessment_view_code.php` flow like Worksheet Form (no special-case
+redirect needed).
 
 ## Conventions
 - Follow existing controller patterns (see `AssessmentController.php`,

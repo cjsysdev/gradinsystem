@@ -407,6 +407,10 @@ class AdminController extends CI_Controller
         // render (sections[].quiz), not the multi-question sections[].questions
         // format used by the older topics/analytics flow.
         $data['iq_topics'] = [];
+        // Question count per topic (one question per section.quiz) — the modal
+        // JS auto-fills Max Score from this when a topic is picked, and
+        // save_assessment() re-derives it server-side as the source of truth.
+        $data['iq_topic_question_counts'] = [];
         foreach ($this->_glob_json_topics() as $file) {
             $meta = json_decode(file_get_contents($file), true);
             if (!$meta || empty($meta['sections'])) {
@@ -422,10 +426,26 @@ class AdminController extends CI_Controller
             if ($is_discussion_format) {
                 $slug = basename($file, '.json');
                 $data['iq_topics'][$slug] = $meta['title'] ?? ucwords(str_replace('_', ' ', $slug));
+                $data['iq_topic_question_counts'][$slug] = $this->_count_iq_topic_questions($meta);
             }
         }
 
         $this->load->view('admin/manage_assessments', $data);
+    }
+
+    // Number of gradable questions in a discussion-format topic — one per
+    // section that actually has a quiz (sections can be lesson-only). Shared
+    // by manage_assessments() (for the JS auto-fill) and save_assessment()
+    // (server-side max_score derivation, the authoritative source).
+    private function _count_iq_topic_questions(array $topic_meta)
+    {
+        $count = 0;
+        foreach (($topic_meta['sections'] ?? []) as $s) {
+            if (!empty($s['quiz'])) {
+                $count++;
+            }
+        }
+        return $count;
     }
 
     public function save_assessment()
@@ -450,6 +470,31 @@ class AdminController extends CI_Controller
             'widget_id'   => !empty($post['widget_id']) ? (int) $post['widget_id'] : null,
             'given'       => !empty($post['widget_id']) ? ($post['given'] ?? null) : null,
         ];
+
+        // Interactive Discussion/Quiz: max_score isn't hand-entered — it's the
+        // number of questions in the chosen topic (one per section.quiz), so a
+        // student's raw quiz score (1 point per correct answer) always lines
+        // up with the assessment's own max. Derived server-side, not trusted
+        // from the posted "Max Score" field, since the modal JS's auto-fill
+        // could be stale (e.g. topic file edited after the form loaded).
+        if ($base['widget_id']) {
+            $this->load->model('Widgets_model');
+            $widget = $this->Widgets_model->get($base['widget_id']);
+            if ($widget && $widget['widget_key'] === 'iq_discussion') {
+                $topic = json_decode($base['given'] ?? '', true)['topic'] ?? '';
+                if ($topic) {
+                    foreach ($this->_glob_json_topics() as $file) {
+                        if (basename($file, '.json') !== $topic) {
+                            continue;
+                        }
+                        $meta = json_decode(file_get_contents($file), true) ?: [];
+                        $base['max_score'] = max(1, $this->_count_iq_topic_questions($meta));
+                        break;
+                    }
+                }
+            }
+        }
+
         $auto_create = !empty($post['auto_create_submissions']);
 
         // "Entire class" creates one assessment per active section of that
