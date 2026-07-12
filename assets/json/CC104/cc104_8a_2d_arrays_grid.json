@@ -1,0 +1,154 @@
+{
+  "topic": "cc104_8a_2d_arrays_grid",
+  "title": "2D Array Concepts & Grid Traversal",
+  "description": "Learn how to declare, index, and traverse a 2D array in C using row and column notation.",
+  "congratsText": "Great work! You now understand how 2D arrays represent grids in memory.",
+  "sections": [
+    {
+      "id": 0,
+      "title": "Objectives",
+      "quiz": null,
+      "lesson": "<div class=\"lesson-title\">What You Will Learn</div><div class=\"lesson-text\">By the end of this discussion, you will be able to:</div><div class=\"lesson-text\"><ul><li>Declare and index a 2D array using [row][col] notation</li><li>Explain how a 2D array is laid out in memory</li><li>Traverse a full 2D array using nested loops</li><li>Print a 2D array in aligned grid form</li></ul></div>"
+    },
+    {
+      "id": 1,
+      "title": "The Classroom Grid",
+      "quiz": {
+        "question": "What two numbers are needed to describe exactly one seat in a classroom grid?",
+        "options": [
+          "A row number and a column number",
+          "Just a single seat number, counted from 1 to the total",
+          "The student's name and their favorite subject",
+          "The total number of rows only, with columns assumed"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">The Classroom Grid</div><div class=\"lesson-text\">To describe exactly one seat in a classroom, you need two coordinates: which row, and which column. A <span class=\"highlight\">2D array</span> represents exactly this &mdash; a grid addressed by row and column, instead of a single index.</div>"
+    },
+    {
+      "id": 2,
+      "title": "Declaring a 2D Array",
+      "quiz": {
+        "question": "What does int grid[3][4]; create?",
+        "code": "int grid[3][4];",
+        "options": [
+          "A grid with 3 rows and 4 columns, 12 elements total",
+          "A grid with 4 rows and 3 columns, 12 elements total",
+          "A 1D array of 7 elements combining both numbers",
+          "3 separate 4-element arrays that are unrelated to each other"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Declaring a 2D Array</div><div class=\"lesson-text\">The first bracket is the number of rows, the second is the number of columns.</div><div class=\"code-block\">int grid[3][4];   // 3 rows, 4 columns, 12 elements total\nint gradebook[2][3] = {\n    {90, 85, 78},\n    {88, 92, 75}\n};</div>"
+    },
+    {
+      "id": 3,
+      "title": "Indexing with [row][col]",
+      "quiz": {
+        "question": "What does grid[2][3] refer to in int grid[3][4];?",
+        "options": [
+          "The element in row 2, column 3 (both zero-indexed)",
+          "The element in row 3, column 2",
+          "The total number of elements in row 2",
+          "An invalid index, since 2D arrays only support one number"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Indexing with [row][col]</div><div class=\"lesson-text\">Just like 1D arrays, 2D arrays are zero-indexed. grid[row][col] reads or writes the element at that specific row and column.</div><div class=\"code-block\">int grid[3][4];\ngrid[2][3] = 99;         // write to row 2, column 3\nprintf(\"%d\", grid[2][3]);  // read it back: 99</div>"
+    },
+    {
+      "id": 4,
+      "title": "Row-Major Memory Layout",
+      "quiz": {
+        "question": "In row-major order, how is a 2D array actually stored in memory?",
+        "options": [
+          "One entire row after another, laid out as a single continuous block",
+          "One entire column after another, laid out as a single continuous block",
+          "Each row is stored in a completely separate, disconnected block of memory",
+          "Elements are stored in a random order determined at runtime"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Row-Major Memory Layout</div><div class=\"lesson-text\">A 2D array isn't really a grid in memory &mdash; it's laid out as one long row, with each row of the grid placed right after the previous one. This is called <span class=\"highlight\">row-major order</span>.</div><div class=\"code-block\">int grid[2][3] = {{1,2,3},{4,5,6}};\n// In memory: 1 2 3 4 5 6 — row 0 then row 1, back to back</div>"
+    },
+    {
+      "id": 5,
+      "title": "Traversing a 2D Array with Nested Loops",
+      "quiz": {
+        "question": "What is the correct order of operations to print every element of grid[3][4] row by row?",
+        "code": "for (int r = 0; r < 3; r++) {\n    for (int c = 0; c < 4; c++) {\n        printf(\"%d \", grid[r][c]);\n    }\n    printf(\"\\n\");\n}",
+        "options": [
+          "An outer loop over rows, and an inner loop over columns",
+          "A single loop that counts from 0 to 12",
+          "An outer loop over columns, and an inner loop over rows",
+          "Two separate, unrelated loops that never nest inside each other"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Traversing a 2D Array with Nested Loops</div><div class=\"lesson-text\">The outer loop walks through each row; the inner loop walks through each column within that row. Printing a newline after the inner loop finishes is what makes the output look like an actual grid.</div><div class=\"code-block\">for (int r = 0; r < 3; r++) {\n    for (int c = 0; c < 4; c++) {\n        printf(\"%d \", grid[r][c]);\n    }\n    printf(\"\\n\");\n}</div>"
+    },
+    {
+      "id": 6,
+      "title": "Reading Values into a 2D Array",
+      "quiz": {
+        "question": "In this nested input loop, what does scanf fill in first?",
+        "code": "for (int r = 0; r < 3; r++) {\n    for (int c = 0; c < 3; c++) {\n        scanf(\"%d\", &grid[r][c]);\n    }\n}",
+        "options": [
+          "Every column of row 0, before moving on to row 1",
+          "Every row of column 0, before moving on to column 1",
+          "The entire grid at once, with a single scanf call",
+          "Only the diagonal elements of the grid"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Reading Values into a 2D Array</div><div class=\"lesson-text\">Reading follows the same row-by-row order as printing: the inner loop finishes filling every column of the current row before the outer loop advances to the next row.</div><div class=\"code-block\">for (int r = 0; r < 3; r++) {\n    for (int c = 0; c < 3; c++) {\n        scanf(\"%d\", &grid[r][c]);\n    }\n}</div>"
+    },
+    {
+      "id": 7,
+      "title": "Printing an Aligned Grid with Field Widths",
+      "quiz": {
+        "question": "Why does printf(\"%4d\", value); help when printing a grid of numbers?",
+        "code": "printf(\"%4d\", value);",
+        "options": [
+          "It reserves a fixed width per number, keeping columns visually aligned",
+          "It rounds the number to 4 decimal places",
+          "It limits the value to a maximum of 4 digits, discarding the rest",
+          "It has no visible effect on the printed output"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Printing an Aligned Grid with Field Widths</div><div class=\"lesson-text\">Without a fixed width, numbers of different lengths (5 vs. 100) make columns drift out of alignment. A field width like %4d pads every number to the same width, keeping the printed grid looking like an actual grid.</div><div class=\"code-block\">for (int r = 0; r < 3; r++) {\n    for (int c = 0; c < 3; c++) {\n        printf(\"%4d\", grid[r][c]);\n    }\n    printf(\"\\n\");\n}</div>"
+    },
+    {
+      "id": 8,
+      "title": "Complete Example: Build and Print a Grade-Book Matrix",
+      "quiz": {
+        "question": "What is the purpose of the inner loop's boundary, c < 3, when traversing a 3x3 gradebook?",
+        "code": "int gradebook[3][3] = {\n    {90, 85, 78},\n    {88, 92, 75},\n    {70, 95, 89}\n};\nfor (int r = 0; r < 3; r++) {\n    for (int c = 0; c < 3; c++) {\n        printf(\"%4d\", gradebook[r][c]);\n    }\n    printf(\"\\n\");\n}",
+        "options": [
+          "It keeps the inner loop from reading past the last valid column in each row",
+          "It controls how many rows the outer loop will process",
+          "It has no functional purpose and could be removed safely",
+          "It determines the data type stored in the array"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Complete Example: Build and Print a Grade-Book Matrix</div><div class=\"lesson-text\">A full 3x3 gradebook matrix, built and printed with the same nested-loop pattern used throughout this discussion.</div><div class=\"code-block\">int gradebook[3][3] = {\n    {90, 85, 78},\n    {88, 92, 75},\n    {70, 95, 89}\n};\nfor (int r = 0; r < 3; r++) {\n    for (int c = 0; c < 3; c++) {\n        printf(\"%4d\", gradebook[r][c]);\n    }\n    printf(\"\\n\");\n}</div>"
+    },
+    {
+      "id": 9,
+      "title": "Recap",
+      "quiz": {
+        "question": "What is the core relationship between a 2D array and nested loops?",
+        "options": [
+          "An outer loop over rows and an inner loop over columns visits every grid cell exactly once",
+          "2D arrays cannot be traversed with loops at all",
+          "A single loop is always sufficient to visit every cell",
+          "The inner loop must always run more times than the outer loop"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Recap</div><div class=\"lesson-text\">A 2D array is addressed with grid[row][col] and stored in row-major order in memory. An outer loop over rows paired with an inner loop over columns visits every cell exactly once &mdash; the pattern every matrix operation in the next discussion will build on.</div><div class=\"code-block\">for (int r = 0; r < rows; r++) {\n    for (int c = 0; c < cols; c++) {\n        printf(\"%4d\", grid[r][c]);\n    }\n    printf(\"\\n\");\n}</div>"
+    }
+  ]
+}

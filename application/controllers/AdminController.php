@@ -411,6 +411,15 @@ class AdminController extends CI_Controller
         // JS auto-fills Max Score from this when a topic is picked, and
         // save_assessment() re-derives it server-side as the source of truth.
         $data['iq_topic_question_counts'] = [];
+        // Class code per topic (its assets/json/{CLASS_CODE}/ folder, '' for
+        // legacy/unfiled root files) — the modal JS filters the Topic dropdown
+        // to the section/class selected above so admins can't pick a topic
+        // that belongs to a different course.
+        $data['iq_topic_classes'] = [];
+        // Title/description straight from the topic JSON, keyed by slug — the
+        // modal JS auto-fills the assessment's Title/Description fields from
+        // this when a topic is picked, same as it does for Max Score.
+        $data['iq_topic_meta'] = [];
         foreach ($this->_glob_json_topics() as $file) {
             $meta = json_decode(file_get_contents($file), true);
             if (!$meta || empty($meta['sections'])) {
@@ -425,8 +434,14 @@ class AdminController extends CI_Controller
             }
             if ($is_discussion_format) {
                 $slug = basename($file, '.json');
-                $data['iq_topics'][$slug] = $meta['title'] ?? ucwords(str_replace('_', ' ', $slug));
+                $title = $meta['title'] ?? ucwords(str_replace('_', ' ', $slug));
+                $data['iq_topics'][$slug] = $title;
                 $data['iq_topic_question_counts'][$slug] = $this->_count_iq_topic_questions($meta);
+                $data['iq_topic_classes'][$slug] = $this->_topic_class_code_from_path($file);
+                $data['iq_topic_meta'][$slug] = [
+                    'title'       => $title,
+                    'description' => $meta['description'] ?? '',
+                ];
             }
         }
 
@@ -1215,6 +1230,17 @@ class AdminController extends CI_Controller
         $root      = glob($json_path . '*.json') ?: [];
         $nested    = glob($json_path . '*/*.json') ?: [];
         return array_merge($root, $nested);
+    }
+
+    // Class code a topic file belongs to, derived from its parent folder
+    // under assets/json/ (see _save_pasted_topic_json(), which writes new
+    // topics to assets/json/{CLASS_CODE}/). Returns '' for legacy/unfiled
+    // files sitting directly in assets/json/, meaning "available to every class".
+    private function _topic_class_code_from_path($file)
+    {
+        $json_path = rtrim(FCPATH . 'assets/json', '/\\');
+        $parent    = rtrim(dirname($file), '/\\');
+        return ($parent === $json_path) ? '' : basename($parent);
     }
 
     // Validates a pasted interactive-discussion JSON template and writes it to

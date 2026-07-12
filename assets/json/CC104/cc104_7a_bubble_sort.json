@@ -1,0 +1,153 @@
+{
+  "topic": "cc104_7a_bubble_sort",
+  "title": "Bubble Sort: By Hand, Then in Code",
+  "description": "Learn the bubble sort process using a physical swapping analogy, then implement it in C with nested loops.",
+  "congratsText": "Great work! You now understand and can implement bubble sort.",
+  "sections": [
+    {
+      "id": 0,
+      "title": "Objectives",
+      "quiz": null,
+      "lesson": "<div class=\"lesson-title\">What You Will Learn</div><div class=\"lesson-text\">By the end of this discussion, you will be able to:</div><div class=\"lesson-text\"><ul><li>Explain bubble sort using a physical swapping analogy</li><li>Implement bubble sort in C using nested loops</li><li>Trace bubble sort by hand, pass by pass</li><li>Identify and fix common bubble sort bugs</li></ul></div>"
+    },
+    {
+      "id": 1,
+      "title": "Sort the Line",
+      "quiz": {
+        "question": "If a line of people sorts itself by only comparing and swapping with their immediate neighbor, what is this process similar to?",
+        "options": [
+          "Bubble sort — repeated neighbor comparisons and swaps until the whole line is ordered",
+          "Linear search — checking each person once to find a target",
+          "Binary search — jumping to the middle of the line first",
+          "Array declaration — reserving a fixed number of spots in line"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Sort the Line</div><div class=\"lesson-text\">Picture a line of people sorting themselves by height, but with one rule: they may only compare and swap with the person directly next to them, no talking, repeating until nobody needs to swap anymore. That physical process is exactly <span class=\"highlight\">bubble sort</span>.</div>"
+    },
+    {
+      "id": 2,
+      "title": "Bubble Sort Logic",
+      "quiz": {
+        "question": "What does bubble sort do on each pass through the array?",
+        "options": [
+          "Compares each neighboring pair and swaps them if they're out of order",
+          "Picks the smallest remaining element and moves it to the front",
+          "Splits the array in half and sorts each half separately",
+          "Compares every element to a single fixed target value"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Bubble Sort Logic</div><div class=\"lesson-text\">On each pass, bubble sort walks through the array comparing each pair of neighbors. If they're out of order, it swaps them. Repeating this enough times moves the largest values toward the end, one pass at a time &mdash; like a bubble rising.</div>"
+    },
+    {
+      "id": 3,
+      "title": "Implementing Bubble Sort with Nested Loops",
+      "quiz": {
+        "question": "Why does bubble sort need TWO nested loops instead of one?",
+        "code": "for (int i = 0; i < size - 1; i++) {\n    for (int j = 0; j < size - i - 1; j++) {\n        if (arr[j] > arr[j + 1]) {\n            int temp = arr[j];\n            arr[j] = arr[j + 1];\n            arr[j + 1] = temp;\n        }\n    }\n}",
+        "options": [
+          "The outer loop repeats full passes, and the inner loop compares neighbors within each pass",
+          "One loop reads the array, and the other loop prints it",
+          "C requires two loops for any operation involving more than 3 elements",
+          "The inner loop only exists to slow the sort down for accuracy"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Implementing Bubble Sort with Nested Loops</div><div class=\"lesson-text\">The <span class=\"highlight\">outer loop</span> controls how many full passes happen. The <span class=\"highlight\">inner loop</span> does the actual neighbor comparisons and swaps within a single pass.</div><div class=\"code-block\">for (int i = 0; i < size - 1; i++) {\n    for (int j = 0; j < size - i - 1; j++) {\n        if (arr[j] > arr[j + 1]) {\n            int temp = arr[j];\n            arr[j] = arr[j + 1];\n            arr[j + 1] = temp;\n        }\n    }\n}</div>"
+    },
+    {
+      "id": 4,
+      "title": "Why a temp Variable Is Needed to Swap",
+      "quiz": {
+        "question": "Why can't arr[j] and arr[j+1] be swapped with just arr[j] = arr[j+1]; arr[j+1] = arr[j];?",
+        "code": "// Buggy swap attempt:\narr[j] = arr[j + 1];\narr[j + 1] = arr[j];",
+        "options": [
+          "The first line overwrites arr[j]'s original value before it can be saved into arr[j+1]",
+          "C does not allow array elements to be assigned to each other",
+          "This actually works correctly and needs no temp variable",
+          "It only fails when the array has an even number of elements"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Why a temp Variable Is Needed to Swap</div><div class=\"lesson-text\">Without a temporary holding spot, the first assignment overwrites arr[j] before its original value has been saved anywhere &mdash; so the second line just copies the same (now-overwritten) value back. A temp variable preserves one value while the swap happens.</div><div class=\"code-block\">int temp = arr[j];       // save arr[j] first\narr[j] = arr[j + 1];\narr[j + 1] = temp;        // now safely restore it</div>"
+    },
+    {
+      "id": 5,
+      "title": "Tracing One Pass by Hand",
+      "quiz": {
+        "question": "After ONE full pass of bubble sort on {5, 3, 8, 1}, what does the array look like?",
+        "code": "Start: {5, 3, 8, 1}\nCompare 5,3 -> swap -> {3, 5, 8, 1}\nCompare 5,8 -> no swap -> {3, 5, 8, 1}\nCompare 8,1 -> swap -> {3, 5, 1, 8}",
+        "options": [
+          "{3, 5, 1, 8}",
+          "{1, 3, 5, 8}",
+          "{5, 3, 8, 1}",
+          "{8, 5, 3, 1}"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Tracing One Pass by Hand</div><div class=\"lesson-text\">Tracing by hand means writing the array's state after every single comparison, not just at the end of the pass. Notice that after one pass, the array isn't fully sorted yet &mdash; but the largest value (8) has moved further toward the end.</div><div class=\"code-block\">Start: {5, 3, 8, 1}\nCompare 5,3 -> swap -> {3, 5, 8, 1}\nCompare 5,8 -> no swap -> {3, 5, 8, 1}\nCompare 8,1 -> swap -> {3, 5, 1, 8}</div>"
+    },
+    {
+      "id": 6,
+      "title": "Why Bubble Sort Needs Multiple Passes",
+      "quiz": {
+        "question": "Why does bubble sort need more than one pass to fully sort an array?",
+        "options": [
+          "Each pass only guarantees the largest unsorted value reaches its final position",
+          "The first pass sorts everything, and later passes just double-check it",
+          "C requires exactly size passes regardless of the data",
+          "Multiple passes are only needed if the array contains duplicates"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Why Bubble Sort Needs Multiple Passes</div><div class=\"lesson-text\">Each full pass only guarantees that the largest remaining value 'bubbles' all the way to its correct position at the end. Everything before that position may still be out of order, so the process must repeat.</div>"
+    },
+    {
+      "id": 7,
+      "title": "The Off-by-One Loop Bound Bug",
+      "quiz": {
+        "question": "What goes wrong if the inner loop condition is written as j < size instead of j < size - i - 1?",
+        "code": "for (int j = 0; j < size; j++) {\n    if (arr[j] > arr[j + 1]) { ... }\n}",
+        "options": [
+          "It compares arr[size-1] to arr[size], which is out of bounds",
+          "It makes the sort run in exactly half the time",
+          "It sorts the array in descending order instead of ascending",
+          "It has no effect — the result is identical either way"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">The Off-by-One Loop Bound Bug</div><div class=\"lesson-text\">If the inner loop runs all the way to j &lt; size, the last comparison reaches arr[j + 1] where j is size - 1 &mdash; accessing arr[size], which is outside the array. The correct bound, size - i - 1, also gets tighter each pass since the end of the array is already sorted.</div>"
+    },
+    {
+      "id": 8,
+      "title": "Best Practice: Print After Each Pass While Debugging",
+      "quiz": {
+        "question": "Why is printing the array after each pass a useful debugging habit for bubble sort?",
+        "options": [
+          "It makes it visible exactly when and where a swap goes wrong",
+          "It permanently speeds up the sorting algorithm",
+          "C requires a print statement inside every sorting loop",
+          "It replaces the need for a temp variable entirely"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Best Practice: Print After Each Pass While Debugging</div><div class=\"lesson-text\">Adding a printf of the whole array after each outer-loop pass turns an invisible process into something you can watch happen &mdash; making it far easier to spot a seeded bug like a missing swap or an incorrect loop bound.</div>"
+    },
+    {
+      "id": 9,
+      "title": "Recap",
+      "quiz": {
+        "question": "What is the core mechanism behind bubble sort?",
+        "options": [
+          "Repeatedly comparing and swapping neighboring elements across multiple passes",
+          "Dividing the array in half and sorting each half independently",
+          "Picking the smallest value and inserting it at the front each time",
+          "Comparing every element only to the very first element"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Recap</div><div class=\"lesson-text\">Bubble sort repeatedly compares neighboring elements and swaps them when out of order, using nested loops &mdash; the outer loop for passes, the inner loop for comparisons. Each pass guarantees one more value reaches its final position, which is why multiple passes are required.</div><div class=\"code-block\">for (int i = 0; i < size - 1; i++) {\n    for (int j = 0; j < size - i - 1; j++) {\n        if (arr[j] > arr[j + 1]) {\n            int temp = arr[j];\n            arr[j] = arr[j + 1];\n            arr[j + 1] = temp;\n        }\n    }\n}</div>"
+    }
+  ]
+}

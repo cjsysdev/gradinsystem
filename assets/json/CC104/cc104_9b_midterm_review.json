@@ -1,0 +1,153 @@
+{
+  "topic": "cc104_9b_midterm_review",
+  "title": "Midterm Review: Traversal, Search, Sort & 2D Arrays",
+  "description": "A consolidated review of every array skill from the midterm period, covering traversal, search, sort, and 2D arrays before the exam.",
+  "congratsText": "Great work! You've reviewed every array skill from the midterm — you're ready for the exam.",
+  "sections": [
+    {
+      "id": 0,
+      "title": "Objectives",
+      "quiz": null,
+      "lesson": "<div class=\"lesson-title\">What You Will Learn</div><div class=\"lesson-text\">By the end of this discussion, you will be able to:</div><div class=\"lesson-text\"><ul><li>Recall the core pattern behind array declaration, traversal, and aggregation</li><li>Recall the core pattern behind linear search and its variations</li><li>Recall the core pattern behind bubble sort and its variations</li><li>Recall the core pattern behind 2D array traversal and matrix operations</li></ul></div>"
+    },
+    {
+      "id": 1,
+      "title": "Review: Declaration, Indexing & Traversal",
+      "quiz": {
+        "question": "For int arr[6];, what are the valid index values?",
+        "options": [
+          "0 through 5",
+          "1 through 6",
+          "0 through 6",
+          "1 through 5"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Review: Declaration, Indexing & Traversal</div><div class=\"lesson-text\">Arrays are zero-indexed, fixed-size blocks of same-type memory. A for loop with i &lt; size safely traverses every element without going out of bounds.</div><div class=\"code-block\">int arr[6];\nfor (int i = 0; i < 6; i++) {\n    // valid indexes: 0 through 5\n}</div>"
+    },
+    {
+      "id": 2,
+      "title": "Review: The Accumulator Pattern",
+      "quiz": {
+        "question": "What is the result of this accumulator loop on arr = {4, 8, 2, 6}?",
+        "code": "int sum = 0;\nfor (int i = 0; i < 4; i++) {\n    sum += arr[i];\n}",
+        "options": [
+          "20",
+          "4",
+          "8",
+          "6"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Review: The Accumulator Pattern</div><div class=\"lesson-text\">Sum, average, and conditional count all share the same shape: initialize a variable before the loop, update it on every pass. The same single traversal can update several accumulators at once.</div>"
+    },
+    {
+      "id": 3,
+      "title": "Review: Linear Search",
+      "quiz": {
+        "question": "Why does linear search return -1 instead of 0 to signal 'not found'?",
+        "options": [
+          "0 is a valid index (the first element), so it can't also mean 'not found'",
+          "-1 makes the function run faster than returning 0 would",
+          "C does not allow functions to return the value 0",
+          "It has no real reason — either value would work equally well"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Review: Linear Search</div><div class=\"lesson-text\">Linear search compares each element to a target in order, stopping and returning the index on a match, or returning -1 if the loop finishes without one.</div><div class=\"code-block\">int search(int arr[], int size, int target) {\n    for (int i = 0; i < size; i++) {\n        if (arr[i] == target) return i;\n    }\n    return -1;\n}</div>"
+    },
+    {
+      "id": 4,
+      "title": "Review: Search Variations",
+      "quiz": {
+        "question": "What is the key code change between 'find first match' and 'find all matches'?",
+        "options": [
+          "Removing the early return, so the loop keeps scanning after a match",
+          "Changing the comparison operator from == to !=",
+          "Adding a second nested loop over the same array",
+          "Sorting the array before the search loop begins"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Review: Search Variations</div><div class=\"lesson-text\">First match returns immediately on the first hit. Find-all removes that early return so the loop keeps going. Min/max compares elements to each other instead of to a fixed target, usually starting the loop at index 1 after seeding with arr[0].</div>"
+    },
+    {
+      "id": 5,
+      "title": "Review: Bubble Sort",
+      "quiz": {
+        "question": "After ONE full pass of ascending bubble sort on {6, 2, 9, 1}, what does the array look like?",
+        "code": "Compare 6,2 -> swap -> {2, 6, 9, 1}\nCompare 6,9 -> no swap -> {2, 6, 9, 1}\nCompare 9,1 -> swap -> {2, 6, 1, 9}",
+        "options": [
+          "{2, 6, 1, 9}",
+          "{1, 2, 6, 9}",
+          "{6, 2, 9, 1}",
+          "{9, 6, 2, 1}"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Review: Bubble Sort</div><div class=\"lesson-text\">Bubble sort compares and swaps neighboring pairs across repeated passes. Each pass guarantees the largest unsorted value reaches its correct position at the end &mdash; which is why multiple passes are required to fully sort.</div><div class=\"code-block\">for (int i = 0; i < size - 1; i++) {\n    for (int j = 0; j < size - i - 1; j++) {\n        if (arr[j] > arr[j + 1]) {\n            int temp = arr[j];\n            arr[j] = arr[j + 1];\n            arr[j + 1] = temp;\n        }\n    }\n}</div>"
+    },
+    {
+      "id": 6,
+      "title": "Review: Sort Variations",
+      "quiz": {
+        "question": "What single change turns ascending bubble sort into descending bubble sort?",
+        "options": [
+          "Flipping the comparison operator from > to <",
+          "Reversing the array before sorting starts",
+          "Changing the outer loop to count downward",
+          "Adding an extra parameter for direction to every function"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Review: Sort Variations</div><div class=\"lesson-text\">Descending order only requires flipping one comparison symbol. Searching a sorted array can stop early once a value exceeds the target, since nothing later in the sorted array could possibly match.</div>"
+    },
+    {
+      "id": 7,
+      "title": "Review: 2D Arrays & Traversal",
+      "quiz": {
+        "question": "What is the correct loop structure to visit every cell of a 2D array exactly once?",
+        "code": "for (int r = 0; r < rows; r++) {\n    for (int c = 0; c < cols; c++) {\n        // visit grid[r][c]\n    }\n}",
+        "options": [
+          "An outer loop over rows, and an inner loop over columns",
+          "A single loop counting from 0 to rows + cols",
+          "An outer loop over columns, and an inner loop over rows only for even columns",
+          "Two completely independent, non-nested loops"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Review: 2D Arrays & Traversal</div><div class=\"lesson-text\">A 2D array is addressed with grid[row][col] and stored in row-major order in memory. Nested loops &mdash; outer for rows, inner for columns &mdash; visit every cell exactly once.</div>"
+    },
+    {
+      "id": 8,
+      "title": "Review: Matrix Operations",
+      "quiz": {
+        "question": "Which cells make up a square matrix's main diagonal?",
+        "code": "int diagSum = 0;\nfor (int i = 0; i < size; i++) {\n    diagSum += grid[i][i];\n}",
+        "options": [
+          "Cells where the row index equals the column index",
+          "Every cell in the first row only",
+          "Cells where the row index is one greater than the column index",
+          "Every cell in the last column only"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Review: Matrix Operations</div><div class=\"lesson-text\">Matrix addition combines matching cells (result[i][j] = a[i][j] + b[i][j]) and requires equal dimensions. Grid search nests the linear-search comparison across rows and columns. Diagonal sum adds cells where the row and column index match.</div>"
+    },
+    {
+      "id": 9,
+      "title": "Recap: The Exam Scope",
+      "quiz": {
+        "question": "Which four topic areas does the midterm exam cover, based on this review?",
+        "options": [
+          "Array declaration/traversal, search (and variations), sort (and variations), and 2D arrays/matrices",
+          "Linked lists, stacks, queues, and trees",
+          "Only bubble sort and nothing else from the midterm period",
+          "Only topics from Weeks 1 through 3 on C foundations"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Recap: The Exam Scope</div><div class=\"lesson-text\">The midterm exam draws from four connected areas: array declaration/traversal and aggregation, linear search and its variations, bubble sort and its variations, and 2D array/matrix operations. Every one of these builds on the same core habits &mdash; zero-based indexing, loop traversal, and the accumulator pattern &mdash; applied in different combinations.</div>"
+    }
+  ]
+}

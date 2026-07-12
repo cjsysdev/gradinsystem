@@ -1,0 +1,152 @@
+{
+  "topic": "cc104_4b_array_aggregation",
+  "title": "Array Aggregation: Sum, Average & Count",
+  "description": "Learn the accumulator pattern to compute totals, averages, and conditional counts from an array.",
+  "congratsText": "Great work! You now know how to aggregate array data using the accumulator pattern.",
+  "sections": [
+    {
+      "id": 0,
+      "title": "Objectives",
+      "quiz": null,
+      "lesson": "<div class=\"lesson-title\">What You Will Learn</div><div class=\"lesson-text\">By the end of this discussion, you will be able to:</div><div class=\"lesson-text\"><ul><li>Traverse an array to compute a running sum</li><li>Compute an average from a sum and element count</li><li>Count elements that meet a condition</li><li>Apply the accumulator pattern to different aggregation tasks</li></ul></div>"
+    },
+    {
+      "id": 1,
+      "title": "The Grocery Receipt Idea",
+      "quiz": {
+        "question": "What everyday process does summing an array most resemble?",
+        "options": [
+          "A cashier scanning items one at a time and adding to a running total",
+          "A librarian alphabetizing books on a shelf",
+          "A teacher assigning random seats to students",
+          "A printer choosing which page to print first"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">The Grocery Receipt Idea</div><div class=\"lesson-text\">A cashier's total doesn't appear all at once &mdash; it grows one item at a time as each price is scanned and added. Summing an array works the same way: a running total that grows with each element visited.</div>"
+    },
+    {
+      "id": 2,
+      "title": "The Accumulator Pattern",
+      "quiz": {
+        "question": "Why must sum be set to 0 before the loop begins?",
+        "code": "int sum = 0;\nfor (int i = 0; i < 5; i++) {\n    sum += arr[i];\n}",
+        "options": [
+          "So the loop starts adding from a known, empty starting point",
+          "Because C requires every variable to start at exactly 0",
+          "To make the loop run exactly 5 times instead of more",
+          "It isn't required — sum works the same without it"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">The Accumulator Pattern</div><div class=\"lesson-text\">An <span class=\"highlight\">accumulator</span> is a variable initialized before a loop, then updated on every pass. It's the single most reusable pattern in array processing.</div><div class=\"code-block\">int sum = 0;\nfor (int i = 0; i < 5; i++) {\n    sum += arr[i];   // same as: sum = sum + arr[i];\n}</div><div class=\"lesson-text\">If sum started at some other value, or wasn't reset each run, the total would be wrong from the very first addition.</div>"
+    },
+    {
+      "id": 3,
+      "title": "Computing Sum",
+      "quiz": {
+        "question": "What is the value of sum after this loop runs on int arr[4] = {10, 20, 30, 40};?",
+        "code": "int sum = 0;\nfor (int i = 0; i < 4; i++) {\n    sum += arr[i];\n}",
+        "options": [
+          "100",
+          "40",
+          "10",
+          "4"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Computing Sum</div><div class=\"lesson-text\">Summing is the accumulator pattern in its purest form: start at 0, add every element as the loop passes over it.</div><div class=\"code-block\">int arr[4] = {10, 20, 30, 40};\nint sum = 0;\nfor (int i = 0; i < 4; i++) {\n    sum += arr[i];\n}\nprintf(\"Sum: %d\", sum);  // Sum: 100</div>"
+    },
+    {
+      "id": 4,
+      "title": "Computing Average",
+      "quiz": {
+        "question": "Given a completed sum and a known array size, how is the average computed?",
+        "options": [
+          "Divide the sum by the number of elements",
+          "Divide the number of elements by the sum",
+          "Add the sum to the number of elements",
+          "Multiply the sum by the number of elements"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Computing Average</div><div class=\"lesson-text\">Once the sum is known, the average is just one more step &mdash; no second loop needed.</div><div class=\"code-block\">float average = (float) sum / size;\n// casting to float avoids integer division truncating the result</div><div class=\"lesson-text\">Without the (float) cast, dividing two ints in C truncates any decimal portion, silently producing a wrong answer like 25 instead of 25.75.</div>"
+    },
+    {
+      "id": 5,
+      "title": "Counting with a Condition",
+      "quiz": {
+        "question": "What does this loop count?",
+        "code": "int count = 0;\nfor (int i = 0; i < 5; i++) {\n    if (arr[i] > 50) {\n        count++;\n    }\n}",
+        "options": [
+          "How many elements in the array are greater than 50",
+          "The sum of all elements greater than 50",
+          "The index of the first element greater than 50",
+          "How many elements are equal to exactly 50"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Counting with a Condition</div><div class=\"lesson-text\">The accumulator pattern isn't only for totals &mdash; it also counts. Instead of adding a value, add 1 whenever an element meets a condition.</div><div class=\"code-block\">int count = 0;\nfor (int i = 0; i < 5; i++) {\n    if (arr[i] > 50) {\n        count++;\n    }\n}</div><div class=\"lesson-text\">Swap the condition and this same shape counts anything: values above average, negative numbers, or matches to a target.</div>"
+    },
+    {
+      "id": 6,
+      "title": "Combining Sum, Average & Count in One Pass",
+      "quiz": {
+        "question": "Why can sum, count-above-threshold, and other aggregations often be computed in a single loop?",
+        "options": [
+          "Because each element is already being visited once during traversal",
+          "Because C combines all loops into one automatically at compile time",
+          "Because arrays store pre-computed totals inside themselves",
+          "It isn't possible — each aggregation always needs its own loop"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Combining Sum, Average & Count in One Pass</div><div class=\"lesson-text\">Since every element is already visited during traversal, multiple accumulators can update together in the same loop &mdash; no need to loop through the array twice.</div><div class=\"code-block\">int sum = 0, count = 0;\nfor (int i = 0; i < 5; i++) {\n    sum += arr[i];\n    if (arr[i] > 50) count++;\n}</div>"
+    },
+    {
+      "id": 7,
+      "title": "Complete Example: Sum, Average & Above-Average Count",
+      "quiz": {
+        "question": "In a program that needs the average BEFORE counting values above it, why might two separate loops be necessary?",
+        "options": [
+          "The average isn't known until the sum loop finishes, so counting needs a second pass",
+          "C does not allow more than one loop in the same function",
+          "Average and count must always use different array variables",
+          "A single loop can never contain an if statement"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Complete Example: Sum, Average & Above-Average Count</div><div class=\"lesson-text\">Some aggregations depend on a result that isn't ready until the first loop completes &mdash; like counting values above the average.</div><div class=\"code-block\">int sum = 0;\nfor (int i = 0; i < 5; i++) sum += arr[i];\nfloat avg = (float) sum / 5;\n\nint aboveCount = 0;\nfor (int i = 0; i < 5; i++) {\n    if (arr[i] > avg) aboveCount++;\n}</div><div class=\"lesson-text\">This is a normal, expected pattern &mdash; not every aggregation can be squeezed into a single pass.</div>"
+    },
+    {
+      "id": 8,
+      "title": "Best Practice: Testing Against Multiple Datasets",
+      "quiz": {
+        "question": "Why is it good practice to test an aggregation program against several different datasets, not just one?",
+        "options": [
+          "Edge cases like all-equal values can reveal bugs a single test set hides",
+          "C requires at least three test runs before a program will compile",
+          "Running multiple datasets makes the program execute faster",
+          "It's only necessary if the array size is larger than 10"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Best Practice: Testing Against Multiple Datasets</div><div class=\"lesson-text\">A program that works on one sample array can still hide bugs. Try datasets with all the same value, all zeros, or one very large outlier &mdash; these edge cases often expose accumulator mistakes that a 'normal-looking' dataset never triggers.</div>"
+    },
+    {
+      "id": 9,
+      "title": "Recap",
+      "quiz": {
+        "question": "What is the core idea shared by sum, average, and conditional count?",
+        "options": [
+          "All three reuse the same accumulate-while-traversing pattern",
+          "All three require the array to be sorted first",
+          "All three only work correctly on arrays of exactly 5 elements",
+          "All three need a separate function call for every element"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Recap</div><div class=\"lesson-text\">Sum, average, and conditional count all grow from the same accumulator pattern: start with a known value before the loop, update it on every pass, and read the final result once traversal is done.</div><div class=\"code-block\">int sum = 0, count = 0;\nfor (int i = 0; i < n; i++) {\n    sum += arr[i];\n    if (arr[i] > threshold) count++;\n}\nfloat avg = (float) sum / n;</div>"
+    }
+  ]
+}

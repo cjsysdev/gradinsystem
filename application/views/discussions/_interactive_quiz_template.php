@@ -397,7 +397,7 @@ $previous_answers  = $previous_answers ?? [];
         }
 
         // ── Fullscreen ──────────────────────────────────────────────
-        const TOPICS_URL = '<?= base_url('interactive_quiz/topics') ?>';
+        const TOPICS_URL = '<?= base_url('classwork') ?>';
 
         function enterFullscreen() {
             const el = document.documentElement;

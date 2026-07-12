@@ -1,0 +1,154 @@
+{
+  "topic": "cc104_6b_search_variations",
+  "title": "Search Variations: First Match, All Matches & Min/Max",
+  "description": "Adapt the linear search pattern to find the first occurrence, every occurrence, and the minimum or maximum value in an array.",
+  "congratsText": "Great work! You now know how to adapt linear search into several useful variations.",
+  "sections": [
+    {
+      "id": 0,
+      "title": "Objectives",
+      "quiz": null,
+      "lesson": "<div class=\"lesson-title\">What You Will Learn</div><div class=\"lesson-text\">By the end of this discussion, you will be able to:</div><div class=\"lesson-text\"><ul><li>Find the first occurrence of a value in an array with duplicates</li><li>Find and report every occurrence of a value</li><li>Adapt linear search to find the minimum and maximum values</li><li>Recognize these as variations of one shared pattern</li></ul></div>"
+    },
+    {
+      "id": 1,
+      "title": "One Prize or Many?",
+      "quiz": {
+        "question": "If more than one student shares the same top score, what question does that raise for a search function?",
+        "options": [
+          "Should the search stop at the first match, or find every match?",
+          "Whether the array needs to be declared with a larger size",
+          "Whether linear search can even be used with duplicate values",
+          "Whether the array must be converted into a 2D array first"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">One Prize or Many?</div><div class=\"lesson-text\">Real data often has duplicates. The same base search loop can answer two very different questions: 'where is the FIRST match?' or 'where are ALL the matches?' &mdash; the choice depends on what the problem actually needs.</div>"
+    },
+    {
+      "id": 2,
+      "title": "Variation 1: First Match (Same as Basic Search)",
+      "quiz": {
+        "question": "What does firstMatch() return for target 20 in arr = {10, 20, 30, 20, 50}?",
+        "code": "int firstMatch(int arr[], int size, int target) {\n    for (int i = 0; i < size; i++) {\n        if (arr[i] == target) {\n            return i;\n        }\n    }\n    return -1;\n}",
+        "options": [
+          "1, the index of the first occurrence",
+          "3, the index of the last occurrence",
+          "2, the total number of matches",
+          "20, the value itself"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Variation 1: First Match (Same as Basic Search)</div><div class=\"lesson-text\">Finding the first match is exactly Week 6A's search function &mdash; it already stops at the first hit and returns immediately, ignoring any duplicates later in the array.</div>"
+    },
+    {
+      "id": 3,
+      "title": "Variation 2: Find All Matches",
+      "quiz": {
+        "question": "What is the key structural change needed to find ALL matches instead of just the first?",
+        "code": "void findAll(int arr[], int size, int target) {\n    for (int i = 0; i < size; i++) {\n        if (arr[i] == target) {\n            printf(\"Found at index %d\\n\", i);\n        }\n    }\n}",
+        "options": [
+          "Remove the early return so the loop keeps going after a match",
+          "Add a second nested loop that repeats the search",
+          "Change the comparison from == to !=",
+          "Sort the array before starting the loop"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Variation 2: Find All Matches</div><div class=\"lesson-text\">Removing the early return is the entire change. Without it, the loop keeps scanning past a match instead of stopping, reporting every index where the target appears.</div><div class=\"code-block\">void findAll(int arr[], int size, int target) {\n    for (int i = 0; i < size; i++) {\n        if (arr[i] == target) {\n            printf(\"Found at index %d\\n\", i);\n        }\n    }\n}\n// no return inside the if — the loop keeps going</div>"
+    },
+    {
+      "id": 4,
+      "title": "The Early-Return Bug",
+      "quiz": {
+        "question": "What goes wrong if findAll() accidentally keeps a return statement inside the if block?",
+        "code": "void findAllBuggy(int arr[], int size, int target) {\n    for (int i = 0; i < size; i++) {\n        if (arr[i] == target) {\n            printf(\"Found at index %d\\n\", i);\n            return;\n        }\n    }\n}",
+        "options": [
+          "It stops after the first match, missing every later occurrence",
+          "It prints every index in the array, matching or not",
+          "The program fails to compile because return is misplaced",
+          "It searches the array in reverse order instead of forward"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">The Early-Return Bug</div><div class=\"lesson-text\">This is one of the most common bugs in a find-all function: leaving a return (or break) inside the if block silently turns 'find all' back into 'find first', and later matches are missed without any error message.</div>"
+    },
+    {
+      "id": 5,
+      "title": "Variation 3: Finding the Minimum",
+      "quiz": {
+        "question": "What is the key difference between finding the minimum and searching for a target?",
+        "code": "int findMin(int arr[], int size) {\n    int min = arr[0];\n    for (int i = 1; i < size; i++) {\n        if (arr[i] < min) {\n            min = arr[i];\n        }\n    }\n    return min;\n}",
+        "options": [
+          "Elements are compared to each other, not to a fixed target value",
+          "The loop must always start at index 1 instead of index 0",
+          "The array must be sorted in ascending order beforehand",
+          "It requires exactly the same code as firstMatch()"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Variation 3: Finding the Minimum</div><div class=\"lesson-text\">Instead of comparing every element to a fixed target, findMin() compares elements to each other, keeping track of the smallest one seen so far.</div><div class=\"code-block\">int findMin(int arr[], int size) {\n    int min = arr[0];       // start by assuming the first is smallest\n    for (int i = 1; i < size; i++) {\n        if (arr[i] < min) {\n            min = arr[i];\n        }\n    }\n    return min;\n}</div>"
+    },
+    {
+      "id": 6,
+      "title": "Why the Loop Starts at Index 1 for Min/Max",
+      "quiz": {
+        "question": "Why does findMin() initialize min = arr[0] and then start its loop at i = 1?",
+        "options": [
+          "The first element is already accounted for as the starting guess",
+          "Index 0 is invalid and must always be skipped in any array loop",
+          "It makes the function run in exactly half the time",
+          "C requires min/max loops to always begin at index 1"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Why the Loop Starts at Index 1 for Min/Max</div><div class=\"lesson-text\">Since min already holds arr[0] before the loop begins, comparing it against arr[0] again inside the loop would be redundant. Starting at index 1 simply avoids that wasted, unnecessary comparison.</div>"
+    },
+    {
+      "id": 7,
+      "title": "Complete Example: findMax() by Adapting findMin()",
+      "quiz": {
+        "question": "What single change turns findMin() into findMax()?",
+        "code": "int findMax(int arr[], int size) {\n    int max = arr[0];\n    for (int i = 1; i < size; i++) {\n        if (arr[i] > max) {\n            max = arr[i];\n        }\n    }\n    return max;\n}",
+        "options": [
+          "Flipping the comparison operator from < to >",
+          "Changing the loop to start at index 0 instead of 1",
+          "Adding a second array parameter to the function",
+          "Reversing the array before the loop begins"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Complete Example: findMax() by Adapting findMin()</div><div class=\"lesson-text\">Just like descending sort will later flip one symbol, findMax() is findMin() with the comparison flipped from &lt; to &gt;. The overall shape stays identical.</div><div class=\"code-block\">int findMax(int arr[], int size) {\n    int max = arr[0];\n    for (int i = 1; i < size; i++) {\n        if (arr[i] > max) {\n            max = arr[i];\n        }\n    }\n    return max;\n}</div>"
+    },
+    {
+      "id": 8,
+      "title": "Best Practice: One Shared Array, Three Tests",
+      "quiz": {
+        "question": "Why is it useful to test firstMatch(), findAll(), and findMinMax() against the same shared test array?",
+        "options": [
+          "It makes it easy to compare each function's results and confirm they're all working correctly against known data",
+          "C requires all functions in a file to use identical input",
+          "It reduces the number of variables the program needs to declare",
+          "It's only useful if the array contains no duplicate values"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Best Practice: One Shared Array, Three Tests</div><div class=\"lesson-text\">Testing all three variations against the same dataset makes results easy to verify by eye and easy to compare &mdash; if the shared array is known in advance, you already know what each function should return.</div>"
+    },
+    {
+      "id": 9,
+      "title": "Recap",
+      "quiz": {
+        "question": "What do first-match, find-all, and min/max all have in common?",
+        "options": [
+          "They are all variations on the same loop-and-compare pattern from basic linear search",
+          "They all require the array to be sorted before running",
+          "They each need a completely different, unrelated algorithm",
+          "They only work on arrays containing exactly five elements"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Recap</div><div class=\"lesson-text\">All three variations reuse the same loop-and-compare shape from basic linear search &mdash; only the comparison and what happens on a match change. Removing an early return finds every match; comparing elements to each other instead of a target finds the min or max.</div><div class=\"code-block\">int findMax(int arr[], int size) {\n    int max = arr[0];\n    for (int i = 1; i < size; i++) if (arr[i] > max) max = arr[i];\n    return max;\n}</div>"
+    }
+  ]
+}

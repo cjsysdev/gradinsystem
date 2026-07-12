@@ -1,0 +1,154 @@
+{
+  "topic": "cc104_8b_matrix_variations",
+  "title": "Matrix Variations: Addition, Search & Diagonal",
+  "description": "Implement matrix addition, search a 2D array for a target value, and compute the sum of a matrix's diagonal.",
+  "congratsText": "Great work! You now know how to implement matrix addition, grid search, and diagonal sums.",
+  "sections": [
+    {
+      "id": 0,
+      "title": "Objectives",
+      "quiz": null,
+      "lesson": "<div class=\"lesson-title\">What You Will Learn</div><div class=\"lesson-text\">By the end of this discussion, you will be able to:</div><div class=\"lesson-text\"><ul><li>Implement matrix addition of two same-size matrices</li><li>Search a 2D array for a target value and report its position</li><li>Compute the sum of a matrix's diagonal elements</li><li>Explain why matrix addition requires equal dimensions</li></ul></div>"
+    },
+    {
+      "id": 1,
+      "title": "Two Chessboards",
+      "quiz": {
+        "question": "If two chessboards are overlaid and the piece counts on each square are added together, what operation does this describe?",
+        "options": [
+          "Matrix addition, adding corresponding cells from two grids",
+          "Grid search, looking for one specific value",
+          "Diagonal sum, adding only the diagonal cells",
+          "Row-major traversal, printing one grid after another"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Two Chessboards</div><div class=\"lesson-text\">Imagine overlaying two chessboards and adding the piece counts, square by square. That's exactly what <span class=\"highlight\">matrix addition</span> does &mdash; combining two grids by adding the values that share the same position.</div>"
+    },
+    {
+      "id": 2,
+      "title": "Matrix Addition Logic",
+      "quiz": {
+        "question": "What is the rule for computing result[i][j] in matrix addition?",
+        "code": "result[i][j] = a[i][j] + b[i][j];",
+        "options": [
+          "Add the elements from a and b that share the same row and column",
+          "Add every element of a to every element of b, regardless of position",
+          "Add only the elements along the diagonal of each matrix",
+          "Add the row totals of a to the column totals of b"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Matrix Addition Logic</div><div class=\"lesson-text\">Each cell of the result is the sum of the two matrices' matching cells &mdash; same row, same column, nothing more.</div><div class=\"code-block\">result[i][j] = a[i][j] + b[i][j];</div>"
+    },
+    {
+      "id": 3,
+      "title": "Why Matrices Must Be the Same Size",
+      "quiz": {
+        "question": "Why does matrix addition require both matrices to have the same number of rows and columns?",
+        "options": [
+          "Every cell needs a matching cell in the other matrix to add to",
+          "C only allows matrices with an even number of rows",
+          "It doesn't actually require equal sizes — any two matrices can be added",
+          "Larger matrices are automatically shrunk to match the smaller one"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Why Matrices Must Be the Same Size</div><div class=\"lesson-text\">Since result[i][j] = a[i][j] + b[i][j], every position in a must have a matching position in b. If the dimensions don't match, some cell in one matrix would have no corresponding cell to add.</div>"
+    },
+    {
+      "id": 4,
+      "title": "Implementing Matrix Addition",
+      "quiz": {
+        "question": "What does result look like after adding a = {{1,2},{3,4}} and b = {{5,6},{7,8}}?",
+        "code": "for (int i = 0; i < 2; i++) {\n    for (int j = 0; j < 2; j++) {\n        result[i][j] = a[i][j] + b[i][j];\n    }\n}",
+        "options": [
+          "{{6,8},{10,12}}",
+          "{{5,12},{21,32}}",
+          "{{1,2},{3,4}}",
+          "{{4,4},{4,4}}"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Implementing Matrix Addition</div><div class=\"lesson-text\">The same nested-loop shape from grid traversal now fills in a third matrix, cell by cell.</div><div class=\"code-block\">int a[2][2] = {{1,2},{3,4}};\nint b[2][2] = {{5,6},{7,8}};\nint result[2][2];\nfor (int i = 0; i < 2; i++) {\n    for (int j = 0; j < 2; j++) {\n        result[i][j] = a[i][j] + b[i][j];\n    }\n}\n// result = {{6,8},{10,12}}</div>"
+    },
+    {
+      "id": 5,
+      "title": "Searching a 2D Array",
+      "quiz": {
+        "question": "How does grid search adapt the 1D linear search pattern?",
+        "code": "for (int r = 0; r < rows; r++) {\n    for (int c = 0; c < cols; c++) {\n        if (grid[r][c] == target) {\n            // found at row r, col c\n        }\n    }\n}",
+        "options": [
+          "It nests the same compare-each-element loop inside a second loop for rows",
+          "It requires the matrix to be sorted before it can be searched",
+          "It only checks the first row of the matrix, never the rest",
+          "It compares entire rows to the target instead of individual cells"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Searching a 2D Array</div><div class=\"lesson-text\">Grid search nests the familiar linear-search comparison inside a second loop &mdash; every cell in every row gets checked against the target, exactly like 1D search but across two dimensions.</div><div class=\"code-block\">for (int r = 0; r < rows; r++) {\n    for (int c = 0; c < cols; c++) {\n        if (grid[r][c] == target) {\n            printf(\"Found at row %d, col %d\", r, c);\n        }\n    }\n}</div>"
+    },
+    {
+      "id": 6,
+      "title": "Reporting 'Not Found' in a Grid Search",
+      "quiz": {
+        "question": "How can a grid search reliably tell the caller that a target was NOT found anywhere in the matrix?",
+        "options": [
+          "Use a found flag that starts false and only becomes true on a match, checked after both loops finish",
+          "Assume it was found unless the very first cell doesn't match",
+          "It's impossible to detect — grid search always reports success",
+          "Only check the last row, since misses always happen there"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Reporting 'Not Found' in a Grid Search</div><div class=\"lesson-text\">Since a match could happen on any row or column, the cleanest approach is a boolean-style flag: start it false, set it true (and save the position) on a match, then check it once both loops are done.</div><div class=\"code-block\">int found = 0, foundRow = -1, foundCol = -1;\nfor (int r = 0; r < rows; r++) {\n    for (int c = 0; c < cols; c++) {\n        if (grid[r][c] == target) {\n            found = 1; foundRow = r; foundCol = c;\n        }\n    }\n}\nif (!found) printf(\"Not found\");</div>"
+    },
+    {
+      "id": 7,
+      "title": "Computing the Diagonal Sum",
+      "quiz": {
+        "question": "Which cells make up the main diagonal of a square matrix?",
+        "code": "int diagSum = 0;\nfor (int i = 0; i < size; i++) {\n    diagSum += grid[i][i];\n}",
+        "options": [
+          "The cells where the row index equals the column index, like grid[0][0], grid[1][1]",
+          "Every cell in the first row of the matrix",
+          "Every cell in the first and last column combined",
+          "The cells where the row index is exactly one more than the column index"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Computing the Diagonal Sum</div><div class=\"lesson-text\">On a square matrix, the main diagonal is every cell where the row and column index match: grid[0][0], grid[1][1], grid[2][2], and so on. A single loop &mdash; not nested &mdash; is enough, since each row only contributes one diagonal cell.</div><div class=\"code-block\">int diagSum = 0;\nfor (int i = 0; i < size; i++) {\n    diagSum += grid[i][i];\n}</div>"
+    },
+    {
+      "id": 8,
+      "title": "Complete Example: Diagonal Sum, Plus a Bonus Challenge",
+      "quiz": {
+        "question": "In the bonus challenge of summing only values ABOVE the diagonal, which cells should be included?",
+        "code": "// Bonus: sum where column index > row index\nint aboveSum = 0;\nfor (int r = 0; r < size; r++) {\n    for (int c = 0; c < size; c++) {\n        if (c > r) aboveSum += grid[r][c];\n    }\n}",
+        "options": [
+          "Cells where the column index is greater than the row index",
+          "Cells where the row index is greater than the column index",
+          "Every cell in the matrix, with no exceptions",
+          "Only the cells directly on the diagonal itself"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Complete Example: Diagonal Sum, Plus a Bonus Challenge</div><div class=\"lesson-text\">Extending the diagonal idea, values 'above' the diagonal are the ones where the column index is greater than the row index &mdash; visually, the upper-right triangle of the grid.</div><div class=\"code-block\">int aboveSum = 0;\nfor (int r = 0; r < size; r++) {\n    for (int c = 0; c < size; c++) {\n        if (c > r) aboveSum += grid[r][c];\n    }\n}</div>"
+    },
+    {
+      "id": 9,
+      "title": "Recap",
+      "quiz": {
+        "question": "What do matrix addition, grid search, and diagonal sum all have in common?",
+        "options": [
+          "They all build on the same [row][col] indexing and nested-loop traversal introduced earlier",
+          "They all require the matrix to be converted into a 1D array first",
+          "They each need a completely unrelated, brand-new indexing system",
+          "None of them can be implemented using loops at all"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Recap</div><div class=\"lesson-text\">Matrix addition combines matching cells from two grids. Grid search nests the linear-search comparison across rows and columns. Diagonal sum picks out cells where the row and column index match. All three reuse the same [row][col] indexing and nested-loop foundation from the previous discussion.</div><div class=\"code-block\">result[i][j] = a[i][j] + b[i][j];       // addition\nif (grid[r][c] == target) { ... }        // search\ndiagSum += grid[i][i];                    // diagonal</div>"
+    }
+  ]
+}

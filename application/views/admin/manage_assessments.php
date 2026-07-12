@@ -139,7 +139,7 @@
                             <select name="schedule_id" id="modal_schedule_id" class="form-control" required>
                                 <option value="">Select section...</option>
                                 <?php foreach ($schedules as $s): ?>
-                                    <option value="<?= $s['schedule_id'] ?>">
+                                    <option value="<?= $s['schedule_id'] ?>" data-class-code="<?= htmlspecialchars($s['class_code']) ?>">
                                         <?= htmlspecialchars($s['section']) ?> &mdash; <?= htmlspecialchars($s['class_code']) ?> (<?= $s['type'] ?>)
                                     </option>
                                 <?php endforeach; ?>
@@ -150,7 +150,7 @@
                             <select name="class_id" id="modal_class_id" class="form-control">
                                 <option value="">Select class...</option>
                                 <?php foreach ($classes as $c): ?>
-                                    <option value="<?= $c['class_id'] ?>">
+                                    <option value="<?= $c['class_id'] ?>" data-class-code="<?= htmlspecialchars($c['class_code']) ?>">
                                         <?= htmlspecialchars($c['class_code']) ?> &mdash; <?= htmlspecialchars($c['class_name']) ?>
                                     </option>
                                 <?php endforeach; ?>
@@ -248,12 +248,13 @@
                         <select id="modal_iq_topic" class="form-control">
                             <option value="">Select a topic...</option>
                             <?php foreach ($iq_topics as $slug => $topic_title): ?>
-                                <option value="<?= htmlspecialchars($slug) ?>"><?= htmlspecialchars($topic_title) ?> (<?= htmlspecialchars($slug) ?>)</option>
+                                <option value="<?= htmlspecialchars($slug) ?>" data-class-code="<?= htmlspecialchars($iq_topic_classes[$slug] ?? '') ?>"><?= htmlspecialchars($topic_title) ?> (<?= htmlspecialchars($slug) ?>)</option>
                             <?php endforeach; ?>
                         </select>
                         <small class="form-text text-muted">
-                            Only lesson+quiz topics (uploaded under Interactive Quiz &rarr; Manage Topics) are listed here.
-                            Students are redirected straight to this topic; their score is recorded on first completion only.
+                            Only lesson+quiz topics (uploaded under Interactive Quiz &rarr; Manage Topics) for the
+                            section/class selected above are listed here (plus any legacy unfiled topics). Students
+                            are redirected straight to this topic; their score is recorded on first completion only.
                         </small>
                     </div>
                     <div class="form-group" id="modal_given_wrap" style="display:none">
@@ -303,6 +304,14 @@ const scheduleSections = {
 // for the server-side derivation this mirrors).
 const iqTopicQuestionCounts = <?= json_encode($iq_topic_question_counts) ?>;
 
+// topic slug -> class_code ('' for legacy/unfiled topics available to every
+// class), used to filter the Topic dropdown to the section/class selected above.
+const iqTopicClasses = <?= json_encode($iq_topic_classes) ?>;
+
+// topic slug -> {title, description}, used to auto-fill the assessment's
+// Title/Description fields from the topic JSON when a topic is picked.
+const iqTopicMeta = <?= json_encode($iq_topic_meta) ?>;
+
 // section -> [{set_id, name}], used to populate the grouping-set dropdown
 const setsBySection = {};
 <?php foreach ($grouping_sets as $gs): ?>
@@ -326,6 +335,41 @@ function refreshGroupingSetOptions(selectedSetId) {
     select.value = selectedSetId || '';
 }
 
+// Class code of whichever section/class select currently governs this
+// assessment (depends on Apply To mode), read off the selected option's
+// data-class-code attribute.
+function currentSelectedClassCode() {
+    const isClassMode = document.getElementById('modal_apply_mode_class').checked;
+    const select = document.getElementById(isClassMode ? 'modal_class_id' : 'modal_schedule_id');
+    const opt = select.options[select.selectedIndex];
+    return opt ? (opt.dataset.classCode || '') : '';
+}
+
+// Interactive Discussion/Quiz topics live under assets/json/{CLASS_CODE}/
+// (see AdminController::_topic_class_code_from_path()), so only topics
+// belonging to the section/class currently selected above (plus any legacy
+// unfiled topics) make sense to offer. Uses "hidden" rather than "disabled"
+// so a value can still be programmatically assigned (e.g. openEditModal()
+// loading an existing assessment) even before filtering settles.
+function refreshIqTopicOptions() {
+    const select = document.getElementById('modal_iq_topic');
+    const classCode = currentSelectedClassCode();
+    let selectedStillVisible = !select.value;
+
+    Array.from(select.options).forEach(opt => {
+        if (!opt.value) return; // keep the placeholder
+        const topicClass = iqTopicClasses[opt.value] || '';
+        const visible = !classCode || !topicClass || topicClass === classCode;
+        opt.hidden = !visible;
+        if (opt.value === select.value && visible) selectedStillVisible = true;
+    });
+
+    if (!selectedStillVisible) {
+        select.value = '';
+        syncIqTopicToGiven();
+    }
+}
+
 function toggleGroupingSetWrap() {
     document.getElementById('modal_grouping_set_wrap').style.display =
         document.getElementById('modal_is_groupings').checked ? '' : 'none';
@@ -347,6 +391,7 @@ function toggleApplyMode() {
         document.getElementById('modal_is_groupings').checked = false;
         toggleGroupingSetWrap();
     }
+    refreshIqTopicOptions();
 }
 
 // Example config JSON per widget_key — shown as the textarea's placeholder
@@ -453,6 +498,11 @@ const widgetExamples = {
 // an existing assessment, or edited from the example) is never clobbered.
 let lastAutoFilledExample = null;
 
+// Same "don't clobber typed content" tracking as lastAutoFilledExample, but
+// for the Title/Description fields auto-filled from the topic JSON below.
+let lastAutoFilledTitle = null;
+let lastAutoFilledDescription = null;
+
 // Interactive Discussion/Quiz doesn't take free-form JSON — it's driven by
 // the topic <select> below, which writes {"topic": slug} into the (hidden)
 // given textarea so save_assessment/preview_widget don't need special-casing.
@@ -460,7 +510,27 @@ function syncIqTopicToGiven() {
     const topic = document.getElementById('modal_iq_topic').value;
     document.getElementById('modal_given').value = topic ? JSON.stringify({ topic: topic }) : '';
     applyIqMaxScoreLock(true);
+    autofillIqTopicMeta(topic);
     fetchWidgetPreview();
+}
+
+// Auto-fills Title/Description from the topic JSON's own "title"/"description"
+// keys when a topic is picked — only overwrites a field that's still blank or
+// holds our own previous auto-fill, so anything the admin actually typed is
+// never clobbered.
+function autofillIqTopicMeta(topic) {
+    const titleInput = document.getElementById('modal_title');
+    const descInput = document.getElementById('modal_description');
+    const info = topic ? iqTopicMeta[topic] : null;
+
+    if (!titleInput.value.trim() || titleInput.value === lastAutoFilledTitle) {
+        titleInput.value = info ? info.title : '';
+        lastAutoFilledTitle = titleInput.value;
+    }
+    if (!descInput.value.trim() || descInput.value === lastAutoFilledDescription) {
+        descInput.value = info ? info.description : '';
+        lastAutoFilledDescription = descInput.value;
+    }
 }
 
 // Max Score isn't hand-entered for this widget — it's the topic's question
@@ -557,7 +627,8 @@ function refreshWidgetPreviewDebounced() {
     widgetPreviewTimer = setTimeout(fetchWidgetPreview, 400);
 }
 
-document.getElementById('modal_schedule_id').addEventListener('change', () => refreshGroupingSetOptions());
+document.getElementById('modal_schedule_id').addEventListener('change', () => { refreshGroupingSetOptions(); refreshIqTopicOptions(); });
+document.getElementById('modal_class_id').addEventListener('change', refreshIqTopicOptions);
 document.getElementById('modal_is_groupings').addEventListener('change', toggleGroupingSetWrap);
 document.getElementById('modal_widget_id').addEventListener('change', toggleGivenWrap);
 document.getElementById('modal_given').addEventListener('input', refreshWidgetPreviewDebounced);
@@ -587,6 +658,8 @@ function openAddModal() {
     document.getElementById('modal_given').value = '';
     document.getElementById('modal_iq_topic').value = '';
     lastAutoFilledExample = null;
+    lastAutoFilledTitle = null;
+    lastAutoFilledDescription = null;
     toggleGivenWrap();
     document.getElementById('modal_auto_create_submissions').checked = false;
     document.getElementById('modal_submit_btn').textContent = 'Add Assessment';
@@ -615,10 +688,13 @@ function openEditModal(a) {
     document.getElementById('modal_widget_id').value = a.widget_id || '';
     document.getElementById('modal_given').value = a.given || '';
     lastAutoFilledExample = null;
+    lastAutoFilledTitle = null;
+    lastAutoFilledDescription = null;
     let givenTopic = '';
     if (a.given) {
         try { givenTopic = JSON.parse(a.given).topic || ''; } catch (e) {}
     }
+    refreshIqTopicOptions();
     document.getElementById('modal_iq_topic').value = givenTopic;
     toggleGivenWrap();
     document.getElementById('modal_auto_create_submissions').checked = false;

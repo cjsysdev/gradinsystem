@@ -1,0 +1,152 @@
+{
+  "topic": "cc104_4a_array_declaration_pointers",
+  "title": "Arrays: Declaration, Indexing & Pointers",
+  "description": "Learn how to declare, index, and traverse a 1D array in C, and how pointers relate to arrays.",
+  "congratsText": "Great work! You now understand array declaration, indexing, and how pointers connect to arrays.",
+  "sections": [
+    {
+      "id": 0,
+      "title": "Objectives",
+      "quiz": null,
+      "lesson": "<div class=\"lesson-title\">What You Will Learn</div><div class=\"lesson-text\">By the end of this discussion, you will be able to:</div><div class=\"lesson-text\"><ul><li>Declare and initialize a 1D array in C</li><li>Read and write individual elements using an index</li><li>Traverse a full array using a loop</li><li>Explain what a pointer is and how it relates to an array</li></ul></div>"
+    },
+    {
+      "id": 1,
+      "title": "What Is an Array?",
+      "quiz": {
+        "question": "Why would you use an array instead of several separate variables?",
+        "options": [
+          "To store many related values under one name, accessed by position",
+          "To make the program run without needing a compiler",
+          "To automatically sort values as they are entered",
+          "To prevent the program from ever crashing"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">What Is an Array?</div><div class=\"lesson-text\">An <span class=\"highlight\">array</span> is a row of numbered lockers sitting side by side in memory. Instead of creating five separate variables for five scores, one array holds all five, and each locker is reached by its number.</div><div class=\"lesson-text\">This matters because most real data comes in groups &mdash; a class list, a week of temperatures, a set of test scores &mdash; and an array lets one variable name represent the whole group.</div>"
+    },
+    {
+      "id": 2,
+      "title": "Declaring & Initializing an Array",
+      "quiz": {
+        "question": "What does the declaration int scores[5]; create in memory?",
+        "code": "int scores[5];",
+        "options": [
+          "5 separate int-sized slots, all reserved under the name scores",
+          "1 int-sized slot that can hold up to 5 values over time",
+          "A pointer named scores that has not yet been assigned",
+          "5 slots that must each be given a different data type"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Declaring & Initializing an Array</div><div class=\"lesson-text\">To declare an array, state the <span class=\"highlight\">type</span>, a <span class=\"highlight\">name</span>, and the number of elements in square brackets.</div><div class=\"code-block\">int scores[5];              // 5 empty int slots\nint grades[5] = {90, 85, 78, 92, 88};  // declared and filled at once</div><div class=\"lesson-text\">All elements in a C array must share the same data type, and the size is fixed once declared &mdash; it cannot grow or shrink later.</div>"
+    },
+    {
+      "id": 3,
+      "title": "Indexing: Reading and Writing Elements",
+      "quiz": {
+        "question": "What does scores[2] refer to in an array declared as int scores[5]?",
+        "options": [
+          "The element at position 2, which is the 3rd locker in the row",
+          "The 2nd element, counting the first element as position 1",
+          "The total number of elements currently stored in the array",
+          "An error, since array names cannot be followed by brackets"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Indexing: Reading and Writing Elements</div><div class=\"lesson-text\">Each locker has a number called an <span class=\"highlight\">index</span>, written in square brackets after the array name. You use it to both read and write a single element.</div><div class=\"code-block\">int scores[5] = {90, 85, 78, 92, 88};\nprintf(\"%d\", scores[2]);   // reads: prints 78\nscores[2] = 100;           // writes: replaces 78 with 100</div>"
+    },
+    {
+      "id": 4,
+      "title": "Zero-Based Indexing & the Off-by-One Bug",
+      "quiz": {
+        "question": "In int scores[5], what is the index of the FIRST element, and the index of the LAST?",
+        "options": [
+          "First is 0, last is 4",
+          "First is 1, last is 5",
+          "First is 0, last is 5",
+          "First is 1, last is 4"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Zero-Based Indexing & the Off-by-One Bug</div><div class=\"lesson-text\">C arrays are <span class=\"highlight\">zero-indexed</span> &mdash; the first locker is number 0, not 1. For an array of size 5, valid indexes are 0 through 4.</div><div class=\"lesson-text\">The most common beginner mistake is the <strong>off-by-one error</strong>: trying to access index 5 in a 5-element array, which does not exist and reads memory outside the array.</div><div class=\"code-block\">int scores[5] = {90, 85, 78, 92, 88};\n// scores[5] is OUT OF BOUNDS — valid indexes are only 0-4</div>"
+    },
+    {
+      "id": 5,
+      "title": "Traversing an Array with a Loop",
+      "quiz": {
+        "question": "What does this loop print for int nums[4] = {10, 20, 30, 40};?",
+        "code": "for (int i = 0; i < 4; i++) {\n    printf(\"%d \", nums[i]);\n}",
+        "options": [
+          "10 20 30 40",
+          "0 1 2 3",
+          "40 30 20 10",
+          "10 20 30 40 (with an extra trailing garbage value)"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Traversing an Array with a Loop</div><div class=\"lesson-text\">Instead of typing out every index by hand, a <span class=\"highlight\">for loop</span> visits each element in order &mdash; this is called <span class=\"highlight\">traversal</span>.</div><div class=\"code-block\">int nums[4] = {10, 20, 30, 40};\nfor (int i = 0; i < 4; i++) {\n    printf(\"%d \", nums[i]);\n}\n// Output: 10 20 30 40</div><div class=\"lesson-text\">The loop condition i &lt; 4 (not i &lt;= 4) is what keeps the traversal safely inside the array's bounds.</div>"
+    },
+    {
+      "id": 6,
+      "title": "What Is a Pointer?",
+      "quiz": {
+        "question": "What is a pointer in C, in plain terms?",
+        "options": [
+          "A variable that stores the memory address of another variable",
+          "A variable that can only hold whole numbers greater than zero",
+          "A special kind of array that resizes itself automatically",
+          "A shortcut name that C uses in place of a function"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">What Is a Pointer?</div><div class=\"lesson-text\">A <span class=\"highlight\">pointer</span> is a sticky note with a locker's address written on it, not the contents of the locker itself. The <strong>&amp;</strong> operator means 'get the address of', and <strong>*</strong> means 'go to that address and look inside'.</div><div class=\"code-block\">int score = 90;\nint *p = &score;   // p now holds the ADDRESS of score\nprintf(\"%d\", *p);  // dereference: prints 90</div>"
+    },
+    {
+      "id": 7,
+      "title": "Pointers to Arrays: Array Name as Address",
+      "quiz": {
+        "question": "What does the array name scores itself represent, when used without an index?",
+        "code": "int scores[5] = {90, 85, 78, 92, 88};\nprintf(\"%p\", scores);",
+        "options": [
+          "The memory address of the array's first element",
+          "The total number of elements in the array",
+          "A copy of every value in the array joined together",
+          "An error, since array names must always have an index"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Pointers to Arrays: Array Name as Address</div><div class=\"lesson-text\">In C, an array's name &mdash; used without brackets &mdash; decays into the address of its first element. This is why scores and &amp;scores[0] point to the exact same place.</div><div class=\"code-block\">int scores[5] = {90, 85, 78, 92, 88};\nint *p = scores;        // same as &scores[0]\nprintf(\"%d\", *p);       // prints 90, the first element</div><div class=\"lesson-text\">This is the deep link between arrays and pointers: an array is really just a block of memory, and its name is the address where that block begins.</div>"
+    },
+    {
+      "id": 8,
+      "title": "Common Pitfalls: Out-of-Bounds Access",
+      "quiz": {
+        "question": "Why is accessing scores[10] on a 5-element array dangerous, even if it doesn't crash immediately?",
+        "options": [
+          "It reads or writes memory that belongs to something else entirely",
+          "C automatically resizes the array to fit the new index",
+          "It always prints the value 0 instead of the intended data",
+          "The compiler refuses to build the program at all"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Common Pitfalls: Out-of-Bounds Access</div><div class=\"lesson-text\">C does not check array bounds for you. Reading or writing an index outside the declared size does not stop the program &mdash; it silently touches whatever memory happens to sit there, which can corrupt other data or crash later, seemingly at random.</div><div class=\"lesson-text\"><strong>Rule of thumb:</strong> for int arr[N], only indexes 0 through N-1 are safe.</div>"
+    },
+    {
+      "id": 9,
+      "title": "Recap",
+      "quiz": {
+        "question": "Which statement best summarizes the relationship between arrays and pointers in C?",
+        "options": [
+          "An array's name is the address of its first element in memory",
+          "Arrays and pointers are two unrelated features that never interact",
+          "A pointer can only ever point to a single variable, never an array",
+          "Arrays automatically convert into a different data type called a pointer"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Recap</div><div class=\"lesson-text\">An array is a row of same-type memory slots, reached by a zero-based index. Traversal with a loop visits every slot in order. A pointer stores an address, and an array's own name behaves as the address of its first element &mdash; the bridge between the two ideas.</div><div class=\"code-block\">int arr[5] = {1, 2, 3, 4, 5};\nfor (int i = 0; i < 5; i++) printf(\"%d \", arr[i]);\n// arr itself == &arr[0]</div>"
+    }
+  ]
+}

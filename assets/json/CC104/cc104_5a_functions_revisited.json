@@ -1,0 +1,152 @@
+{
+  "topic": "cc104_5a_functions_revisited",
+  "title": "Functions Revisited: Parameters, Returns & Composition",
+  "description": "Deepen your understanding of functions with multiple parameters, return types, and functions that call other functions — the shape every array function will follow.",
+  "congratsText": "Great work! You're ready to write functions that operate on arrays.",
+  "sections": [
+    {
+      "id": 0,
+      "title": "Objectives",
+      "quiz": null,
+      "lesson": "<div class=\"lesson-title\">What You Will Learn</div><div class=\"lesson-text\">By the end of this discussion, you will be able to:</div><div class=\"lesson-text\"><ul><li>Write functions that take more than one parameter</li><li>Choose the correct return type for a function's purpose</li><li>Call one function from inside another</li><li>Recognize the general shape array-processing functions will follow</li></ul></div>"
+    },
+    {
+      "id": 1,
+      "title": "Why Revisit Functions Now?",
+      "quiz": {
+        "question": "Why does this course return to functions right before starting array-processing functions?",
+        "options": [
+          "Because array functions need more parameters and more careful return values than Week 3's simple examples",
+          "Because functions in C work differently once arrays are involved",
+          "Because Week 3's functions were only theoretical and never actually ran",
+          "Because arrays cannot be used at all without redefining every function"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Why Revisit Functions Now?</div><div class=\"lesson-text\">Week 3 covered small functions like isEven() with one parameter. Array-processing functions are built the same way, but need <span class=\"highlight\">more than one parameter</span> (the array itself, plus its size) and more deliberate choices about what to return.</div>"
+    },
+    {
+      "id": 2,
+      "title": "Functions with Multiple Parameters",
+      "quiz": {
+        "question": "What does this function return when called as add(3, 4)?",
+        "code": "int add(int a, int b) {\n    return a + b;\n}",
+        "options": [
+          "7",
+          "34",
+          "3",
+          "An error, since a function can only take one parameter"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Functions with Multiple Parameters</div><div class=\"lesson-text\">A function can accept several inputs, separated by commas, each with its own type and name.</div><div class=\"code-block\">int add(int a, int b) {\n    return a + b;\n}\n\nint result = add(3, 4);  // result = 7</div><div class=\"lesson-text\">Each parameter is a local copy inside the function &mdash; changing a or b does not affect whatever variables were passed in.</div>"
+    },
+    {
+      "id": 3,
+      "title": "Choosing a Return Type",
+      "quiz": {
+        "question": "Which return type fits a function that reports whether a number is prime (true/false)?",
+        "options": [
+          "int, using 1 for true and 0 for false",
+          "void, since the function doesn't need to report anything",
+          "float, to allow for partial or fractional answers",
+          "char, since true/false are text values in C"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Choosing a Return Type</div><div class=\"lesson-text\">The return type should match what the function is meant to hand back: int for whole numbers or true/false flags, float for decimals, void when nothing needs to be returned at all.</div><div class=\"code-block\">int isPrime(int n) {\n    // ... logic ...\n    return 1;  // 1 = true, 0 = false — C has no separate boolean type\n}</div>"
+    },
+    {
+      "id": 4,
+      "title": "void Functions vs. Functions That Return a Value",
+      "quiz": {
+        "question": "What is the key difference between a void function and one that returns int?",
+        "code": "void printGreeting() {\n    printf(\"Hello!\\n\");\n}\n\nint square(int n) {\n    return n * n;\n}",
+        "options": [
+          "printGreeting() cannot be used in an expression like x = printGreeting();, but square() can be used as x = square(4);",
+          "void functions run faster than functions that return a value",
+          "square() can only be called once per program, unlike printGreeting()",
+          "There is no real difference — void is just another name for int"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">void Functions vs. Functions That Return a Value</div><div class=\"lesson-text\">A <span class=\"highlight\">void</span> function performs an action (like printing) and hands nothing back. A function with a real return type produces a value the caller can store, compare, or pass along.</div><div class=\"code-block\">void printGreeting() {\n    printf(\"Hello!\\n\");\n}\n\nint square(int n) {\n    return n * n;\n}\n\nint x = square(4);   // valid: x = 16\n// int y = printGreeting();  // invalid: nothing to store</div>"
+    },
+    {
+      "id": 5,
+      "title": "Functions Calling Other Functions",
+      "quiz": {
+        "question": "What does main() print in this program?",
+        "code": "int square(int n) {\n    return n * n;\n}\n\nint sumOfSquares(int a, int b) {\n    return square(a) + square(b);\n}\n\nint main() {\n    printf(\"%d\", sumOfSquares(2, 3));\n    return 0;\n}",
+        "options": [
+          "13",
+          "5",
+          "25",
+          "9"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Functions Calling Other Functions</div><div class=\"lesson-text\">Just like main() calls other functions, a function can call another function inside its own body. This is how small, well-named functions build up into a larger program.</div><div class=\"code-block\">int square(int n) {\n    return n * n;\n}\n\nint sumOfSquares(int a, int b) {\n    return square(a) + square(b);\n}\n// sumOfSquares(2, 3) → square(2) + square(3) → 4 + 9 → 13</div>"
+    },
+    {
+      "id": 6,
+      "title": "Planning a Function's Signature Before Writing the Body",
+      "quiz": {
+        "question": "Before writing a function's body, what should you decide first?",
+        "options": [
+          "What it should be named, what parameters it needs, and what it returns",
+          "How many times the function will be called in the whole program",
+          "Whether the function should be written in a separate programming language",
+          "Which line number the function must appear on in the file"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Planning a Function's Signature Before Writing the Body</div><div class=\"lesson-text\">The <span class=\"highlight\">signature</span> &mdash; name, parameters, and return type &mdash; is a contract. Deciding it first (even on paper) makes the body much easier to write, because you already know exactly what comes in and what must go out.</div><div class=\"code-block\">// Plan first: int findMax(int arr[], int size);\n// Then implement the body once the shape is settled</div>"
+    },
+    {
+      "id": 7,
+      "title": "The Shape Array Functions Will Follow",
+      "quiz": {
+        "question": "Why do array-processing functions typically need at least two parameters instead of one?",
+        "options": [
+          "The function needs both the array itself and its size to know how far to loop",
+          "C requires every function to have exactly two parameters",
+          "One parameter holds the array's name, and the other holds its data type",
+          "It is only a stylistic convention with no real technical reason"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">The Shape Array Functions Will Follow</div><div class=\"lesson-text\">Almost every function you write from here on will follow one shape: the array itself, plus its size, so the function knows exactly where the data ends.</div><div class=\"code-block\">int sumArray(int arr[], int size) {\n    int sum = 0;\n    for (int i = 0; i < size; i++) {\n        sum += arr[i];\n    }\n    return sum;\n}</div>"
+    },
+    {
+      "id": 8,
+      "title": "Best Practice: One Function, One Job",
+      "quiz": {
+        "question": "Why is it good practice for a function to do just one clear job, rather than several unrelated things?",
+        "options": [
+          "A focused function is easier to test, reuse, and debug on its own",
+          "C only allows a function to contain a single line of code",
+          "Functions with more than one job always run slower",
+          "It has no real benefit — it's purely a matter of preference"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Best Practice: One Function, One Job</div><div class=\"lesson-text\">A function that only computes a sum, or only checks a condition, is easy to test in isolation and easy to reuse elsewhere. A function that sums, prints, AND validates input all at once is harder to trust and harder to fix when something goes wrong.</div>"
+    },
+    {
+      "id": 9,
+      "title": "Recap",
+      "quiz": {
+        "question": "Which idea from this discussion matters most going into next session's array functions?",
+        "options": [
+          "Functions can take multiple parameters, like an array plus its size, and return a computed value",
+          "Every function in C must be named main",
+          "Functions cannot call other functions under any circumstances",
+          "A function's return type never affects how it can be used"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Recap</div><div class=\"lesson-text\">Functions can take multiple parameters, return a value matching their purpose, and call other functions to build up logic. Array functions extend this directly &mdash; they just add the array and its size as the parameters that make everything else possible.</div><div class=\"code-block\">int sumArray(int arr[], int size) {\n    int sum = 0;\n    for (int i = 0; i < size; i++) sum += arr[i];\n    return sum;\n}</div>"
+    }
+  ]
+}

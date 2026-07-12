@@ -1,0 +1,155 @@
+{
+  "topic": "cc104_5b_arrays_in_functions",
+  "title": "Using Arrays in Functions",
+  "description": "Learn how to pass an array and its size into a function, why changes made inside the function affect the original array, and how to rewrite sum/average as reusable functions.",
+  "congratsText": "Great work! You can now write functions that operate on arrays.",
+  "sections": [
+    {
+      "id": 0,
+      "title": "Objectives",
+      "quiz": null,
+      "lesson": "<div class=\"lesson-title\">What You Will Learn</div><div class=\"lesson-text\">By the end of this discussion, you will be able to:</div><div class=\"lesson-text\"><ul><li>Pass an array and its size into a function</li><li>Explain why the original array changes when a function modifies it</li><li>Rewrite sum/average logic as standalone, reusable functions</li><li>Recognize the standard signature used for array functions</li></ul></div>"
+    },
+    {
+      "id": 1,
+      "title": "Passing an Array to a Function",
+      "quiz": {
+        "question": "How does a function's parameter list declare that it will receive an array?",
+        "code": "void printArray(int arr[], int size) {\n    for (int i = 0; i < size; i++) {\n        printf(\"%d \", arr[i]);\n    }\n}",
+        "options": [
+          "By writing empty brackets after the parameter name, like int arr[]",
+          "By writing the word array before the parameter type",
+          "Arrays cannot be passed to functions in C at all",
+          "By listing every individual element as a separate parameter"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Passing an Array to a Function</div><div class=\"lesson-text\">A function receives an array by declaring a parameter with empty brackets, like int arr[]. The size is almost always passed as a second parameter, since the function has no other way to know how long the array is.</div><div class=\"code-block\">void printArray(int arr[], int size) {\n    for (int i = 0; i < size; i++) {\n        printf(\"%d \", arr[i]);\n    }\n}\n\nint scores[5] = {90, 85, 78, 92, 88};\nprintArray(scores, 5);</div>"
+    },
+    {
+      "id": 2,
+      "title": "Why the Size Must Be Passed Separately",
+      "quiz": {
+        "question": "Why does an array function need size as its own parameter, unlike passing a single int?",
+        "options": [
+          "A function cannot determine an array's length just by receiving it",
+          "C automatically adds a size parameter to every array function",
+          "The size parameter is optional and rarely actually used",
+          "Arrays store their own length as a hidden built-in value"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Why the Size Must Be Passed Separately</div><div class=\"lesson-text\">Unlike some languages, a C array does not carry its length with it. Once inside a function, arr[] is really just an address &mdash; the function has no way to know where the data ends unless told explicitly.</div><div class=\"code-block\">int sumArray(int arr[], int size) {\n    // size tells the loop exactly when to stop\n    int sum = 0;\n    for (int i = 0; i < size; i++) sum += arr[i];\n    return sum;\n}</div>"
+    },
+    {
+      "id": 3,
+      "title": "Arrays Are Passed by Reference",
+      "quiz": {
+        "question": "What happens to the original array in main() if a function modifies arr[0] inside its body?",
+        "code": "void doubleFirst(int arr[]) {\n    arr[0] = arr[0] * 2;\n}\n\nint main() {\n    int nums[3] = {5, 10, 15};\n    doubleFirst(nums);\n    printf(\"%d\", nums[0]);\n    return 0;\n}",
+        "options": [
+          "10 is printed — the original array itself was changed",
+          "5 is printed — arrays are always copied before being passed",
+          "The program fails to compile",
+          "0 is printed — arr[0] resets once the function ends"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Arrays Are Passed by Reference</div><div class=\"lesson-text\">Unlike a plain int or float, passing an array to a function does not copy its contents &mdash; it passes the array's address. That means changes made inside the function are changes to the <span class=\"highlight\">original</span> array, not a local copy.</div><div class=\"code-block\">void doubleFirst(int arr[]) {\n    arr[0] = arr[0] * 2;  // modifies the real array\n}\n\nint nums[3] = {5, 10, 15};\ndoubleFirst(nums);\n// nums[0] is now 10, not 5</div>"
+    },
+    {
+      "id": 4,
+      "title": "Contrast: Single Variables Are Passed by Value",
+      "quiz": {
+        "question": "How does passing a plain int differ from passing an array?",
+        "code": "void tryToChange(int x) {\n    x = 100;\n}\n\nint main() {\n    int y = 5;\n    tryToChange(y);\n    printf(\"%d\", y);\n    return 0;\n}",
+        "options": [
+          "5 is printed — x is a local copy, so changing it doesn't affect y",
+          "100 is printed — int variables also change the original",
+          "The program fails to compile because x and y have different names",
+          "0 is printed — uninitialized copies default to zero"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Contrast: Single Variables Are Passed by Value</div><div class=\"lesson-text\">A plain int, float, or char is <span class=\"highlight\">copied</span> when passed to a function &mdash; changes inside the function stay inside the function. This is the opposite of how arrays behave, which is exactly why array functions can update data permanently while single-variable functions cannot.</div>"
+    },
+    {
+      "id": 5,
+      "title": "Rewriting sumArray() as a Standalone Function",
+      "quiz": {
+        "question": "What does sumArray(scores, 5) return for int scores[5] = {90, 85, 78, 92, 88};?",
+        "code": "int sumArray(int arr[], int size) {\n    int sum = 0;\n    for (int i = 0; i < size; i++) {\n        sum += arr[i];\n    }\n    return sum;\n}",
+        "options": [
+          "433",
+          "5",
+          "90",
+          "88"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Rewriting sumArray() as a Standalone Function</div><div class=\"lesson-text\">Week 4's inline sum loop becomes a reusable function with the standard array-function shape: array, size, then a return value.</div><div class=\"code-block\">int sumArray(int arr[], int size) {\n    int sum = 0;\n    for (int i = 0; i < size; i++) {\n        sum += arr[i];\n    }\n    return sum;\n}\n\nint scores[5] = {90, 85, 78, 92, 88};\nint total = sumArray(scores, 5);  // 433</div>"
+    },
+    {
+      "id": 6,
+      "title": "Rewriting averageArray() Using sumArray()",
+      "quiz": {
+        "question": "Why does averageArray() call sumArray() instead of writing its own separate summing loop?",
+        "code": "float averageArray(int arr[], int size) {\n    return (float) sumArray(arr, size) / size;\n}",
+        "options": [
+          "It reuses logic that already exists, instead of duplicating the same loop",
+          "C requires every float function to call an int function first",
+          "sumArray() runs the loop faster than a new loop would",
+          "It is required syntax — averageArray() cannot compute alone"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Rewriting averageArray() Using sumArray()</div><div class=\"lesson-text\">Once sumArray() exists, averageArray() doesn't need its own loop &mdash; it just calls sumArray() and divides. This is functions calling functions, applied to real array work.</div><div class=\"code-block\">float averageArray(int arr[], int size) {\n    return (float) sumArray(arr, size) / size;\n}\n\nfloat avg = averageArray(scores, 5);  // 86.6</div>"
+    },
+    {
+      "id": 7,
+      "title": "Complete Example: A Small Array Toolkit",
+      "quiz": {
+        "question": "In this toolkit, why does countAbove() also take a threshold parameter in addition to arr and size?",
+        "code": "int countAbove(int arr[], int size, int threshold) {\n    int count = 0;\n    for (int i = 0; i < size; i++) {\n        if (arr[i] > threshold) count++;\n    }\n    return count;\n}",
+        "options": [
+          "The comparison value changes depending on how the function is called, so it must be passed in",
+          "C requires exactly three parameters for any array function",
+          "threshold secretly represents the array's size a second time",
+          "Without it, the function would not compile at all"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Complete Example: A Small Array Toolkit</div><div class=\"lesson-text\">A handful of small, focused functions can now work together on the same array.</div><div class=\"code-block\">int sumArray(int arr[], int size) { ... }\nfloat averageArray(int arr[], int size) { ... }\nint countAbove(int arr[], int size, int threshold) {\n    int count = 0;\n    for (int i = 0; i < size; i++) {\n        if (arr[i] > threshold) count++;\n    }\n    return count;\n}\n\nint scores[5] = {90, 85, 78, 92, 88};\nint total = sumArray(scores, 5);\nfloat avg = averageArray(scores, 5);\nint aboveAvg = countAbove(scores, 5, (int) avg);</div>"
+    },
+    {
+      "id": 8,
+      "title": "Best Practice: Keep the Signature Consistent",
+      "quiz": {
+        "question": "Why is it helpful for every array function in a program to follow the same arr, size parameter order?",
+        "options": [
+          "It makes the functions predictable and easy to combine without confusion",
+          "C refuses to compile array functions with inconsistent parameter order",
+          "It has no practical benefit beyond looking neat",
+          "It automatically makes every function run in constant time"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Best Practice: Keep the Signature Consistent</div><div class=\"lesson-text\">Once every array function follows the same arr, size (and optional extra parameters after) order, they become easy to read, easy to call together, and easy to extend &mdash; a habit that pays off heavily once search and sort functions are added.</div>"
+    },
+    {
+      "id": 9,
+      "title": "Recap",
+      "quiz": {
+        "question": "What is the key takeaway about arrays and functions from this discussion?",
+        "options": [
+          "Arrays are passed by reference, so functions can read AND permanently modify the original data",
+          "Arrays must be fully copied every time they're passed into a function",
+          "Only void functions are allowed to accept an array parameter",
+          "The size of an array never needs to be passed to a function"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Recap</div><div class=\"lesson-text\">Arrays pass by reference &mdash; a function receiving arr[] works with the original data, not a copy, which is why array functions can genuinely modify what they're given. Pairing the array with an explicit size parameter is the standard shape you'll reuse for every search, sort, and matrix function from here on.</div><div class=\"code-block\">int sumArray(int arr[], int size) {\n    int sum = 0;\n    for (int i = 0; i < size; i++) sum += arr[i];\n    return sum;\n}</div>"
+    }
+  ]
+}

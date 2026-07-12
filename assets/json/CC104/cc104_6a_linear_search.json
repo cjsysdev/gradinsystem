@@ -1,0 +1,152 @@
+{
+  "topic": "cc104_6a_linear_search",
+  "title": "Linear Search: The Basic Pattern",
+  "description": "Learn how to search an array for a target value using linear search, written as a reusable function.",
+  "congratsText": "Great work! You now know how to implement and use linear search as a function.",
+  "sections": [
+    {
+      "id": 0,
+      "title": "Objectives",
+      "quiz": null,
+      "lesson": "<div class=\"lesson-title\">What You Will Learn</div><div class=\"lesson-text\">By the end of this discussion, you will be able to:</div><div class=\"lesson-text\"><ul><li>Implement linear search as a reusable function</li><li>Explain what happens when a value is not found</li><li>Trace linear search by hand and count comparisons</li><li>Recognize when linear search is a reasonable choice</li></ul></div>"
+    },
+    {
+      "id": 1,
+      "title": "Find Your Classmate",
+      "quiz": {
+        "question": "If names in a list are in no particular order, what is the only reliable way to find a specific name?",
+        "options": [
+          "Check every name, one at a time, until you find it or reach the end",
+          "Jump straight to the middle of the list and guess from there",
+          "Sort the list first — searching is never possible on unsorted data",
+          "Ask someone else to memorize the entire list in advance"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Find Your Classmate</div><div class=\"lesson-text\">If a class list has no particular order, the only reliable way to find a name is to check every one, in order, until you find it. This everyday habit is exactly what <span class=\"highlight\">linear search</span> does with an array.</div>"
+    },
+    {
+      "id": 2,
+      "title": "Linear Search Logic",
+      "quiz": {
+        "question": "What does linear search do as it loops through an array?",
+        "options": [
+          "Compares each element to the target, stopping when a match is found",
+          "Sorts the array first, then checks only the first element",
+          "Compares only the first and last elements to the target",
+          "Skips every other element to search faster"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Linear Search Logic</div><div class=\"lesson-text\">Linear search loops through the array from start to end, comparing each element to the target. As soon as a match is found, the search stops and reports where it happened.</div><div class=\"code-block\">for (int i = 0; i < size; i++) {\n    if (arr[i] == target) {\n        // found at index i\n    }\n}</div>"
+    },
+    {
+      "id": 3,
+      "title": "Writing search() as a Function",
+      "quiz": {
+        "question": "What does this function return if target is found in the array?",
+        "code": "int search(int arr[], int size, int target) {\n    for (int i = 0; i < size; i++) {\n        if (arr[i] == target) {\n            return i;\n        }\n    }\n    return -1;\n}",
+        "options": [
+          "The index where the target was found",
+          "The value of the target itself",
+          "The number 1, meaning true",
+          "The total size of the array"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Writing search() as a Function</div><div class=\"lesson-text\">Following Week 5's array-function shape, search() takes the array, its size, and the target &mdash; and returns the matching index.</div><div class=\"code-block\">int search(int arr[], int size, int target) {\n    for (int i = 0; i < size; i++) {\n        if (arr[i] == target) {\n            return i;\n        }\n    }\n    return -1;\n}</div>"
+    },
+    {
+      "id": 4,
+      "title": "Why Return -1 for 'Not Found'",
+      "quiz": {
+        "question": "Why does search() return -1 instead of 0 when the target isn't found?",
+        "options": [
+          "0 is a valid index (the first element), so it can't mean 'not found'",
+          "C does not allow functions to return negative numbers otherwise",
+          "-1 makes the loop run one extra time to double-check",
+          "It has no real reason — any unused number would work the same"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Why Return -1 for 'Not Found'</div><div class=\"lesson-text\">Since 0 is a real, valid index &mdash; the first element &mdash; using it to mean 'not found' would be ambiguous. -1 is never a valid index, so it safely and unambiguously signals failure.</div>"
+    },
+    {
+      "id": 5,
+      "title": "Tracing a Search by Hand",
+      "quiz": {
+        "question": "How many comparisons does linear search make to find 30 in {10, 20, 30, 40, 50}?",
+        "code": "int arr[5] = {10, 20, 30, 40, 50};\nsearch(arr, 5, 30);",
+        "options": [
+          "3 — it checks 10, then 20, then finds 30",
+          "5 — it always checks every element regardless of position",
+          "1 — the target is found immediately",
+          "30 — the number of comparisons equals the target's value"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Tracing a Search by Hand</div><div class=\"lesson-text\">Tracing by hand means walking through the loop step by step, writing down which index is being compared at each pass. This builds the intuition that a target near the start is found quickly, while one near the end (or missing entirely) takes longer.</div><div class=\"code-block\">arr = {10, 20, 30, 40, 50}, target = 30\ni=0: 10 == 30? no\ni=1: 20 == 30? no\ni=2: 30 == 30? yes — found at index 2 (3 comparisons)</div>"
+    },
+    {
+      "id": 6,
+      "title": "The Worst Case: Target Not Present",
+      "quiz": {
+        "question": "How many comparisons does linear search make when the target does NOT exist in a 5-element array?",
+        "options": [
+          "5 — every element must be checked before concluding it's missing",
+          "0 — the function knows immediately that it's missing",
+          "4 — the last element is never checked",
+          "It depends only on the target's numeric value"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">The Worst Case: Target Not Present</div><div class=\"lesson-text\">When the target isn't in the array at all, linear search still has to check every single element before it can safely conclude that and return -1. This is the <span class=\"highlight\">worst case</span> for linear search &mdash; the maximum possible number of comparisons.</div>"
+    },
+    {
+      "id": 7,
+      "title": "Complete Example: Search & Report",
+      "quiz": {
+        "question": "What does this program print if target 99 is not in the array?",
+        "code": "int index = search(arr, 5, 99);\nif (index != -1) {\n    printf(\"Found at index %d\", index);\n} else {\n    printf(\"Not found\");\n}",
+        "options": [
+          "Not found",
+          "Found at index 99",
+          "Found at index -1",
+          "The program crashes"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Complete Example: Search & Report</div><div class=\"lesson-text\">A search function is most useful when its result is checked and reported clearly.</div><div class=\"code-block\">int index = search(arr, 5, 99);\nif (index != -1) {\n    printf(\"Found at index %d\", index);\n} else {\n    printf(\"Not found\");\n}</div>"
+    },
+    {
+      "id": 8,
+      "title": "Best Practice: Test Start, End, and Absent Targets",
+      "quiz": {
+        "question": "Why should a search function be tested with a target at the very start, the very end, AND a target that isn't present?",
+        "options": [
+          "These are the cases most likely to expose an off-by-one or early-exit bug",
+          "C only allows testing three cases per function",
+          "The first and last elements are always processed differently by the compiler",
+          "It's not actually necessary if the middle elements were tested"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Best Practice: Test Start, End, and Absent Targets</div><div class=\"lesson-text\">Bugs in search functions often hide at the edges &mdash; an off-by-one loop bound might miss the very last element, or a missing return might cause the wrong index to be reported. Testing the first element, the last element, and a value that isn't there at all catches most of these mistakes.</div>"
+    },
+    {
+      "id": 9,
+      "title": "Recap",
+      "quiz": {
+        "question": "What is the core behavior of linear search?",
+        "options": [
+          "It checks each element in order until a match is found or the array ends",
+          "It only works correctly if the array is already sorted",
+          "It jumps directly to the middle of the array first",
+          "It compares the size of the array to the target value"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Recap</div><div class=\"lesson-text\">Linear search checks each element in order, stopping the moment it finds a match, and reports -1 if it reaches the end without one. Written as a function, it becomes a reusable tool &mdash; and the base pattern for every search variation coming next.</div><div class=\"code-block\">int search(int arr[], int size, int target) {\n    for (int i = 0; i < size; i++) {\n        if (arr[i] == target) return i;\n    }\n    return -1;\n}</div>"
+    }
+  ]
+}

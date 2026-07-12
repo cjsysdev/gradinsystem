@@ -1,0 +1,149 @@
+{
+  "topic": "cc104_9a_beyond_arrays_theory",
+  "title": "Beyond Arrays: Linked Lists, Stacks & Queues (Theory Only)",
+  "description": "Recognize linked lists, stacks, and queues by name and real-world analogy — conceptual only, no code required.",
+  "congratsText": "Great work! You can now recognize linked lists, stacks, and queues and know what they're used for.",
+  "sections": [
+    {
+      "id": 0,
+      "title": "Objectives",
+      "quiz": null,
+      "lesson": "<div class=\"lesson-title\">What You Will Learn</div><div class=\"lesson-text\">By the end of this discussion, you will be able to:</div><div class=\"lesson-text\"><ul><li>Describe what a linked list is and how it differs from an array</li><li>Describe the stack (LIFO) principle with a real-world example</li><li>Describe the queue (FIFO) principle with a real-world example</li><li>Recognize which structure fits a given real-world scenario</li></ul></div>"
+    },
+    {
+      "id": 1,
+      "title": "A Growing Line",
+      "quiz": {
+        "question": "What limitation of arrays motivates the idea of a linked list?",
+        "options": [
+          "An array's size is fixed once declared, so it can't grow if more space is needed",
+          "Arrays cannot store integers, only text values",
+          "Arrays are always slower to read from than any other structure",
+          "Arrays require the data to be sorted before anything can be stored"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">A Growing Line</div><div class=\"lesson-text\">An array has a fixed number of lockers, decided the moment it's declared. But what if you don't know in advance how many items you'll need to store? That question is what leads to the idea of a <span class=\"highlight\">linked list</span>.</div>"
+    },
+    {
+      "id": 2,
+      "title": "The Linked List (Concept Only)",
+      "quiz": {
+        "question": "What is the key structural difference between a linked list and an array?",
+        "options": [
+          "A linked list is a chain of pieces, each pointing to the next, instead of one fixed contiguous block",
+          "A linked list can only store numbers, while arrays can store any type",
+          "A linked list is always faster to search than an array",
+          "A linked list must always be sorted, while arrays never are"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">The Linked List (Concept Only)</div><div class=\"lesson-text\">A <span class=\"highlight\">linked list</span> is like a human chain holding hands &mdash; each piece (called a node) points to the next one. New pieces can join the chain anywhere without needing one giant reserved block of memory, unlike an array's fixed row of lockers.</div><div class=\"lesson-text\">This course does not implement linked lists in code &mdash; the goal here is only to recognize the idea and how it contrasts with arrays.</div>"
+    },
+    {
+      "id": 3,
+      "title": "Stacks: The LIFO Principle",
+      "quiz": {
+        "question": "In a cafeteria tray stack, which tray gets taken first?",
+        "options": [
+          "The last tray placed on top — Last In, First Out",
+          "The first tray placed at the bottom — First In, First Out",
+          "A random tray, chosen without any particular order",
+          "Whichever tray is in the exact middle of the stack"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Stacks: The LIFO Principle</div><div class=\"lesson-text\">A <span class=\"highlight\">stack</span> follows <strong>LIFO</strong>: Last In, First Out. Picture a stack of cafeteria trays &mdash; the last tray placed on top is the first one taken off.</div><div class=\"lesson-text\">Real-world examples: an undo button (the most recent action is undone first) and a browser's back button (the most recently visited page is shown first).</div>"
+    },
+    {
+      "id": 4,
+      "title": "Queues: The FIFO Principle",
+      "quiz": {
+        "question": "In a sari-sari store line, which customer gets served first?",
+        "options": [
+          "The customer who arrived first — First In, First Out",
+          "The customer who arrived last — Last In, First Out",
+          "Whichever customer orders the least items",
+          "The customer standing closest to the counter's edge"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Queues: The FIFO Principle</div><div class=\"lesson-text\">A <span class=\"highlight\">queue</span> follows <strong>FIFO</strong>: First In, First Out. A sari-sari store line works this way &mdash; the first person to arrive is the first person served.</div><div class=\"lesson-text\">Real-world examples: a printer's job queue (documents print in the order they were sent) and customer service lines.</div>"
+    },
+    {
+      "id": 5,
+      "title": "Stack vs. Queue: Same Idea, Opposite Order",
+      "quiz": {
+        "question": "What is the key difference between how a stack and a queue release their items?",
+        "options": [
+          "A stack releases the most recently added item first; a queue releases the earliest added item first",
+          "A stack and a queue release items in exactly the same order",
+          "A queue only works with numbers, while a stack only works with text",
+          "A stack always holds more items than a queue can hold"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Stack vs. Queue: Same Idea, Opposite Order</div><div class=\"lesson-text\">Both structures add and remove items from ends of a line &mdash; the difference is which end. A stack (LIFO) removes from the same end items are added. A queue (FIFO) removes from the opposite end items are added.</div>"
+    },
+    {
+      "id": 6,
+      "title": "Why This Course Builds on Arrays",
+      "quiz": {
+        "question": "Why does this course choose to build everything on arrays instead of linked lists, stacks, or queues?",
+        "options": [
+          "Arrays are simpler for beginners, avoid pointer-chasing, and still solve most beginner-level problems",
+          "Arrays are the only structure that actually exists in the C language",
+          "Linked lists, stacks, and queues cannot be implemented in C at all",
+          "Arrays are always faster than every other data structure in every situation"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Why This Course Builds on Arrays</div><div class=\"lesson-text\">Arrays give beginners a simpler starting point &mdash; no chasing pointers through a chain of nodes &mdash; while still being powerful enough to solve the vast majority of problems a beginner-level course needs to cover.</div>"
+    },
+    {
+      "id": 7,
+      "title": "Matching Real-World Scenarios to Structures",
+      "quiz": {
+        "question": "Which structure best fits 'a browser's back button, returning to the most recently visited page first'?",
+        "options": [
+          "Stack (LIFO)",
+          "Queue (FIFO)",
+          "Array only, with no ordering principle",
+          "Linked list, but with no LIFO or FIFO behavior at all"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Matching Real-World Scenarios to Structures</div><div class=\"lesson-text\">Recognizing a structure by its real-world behavior is the actual skill this session is building. Ask: does the most recent thing come out first (stack), or does the earliest thing come out first (queue)?</div>"
+    },
+    {
+      "id": 8,
+      "title": "What's Deliberately NOT Covered Here",
+      "quiz": {
+        "question": "What is true about linked lists, stacks, and queues in this course's scope?",
+        "options": [
+          "They are covered by name and analogy only — never implemented in code or tested on the exam",
+          "They are fully implemented in C and tested heavily on the midterm exam",
+          "They replace arrays entirely for the rest of the course",
+          "They are covered only in an optional extra-credit assignment"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">What's Deliberately NOT Covered Here</div><div class=\"lesson-text\">This session is intentionally theory-only: no malloc, no struct-based nodes, no code. The goal is recognition &mdash; knowing these structures exist, what they're called, and roughly what they're used for &mdash; not implementation.</div>"
+    },
+    {
+      "id": 9,
+      "title": "Recap",
+      "quiz": {
+        "question": "Which principle correctly pairs a structure with its release order?",
+        "options": [
+          "Stack = LIFO (last in, first out); Queue = FIFO (first in, first out)",
+          "Stack = FIFO; Queue = LIFO",
+          "Both stack and queue always release items in the same fixed order",
+          "Neither stack nor queue has any defined release order"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Recap</div><div class=\"lesson-text\">A linked list is a chain of nodes that can grow without a fixed size. A stack follows LIFO &mdash; last in, first out, like a tray stack. A queue follows FIFO &mdash; first in, first out, like a store line. This course recognizes all three by name and analogy, while continuing to build everything in code on arrays.</div>"
+    }
+  ]
+}

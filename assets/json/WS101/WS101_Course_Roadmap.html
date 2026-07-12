@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WS101 — Course Roadmap</title>
+<style>
+  :root{
+    --ink:#0A1929;
+    --ink-2:#0F2438;
+    --line:#2E5C7A;
+    --line-soft:#1B3A52;
+    --paper:#EAF1F6;
+    --paper-dim:#B9CBDA;
+    --accent:#F4A63A;
+    --accent-2:#5FD4C4;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", "Consolas", "Roboto Mono", monospace;
+    --sans: ui-sans-serif, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--ink);
+    color:var(--paper);
+    font-family:var(--sans);
+    line-height:1.5;
+  }
+  a{color:var(--accent-2);}
+
+  /* ---------- HERO ---------- */
+  .hero{
+    padding:72px 24px 56px;
+    max-width:920px;
+    margin:0 auto;
+    border-bottom:1px solid var(--line-soft);
+    position:relative;
+  }
+  .hero::before{
+    content:"WS101 / SCHEMATIC 001";
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.14em;
+    color:var(--paper-dim);
+    display:block;
+    margin-bottom:22px;
+  }
+  .hero h1{
+    font-size:clamp(30px,5vw,46px);
+    line-height:1.1;
+    margin:0 0 18px;
+    font-weight:700;
+    letter-spacing:-0.01em;
+  }
+  .hero h1 span{color:var(--accent);}
+  .hero p{
+    max-width:640px;
+    color:var(--paper-dim);
+    font-size:16px;
+    margin:0 0 10px;
+  }
+  .hero .thesis{
+    font-family:var(--mono);
+    font-size:13px;
+    color:var(--accent-2);
+    margin-top:26px;
+    border-left:2px solid var(--accent-2);
+    padding-left:14px;
+  }
+
+  /* ---------- ROADMAP ---------- */
+  .roadmap{
+    max-width:920px;
+    margin:0 auto;
+    padding:56px 24px 40px;
+    position:relative;
+  }
+  .track{
+    position:absolute;
+    left:47px;
+    top:56px;
+    bottom:40px;
+    width:2px;
+    background:repeating-linear-gradient(
+      to bottom,
+      var(--line) 0 6px,
+      transparent 6px 12px
+    );
+  }
+  @media (max-width:640px){
+    .track{left:23px;}
+  }
+
+  .stage{
+    position:relative;
+    padding-left:96px;
+    margin-bottom:36px;
+  }
+  @media (max-width:640px){
+    .stage{padding-left:52px;}
+  }
+
+  .node{
+    position:absolute;
+    left:32px;
+    top:6px;
+    width:32px;
+    height:32px;
+    border-radius:50%;
+    background:var(--ink);
+    border:2px solid var(--line);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:var(--mono);
+    font-size:11px;
+    color:var(--paper-dim);
+    z-index:2;
+  }
+  @media (max-width:640px){
+    .node{left:8px; width:26px; height:26px; font-size:9px;}
+  }
+  .stage.pivot .node{
+    border-color:var(--accent);
+    color:var(--accent);
+    background:var(--ink);
+  }
+  .stage.capstone .node{
+    border-color:var(--accent-2);
+    color:var(--accent-2);
+  }
+
+  .card{
+    background:var(--ink-2);
+    border:1px solid var(--line-soft);
+    border-radius:6px;
+    padding:22px 24px;
+    position:relative;
+  }
+  .stage.pivot .card{border-color:var(--accent); border-style:dashed;}
+  .stage.capstone .card{border-color:var(--accent-2);}
+
+  .card::before{
+    content:"";
+    position:absolute;
+    left:-15px;
+    top:16px;
+    width:15px;
+    height:2px;
+    background:var(--line);
+  }
+  @media (max-width:640px){ .card::before{left:-11px; width:11px;} }
+
+  .code{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:.1em;
+    color:var(--paper-dim);
+  }
+  .stage.pivot .code{color:var(--accent);}
+  .stage.capstone .code{color:var(--accent-2);}
+
+  .card h2{
+    font-size:19px;
+    margin:6px 0 12px;
+    font-weight:700;
+    color:var(--paper);
+  }
+
+  .question{
+    font-style:italic;
+    color:var(--paper-dim);
+    font-size:14.5px;
+    margin:0 0 14px;
+    padding:10px 14px;
+    background:var(--line-soft);
+    border-radius:4px;
+  }
+  .question::before{content:"“"; color:var(--accent-2);}
+  .question::after{content:"”"; color:var(--accent-2);}
+
+  .builds{
+    font-family:var(--mono);
+    font-size:12px;
+    color:var(--accent);
+    margin:0 0 14px;
+    display:flex;
+    gap:8px;
+    align-items:baseline;
+  }
+  .builds .label{color:var(--paper-dim); flex-shrink:0;}
+
+  .concepts{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    margin:0;
+    padding:0;
+    list-style:none;
+  }
+  .concepts li{
+    font-family:var(--mono);
+    font-size:11px;
+    color:var(--paper-dim);
+    border:1px solid var(--line-soft);
+    border-radius:3px;
+    padding:3px 8px;
+  }
+
+  /* ---------- FOOTER ---------- */
+  .footer{
+    max-width:920px;
+    margin:0 auto;
+    padding:40px 24px 80px;
+    border-top:1px solid var(--line-soft);
+  }
+  .footer h3{
+    font-size:16px;
+    color:var(--accent-2);
+    margin:0 0 10px;
+    font-family:var(--mono);
+  }
+  .footer p{
+    color:var(--paper-dim);
+    font-size:14px;
+    max-width:640px;
+    margin:0;
+  }
+</style>
+</head>
+<body>
+
+<section class="hero">
+  <h1>One road. <span>One working website.</span></h1>
+  <p>WS101 is built around a single client project — a real local business site — running on CodeIgniter 3. Every session adds one working piece to that same site. Nothing is a throwaway exercise.</p>
+  <p>The route starts on purpose from the browser side, not the framework side: build a form first, then ask the question that pulls the rest of the term into place.</p>
+  <div class="thesis">ROUTE: html → forms → "where does submit go?" → ci3 → controller → model → database → auth → full crud → styled + shipped</div>
+</section>
+
+<section class="roadmap">
+  <div class="track"></div>
+
+  <div class="stage">
+    <div class="node">01</div>
+    <div class="card">
+      <div class="code">WS101.01 — HTML FUNDAMENTALS</div>
+      <h2>What can a page show with no server at all?</h2>
+      <p class="question">The browser draws something before any code runs on a server. What's actually happening?</p>
+      <p class="builds"><span class="label">builds:</span> static homepage shell for the client site — structure only, no styling yet</p>
+      <ul class="concepts">
+        <li>tags &amp; elements</li><li>semantic structure</li><li>headings &amp; links</li><li>images</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="node">02</div>
+    <div class="card">
+      <div class="code">WS101.02 — HTML FORMS</div>
+      <h2>How does a visitor hand information back?</h2>
+      <p class="question">A page can show things. How does it collect something from the person looking at it?</p>
+      <p class="builds"><span class="label">builds:</span> a login form and an "add new item" form for the client site — plain HTML, not wired to anything yet</p>
+      <ul class="concepts">
+        <li>&lt;form&gt;</li><li>input types</li><li>labels</li><li>action &amp; method</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="stage pivot">
+    <div class="node">03</div>
+    <div class="card">
+      <div class="code">WS101.03 — THE PIVOT: WHERE DID SUBMIT GO?</div>
+      <h2>You clicked submit. Where did that request actually land?</h2>
+      <p class="question">Watch the URL bar change on submit. Trace the action attribute. Hit a 404. Ask: something has to be sitting there to catch this — what is it?</p>
+      <p class="builds"><span class="label">builds:</span> a traced, diagrammed path from the form's action to an empty destination — sets up the need for a framework</p>
+      <ul class="concepts">
+        <li>GET vs POST</li><li>action / method</li><li>index.php as the single entry point</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="node">04</div>
+    <div class="card">
+      <div class="code">WS101.04 — CI3 FILE &amp; DIRECTORY STRUCTURE</div>
+      <h2>So what's supposed to catch that request?</h2>
+      <p class="question">Something needs to live on the server and answer. Where does CodeIgniter expect that "something" to be?</p>
+      <p class="builds"><span class="label">builds:</span> CI3 installed and running; the client project placed inside application/</p>
+      <ul class="concepts">
+        <li>MVC folders</li><li>application/ vs system/</li><li>request flow overview</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="node">05</div>
+    <div class="card">
+      <div class="code">WS101.05 — ROUTING</div>
+      <h2>How does CI3 decide which code handles this specific submit?</h2>
+      <p class="question">There can be many forms and many pages. How does one URL get matched to one piece of code?</p>
+      <p class="builds"><span class="label">builds:</span> the login form's action now points to a real, working route</p>
+      <ul class="concepts">
+        <li>routes.php</li><li>URI segments</li><li>default controller</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="node">06</div>
+    <div class="card">
+      <div class="code">WS101.06 — CONTROLLERS</div>
+      <h2>The form arrived. What actually reads it?</h2>
+      <p class="question">A route points somewhere. What's sitting at that destination, and how does it get at what the user typed?</p>
+      <p class="builds"><span class="label">builds:</span> a controller method that receives the form's POST data and echoes it back to prove the pipe works</p>
+      <ul class="concepts">
+        <li>controller structure</li><li>$this->input->post()</li><li>loading a view</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="node">07</div>
+    <div class="card">
+      <div class="code">WS101.07 — MODELS &amp; THE DATABASE</div>
+      <h2>The data can't just vanish after the page reloads. Where does it live?</h2>
+      <p class="question">The controller has the data for one request. What holds onto it after that?</p>
+      <p class="builds"><span class="label">builds:</span> a model that saves the form's data into a real MySQL table for the client's core entity</p>
+      <ul class="concepts">
+        <li>Query Builder</li><li>insert / get / update / delete</li><li>table design basics</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="node">08</div>
+    <div class="card">
+      <div class="code">WS101.08 — VIEWS &amp; DISPLAYING DATA BACK</div>
+      <h2>The client wants to see the list they just built.</h2>
+      <p class="question">Data is saved now — but saved data no one sees is invisible. How does it get back on screen?</p>
+      <p class="builds"><span class="label">builds:</span> a listing page that pulls real rows from the database and displays them</p>
+      <ul class="concepts">
+        <li>passing data to views</li><li>loops in views</li><li>PHP short echo tags</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="node">09</div>
+    <div class="card">
+      <div class="code">WS101.09 — SESSIONS &amp; LOGIN</div>
+      <h2>The login form works. Does the site remember who's logged in?</h2>
+      <p class="question">Submitting a login form is not the same as staying logged in. What keeps that state alive across pages?</p>
+      <p class="builds"><span class="label">builds:</span> working login/logout with a session-protected admin page</p>
+      <ul class="concepts">
+        <li>CI3 Session library</li><li>password_hash / verify</li><li>role-based restriction</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="node">10</div>
+    <div class="card">
+      <div class="code">WS101.10 — THE FULL CRUD LOOP</div>
+      <h2>Add, edit, delete — can the client run their catalog from the browser alone?</h2>
+      <p class="question">Saving one form is not a working site. Can every action a real owner needs be done without touching the database directly?</p>
+      <p class="builds"><span class="label">builds:</span> add, edit, and delete all wired end-to-end on the client's core entity</p>
+      <ul class="concepts">
+        <li>update / delete methods</li><li>confirm dialogs</li><li>re-render after write</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="node">11</div>
+    <div class="card">
+      <div class="code">WS101.11 — STYLING &amp; POLISH</div>
+      <h2>It works. Does it look like something a client would trust?</h2>
+      <p class="question">Function is done. What separates a working page from a site a real business would put its name on?</p>
+      <p class="builds"><span class="label">builds:</span> a responsive, Bootstrap-based layout applied across every page of the client site</p>
+      <ul class="concepts">
+        <li>grid system</li><li>cards / tables / modals</li><li>responsive breakpoints</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="stage capstone">
+    <div class="node">12</div>
+    <div class="card">
+      <div class="code">WS101.12 — FINAL INTEGRATION</div>
+      <h2>Can you explain, end to end, what happens when someone uses this site?</h2>
+      <p class="question">Trace one action — a client adding a new item — all the way from the form to the database and back to the screen. Every stage on this road should be a step in that trace.</p>
+      <p class="builds"><span class="label">builds:</span> the complete, tested client website — live demo</p>
+      <ul class="concepts">
+        <li>full-stack request tracing</li><li>bug triage</li><li>client-facing presentation</li>
+      </ul>
+    </div>
+  </div>
+
+</section>
+
+<section class="footer">
+  <h3>// why this order</h3>
+  <p>Starting with a form instead of a folder structure gives students a real question before they ever see CI3: "where did that go?" Every later stage — routing, controllers, models — exists to answer a question the form itself already raised, so the framework never feels arbitrary. By Stage 12, nothing on the site was built as a disconnected exercise; it's all one client project, one trace, start to finish.</p>
+</section>
+
+</body>
+</html>
