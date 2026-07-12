@@ -208,9 +208,10 @@
       <?php if (!empty($widget)): ?>
         <?php
         $this->load->view($widget['input_view'], [
-            'config'   => json_decode($classwork['assessments'][0]->given ?? '', true) ?: [],
-            'readonly' => true,
-            'existing' => json_decode($classwork['code'] ?? '', true) ?: [],
+            'config'        => json_decode($classwork['assessments'][0]->given ?? '', true) ?: [],
+            'readonly'      => true,
+            'existing'      => json_decode($classwork['code'] ?? '', true) ?: [],
+            'assessment_id' => $classwork['assessment_id'],
         ]);
         ?>
       <?php elseif ($classwork['file_upload']): ?>

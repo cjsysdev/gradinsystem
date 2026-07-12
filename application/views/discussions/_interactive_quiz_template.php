@@ -55,6 +55,7 @@ $topic_slug        = $topic_data['topic'] ?? '';
 $assessment_id     = isset($assessment_id) ? (int) $assessment_id : 0;
 $already_submitted = !empty($already_submitted);
 $previous_score    = $previous_score ?? null;
+$previous_answers  = $previous_answers ?? [];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -74,6 +75,7 @@ $previous_score    = $previous_score ?? null;
                 <div class="progress-section">
                     <div class="progress-fill" id="progressFill"></div>
                 </div>
+                <button class="header-close" onclick="exportDiscussionImage()" title="Save as image for offline review">&#x1F4F7;</button>
                 <div class="header-score">
                     <span>&#x2B50;</span>
                     <span id="score">0</span>
@@ -137,14 +139,23 @@ $previous_score    = $previous_score ?? null;
         </div>
 
         <button class="congrats-button" onclick="restartQuiz()">Start Over</button>
+        <button class="congrats-button" style="background:transparent; border:2px solid #357abd; color:#357abd; margin-top:0.75rem;" onclick="exportDiscussionImage()">Save as Image</button>
     </div>
+
+    <script src="<?= base_url('assets/html2canvas.min.js') ?>"></script>
 
     <script>
         // ── Topic data (injected from PHP) ──────────────────────────
         const sections      = <?= $sections_json ?>;
         const TOPIC_SLUG    = <?= json_encode($topic_slug) ?>;
+        const TOPIC_TITLE   = <?= json_encode($topic_data['title'] ?? '') ?>;
         const BASE_URL      = <?= json_encode(base_url()) ?>;
         const ASSESSMENT_ID = <?= $assessment_id ?>;
+        const PREVIOUS_SCORE = <?= json_encode($previous_score) ?>;
+        // recorded answers from an earlier completed attempt (see save_result()) —
+        // used so the PDF export can show what was actually picked, keyed by section index.
+        const prevAnswerBySection = {};
+        (<?= json_encode(array_values($previous_answers)) ?>).forEach(a => { prevAnswerBySection[a.section] = a; });
 
         // ── State ───────────────────────────────────────────────────
         let currentSection = 0;
@@ -259,8 +270,7 @@ $previous_score    = $previous_score ?? null;
             if (correct) {
                 document.querySelector(`[data-index="${selectedOption}"]`).classList.add('correct');
                 feedback.className   = 'feedback show correct';
-                feedback.textContent = '✓ Correct! +2 points';
-                score++;
+                feedback.textContent = '✓ Correct! +1 point';
                 score++;
                 streak++;
                 bestStreak = Math.max(bestStreak, streak);
@@ -406,6 +416,75 @@ $previous_score    = $previous_score ?? null;
             } else {
                 window.location.href = TOPICS_URL;
             }
+        }
+
+        // ── Image export (topic discussion + question, for offline review) ──
+        function answerForSection(i) {
+            // Prefer what was picked in this live session (covers a fresh
+            // attempt or reaching a question in a retake); fall back to the
+            // recorded answer from the original graded attempt, if any.
+            const live = quizAnswers.find(a => a.section === i);
+            if (live) return live;
+            return prevAnswerBySection[i] || null;
+        }
+
+        function exportDiscussionImage() {
+            const exportEl = document.createElement('div');
+            // Full page, however long — no pagination, single tall screenshot.
+            exportEl.style.cssText = 'position:fixed; left:-9999px; top:0; width:700px; background:#fff; padding:24px; font-family:Arial, sans-serif; color:#222;';
+
+            const scoreLine = (PREVIOUS_SCORE !== null && PREVIOUS_SCORE !== undefined)
+                ? `Recorded score: ${PREVIOUS_SCORE}`
+                : `Score so far: ${score}`;
+
+            let html = `<h2 style="margin:0 0 4px;">${TOPIC_TITLE || 'Interactive Discussion'}</h2>`;
+            html += `<p style="color:#666; margin:0 0 18px;">${scoreLine}</p>`;
+
+            sections.forEach((section, i) => {
+                const hasQuiz = section.quiz
+                    && typeof section.quiz.question === 'string'
+                    && Array.isArray(section.quiz.options);
+
+                html += `<div style="margin-bottom:20px; padding-bottom:14px; border-bottom:1px solid #ddd;">`;
+                html += `<h3 style="margin:0 0 6px;">${i + 1}. ${section.title || ''}</h3>`;
+                html += `<div style="margin-bottom:10px; line-height:1.5;">${section.lesson || ''}</div>`;
+
+                if (hasQuiz) {
+                    html += `<p style="font-weight:700; margin-bottom:6px;">Q: ${section.quiz.question}</p>`;
+                    html += `<ul style="margin:0 0 8px; padding-left:20px;">`;
+                    section.quiz.options.forEach((opt, oi) => {
+                        const isCorrectOpt = oi === section.quiz.correct;
+                        html += `<li style="${isCorrectOpt ? 'color:#1a7a1a; font-weight:700;' : ''}">${opt}${isCorrectOpt ? ' (correct)' : ''}</li>`;
+                    });
+                    html += `</ul>`;
+
+                    const answer = answerForSection(i);
+                    if (answer) {
+                        html += `<p style="margin:0;">Your answer: <span style="color:${answer.is_correct ? '#1a7a1a' : '#c0392b'}; font-weight:700;">${answer.chosen}</span></p>`;
+                    } else {
+                        html += `<p style="margin:0; color:#999;">Not answered yet.</p>`;
+                    }
+                }
+
+                html += `</div>`;
+            });
+
+            exportEl.innerHTML = html;
+            document.body.appendChild(exportEl);
+
+            html2canvas(exportEl, { scale: 2, useCORS: true }).then(canvas => {
+                document.body.removeChild(exportEl);
+
+                const link = document.createElement('a');
+                link.download = (TOPIC_SLUG || 'discussion') + '_review.png';
+                link.href = canvas.toDataURL('image/png');
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }).catch(() => {
+                if (exportEl.parentNode) document.body.removeChild(exportEl);
+                alert('Could not generate image. Please try again.');
+            });
         }
 
         window.addEventListener('load', renderContent);

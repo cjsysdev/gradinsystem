@@ -480,6 +480,7 @@ class InteractiveQuizController extends CI_Controller
         $assessment_id      = $assessment_id ? (int) $assessment_id : null;
         $already_submitted  = false;
         $previous_score     = null;
+        $previous_answers   = [];
 
         // First-try-only grading: if this student already has a classworks row
         // for this assessment, this is a retake — show their recorded score
@@ -494,6 +495,9 @@ class InteractiveQuizController extends CI_Controller
             if ($existing) {
                 $already_submitted = true;
                 $previous_score    = $existing->score;
+                // per-question record saved by save_result() — lets the PDF
+                // export show what the student actually picked, not just the score.
+                $previous_answers  = json_decode($existing->code ?? '', true) ?: [];
             }
         }
 
@@ -502,6 +506,7 @@ class InteractiveQuizController extends CI_Controller
             'assessment_id'     => $assessment_id,
             'already_submitted' => $already_submitted,
             'previous_score'    => $previous_score,
+            'previous_answers'  => $previous_answers,
         ]);
     }
 
