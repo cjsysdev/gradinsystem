@@ -62,6 +62,18 @@ optional exit question. Not auto-graded — same manual-score-entry pattern as
 Worksheet Form/Card Sort. Renders inline via the standard
 `assessment_view_code.php` flow like Worksheet Form (no special-case
 redirect needed).
+A fourth widget, **Case Study Worksheet** (`case_study` widget_key, not in
+the original 6-widget plan — see plan doc §4 "Widget I"), covers narrative
+case-study activities (e.g. "Meet Maria the calamansi farmer," Session 1.2):
+a read-only story panel (intro + stat cards) followed by a fixed sequence of
+sections holding heterogeneous questions — free text, a fixed list of short
+lines, single-choice buttons that reveal a rationale note once picked, and
+multi-select toggle cards. Not auto-graded — same manual-score-entry pattern
+as Worksheet Form/Lab Worksheet. Renders inline via the standard
+`assessment_view_code.php` flow like Worksheet Form/Lab Worksheet (no
+special-case redirect needed). The admin "Widget" dropdown's example JSON
+for this widget (`manage_assessments.php`'s `widgetExamples.case_study`) is
+the full Session 1.2 "Meet Maria" worksheet, ready to save as-is.
 
 ## Conventions
 - Follow existing controller patterns (see `AssessmentController.php`,

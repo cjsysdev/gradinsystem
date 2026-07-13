@@ -1,11 +1,13 @@
 # Paperless Midterm Integration Plan
 
-**Status:** All 6 widgets (B–G) implemented, plus two added outside the
+**Status:** All 6 widgets (B–G) implemented, plus three added outside the
 original scope: **Multiple Choice Quiz** (see §10) — replaces the
 `json_file_path`-upload requirement of the old `QuizController` flow for any
 assessment that opts into it; that old flow is untouched and still works for
-assessments not using the widget — and **Widget H — Lab Worksheet** (see §4)
-for Predict/Observe/Explain-style programming lab activities. Widget D
+assessments not using the widget — **Widget H — Lab Worksheet** (see §4)
+for Predict/Observe/Explain-style programming lab activities — and
+**Widget I — Case Study Worksheet** (see §4) for narrative case-study
+activities (story panel + heterogeneous question types). Widget D
 (Brainstorm Board) is a first pass — see its section below for what was
 simplified vs. the original spec (no drag-to-cluster positioning;
 participation-only classwork tracking).
@@ -289,12 +291,85 @@ patterns. Build 6 reusable widgets, not 16 custom interfaces.
   redirect, unlike Brainstorm/Interactive Discussion) since it's a normal
   per-student form widget.
 
+### Widget I — Case Study Worksheet (added outside original scope)
+- **Why:** narrative case-study activities (e.g. Session 1.2's "Meet Maria
+  the calamansi farmer" field notebook) combine a story panel (intro +
+  stat cards) with a fixed sequence of questions of several *different*
+  shapes — plain reflection text, a fixed list of short lines (brainstorm
+  ideas, ranked picks), single-choice "vote" buttons that reveal a
+  rationale note once picked, and multi-select toggle cards (e.g. an
+  Innovation-Triangle strength check). None of the other widgets combine
+  a narrative panel with this much question-type variety in one fixed
+  flow — Worksheet Form is a repeatable-row table, and Lab Worksheet's
+  items are code experiments with Predict/Observe/Explain prompts, not
+  case-study questions.
+- **Replaces:** one-off standalone HTML "field notebook" worksheets
+  (e.g. `session1-2-calamansi-farmer.html`) that students would otherwise
+  fill out separately from the LMS or, worse, on paper/photo-upload.
+- **UI:** the story panel (eyebrow/title/intro HTML/stat cards) renders as
+  read-only context at the top in both modes; below it, a fixed sequence
+  of sections (each with a label + optional timing badge) holds the
+  questions. A lightweight progress indicator (X/N answered) is computed
+  client-side, same pattern as Lab Worksheet's.
+- **Config (`assessments.given`):**
+  ```json
+  {
+    "story": {
+      "eyebrow": "Session 1.2 · Field Notebook",
+      "title": "Innovation in Bohol: Maria's Calamansi Farm",
+      "intro": "<p>optional trusted HTML shown above the stat cards</p>",
+      "stats": [ {"label": "NO FERTILIZER CREDIT", "text": "..."} ]
+    },
+    "sections": [
+      {
+        "label": "Meet Maria",
+        "timing": "3–15 min · Problem Intro",
+        "questions": [
+          {"type": "text", "badge": "core", "prompt": "...", "rows": 2, "placeholder": "..."},
+          {"type": "list", "badge": "core", "prompt": "...", "lines": 3, "placeholders": ["1. ...", "2. ...", "3. ..."]},
+          {"type": "choice", "badge": "core", "prompt": "...", "options": [{"text": "...", "note": "..."}]},
+          {"type": "toggle_grid", "badge": "bonus", "prompt": "...", "items": [{"title": "TECH", "text": "..."}]}
+        ]
+      }
+    ]
+  }
+  ```
+  Four question `type`s cover every shape needed by the source worksheet:
+  `text` (textarea), `list` (N fixed one-line inputs), `choice`
+  (single-select buttons, each option's `note` revealed only once picked),
+  `toggle_grid` (multi-select cards). `badge` (`core`/`bonus`) is purely
+  informational, mirroring the source worksheet's own visual tagging — it
+  does not affect grading.
+- **Submission (`classworks.code`):** flat, running question index across
+  all sections (same index-keyed-object convention as Lab
+  Worksheet/Decision Matrix):
+  ```json
+  {
+    "answers": {
+      "0": "text answer",
+      "1": ["line one", "line two", "line three"],
+      "2": 1,
+      "9": [0, 1]
+    }
+  }
+  ```
+  `text` → string, `list` → string[], `choice` → selected option index (or
+  `null`), `toggle_grid` → array of toggled-on item indices.
+- **Not auto-graded** — manual score entry, same as Worksheet Form/Card
+  Sort/Lab Worksheet.
+- **Implemented:** `application/views/widgets/case_study.php`. Renders
+  inline via the standard `assessment_view_code.php` flow (no special-case
+  redirect) since it's a normal per-student form widget, same as Lab
+  Worksheet. The admin "Widget" dropdown's example JSON
+  (`manage_assessments.php`'s `widgetExamples.case_study`) is the full
+  Session 1.2 "Meet Maria" worksheet, ready to use as-is.
+
 ## 5. Full Session-to-Widget Mapping (Weeks 1–8)
 
 | Session | Concept Portion | Hands-On Activity | Widget |
 |---|---|---|---|
 | 1.1 | Invention vs Innovation | Innovation Hunt Worksheet | Discussion + **B** |
-| 1.2 | Innovation in Bohol | Ideation Mural (Maria) | Discussion + **D** |
+| 1.2 | Innovation in Bohol | Ideation Mural (Maria) | Discussion + **D**¹ |
 | 2.1 | Why Inventions Fail | Innovation Triangle | Discussion + **E** |
 | 2.2 | Sources of Innovation | Jigsaw case sort | Discussion + **C** |
 | 3.1 | Disruptive vs Incremental | Classification cards + debate | Discussion + **C** |
@@ -309,6 +384,14 @@ patterns. Build 6 reusable widgets, not 16 custom interfaces.
 | 7.2 | Spatial Computing | Tourism AR storyboard | Discussion + **E** (sequential, stretch) |
 | 8.1 | Synthesis Workshop | Full System Map + gallery walk | **E** (free-form, stretch) + **D** |
 | 8.2 | — | Midterm Exam + Concept Brief | Discussion (exam) + **B** (brief) |
+
+¹ **Widget I** (Case Study Worksheet, §4) is also available for 1.2 as a
+fuller alternative — the whole "Meet Maria" field notebook (story + 13
+questions across the Mural/Gallery Walk/Reflection portions) as one
+graded, per-student/group worksheet. This doesn't replace **D** — Brainstorm
+Board's live shared board is still the intended tool for the in-class
+Ideation Mural moment itself — the two can be used together or Widget I
+can stand in on its own where a live shared board isn't needed.
 
 ## 6. Database Integration
 
@@ -339,9 +422,10 @@ ALTER TABLE `assessments` ADD COLUMN `widget_id` INT UNSIGNED DEFAULT NULL;
   existing hidden `code` field before the form submits.
 - Run `WidgetsController/install` (admin-only) once to create/upgrade the
   schema — same pattern as `Groupings/install` and `poll/install`.
-- All 7 rows (`worksheet`, `quiz`, `card_sort`, `diagram`,
-  `decision_matrix`, `calculator`, `brainstorm`) are seeded now — an
-  `input_view` file exists for every one before its row gets inserted.
+- All rows (`worksheet`, `quiz`, `card_sort`, `diagram`, `decision_matrix`,
+  `calculator`, `lab_worksheet`, `brainstorm`, `iq_discussion`,
+  `case_study`) are seeded now — an `input_view` file exists for every one
+  before its row gets inserted.
 
 Widget D (Brainstorm Board) is the one exception, as planned — shared/live
 state across a section rather than one row per student. It reuses the

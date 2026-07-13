@@ -57,6 +57,13 @@ class Widgets_model extends CI_Model
         // redirect in AssessmentController::assessment_view_code().
         $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
             VALUES ('iq_discussion', 'Interactive Discussion/Quiz', 'widgets/iq_discussion', NULL)");
+        // Case Study Worksheet: narrative "story" panel (stat cards) + a fixed
+        // sequence of sections holding heterogeneous questions (text/list/
+        // choice-with-rationale/toggle-grid) — for case-study-driven activities
+        // like "Meet Maria the calamansi farmer". Not auto-graded, same
+        // manual-score-entry pattern as Worksheet Form/Lab Worksheet.
+        $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
+            VALUES ('case_study', 'Case Study Worksheet', 'widgets/case_study', NULL)");
     }
 
     public function get_all()

@@ -68,7 +68,12 @@
                             </td>
                             <td><?= $a['max_score'] ?></td>
                             <td><?= date('M d, Y H:i', strtotime($a['due'])) ?></td>
-                            <td><span class="badge badge-info"><?= $a['submission_count'] ?></span></td>
+                            <td>
+                                <span class="badge badge-info"><?= $a['submission_count'] ?></span>
+                                <?php if ((int) $a['unscored_count'] > 0): ?>
+                                    <span class="badge badge-warning" title="Submitted but not yet scored"><?= (int) $a['unscored_count'] ?> unscored</span>
+                                <?php endif; ?>
+                            </td>
                             <td>
                                 <?php $statusValue = is_numeric($a['status']) ? (int)$a['status'] : ($a['status'] === 'open' ? 1 : 0); ?>
                                 <select class="form-control form-control-sm"
@@ -489,6 +494,87 @@ const widgetExamples = {
                 }
             ],
             exit_question: 'In one or two sentences: what surprised you the most today, and why?'
+        }
+    },
+    case_study: {
+        hint: 'Narrative story panel + fixed sections of heterogeneous questions (text/list/choice-with-rationale/toggle-grid) for case-study activities. Not auto-graded. This example is the full "Meet Maria" Session 1.2 worksheet — ready to use as-is, or adapt the story/sections for a different case study.',
+        example: {
+            story: {
+                eyebrow: 'Session 1.2 · Field Notebook',
+                title: "Innovation in Bohol: Maria's Calamansi Farm",
+                intro: '<p>Maria grows calamansi on a small farm just outside Tagbilaran. Three things are working against her every season:</p>',
+                stats: [
+                    { label: 'NO FERTILIZER CREDIT', text: 'She has to pay full price upfront for fertilizer — or skip it and get a smaller harvest.' },
+                    { label: "CAN'T PREDICT YIELD", text: 'No data on rainfall, pests, or demand — she plants the same amount every year and hopes.' },
+                    { label: 'MIDDLEMEN TAKE ~70%', text: 'She sells at the farm gate to a consolidator, who resells in Tagbilaran and Cebu markets for far more.' }
+                ]
+            },
+            sections: [
+                {
+                    label: 'Meet Maria',
+                    timing: '3–15 min · Problem Intro',
+                    questions: [
+                        { type: 'text', badge: 'core', prompt: "In ONE sentence, state Maria's core problem — not a solution yet, just the problem.", rows: 2, placeholder: "Maria's problem is..." },
+                        { type: 'list', badge: 'core', prompt: "Maria's situation is actually 3 separate problems bundled together. Name each one in a few words.", lines: 3, placeholders: ['1. ...', '2. ...', '3. ...'] },
+                        {
+                            type: 'choice', badge: 'core', prompt: 'Which of the 3 is hardest to solve with technology ALONE (no policy or lending changes)?',
+                            options: [
+                                { text: 'Fertilizer credit', note: "Credit is often a policy/finance problem before it's a tech problem — an app can't fix a bank's risk appetite." },
+                                { text: 'Yield prediction', note: 'Actually the most solvable by tech alone — sensors, weather data, and simple forecasting apps directly attack this.' },
+                                { text: 'Middlemen / market access', note: 'Partly tech (an app connecting farmers to buyers), but mostly about trust, logistics, and getting enough farmers to switch at once.' }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    label: 'Innovation Ideation Mural',
+                    timing: '15–40 min · Hands-On',
+                    questions: [
+                        { type: 'list', badge: 'core', prompt: 'Brainstorm (10 min). Write down every idea that could help Maria — quantity over judgment, no discussing yet.', lines: 6, placeholders: ['Idea 1', 'Idea 2', 'Idea 3', 'Idea 4', 'Idea 5', 'Idea 6'] },
+                        { type: 'text', badge: 'core', prompt: 'Cluster (5 min). Sort your ideas into 2–3 categories — e.g. "Data/Prediction tools," "Financing tools," "Market access tools."', rows: 3, placeholder: 'Category A: ...\nCategory B: ...\nCategory C: ...' },
+                        { type: 'list', badge: 'core', prompt: 'Vote (5 min). As a group, agree on your TOP 3 ideas, ranked.', lines: 3, placeholders: ['#1 (top pick)', '#2', '#3'] }
+                    ]
+                },
+                {
+                    label: 'Gallery Walk & Discussion',
+                    timing: '40–55 min · Peer Feedback',
+                    questions: [
+                        { type: 'text', badge: 'core', prompt: 'For your #1 idea: roughly, what would it cost to build and run?', rows: 2, placeholder: 'Cost estimate + what drives that cost...' },
+                        { type: 'text', badge: 'core', prompt: 'Who actually uses it day-to-day? Maria herself? Her buyer? A co-op officer?', rows: 2, placeholder: 'Name the specific person/role...' },
+                        {
+                            type: 'choice', badge: 'core', prompt: "For your top idea — what's the harder part?",
+                            options: [
+                                { text: 'Building the tech', note: "Fair — some of these ideas need sensors, connectivity, or apps that don't exist cheaply yet in rural Bohol." },
+                                { text: 'Getting people to adopt it', note: 'This is the most common answer in real Philippine agri-tech cases — the tech usually exists, but getting farmers, buyers, and middlemen to actually change behavior is the hard part.' },
+                                { text: 'Both, equally', note: "Also valid — and it's exactly what the Innovation Triangle (Week 2) is built to explain: tech, people, and business model all have to work together." }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    label: 'Stress-Test Your Idea',
+                    timing: 'Optional · Go Deeper',
+                    questions: [
+                        {
+                            type: 'toggle_grid', badge: 'bonus', prompt: 'Tap each side of the triangle below to mark it a STRENGTH for your top idea. Leave the weak ones untapped.',
+                            items: [
+                                { title: 'TECH', text: 'Does the technology actually exist and work reliably?' },
+                                { title: 'PEOPLE', text: 'Will Maria, the buyer, and the co-op actually use it?' },
+                                { title: 'BUSINESS', text: 'Is there a way to pay for it that makes sense?' }
+                            ]
+                        },
+                        { type: 'text', badge: 'bonus', prompt: 'MASIFAGCA is a real calamansi farmer group (Nueva Ecija) that faced almost this exact middleman problem. If you can look them up — what did they actually do?', rows: 2, placeholder: 'What you found...' },
+                        { type: 'text', badge: 'bonus', prompt: 'Name one other Bohol industry (fishing, tourism, transport, weaving) with a similar "farmer\'s dilemma" — no data, no credit, middlemen. What would need to change?', rows: 2, placeholder: 'Industry + what would change...' }
+                    ]
+                },
+                {
+                    label: 'Reflection',
+                    timing: '55–60 min · Wrap-Up',
+                    questions: [
+                        { type: 'text', badge: 'core', prompt: 'In one sentence — what makes something an innovation, not just an invention? Bring this answer to Session 2.1.', rows: 2, placeholder: 'Your answer here...' }
+                    ]
+                }
+            ]
         }
     }
 };

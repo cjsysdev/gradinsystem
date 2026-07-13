@@ -113,7 +113,8 @@ class assessments extends MY_Model
                 cl.class_name,
                 cl.class_code,
                 ag.set_id AS grouping_set_id,
-                COUNT(cw.classwork_id) AS submission_count
+                COUNT(cw.classwork_id) AS submission_count,
+                SUM(CASE WHEN cw.classwork_id IS NOT NULL AND cw.score IS NULL THEN 1 ELSE 0 END) AS unscored_count
             FROM assessments a
             JOIN class_schedule cs ON a.schedule_id = cs.schedule_id
             JOIN io_type iot ON a.iotype_id = iot.iotype_id
