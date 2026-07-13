@@ -1,0 +1,152 @@
+{
+  "topic": "html_tags_essentials",
+  "title": "HTML Tags: The Core Idea",
+  "description": "Before you build a page, you need to understand the one thing every HTML page is made of: the tag.",
+  "congratsText": "You've got tags down! You now know how the browser reads every single HTML page.",
+  "sections": [
+    {
+      "id": 0,
+      "title": "Objectives",
+      "quiz": null,
+      "lesson": "<div class=\"lesson-title\">What You Will Learn</div><div class=\"lesson-text\">By the end of this discussion, you will be able to:</div><div class=\"lesson-text\"><ul><li>Explain what an HTML tag is and what job it does</li><li>Tell an opening tag apart from a closing tag</li><li>Nest tags correctly and avoid the most common tag mistake</li></ul></div>"
+    },
+    {
+      "id": 1,
+      "title": "What Is a Tag?",
+      "lesson": "<div class=\"lesson-title\">What Is a Tag?</div><div class=\"lesson-text\">A <span class=\"highlight\">tag</span> is a piece of code wrapped in angle brackets that tells the browser what something is. It's a label, not the content itself.</div><div class=\"code-block\">&lt;p&gt;</div><div class=\"lesson-text\">That's a tag. By itself it doesn't show anything on the page \u2014 it just says \"what comes next is a paragraph.\" Tags are the building blocks every HTML page is made of.</div>",
+      "quiz": {
+        "question": "What does an HTML tag actually do?",
+        "options": [
+          "It labels a piece of content so the browser knows what it is",
+          "It runs a command that changes the server's files",
+          "It stores data permanently in the browser's memory",
+          "It connects the page to a database automatically"
+        ],
+        "correct": 0
+      }
+    },
+    {
+      "id": 2,
+      "title": "Opening and Closing Tags",
+      "lesson": "<div class=\"lesson-title\">Opening and Closing Tags</div><div class=\"lesson-text\">Most tags come in <span class=\"highlight\">pairs</span>: an opening tag and a closing tag. The closing tag looks the same as the opening one, but with a forward slash.</div><div class=\"code-block\">&lt;p&gt;This is a paragraph.&lt;/p&gt;</div><div class=\"lesson-text\">Everything between the opening tag <strong>&lt;p&gt;</strong> and the closing tag <strong>&lt;/p&gt;</strong> is the content that tag applies to. Think of it like a sandwich \u2014 the tags are the bread, the content is the filling.</div>",
+      "quiz": {
+        "question": "What is the difference between an opening tag and its closing tag?",
+        "code": "<h1>Welcome</h1>",
+        "options": [
+          "The closing tag has a forward slash before the tag name",
+          "The closing tag is always written in capital letters",
+          "The closing tag comes before the content, not after",
+          "The closing tag needs a different word than the opening one"
+        ],
+        "correct": 0
+      }
+    },
+    {
+      "id": 3,
+      "title": "The Anatomy of a Tag",
+      "lesson": "<div class=\"lesson-title\">The Anatomy of a Tag</div><div class=\"lesson-text\">A full tag \"unit\" has three parts: the opening tag, the content, and the closing tag.</div><div class=\"code-block\">&lt;h1&gt;Hello World&lt;/h1&gt;</div><div class=\"lesson-text\"><ul><li><strong>&lt;h1&gt;</strong> \u2014 opening tag, marks the start</li><li><strong>Hello World</strong> \u2014 the content itself</li><li><strong>&lt;/h1&gt;</strong> \u2014 closing tag, marks the end</li></ul></div><div class=\"lesson-text\">This whole group is called an <span class=\"highlight\">element</span>. The tags are the markers; the element is the tags plus everything inside them.</div>",
+      "quiz": {
+        "question": "In the code below, what counts as the 'content' of the element?",
+        "code": "<h1>Hello World</h1>",
+        "options": [
+          "Hello World",
+          "<h1>",
+          "</h1>",
+          "The entire line of code, brackets included"
+        ],
+        "correct": 0
+      }
+    },
+    {
+      "id": 4,
+      "title": "Tags That Don't Close",
+      "lesson": "<div class=\"lesson-title\">Tags That Don't Close</div><div class=\"lesson-text\">Not every tag comes in a pair. Some tags represent something that has no content to wrap around, like a line break or an image. These are called <span class=\"highlight\">void tags</span>, or self-closing tags.</div><div class=\"code-block\">&lt;br&gt;\n&lt;hr&gt;\n&lt;img src=\"cat.jpg\"&gt;</div><div class=\"lesson-text\">A line break doesn't have \"content\" to close around, so there's no <strong>&lt;/br&gt;</strong>. If a tag doesn't hold text or other tags inside it, it usually doesn't need a closing tag.</div>",
+      "quiz": {
+        "question": "Why does the <br> tag not need a closing tag?",
+        "options": [
+          "It has no content inside it to wrap around",
+          "Browsers ignore closing tags for short tag names",
+          "It is not technically part of the HTML language",
+          "Closing tags are only required inside a <form>"
+        ],
+        "correct": 0
+      }
+    },
+    {
+      "id": 5,
+      "title": "Nesting Tags",
+      "lesson": "<div class=\"lesson-title\">Nesting Tags</div><div class=\"lesson-text\">Tags can go inside other tags. This is called <span class=\"highlight\">nesting</span>. The tag on the outside is the parent; the tag on the inside is the child.</div><div class=\"code-block\">&lt;p&gt;This word is &lt;strong&gt;important&lt;/strong&gt;.&lt;/p&gt;</div><div class=\"lesson-text\">Here, <strong>&lt;strong&gt;</strong> is nested inside <strong>&lt;p&gt;</strong>. The rule is simple: whatever tag you open last, you must close first \u2014 like stacking boxes inside boxes.</div>",
+      "quiz": {
+        "question": "Which line correctly nests <strong> inside <p>?",
+        "options": [
+          "<p>This is <strong>important</strong>.</p>",
+          "<p>This is <strong>important.</p></strong>",
+          "<strong><p>This is important.</strong></p>",
+          "<p><strong>This is important.</p></strong>"
+        ],
+        "correct": 0
+      }
+    },
+    {
+      "id": 6,
+      "title": "Where Attributes Live",
+      "lesson": "<div class=\"lesson-title\">Where Attributes Live</div><div class=\"lesson-text\">A tag can carry extra information called an <span class=\"highlight\">attribute</span>. Attributes always go inside the opening tag only \u2014 never the closing tag.</div><div class=\"code-block\">&lt;a href=\"https://example.com\"&gt;Click here&lt;/a&gt;</div><div class=\"lesson-text\">Here, <strong>href</strong> is the attribute name and <strong>\"https://example.com\"</strong> is its value. The closing tag <strong>&lt;/a&gt;</strong> stays plain \u2014 it never repeats the attribute.</div>",
+      "quiz": {
+        "question": "Where does an attribute like href belong in an element?",
+        "code": "<a href=\"page.html\">Go</a>",
+        "options": [
+          "Inside the opening tag only",
+          "Inside the closing tag only",
+          "Split between the opening and closing tag",
+          "Anywhere between the two tags"
+        ],
+        "correct": 0
+      }
+    },
+    {
+      "id": 7,
+      "title": "Tag Names Are Lowercase",
+      "lesson": "<div class=\"lesson-title\">Tag Names Are Lowercase</div><div class=\"lesson-text\">HTML tag names are not case-sensitive to the browser \u2014 <strong>&lt;P&gt;</strong> and <strong>&lt;p&gt;</strong> both work. But the standard, expected style is to always write tag names in <span class=\"highlight\">lowercase</span>.</div><div class=\"code-block\">&lt;p&gt;Good practice&lt;/p&gt;\n&lt;P&gt;Works, but avoid this&lt;/P&gt;</div><div class=\"lesson-text\">Sticking to lowercase keeps your code consistent and easier to read, especially once your files get longer.</div>",
+      "quiz": {
+        "question": "What is true about the tag <P> written in uppercase?",
+        "options": [
+          "The browser still renders it, but lowercase is the accepted convention",
+          "It throws an error and the browser refuses to load the page",
+          "It behaves like a completely different tag than <p>",
+          "It only works inside the <head> section"
+        ],
+        "correct": 0
+      }
+    },
+    {
+      "id": 8,
+      "title": "The Most Common Mistake",
+      "lesson": "<div class=\"lesson-title\">The Most Common Mistake</div><div class=\"lesson-text\">The single most common tag mistake is forgetting to close a tag, or closing tags out of order.</div><div class=\"code-block\">&lt;p&gt;Text that never ends...\n&lt;p&gt;Another paragraph&lt;/p&gt;</div><div class=\"lesson-text\">Here the first <strong>&lt;p&gt;</strong> was never closed. Browsers often try to guess what you meant and still show something \u2014 but the layout can end up wrong in ways that are hard to spot. Always check that every opening tag has a matching closing tag in the right order.</div>",
+      "quiz": {
+        "question": "What usually happens when a tag is left unclosed?",
+        "options": [
+          "The browser tries to guess the structure, which can break the layout",
+          "The page refuses to load at all until it's fixed",
+          "The browser automatically deletes that section of content",
+          "Nothing changes \u2014 closing tags are only for documentation"
+        ],
+        "correct": 0
+      }
+    },
+    {
+      "id": 9,
+      "title": "Recap: Reading Any Tag",
+      "lesson": "<div class=\"lesson-title\">Recap: Reading Any Tag</div><div class=\"lesson-text\">Every tag you meet from here on breaks down the same way:</div><div class=\"lesson-text\"><ul><li>Angle brackets mark where a tag starts and ends</li><li>Most tags pair up: opening tag, content, closing tag</li><li>Some tags are void \u2014 no content, no closing tag</li><li>Tags can nest inside other tags, closing in reverse order</li><li>Attributes live in the opening tag only</li></ul></div><div class=\"code-block\">&lt;div&gt;\n  &lt;p&gt;Some &lt;a href=\"#\"&gt;linked&lt;/a&gt; text.&lt;/p&gt;\n&lt;/div&gt;</div><div class=\"lesson-text\">Once tags click, the rest of HTML is just learning <span class=\"highlight\">which</span> tag to use for which job \u2014 and soon, how to collect input back from the person reading the page.</div>",
+      "quiz": {
+        "question": "Which statement correctly summarizes how HTML tags work together?",
+        "options": [
+          "Tags mark content, can nest, and close in the reverse order they were opened",
+          "Every tag must always have both a closing tag and an attribute",
+          "Nesting is optional and tags never need to close in a specific order",
+          "Attributes replace the need for a separate closing tag"
+        ],
+        "correct": 0
+      }
+    }
+  ]
+}

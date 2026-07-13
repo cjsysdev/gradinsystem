@@ -64,6 +64,12 @@ class Widgets_model extends CI_Model
         // manual-score-entry pattern as Worksheet Form/Lab Worksheet.
         $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
             VALUES ('case_study', 'Case Study Worksheet', 'widgets/case_study', NULL)");
+        // Case Dossier Rating: hook question -> read-only framework explainer
+        // -> multiple parallel case dossiers, each rated 1-5 per factor with a
+        // cited-evidence text field -> reflection questions. Not auto-graded,
+        // same manual-score-entry pattern as the other worksheet-style widgets.
+        $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
+            VALUES ('case_dossier', 'Case Dossier Rating', 'widgets/case_dossier', NULL)");
     }
 
     public function get_all()

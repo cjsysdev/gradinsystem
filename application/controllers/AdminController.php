@@ -557,7 +557,14 @@ class AdminController extends CI_Controller
 
         if ($assessment_id) {
             // MY_Model::update() takes (data, where) — NOT (where, data).
-            $this->assessments->update($data, $assessment_id);
+            // Returns FALSE only on a genuine query failure (0 affected rows
+            // from an already-up-to-date row still returns int 0, not FALSE)
+            // — db_debug is off, so a bad UPDATE fails silently otherwise.
+            if ($this->assessments->update($data, $assessment_id) === false) {
+                $this->session->set_flashdata('error', 'Failed to update assessment — please try again.');
+                redirect('manage_assessments' . (!empty($post['schedule_id']) ? '?schedule_id=' . $post['schedule_id'] : ''));
+                return;
+            }
             $flash = 'Assessment updated successfully.';
         } else {
             $data['created_at'] = date('Y-m-d H:i:s');

@@ -74,16 +74,37 @@ class Grouping_model extends CI_Model
             UNIQUE KEY `uq_state_student` (`state_id`, `student_id`),
             FOREIGN KEY (`state_id`) REFERENCES `assessment_live_state`(`state_id`) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        // Self-select groupings: students form/join their own groups (up to
+        // min_members, which doubles as the target group size) instead of the
+        // admin's shuffle+round-robin assignment in Groupings::store(). Added
+        // via a safe column check rather than folding into the CREATE TABLE
+        // above, since grouping_sets already exists in live installs.
+        $this->_add_column_if_missing('grouping_sets', 'self_select', 'TINYINT(1) NOT NULL DEFAULT 0');
+    }
+
+    private function _add_column_if_missing($table, $column, $definition)
+    {
+        $exists = $this->db->query(
+            "SELECT 1 FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?",
+            [$table, $column]
+        )->num_rows() > 0;
+
+        if (!$exists) {
+            $this->db->query("ALTER TABLE `$table` ADD COLUMN `$column` $definition");
+        }
     }
 
     // ── Grouping sets ────────────────────────────────────────────────────────
 
-    public function create_set($section_id, $name, $min_members)
+    public function create_set($section_id, $name, $min_members, $self_select = false)
     {
         $this->db->insert('grouping_sets', [
             'section_id'  => $section_id,
             'name'        => $name,
             'min_members' => $min_members,
+            'self_select' => $self_select ? 1 : 0,
         ]);
         return $this->db->insert_id();
     }
@@ -145,5 +166,58 @@ class Grouping_model extends CI_Model
             ->where('g.set_id', $set_id)
             ->where('gm.student_id', $student_id)
             ->get()->row_array();
+    }
+
+    // ── Self-select support ──────────────────────────────────────────────────
+
+    public function count_members($group_id)
+    {
+        return (int) $this->db->where('group_id', $group_id)->count_all_results('group_members');
+    }
+
+    // Groups in a set plus their current members — same shape
+    // Groupings::view_set() already builds inline, made reusable for the
+    // student-facing self-select picker.
+    public function get_groups_with_members($set_id)
+    {
+        $this->load->model('Group_member_model');
+        $groups = $this->get_groups_by_set($set_id);
+        foreach ($groups as &$g) {
+            $g['members'] = $this->Group_member_model->get_members_by_group($g['group_id']);
+        }
+        unset($g);
+        return $groups;
+    }
+
+    // Creates a new group in $set_id with $student_id as its first member.
+    public function create_group_with_member($set_id, $group_name, $student_id)
+    {
+        $group_id = $this->create_group([
+            'set_id'     => $set_id,
+            'group_name' => $group_name,
+        ]);
+        $this->db->insert('group_members', [
+            'group_id'   => $group_id,
+            'student_id' => $student_id,
+        ]);
+        return $group_id;
+    }
+
+    public function join_group($group_id, $student_id)
+    {
+        $this->db->insert('group_members', [
+            'group_id'   => $group_id,
+            'student_id' => $student_id,
+        ]);
+    }
+
+    // Removes a student from a still-forming group; deletes the group too
+    // if that leaves it empty, so the picker doesn't accumulate orphans.
+    public function leave_group($group_id, $student_id)
+    {
+        $this->db->where(['group_id' => $group_id, 'student_id' => $student_id])->delete('group_members');
+        if ($this->count_members($group_id) === 0) {
+            $this->db->where('group_id', $group_id)->delete('groupings');
+        }
     }
 }

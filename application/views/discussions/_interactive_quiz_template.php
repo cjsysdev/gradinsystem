@@ -75,7 +75,7 @@ $previous_answers  = $previous_answers ?? [];
                 <div class="progress-section">
                     <div class="progress-fill" id="progressFill"></div>
                 </div>
-                <button class="header-close" onclick="exportDiscussionImage()" title="Save as image for offline review">&#x1F4F7;</button>
+                <!-- <button class="header-close" onclick="exportDiscussionImage()" title="Save as image for offline review">&#x1F4F7;</button> -->
                 <div class="header-score">
                     <span>&#x2B50;</span>
                     <span id="score">0</span>

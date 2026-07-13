@@ -8,7 +8,14 @@
     </a>
 
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3 class="mb-0"><?= htmlspecialchars($set['name']) ?></h3>
+        <h3 class="mb-0">
+            <?= htmlspecialchars($set['name']) ?>
+            <?php if (!empty($set['self_select'])): ?>
+                <span class="badge badge-info">Self-select</span>
+            <?php else: ?>
+                <span class="badge badge-secondary">Auto-assigned</span>
+            <?php endif; ?>
+        </h3>
         <form method="post" action="<?= base_url('Groupings/delete_set/' . $set['set_id']) ?>"
               onsubmit="return confirm('Delete this grouping set and all its groups?');">
             <button type="submit" class="btn btn-outline-danger btn-sm">
@@ -18,14 +25,22 @@
     </div>
 
     <?php if (empty($groups)): ?>
-        <div class="alert alert-info">No groups found.</div>
+        <div class="alert alert-info">
+            No groups found.
+            <?php if (!empty($set['self_select'])): ?>students haven't formed any yet.<?php endif; ?>
+        </div>
     <?php else: ?>
         <div class="row">
             <?php foreach ($groups as $grp): ?>
                 <div class="col-md-4 mb-3">
                     <div class="card">
                         <div class="card-body">
-                            <h5><?= htmlspecialchars($grp['group_name']) ?></h5>
+                            <h5>
+                                <?= htmlspecialchars($grp['group_name']) ?>
+                                <?php if (!empty($set['self_select'])): ?>
+                                    <small class="text-muted">(<?= count($grp['members']) ?>/<?= (int) $set['min_members'] ?>)</small>
+                                <?php endif; ?>
+                            </h5>
                             <ul>
                                 <?php foreach ($grp['members'] as $m): ?>
                                     <li><?= htmlspecialchars($m['firstname'] . ' ' . $m['lastname'] . ' (' . $m['trans_no'] . ')') ?></li>

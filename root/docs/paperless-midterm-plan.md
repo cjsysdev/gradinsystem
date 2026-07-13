@@ -1,16 +1,18 @@
 # Paperless Midterm Integration Plan
 
-**Status:** All 6 widgets (B–G) implemented, plus three added outside the
+**Status:** All 6 widgets (B–G) implemented, plus four added outside the
 original scope: **Multiple Choice Quiz** (see §10) — replaces the
 `json_file_path`-upload requirement of the old `QuizController` flow for any
 assessment that opts into it; that old flow is untouched and still works for
 assessments not using the widget — **Widget H — Lab Worksheet** (see §4)
-for Predict/Observe/Explain-style programming lab activities — and
-**Widget I — Case Study Worksheet** (see §4) for narrative case-study
-activities (story panel + heterogeneous question types). Widget D
-(Brainstorm Board) is a first pass — see its section below for what was
-simplified vs. the original spec (no drag-to-cluster positioning;
-participation-only classwork tracking).
+for Predict/Observe/Explain-style programming lab activities — **Widget I —
+Case Study Worksheet** (see §4) for narrative case-study activities (story
+panel + heterogeneous question types) — and **Widget J — Case Dossier
+Rating** (see §4) for comparative case-study activities rating multiple
+parallel dossiers against a shared framework. Widget D (Brainstorm Board) is
+a first pass — see its section below for what was simplified vs. the
+original spec (no drag-to-cluster positioning; participation-only classwork
+tracking).
 **Scope:** IS Innovations & New Technologies course, Midterm (Weeks 1–8)
 **Related:** `docs/week1-lms-seed-example/` (SQL + JSON pilot for Week 1)
 
@@ -364,13 +366,77 @@ patterns. Build 6 reusable widgets, not 16 custom interfaces.
   (`manage_assessments.php`'s `widgetExamples.case_study`) is the full
   Session 1.2 "Meet Maria" worksheet, ready to use as-is.
 
+### Widget J — Case Dossier Rating (added outside original scope)
+- **Why:** comparative case-study activities (e.g. Session 2.1's "Why
+  Inventions Fail: The Innovation Triangle") combine a hook question, a
+  read-only conceptual-framework explainer, and — the piece none of the
+  other widgets cover — **multiple parallel case dossiers** (e.g. GCash /
+  Kodak / Friendster), each rated 1–5 per shared factor with a required
+  cited-evidence text field, followed by reflection questions. Widget I
+  (Case Study Worksheet) has no concept of more than one case at a time or
+  of a 1–5 rating+evidence interaction.
+- **Replaces:** one-off standalone HTML worksheets built for this exact
+  "rate several real cases against a framework, cite your evidence" pattern
+  (e.g. `session2-1-innovation-triangle.html`).
+- **UI:** a read-only meta header (eyebrow/title/sub), then in order: the
+  hook section (reuses Widget I's `text`/`list`/`choice` question shapes
+  verbatim), a read-only framework explainer (factor cards + an anchor
+  quote — no input), one accent-colored card per case dossier (read-only
+  facts/source, followed by a 1–5 button scale + evidence text input per
+  factor), and a reflection section (same question shapes as the hook).
+- **Config (`assessments.given`):**
+  ```json
+  {
+    "meta": {"eyebrow": "Session 2.1 · Field Notebook", "title": "...", "sub": "..."},
+    "hook": {"label": "...", "timing": "...", "intro": "<p>...</p>", "questions": [ {"type": "list", "badge": "core", "prompt": "...", "lines": 3, "placeholders": [...]} ]},
+    "framework": {"label": "...", "timing": "...", "intro": "<p>...</p>", "factors": [{"title": "TECH", "text": "..."}], "anchor": "Tech alone is not enough."},
+    "groups": [
+      {
+        "name": "GCash", "accent": "mango",
+        "dossier": {"title": "Case Dossier — GCash", "facts": ["...", "..."], "source": "Sources: ..."},
+        "factors": [{"title": "TECH", "question": "Did the technology work?"}]
+      }
+    ],
+    "reflection": {"label": "Reflection", "timing": "...", "questions": [ {"type": "text", "badge": "core", "prompt": "...", "rows": 3, "placeholder": "..."} ]}
+  }
+  ```
+  `hook`/`reflection` questions reuse Widget I's `text`/`list`/`choice`
+  field names exactly. `framework` and `groups[].dossier` are pure
+  admin-authored display content, no answer captured. `groups[].factors` is
+  the new interaction: each renders a 1–5 rating scale + an evidence text
+  input.
+- **Submission (`classworks.code`):**
+  ```json
+  {
+    "hook_answers": {"0": ["line one", "line two", "line three"]},
+    "group_ratings": {"0": {"0": {"score": 4, "evidence": "cited number/fact"}}},
+    "reflection_answers": {"0": "...", "1": 2}
+  }
+  ```
+  `hook_answers`/`reflection_answers` are flat, index-keyed-object maps
+  (same convention as every other widget). `group_ratings` is keyed
+  `group index → factor index → {score, evidence}` (`score` 1–5 or `null`).
+- **Not auto-graded** — manual score entry, same as every worksheet-style
+  widget so far.
+- **Implemented:** `application/views/widgets/case_dossier.php`. No shared
+  base class with Widget I — the `text`/`list`/`choice` renderer is
+  duplicated locally (as `cd_render_question()`), matching how every widget
+  here is self-contained. Renders inline via the standard
+  `assessment_view_code.php` flow, no special-case redirect. There's no
+  mechanism to assign "your group only gets GCash" — every authored
+  `groups[]` entry renders to every student, matching the source worksheet's
+  own design (all three dossiers side by side, compared during debrief).
+  The admin "Widget" dropdown's example JSON (`widgetExamples.case_dossier`)
+  is the full Session 2.1 "Innovation Triangle" worksheet (all 3 dossiers),
+  ready to use as-is.
+
 ## 5. Full Session-to-Widget Mapping (Weeks 1–8)
 
 | Session | Concept Portion | Hands-On Activity | Widget |
 |---|---|---|---|
 | 1.1 | Invention vs Innovation | Innovation Hunt Worksheet | Discussion + **B** |
 | 1.2 | Innovation in Bohol | Ideation Mural (Maria) | Discussion + **D**¹ |
-| 2.1 | Why Inventions Fail | Innovation Triangle | Discussion + **E** |
+| 2.1 | Why Inventions Fail | Innovation Triangle | Discussion + **E**² |
 | 2.2 | Sources of Innovation | Jigsaw case sort | Discussion + **C** |
 | 3.1 | Disruptive vs Incremental | Classification cards + debate | Discussion + **C** |
 | 3.2 | Innovation Patterns | Pattern matching + synthesis | Discussion + **C** |
@@ -392,6 +458,12 @@ graded, per-student/group worksheet. This doesn't replace **D** — Brainstorm
 Board's live shared board is still the intended tool for the in-class
 Ideation Mural moment itself — the two can be used together or Widget I
 can stand in on its own where a live shared board isn't needed.
+
+² **Widget J** (Case Dossier Rating, §4) is also available for 2.1 as a
+fuller alternative — the whole "Innovation Triangle" field notebook (hook +
+framework explainer + all 3 case dossiers rated with cited evidence +
+reflection) as one graded worksheet, instead of pairing the Discussion topic
+with Widget E's fixed-flow diagram.
 
 ## 6. Database Integration
 
@@ -424,8 +496,8 @@ ALTER TABLE `assessments` ADD COLUMN `widget_id` INT UNSIGNED DEFAULT NULL;
   schema — same pattern as `Groupings/install` and `poll/install`.
 - All rows (`worksheet`, `quiz`, `card_sort`, `diagram`, `decision_matrix`,
   `calculator`, `lab_worksheet`, `brainstorm`, `iq_discussion`,
-  `case_study`) are seeded now — an `input_view` file exists for every one
-  before its row gets inserted.
+  `case_study`, `case_dossier`) are seeded now — an `input_view` file exists
+  for every one before its row gets inserted.
 
 Widget D (Brainstorm Board) is the one exception, as planned — shared/live
 state across a section rather than one row per student. It reuses the

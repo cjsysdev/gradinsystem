@@ -50,6 +50,7 @@ class Groupings extends CI_Controller
         $min_members = max(1, (int) $this->input->post('min_members'));
         $desired_groups = (int) $this->input->post('desired_groups'); // optional
         $group_name_prefix = $this->input->post('group_name') ?: 'Group';
+        $self_select = (bool) $this->input->post('self_select');
 
         if (!$section) {
             $this->session->set_flashdata('error', 'Please select a section.');
@@ -59,6 +60,16 @@ class Groupings extends CI_Controller
         if ($set_name === '') {
             $this->session->set_flashdata('error', 'Please name this grouping set.');
             redirect('Groupings/create/' . $section);
+            return;
+        }
+
+        // Self-select: students form/join their own groups (up to
+        // min_members, the target group size) from GroupWorkController — no
+        // pre-assignment here, just the set itself.
+        if ($self_select) {
+            $set_id = $this->Grouping_model->create_set($section, $set_name, $min_members, true);
+            $this->session->set_flashdata('success', 'Grouping set "' . $set_name . '" created — students will form their own groups (target size: ' . $min_members . ').');
+            redirect('Groupings/view_set/' . $set_id);
             return;
         }
 

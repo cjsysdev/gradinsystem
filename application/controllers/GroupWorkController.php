@@ -12,10 +12,10 @@ class GroupWorkController extends CI_Controller
         $this->load->model(['Grouping_model', 'Group_member_model', 'Live_state_model', 'Widgets_model']);
     }
 
-    // Resolves the assessment + the current student's group for it.
-    // Returns null if the assessment isn't a valid group assessment at all;
-    // returns ['assessment' => ..., 'group' => null] if valid but the
-    // student isn't assigned to any group in the set.
+    // Resolves the assessment + grouping set + the current student's group
+    // for it. Returns null if the assessment isn't a valid group assessment
+    // at all; returns ['assessment' => ..., 'set' => ..., 'group' => null]
+    // if valid but the student isn't assigned to any group in the set yet.
     private function _resolve($assessment_id)
     {
         $assessment = $this->assessments->as_array()->get($assessment_id);
@@ -26,9 +26,21 @@ class GroupWorkController extends CI_Controller
             return null;
         }
 
+        $set = $this->Grouping_model->get_set($set_id);
         $group = $this->Grouping_model->get_student_group($this->session->student_id, $set_id);
 
-        return ['assessment' => $assessment, 'group' => $group];
+        return ['assessment' => $assessment, 'set' => $set, 'group' => $group];
+    }
+
+    // True if the current student is marked present/late today in the
+    // set's section — same rule Groupings::store() enforces for the
+    // admin auto-assign shuffle, applied here to self-select create/join.
+    private function _is_present_today($section_id)
+    {
+        date_default_timezone_set('Asia/Manila');
+        $today = date('Y-m-d');
+        $present_ids = $this->attendance->get_present_student_ids_by_section($section_id, $today);
+        return in_array($this->session->student_id, $present_ids);
     }
 
     public function workspace($assessment_id)
@@ -40,12 +52,34 @@ class GroupWorkController extends CI_Controller
             return;
         }
 
-        if (!$resolved['group']) {
+        $set = $resolved['set'];
+        $group = $resolved['group'];
+
+        if (!empty($set['self_select'])) {
+            // Stay on the picker/"waiting for teammates" screen until the
+            // group reaches its target size — that's the only "lock" trigger
+            // this feature needs (see Grouping_model::count_members()).
+            $is_full = $group && $this->Grouping_model->count_members($group['group_id']) >= $set['min_members'];
+            if (!$is_full) {
+                if ($group) {
+                    $group['members'] = $this->Group_member_model->get_members_by_group($group['group_id']);
+                }
+                $this->load->view('group_self_select', [
+                    'assessment'  => $resolved['assessment'],
+                    'set'         => $set,
+                    'my_group'    => $group,
+                    'is_present'  => $this->_is_present_today($set['section_id']),
+                    'open_groups' => $group ? [] : array_values(array_filter(
+                        $this->Grouping_model->get_groups_with_members($set['set_id']),
+                        function ($g) use ($set) { return count($g['members']) < $set['min_members']; }
+                    )),
+                ]);
+                return;
+            }
+        } elseif (!$group) {
             $this->load->view('group_workspace_unassigned', ['assessment' => $resolved['assessment']]);
             return;
         }
-
-        $group = $resolved['group'];
         $state = $this->Live_state_model->get_or_create($assessment_id, $group['group_id']);
         $members = $this->Group_member_model->get_members_by_group($group['group_id']);
         $ready_map = $this->Live_state_model->get_ready_map($state['state_id']);
@@ -65,6 +99,90 @@ class GroupWorkController extends CI_Controller
             'widget'        => $widget,
             'widget_config' => $widget ? (json_decode($resolved['assessment']['given'] ?? '', true) ?: []) : [],
         ]);
+    }
+
+    // Student-facing self-select actions — only valid when the resolved
+    // grouping set has self_select on. All three redirect back to
+    // workspace(), which naturally shows the picker, the still-forming
+    // group, or (once min_members is reached) the real group_workspace —
+    // there's no separate "lock" step to trigger.
+    public function create_group($assessment_id)
+    {
+        $resolved = $this->_resolve($assessment_id);
+        if (!$resolved || empty($resolved['set']['self_select'])) {
+            show_404();
+            return;
+        }
+        if ($resolved['group']) {
+            $this->session->set_flashdata('error', 'You already belong to a group for this assessment.');
+            redirect('GroupWorkController/workspace/' . $assessment_id);
+            return;
+        }
+        if (!$this->_is_present_today($resolved['set']['section_id'])) {
+            $this->session->set_flashdata('error', 'You must be marked present today to form a group.');
+            redirect('GroupWorkController/workspace/' . $assessment_id);
+            return;
+        }
+
+        $group_name = trim($this->input->post('group_name'));
+        if ($group_name === '') {
+            $this->session->set_flashdata('error', 'Please name your group.');
+            redirect('GroupWorkController/workspace/' . $assessment_id);
+            return;
+        }
+
+        $this->Grouping_model->create_group_with_member($resolved['set']['set_id'], $group_name, $this->session->student_id);
+        redirect('GroupWorkController/workspace/' . $assessment_id);
+    }
+
+    public function join_group($assessment_id, $group_id)
+    {
+        $resolved = $this->_resolve($assessment_id);
+        if (!$resolved || empty($resolved['set']['self_select'])) {
+            show_404();
+            return;
+        }
+        if ($resolved['group']) {
+            $this->session->set_flashdata('error', 'You already belong to a group for this assessment.');
+            redirect('GroupWorkController/workspace/' . $assessment_id);
+            return;
+        }
+        if (!$this->_is_present_today($resolved['set']['section_id'])) {
+            $this->session->set_flashdata('error', 'You must be marked present today to join a group.');
+            redirect('GroupWorkController/workspace/' . $assessment_id);
+            return;
+        }
+
+        $group = $this->Grouping_model->get($group_id);
+        if (!$group || (int) $group['set_id'] !== (int) $resolved['set']['set_id']) {
+            show_404();
+            return;
+        }
+        if ($this->Grouping_model->count_members($group_id) >= $resolved['set']['min_members']) {
+            $this->session->set_flashdata('error', 'That group is already full.');
+            redirect('GroupWorkController/workspace/' . $assessment_id);
+            return;
+        }
+
+        $this->Grouping_model->join_group($group_id, $this->session->student_id);
+        redirect('GroupWorkController/workspace/' . $assessment_id);
+    }
+
+    public function leave_group($assessment_id)
+    {
+        $resolved = $this->_resolve($assessment_id);
+        if (!$resolved || empty($resolved['set']['self_select']) || !$resolved['group']) {
+            redirect('GroupWorkController/workspace/' . $assessment_id);
+            return;
+        }
+        if ($this->Grouping_model->count_members($resolved['group']['group_id']) >= $resolved['set']['min_members']) {
+            $this->session->set_flashdata('error', 'This group is already full and locked in — you can no longer leave it.');
+            redirect('GroupWorkController/workspace/' . $assessment_id);
+            return;
+        }
+
+        $this->Grouping_model->leave_group($resolved['group']['group_id'], $this->session->student_id);
+        redirect('GroupWorkController/workspace/' . $assessment_id);
     }
 
     // AJAX: autosave the shared draft

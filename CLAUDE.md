@@ -74,6 +74,19 @@ as Worksheet Form/Lab Worksheet. Renders inline via the standard
 special-case redirect needed). The admin "Widget" dropdown's example JSON
 for this widget (`manage_assessments.php`'s `widgetExamples.case_study`) is
 the full Session 1.2 "Meet Maria" worksheet, ready to save as-is.
+A fifth widget, **Case Dossier Rating** (`case_dossier` widget_key, not in
+the original 6-widget plan — see plan doc §4 "Widget J"), covers comparative
+case-study activities (e.g. "Why Inventions Fail: The Innovation Triangle,"
+Session 2.1): a hook question, a read-only conceptual-framework explainer,
+then multiple parallel case dossiers (e.g. GCash/Kodak/Friendster) each
+rated 1-5 per factor with a required cited-evidence text field, then
+reflection questions. Every authored dossier renders to every student —
+there's no per-student/group case assignment. Not auto-graded — same
+manual-score-entry pattern as the other worksheet-style widgets. Renders
+inline via the standard `assessment_view_code.php` flow (no special-case
+redirect). Reuses Case Study Worksheet's `text`/`list`/`choice` question
+shapes for its hook/reflection sections, but duplicated locally in its own
+view file rather than shared — every widget here is self-contained.
 
 ## Conventions
 - Follow existing controller patterns (see `AssessmentController.php`,

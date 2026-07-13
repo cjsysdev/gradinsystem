@@ -576,6 +576,109 @@ const widgetExamples = {
                 }
             ]
         }
+    },
+    case_dossier: {
+        hint: 'Hook question + read-only framework explainer + multiple parallel case dossiers (each rated 1-5 per factor with a cited-evidence text field) + reflection questions. Not auto-graded. This example is the full Session 2.1 "Innovation Triangle" worksheet (GCash/Kodak/Friendster) — ready to use as-is.',
+        example: {
+            meta: {
+                eyebrow: 'Session 2.1 · Field Notebook',
+                title: 'Why Inventions Fail: The Innovation Triangle',
+                sub: 'IS Innovations & New Technologies · Carmen Municipal College · Week 2'
+            },
+            hook: {
+                label: 'The Best Widget Nobody Bought',
+                timing: '0–5 min · Hook Question',
+                intro: "<p>Imagine you invent the best widget ever. It's better than anything on the market. But almost nobody buys it.</p>",
+                questions: [
+                    { type: 'list', badge: 'core', prompt: 'Give 3 reasons the best widget ever could still fail to sell. (Don\'t just say "it broke" — think beyond the tech itself.)', lines: 3, placeholders: ['1. ...', '2. ...', '3. ...'] }
+                ]
+            },
+            framework: {
+                label: 'The Innovation Triangle',
+                timing: '5–12 min · Mini-Lecture',
+                intro: '<p>An innovation only succeeds if three things ALL line up:</p>',
+                factors: [
+                    { title: 'TECH', text: 'Does the technology actually work and solve the stated problem?' },
+                    { title: 'PEOPLE', text: 'Do real users adopt it — is it trusted, accessible, and easy enough to use?' },
+                    { title: 'BUSINESS', text: 'Is there a viable model to fund, distribute, and sustain it at scale?' }
+                ],
+                anchor: 'Tech alone is not enough.'
+            },
+            groups: [
+                {
+                    name: 'GCash',
+                    accent: 'mango',
+                    dossier: {
+                        title: 'Case Dossier — GCash',
+                        facts: [
+                            "Launched October 2004 as an SMS-based money-transfer service — Globe Telecom's answer to Smart Padala, not a technological breakthrough.",
+                            "As of Dec. 31, 2025: ~90 million registered users and 39.1 million monthly active users — nearly half the Philippines' adult population.",
+                            '78% of active users are OUTSIDE Metro Manila, and 92% belong to lower-income segments — real financial inclusion, not just a Manila app.',
+                            'Processed ₱17 trillion in gross transaction value in 2025 (56.7M transactions/day average); parent company Mynt filed in June 2026 for a ₱92.3-billion IPO — set to be the largest in Philippine stock market history.'
+                        ],
+                        source: 'Sources: Wikipedia "GCash"; BusinessWorld/Philstar/Inquirer, Mynt IPO filing coverage (June 2026).'
+                    },
+                    factors: [
+                        { title: 'TECH', question: 'Did the technology work?' },
+                        { title: 'PEOPLE', question: 'Did people actually adopt it?' },
+                        { title: 'BUSINESS', question: 'Was there a model to profit & scale?' }
+                    ]
+                },
+                {
+                    name: 'Kodak',
+                    accent: 'teal',
+                    dossier: {
+                        title: 'Case Dossier — Kodak',
+                        facts: [
+                            "Kodak engineer Steven Sasson invented the first digital camera in 1975 — inside Kodak's own labs.",
+                            'Kodak shelved the digital camera to protect its dominant, highly profitable film business rather than bring it to market.',
+                            'Despite inventing the core technology nearly two decades before digital cameras went mainstream, Kodak filed for bankruptcy in January 2012.'
+                        ],
+                        source: 'Sources: The Guardian, "Kodak\'s Digital Moment" (2012).'
+                    },
+                    factors: [
+                        { title: 'TECH', question: 'Did the technology work?' },
+                        { title: 'PEOPLE', question: 'Did people actually adopt it?' },
+                        { title: 'BUSINESS', question: 'Was there a model to profit & scale?' }
+                    ]
+                },
+                {
+                    name: 'Friendster (Philippines)',
+                    accent: 'purple',
+                    dossier: {
+                        title: 'Case Dossier — Friendster in the Philippines',
+                        facts: [
+                            "Launched March 2002 and became the Philippines' first mass social network, spread through internet cafés nationwide — by 2008, the Philippines accounted for 39% of ALL Friendster traffic worldwide, its single largest market anywhere.",
+                            "In 2003, Friendster turned down a $30 million buyout offer from Google — later called one of Silicon Valley's biggest blunders.",
+                            'Chronic server crashes and slow load times, worsened by the disproportionate volume of Philippine traffic, drove users away; Facebook overtook Friendster in the Philippines by 2009.',
+                            'Friendster actually relaunched in the Philippines in April 2026 as a stripped-down, ad-free app — a nostalgia-driven comeback, 11 years after it shut down.'
+                        ],
+                        source: 'Sources: Wikipedia "Friendster"; GMA News Online; M2 Comms (2026).'
+                    },
+                    factors: [
+                        { title: 'TECH', question: 'Did the technology work?' },
+                        { title: 'PEOPLE', question: 'Did people actually adopt it?' },
+                        { title: 'BUSINESS', question: 'Was there a model to profit & scale?' }
+                    ]
+                }
+            ],
+            reflection: {
+                label: 'Reflection',
+                timing: '40–60 min · Applied Work & Wrap-Up',
+                questions: [
+                    { type: 'text', badge: 'core', prompt: 'If Kodak had launched the digital camera in 1975, what business change would have had to happen alongside it? Write 2–3 sentences.', rows: 3, placeholder: 'Kodak would have had to...' },
+                    {
+                        type: 'choice', badge: 'core', prompt: 'Which corner of the Innovation Triangle did Kodak fail hardest on?',
+                        options: [
+                            { text: 'Tech', note: "Worth reconsidering — Kodak's technology was genuinely ahead of its time. Rating Tech as the failure confuses invention with commercialization." },
+                            { text: 'People', note: "Defensible, but downstream — nobody adopted the digital camera because it was never released to them. That's a real gap, but it's a symptom of a deeper failure." },
+                            { text: 'Business', note: 'The strongest answer. The core failure was a strategic business decision — protecting film profits and refusing to commercialize a threat to the existing model.' }
+                        ]
+                    },
+                    { type: 'text', badge: 'bonus', prompt: 'Name one other company or product you know of that had great technology but still failed. What corner did it miss?', rows: 2, placeholder: 'Company/product + which corner it missed...' }
+                ]
+            }
+        }
     }
 };
 
