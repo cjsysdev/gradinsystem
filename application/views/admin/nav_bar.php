@@ -9,9 +9,9 @@
         <a href="<?= base_url(
                         'all_submissions/1'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Classwork"><i class="fa fa-folder-open"></i></a>
-        <a href="<?= base_url(
+        <!-- <a href="<?= base_url(
                         'AdminController/student_submissions'
-                    ) ?>" class="btn btn-outline-secondary col m-2" title="Submissions"><i class="fa fa-file-alt"></i></a>
+                    ) ?>" class="btn btn-outline-secondary col m-2" title="Submissions"><i class="fa fa-file-alt"></i></a> -->
         <a href="<?= base_url(
                         'view_attendance'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Attendance"><i class="fa fa-calendar-check"></i></a>
@@ -21,9 +21,9 @@
         <a href="<?= base_url(
                         'admin/student_violations'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Student Violations"><i class="fa fa-exclamation-triangle"></i></a>
-        <a href="<?= base_url(
+        <!-- <a href="<?= base_url(
                         'AdminController/manage_discussions'
-                    ) ?>" class="btn btn-outline-secondary col m-2" title="Discussions"><i class="fa fa-comments"></i></a>
+                    ) ?>" class="btn btn-outline-secondary col m-2" title="Discussions"><i class="fa fa-comments"></i></a> -->
         <!-- <a href="<?= base_url(
                         'interactive_quiz/analytics'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="IQ Analytics"><i class="fa fa-chart-line"></i></a>
@@ -45,8 +45,8 @@
         <a href="<?= base_url(
                         'Groupings'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Groupings"><i class="fa fa-people-group"></i></a>
-        <a href="<?= base_url(
+        <!-- <a href="<?= base_url(
                         'uncleared_students'
-                    ) ?>" class="btn btn-outline-secondary col m-2" title="Uncleared Students"><i class="fa fa-user-times"></i></a>
+                    ) ?>" class="btn btn-outline-secondary col m-2" title="Uncleared Students"><i class="fa fa-user-times"></i></a> -->
     </div>
 </div>

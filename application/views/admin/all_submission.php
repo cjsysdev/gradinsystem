@@ -419,7 +419,7 @@
         if (btn) { btn.disabled = true; }
         if (badgeArea) badgeArea.innerHTML = '';
 
-        let animationCount = 30, currentFrame = 0, interval = 40;
+        let animationCount = 20, currentFrame = 0, interval = 30;
 
         function animate() {
             const s = students[Math.floor(Math.random() * students.length)];
@@ -436,7 +436,7 @@
             }
 
             currentFrame++;
-            if (currentFrame > animationCount - 8) interval += 40;
+            if (currentFrame > animationCount - 6) interval += 25;
 
             if (currentFrame < animationCount) {
                 setTimeout(animate, interval);

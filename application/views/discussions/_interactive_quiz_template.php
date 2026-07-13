@@ -152,6 +152,12 @@ $previous_answers  = $previous_answers ?? [];
         const BASE_URL      = <?= json_encode(base_url()) ?>;
         const ASSESSMENT_ID = <?= $assessment_id ?>;
         const PREVIOUS_SCORE = <?= json_encode($previous_score) ?>;
+        // Back button is only safe on retakes (score isn't recorded again — see
+        // showCongratsModal/save_result's first-try-only guard). On a first try,
+        // going back re-triggers submitAnswer() for an already-answered section,
+        // which increments `score` again (only the record_attempt AJAX/quizAnswers
+        // push is de-duped via answeredSections) — so it's hidden entirely.
+        const ALREADY_SUBMITTED = <?= $already_submitted ? 'true' : 'false' ?>;
         // recorded answers from an earlier completed attempt (see save_result()) —
         // used so the PDF export can show what was actually picked, keyed by section index.
         const prevAnswerBySection = {};
@@ -363,6 +369,7 @@ $previous_answers  = $previous_answers ?? [];
         }
 
         function previousSection() {
+            if (!ALREADY_SUBMITTED) return; // no back-nav on a first try — see ALREADY_SUBMITTED note above
             if (currentSection > 0) { currentSection--; renderContent(); }
         }
 
@@ -390,7 +397,9 @@ $previous_answers  = $previous_answers ?? [];
             fill.style.width = `${((currentSection + 1) / sections.length) * 100}%`;
             fill.classList.toggle('streak-active', streakHighlight);
 
-            document.getElementById('backBtn').disabled = currentSection === 0;
+            const backBtn = document.getElementById('backBtn');
+            backBtn.style.display = ALREADY_SUBMITTED ? '' : 'none';
+            backBtn.disabled = currentSection === 0;
             document.getElementById('submitBtn').textContent = answered
                 ? (currentSection === sections.length - 1 ? 'Finish' : 'Next →')
                 : 'Submit';

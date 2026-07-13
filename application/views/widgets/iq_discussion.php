@@ -30,6 +30,12 @@ $student_name  = trim(($this->session->lastname ?? '') . ' ' . ($this->session->
         <?php endif; ?>
     </p>
 
+    <?php if (!$readonly && $topic): ?>
+        <a href="<?= base_url('interactive_quiz/discussion/' . $topic) ?>" class="btn btn-outline-primary btn-sm mt-2" target="_blank" rel="noopener">
+            <i class="fas fa-external-link-alt"></i> Test Quiz
+        </a>
+    <?php endif; ?>
+
     <?php if ($readonly && !empty($existing)): ?>
         <div id="<?= $uid ?>" class="text-left mt-3" style="max-width:600px; margin-left:auto; margin-right:auto; background:#fff; padding:10px;">
             <p class="mb-3" style="font-weight:600;"><?= htmlspecialchars($topic_title) ?><?php if ($student_name): ?> &mdash; <?= htmlspecialchars($student_name) ?><?php endif; ?></p>
