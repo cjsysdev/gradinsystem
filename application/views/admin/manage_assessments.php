@@ -11,6 +11,12 @@
             <h4>Assessments</h4>
         </div>
         <div class="col-auto">
+            <button class="btn btn-outline-success" onclick="bulkUpdateStatus(1)">
+                <i class="fas fa-lock-open"></i> Open All
+            </button>
+            <button class="btn btn-outline-secondary" onclick="bulkUpdateStatus(0)">
+                <i class="fas fa-lock"></i> Close All
+            </button>
             <button class="btn btn-primary" data-toggle="modal" data-target="#assessmentModal" onclick="openAddModal()">
                 <i class="fas fa-plus"></i> Add Assessment
             </button>
@@ -889,6 +895,37 @@ function openEditModal(a) {
     document.getElementById('modal_auto_create_submissions').checked = false;
     document.getElementById('modal_submit_btn').textContent = 'Update Assessment';
     if (typeof $ !== 'undefined') $('#assessmentModal').modal('show');
+}
+
+// Applies to every assessment currently shown in the table (i.e. respecting
+// the Section filter above), not the whole database.
+function bulkUpdateStatus(status) {
+    const selects = Array.from(document.querySelectorAll('select[data-id]'));
+    const targets = selects.filter(s => s.value !== String(status));
+    if (!targets.length) return;
+
+    const label = status === 1 ? 'Open' : 'Close';
+    if (!confirm(`${label} all ${selects.length} assessment(s) shown?`)) return;
+
+    const ids = targets.map(s => s.dataset.id);
+    const body = new URLSearchParams();
+    ids.forEach(id => body.append('assessment_ids[]', id));
+    body.append('status', status);
+
+    fetch('<?= base_url('AdminController/bulk_update_assessment_status') ?>', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            targets.forEach(s => s.value = String(status));
+        } else {
+            alert('Failed to update status.');
+        }
+    })
+    .catch(() => alert('Request failed.'));
 }
 
 function updateStatus(select) {

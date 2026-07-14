@@ -17,6 +17,7 @@ if (empty($widget) && ($classwork['iotype_id'] == '4' || $classwork['iotype_id']
             <span class="badge badge-success">Assigned</span>
         </div>
         <div class="card-body">
+            <small id="autosave-status" class="text-muted d-block mb-2"></small>
             <p><?= $classwork['description'] ?></p>
 
             <form id="submission-form" action="<?= base_url(
@@ -177,9 +178,64 @@ if (empty($widget) && ($classwork['iotype_id'] == '4' || $classwork['iotype_id']
         // their state into the hidden #widget-code-value field before the real submit.
         if (typeof window.serializeWidgetBeforeSubmit === 'function') {
             window.serializeWidgetBeforeSubmit();
+        } else if (window.editor) {
+            // CodeMirror.fromTextArea (footer.php) never writes back into the
+            // underlying #code-editor textarea on its own — without this,
+            // the "code" POST field is whatever was there on page load (blank).
+            window.editor.save();
         }
+        clearDraft();
         document.getElementById('submission-form').submit();
     }
+
+    // Autosave: refresh/close/navigate-away used to silently wipe whatever a
+    // student had typed, since nothing was persisted before the final "Turn
+    // In" click. Mirror the in-progress answer to localStorage and restore it
+    // on load. Covers both the plain CodeMirror editor and any widget, via
+    // the getWidgetState/setWidgetState contract every widget already
+    // implements for group_workspace.php's live-collaboration sync.
+    const DRAFT_KEY = 'classwork_draft_' + <?= json_encode($classwork['assessment_id']) ?> +
+        '_' + <?= json_encode($this->session->student_id) ?>;
+
+    function getCurrentAnswer() {
+        if (typeof window.getWidgetState === 'function') return window.getWidgetState();
+        if (window.editor) return window.editor.getValue();
+        const el = document.getElementById('code-editor');
+        return el ? el.value : '';
+    }
+
+    function saveDraft() {
+        const value = getCurrentAnswer();
+        if (!value) return;
+        localStorage.setItem(DRAFT_KEY, value);
+        const status = document.getElementById('autosave-status');
+        if (status) status.textContent = 'Draft auto-saved at ' + new Date().toLocaleTimeString();
+    }
+
+    function clearDraft() {
+        localStorage.removeItem(DRAFT_KEY);
+    }
+
+    function restoreDraft() {
+        const draft = localStorage.getItem(DRAFT_KEY);
+        if (!draft) return;
+        if (typeof window.setWidgetState === 'function') {
+            window.setWidgetState(draft);
+        } else if (window.editor) {
+            window.editor.setValue(draft);
+        } else {
+            const el = document.getElementById('code-editor');
+            if (el) el.value = draft;
+        }
+        const status = document.getElementById('autosave-status');
+        if (status) status.textContent = 'Draft restored from your last session.';
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        restoreDraft();
+        setInterval(saveDraft, 3000);
+    });
+    window.addEventListener('beforeunload', saveDraft);
 </script>
 
 <?php $this->load->view('footer'); ?>

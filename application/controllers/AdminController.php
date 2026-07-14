@@ -685,6 +685,24 @@ class AdminController extends CI_Controller
         echo json_encode(['success' => true]);
     }
 
+    // Bulk open/close — used by the "Open All" / "Close All" buttons on
+    // manage_assessments, applied only to the assessment_ids currently shown
+    // in the table (i.e. respecting the Section filter).
+    public function bulk_update_assessment_status()
+    {
+        $status = $this->input->post('status');
+        $assessment_ids = $this->input->post('assessment_ids');
+        $assessment_ids = is_array($assessment_ids) ? array_filter(array_map('intval', $assessment_ids)) : [];
+
+        if (!in_array($status, ['0', '1'], true) || empty($assessment_ids)) {
+            echo json_encode(['success' => false]);
+            return;
+        }
+
+        $this->db->where_in('assessment_id', $assessment_ids)->update('assessments', ['status' => (int)$status]);
+        echo json_encode(['success' => true]);
+    }
+
     public function increment_randomized_count($classwork_id)
     {
         $this->classworks->set('randomized_count', 'randomized_count+1', FALSE)
