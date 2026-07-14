@@ -1,5 +1,5 @@
 <?php $this->load->view('header'); ?>
-<div class="container mt-4">
+<div class="container">
     <?php $this->load->view('profile_only'); ?>
     <?php $this->load->view('admin/nav_bar'); ?>
 
