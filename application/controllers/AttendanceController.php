@@ -92,7 +92,7 @@ class AttendanceController extends CI_Controller
                 $start_date,
                 $date
             ),
-            'show_red_overlay' => $absences >= 3,
+            'show_red_overlay' => $absences >= 5,
             'active_poll'      => $active_poll ?: null,
         ];
 
