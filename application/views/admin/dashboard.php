@@ -53,6 +53,27 @@
     </div>
 
     <div class="row justify-content-center mt-5">
+        <div class="col">
+            <h5 class="text-center mb-3">Chronic Absentees <small class="text-muted">(3+ absences)</small></h5>
+            <?php if (!empty($chronic_absentees)): ?>
+                <?php foreach ($chronic_absentees as $row): ?>
+                    <div class="card mb-3 shadow-sm border-danger">
+                        <div class="card-body">
+                            <h3 class="card-title mb-1">
+                                <?= $row['student_id'] . " - " . $row['lastname'] . ", " . $row['firstname'] ?>
+                                <?php if (!empty($row['section'])): ?><span class="badge badge-secondary ml-2"><?= htmlspecialchars($row['section']) ?></span><?php endif; ?>
+                                <span class="badge badge-danger ml-2"><?= $row['absences'] ?> absences</span>
+                            </h3>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <div class="alert alert-success">No students with 3 or more absences</div>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <div class="row justify-content-center mt-5">
         <div id="submissionsContainer" class="col">
             <?php if (!empty($attendance)): ?>
                 <?php foreach ($attendance as $row): ?>

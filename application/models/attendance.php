@@ -351,6 +351,77 @@ class attendance extends MY_Model
         return $query->result_array();
     }
 
+    // Cumulative absences per student, up to $end_date, within the active
+    // semester — used by the admin dashboard to flag chronically absent
+    // students (>= $min_absences) regardless of which single day is open.
+    // $schedule_id = null spans every active section instead of just one.
+    public function get_chronic_absentees($schedule_id, $end_date, $min_absences = 3)
+    {
+        $filter = $schedule_id ? 'AND a.schedule_id = ?' : '';
+
+        $sql = "
+            SELECT
+                a.student_id,
+                s.firstname,
+                s.lastname,
+                cs.section,
+                COUNT(*) AS absences
+            FROM attendance a
+            JOIN student_master s ON a.student_id = s.trans_no
+            JOIN class_schedule cs ON a.schedule_id = cs.schedule_id
+            JOIN semester_master sem ON cs.semester_id = sem.trans_no
+            JOIN class_student cst
+                ON cst.student_id = a.student_id
+                AND cst.schedule_id = a.schedule_id
+                AND cst.status = 'enrolled'
+            WHERE a.status = 'absent'
+            AND DATE(a.date) <= ?
+            AND sem.is_active = 1
+            $filter
+            GROUP BY a.student_id, s.firstname, s.lastname, cs.section
+            HAVING COUNT(*) >= ?
+            ORDER BY absences DESC, cs.section
+        ";
+
+        $params = [$end_date];
+        if ($schedule_id) $params[] = $schedule_id;
+        $params[] = $min_absences;
+
+        $query = $this->db->query($sql, $params);
+
+        return $query->result_array();
+    }
+
+    // Every attendance row for one student across the active semester (all
+    // classes/schedules they're enrolled in) — used by the admin's
+    // per-student attendance view/edit page.
+    public function get_student_attendance_full($student_id)
+    {
+        $sql = "
+            SELECT
+                a.attendance_id,
+                a.date,
+                a.status,
+                a.ip_address,
+                a.reason,
+                cs.section,
+                cs.type,
+                c.class_code,
+                c.class_name
+            FROM attendance a
+            JOIN class_schedule cs ON a.schedule_id = cs.schedule_id
+            JOIN classes c ON cs.class_id = c.class_id
+            JOIN semester_master sem ON cs.semester_id = sem.trans_no
+            WHERE a.student_id = ?
+            AND sem.is_active = 1
+            ORDER BY a.date DESC
+        ";
+
+        $query = $this->db->query($sql, [$student_id]);
+
+        return $query->result_array();
+    }
+
     public function get_student_status($schedule_id, $date, $status)
     {
         $filter = $schedule_id ? 'AND a.schedule_id = ?' : '';

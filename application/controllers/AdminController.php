@@ -38,6 +38,7 @@ class AdminController extends CI_Controller
                 $data['attendance'] = [];
                 $data['lates'] = [];
                 $data['absents'] = [];
+                $data['chronic_absentees'] = $this->attendance->get_chronic_absentees(null, $today, 3);
                 $this->load->view('admin/dashboard', $data);
                 return;
             }
@@ -45,6 +46,7 @@ class AdminController extends CI_Controller
             $data['attendance'] = $this->attendance->get_double_entry($today, $class['schedule_id']);
             $data['lates'] = $this->attendance->get_student_status($class['schedule_id'], $today, 'late');
             $data['absents'] = $this->attendance->get_student_status($class['schedule_id'], $today, 'absent');
+            $data['chronic_absentees'] = $this->attendance->get_chronic_absentees($class['schedule_id'], $today, 3);
 
             $this->load->view('admin/dashboard', $data);
             return;
@@ -63,6 +65,7 @@ class AdminController extends CI_Controller
         $data['attendance'] = $this->attendance->get_double_entry($selected_date, $selected_schedule_id);
         $data['lates'] = $this->attendance->get_student_status($selected_schedule_id, $selected_date, 'late');
         $data['absents'] = $this->attendance->get_student_status($selected_schedule_id, $selected_date, 'absent');
+        $data['chronic_absentees'] = $this->attendance->get_chronic_absentees($selected_schedule_id, $selected_date, 3);
 
         $this->load->view('admin/dashboard', $data);
     }
@@ -301,24 +304,53 @@ class AdminController extends CI_Controller
 
     public function view_attendance()
     {
+        $active_semester = $this->db->where('is_active', 1)->get('semester_master')->row_array();
+        $default_start_date = ($active_semester['class_started'] ?? null) ?: date('Y-m-d');
+
         $section_id = $this->input->get('section_id');
-        $start_date = $this->input->get('start_date');
+        $start_date = $this->input->get('start_date') ?: $default_start_date;
 
         // Fetch all sections for the dropdown
         $data['sections'] = $this->class_schedule->get_sections();
 
-        // Fetch attendance data if section and date are provided
-        if ($section_id && $start_date) {
+        // Fetch attendance data once a section is picked (start date always
+        // has a value — defaults to the active semester's class_started).
+        if ($section_id) {
             $data['attendance'] = $this->attendance->get_attendance_by_section($section_id, $start_date);
             $data['selected_section_id'] = $section_id;
-            $data['start_date'] = $start_date;
         } else {
             $data['attendance'] = [];
             $data['selected_section_id'] = null;
-            $data['start_date'] = null;
         }
+        $data['start_date'] = $start_date;
 
         $this->load->view('admin/view_attendance', $data);
+    }
+
+    // Every attendance record for one student, across every class/schedule
+    // they're enrolled in for the active semester — editable inline, same
+    // pattern as the dashboard's status dropdown.
+    public function student_attendance($student_id = null)
+    {
+        if (!$student_id) {
+            redirect('view_attendance');
+            return;
+        }
+
+        $student = $this->student_master->get_student_info($student_id);
+        if (!$student) {
+            $this->session->set_flashdata('error', 'Student not found.');
+            redirect('view_attendance');
+            return;
+        }
+
+        $active_semester = $this->db->where('is_active', 1)->get('semester_master')->row_array();
+
+        $data['student']         = $student;
+        $data['active_semester'] = $active_semester;
+        $data['records']         = $this->attendance->get_student_attendance_full($student_id);
+
+        $this->load->view('admin/student_attendance', $data);
     }
 
     public function active_participation($assessment_id = null)

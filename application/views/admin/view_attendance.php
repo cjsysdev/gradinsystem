@@ -38,6 +38,7 @@
                 <th>Firstname</th>
                 <th>Absents</th>
                 <th>Absence Dates</th>
+                <th>Action</th>
             </thead>
             <tbody>
                 <?php foreach ($attendance as $record): ?>
@@ -54,6 +55,9 @@
                             }, $dates);
                             echo implode(', ', $formatted_dates);
                             ?>
+                        </td>
+                        <td>
+                            <a href="<?= base_url('admin/student_attendance/' . $record['student_id']) ?>" class="btn btn-sm btn-outline-primary">View / Edit</a>
                         </td>
                     </tr>
                 <?php endforeach; ?>
