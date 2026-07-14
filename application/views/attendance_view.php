@@ -201,10 +201,13 @@
 
         <div class="row m-1">
             <div class="col alert alert-success mr-2">
-                <strong><?= $present ?> Present Sessions</strong>
+                <strong><?= $present ?> Present</strong>
+            </div>
+            <div class="col alert alert-warning mr-2">
+                <strong><?= $late ?> Late</strong>
             </div>
             <div class="col alert alert-secondary">
-                <strong><?= $absences ?> Missed Sessions</strong>
+                <strong><?= $absences ?> Missed</strong>
             </div>
         </div>
         <?php if (!empty($absences_dates)): ?>

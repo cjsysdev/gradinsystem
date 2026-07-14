@@ -86,6 +86,12 @@ class AttendanceController extends CI_Controller
                 $start_date,
                 $date
             ),
+            'late'             => $this->attendance->get_late_days(
+                $student_id,
+                $student_section,
+                $start_date,
+                $date
+            ),
             'show_red_overlay' => $absences >= 10,
             'active_poll'      => $active_poll ?: null,
         ];

@@ -135,6 +135,24 @@ class attendance extends MY_Model
         return (int)$query->row()->present_days ?? 0;
     }
 
+    public function get_late_days($student_id, $section, $start_date, $end_date)
+    {
+        $query = $this->db->query(
+            "
+            SELECT COUNT(*) as late_days
+            FROM attendance a
+            JOIN class_schedule cs ON a.schedule_id = cs.schedule_id
+            JOIN semester_master sem ON cs.semester_id = sem.trans_no
+            WHERE cs.section = ? AND student_id = ? AND status = 'late'
+            AND a.date >= ? AND DATE(a.date) <= ?
+            AND sem.is_active = 1
+        ",
+            [$section, $student_id, $start_date, $end_date]
+        );
+
+        return (int)$query->row()->late_days ?? 0;
+    }
+
     public function checkStudentAbsences(
         $student_id,
         $section,

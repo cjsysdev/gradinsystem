@@ -150,7 +150,7 @@
                                     <div class="input-group mb-3">
                                         <button type="button" class="btn btn-outline-secondary mr-1 ml-1" onclick="addScore(<?= $row['classwork_id'] ?>, 5)">Late</button>
                                         <input type="number" step="any" class="form-control mr-1 ml-1 manual-score-input" placeholder="Enter score" min="0" value="<?= isset($row['score']) ? $row['score'] : '' ?>">
-                                        <button type="button" class="btn btn-outline-secondary mr-1 ml-1" onclick="addScore(<?= $row['classwork_id'] ?>, 3)">3</button>
+                                        <button type="button" class="btn btn-outline-secondary mr-1 ml-1" onclick="addScore(<?= $row['classwork_id'] ?>, 1)">1</button>
                                         <button type="button" class="btn btn-outline-secondary mr-1 ml-1" onclick="addScore(<?= $row['classwork_id'] ?>, 2)">2</button>
                                         <button type="button" class="btn btn-outline-secondary mr-1 ml-1" onclick="addScore(<?= $row['classwork_id'] ?>, <?= $row['max_score'] ?>)"><?= $row['max_score'] ?></button>
                                         <button type="button" class="btn btn-info mr-1 ml-1" onclick="submitManualScore(this)">Submit</button>
