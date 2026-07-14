@@ -416,6 +416,14 @@ class AdminController extends CI_Controller
     public function manage_assessments()
     {
         $schedule_id = $this->input->get('schedule_id');
+        // No schedule_id in the query string at all (first page load, not an
+        // explicit "All Sections" pick) — default the filter to whichever
+        // class is scheduled right now, same as all_submissions().
+        if ($schedule_id === null) {
+            $day = date('D');
+            $current_class = $this->class_schedule->class_today($day);
+            $schedule_id = $current_class['schedule_id'] ?? null;
+        }
         $data['assessments'] = $this->assessments->get_all_for_admin($schedule_id ?: null);
         $data['schedules'] = $this->class_schedule->get_all_active();
         $data['io_types'] = $this->db->get('io_type')->result_array();
