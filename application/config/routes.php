@@ -173,6 +173,7 @@ $route['admin/student_attendance/(:num)'] = 'AdminController/student_attendance/
 $route['active_participation/(:num)'] = 'AdminController/active_participation/$1';
 $route['admin/check_new_submissions_by_assessment/(:num)'] = 'AdminController/check_new_submissions_by_assessment/$1';
 $route['admin/emergency_contacts'] = 'AdminController/emergency_contacts';
+$route['admin/export_emergency_contacts'] = 'AdminController/export_emergency_contacts';
 $route['admin/student_violations'] = 'AdminController/student_violations';
 $route['admin/add_violation'] = 'AdminController/add_violation';
 $route['admin/update_violation_status'] = 'AdminController/update_violation_status';

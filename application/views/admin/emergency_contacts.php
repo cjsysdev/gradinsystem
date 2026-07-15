@@ -7,13 +7,58 @@
     $this->load->view('admin/nav_bar');
     ?>
 
-    <form id="emergencyContactSearchForm" class="mb-4">
+    <?php if ($this->session->flashdata('error')): ?>
+        <div class="alert alert-danger"><?= htmlspecialchars($this->session->flashdata('error')) ?></div>
+    <?php endif; ?>
+
+    <form id="emergencyContactSearchForm" class="mb-3">
         <div class="input-group">
             <input type="text" id="studentSearchInput" class="form-control" placeholder="Search student by Firstname or Lastname">
             <button type="submit" class="btn btn-primary">Search</button>
         </div>
         <select id="studentDropdown" name="student_id" class="form-control mt-2" style="display:none;"></select>
     </form>
+
+    <?php if (!empty($sections)): ?>
+        <form action="<?= base_url('admin/export_emergency_contacts') ?>" method="GET" class="mb-4">
+            <div class="input-group">
+                <select name="section" class="form-control" required>
+                    <option value="">Export a section to Excel…</option>
+                    <?php foreach ($sections as $s): ?>
+                        <option value="<?= htmlspecialchars($s['section']) ?>">
+                            <?= htmlspecialchars($s['section']) ?> (<?= (int) $s['student_count'] ?> student<?= $s['student_count'] != 1 ? 's' : '' ?>)
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <div class="input-group-append">
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-file-excel" aria-hidden="true"></i> Export
+                    </button>
+                </div>
+            </div>
+            <small class="form-text text-muted">
+                Downloads every enrolled student in the section with their primary emergency contact.
+                Students who haven't added one are still listed, with blank contact columns.
+            </small>
+        </form>
+    <?php endif; ?>
+
+    <?php if (empty($student) && !empty($sections)): ?>
+        <form method="GET" action="<?= base_url('admin/emergency_contacts') ?>" class="form-inline mb-3">
+            <label class="mr-2 mb-0" for="sectionFilter">Filter by section:</label>
+            <select id="sectionFilter" name="section" class="form-control mr-2" onchange="this.form.submit()">
+                <option value="">All sections</option>
+                <?php foreach ($sections as $s): ?>
+                    <option value="<?= htmlspecialchars($s['section']) ?>" <?= $selected_section === $s['section'] ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($s['section']) ?> (<?= (int) $s['student_count'] ?> student<?= $s['student_count'] != 1 ? 's' : '' ?>)
+                    </option>
+                <?php endforeach; ?>
+            </select>
+            <?php if ($selected_section !== ''): ?>
+                <a href="<?= base_url('admin/emergency_contacts') ?>" class="btn btn-sm btn-outline-secondary">Clear filter</a>
+            <?php endif; ?>
+        </form>
+    <?php endif; ?>
 
     <?php if (empty($student)): ?>
         <div class="mb-2">

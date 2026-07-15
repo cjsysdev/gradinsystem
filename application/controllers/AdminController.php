@@ -247,6 +247,7 @@ class AdminController extends CI_Controller
         $data['total']       = 0;
         $data['per_page']    = 20;
         $data['offset']      = 0;
+        $data['selected_section'] = '';
 
         if ($student_id) {
             $data['student'] = $this->student_master->get_student_info($student_id);
@@ -257,9 +258,10 @@ class AdminController extends CI_Controller
                 $this->session->set_flashdata('error', 'Student not found.');
             }
         } else {
+            $section  = trim((string) $this->input->get('section'));
             $per_page = 20;
             $offset   = (int)($this->input->get('per_page') ?? 0);
-            $total    = $this->emergency_contact->count_all_contacts();
+            $total    = $this->emergency_contact->count_all_contacts($section ?: null);
 
             $config = [
                 'base_url'             => base_url('admin/emergency_contacts'),
@@ -292,14 +294,77 @@ class AdminController extends CI_Controller
             ];
             $this->pagination->initialize($config);
 
-            $data['contacts']   = $this->emergency_contact->get_all_paged($per_page, $offset);
-            $data['pagination'] = $this->pagination->create_links();
-            $data['total']      = $total;
-            $data['per_page']   = $per_page;
-            $data['offset']     = $offset;
+            $data['contacts']         = $this->emergency_contact->get_all_paged($per_page, $offset, $section ?: null);
+            $data['pagination']       = $this->pagination->create_links();
+            $data['total']            = $total;
+            $data['per_page']         = $per_page;
+            $data['offset']           = $offset;
+            $data['selected_section'] = $section;
         }
 
+        $data['sections'] = $this->emergency_contact->get_exportable_sections();
+
         $this->load->view('admin/emergency_contacts', $data);
+    }
+
+    // Downloads one section's roster as .xlsx in the fixed column order the
+    // school's emergency-contact form expects.
+    public function export_emergency_contacts()
+    {
+        $section = trim((string) $this->input->get('section'));
+
+        if ($section === '') {
+            $this->session->set_flashdata('error', 'Pick a section to export.');
+            redirect('admin/emergency_contacts');
+            return;
+        }
+
+        $students = $this->emergency_contact->get_by_section($section);
+
+        if (empty($students)) {
+            $this->session->set_flashdata('error', 'No students enrolled in section ' . $section . '.');
+            redirect('admin/emergency_contacts');
+            return;
+        }
+
+        $this->load->library('xlsx_writer');
+
+        $this->xlsx_writer
+            ->set_sheet_name($section)
+            ->set_columns([18, 18, 8, 18, 30, 22, 22])
+            ->add_row([
+                'Lastname',
+                'Firstname',
+                'Middle Initial',
+                'Contact Number',
+                'Name of Parent/Guardian',
+                'Relationship with the Student',
+                'Contact Number of Parent / Guardian',
+            ], TRUE);
+
+        foreach ($students as $s) {
+            $this->xlsx_writer->add_row([
+                $s['lastname'],
+                $s['firstname'],
+                $this->middle_initial($s['middlename']),
+                $s['student_contact'],
+                $s['guardian_name'],
+                $s['guardian_relationship'],
+                $s['guardian_contact'],
+            ]);
+        }
+
+        $safe_section = preg_replace('/[^A-Za-z0-9_-]/', '_', $section);
+        $this->xlsx_writer->download('emergency_contacts_' . $safe_section . '_' . date('Y-m-d') . '.xlsx');
+    }
+
+    private function middle_initial($middlename)
+    {
+        $middlename = trim((string) $middlename);
+        if ($middlename === '') {
+            return '';
+        }
+        return strtoupper(mb_substr($middlename, 0, 1, 'UTF-8')) . '.';
     }
 
     public function view_attendance()
