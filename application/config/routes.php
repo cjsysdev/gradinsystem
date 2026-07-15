@@ -124,6 +124,12 @@ $route['quiz/(:num)'] = 'QuizController/index/$1';
 $route['quiz/submit/(:num)'] = 'QuizController/submit/$1';
 $route['quiz/check_session'] = 'QuizController/check_session';
 
+// Secure Quiz Routes (widget-driven — see SecureQuizController)
+$route['secure_quiz/test'] = 'SecureQuizController/test';
+$route['secure_quiz/submit_test'] = 'SecureQuizController/submit_test';
+$route['secure_quiz/(:num)'] = 'SecureQuizController/index/$1';
+$route['secure_quiz/submit/(:num)'] = 'SecureQuizController/submit/$1';
+
 // Interactive Quiz Routes
 $route['interactive_quiz/topics'] = 'InteractiveQuizController/list_topics';
 $route['interactive_quiz/data/(:any)'] = 'InteractiveQuizController/get_data/$1';

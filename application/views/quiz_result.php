@@ -167,14 +167,18 @@
 </style>
 
 <?php
-$query = $this->db->query("
-    SELECT student_id, score 
-    FROM classworks 
-    WHERE assessment_id = $assessment_id 
-    ORDER BY score DESC 
-    LIMIT 10
-");
-$top_students = $query->result_array();
+if (!empty($assessment_id)) {
+    $query = $this->db->query("
+        SELECT student_id, score
+        FROM classworks
+        WHERE assessment_id = $assessment_id
+        ORDER BY score DESC
+        LIMIT 10
+    ");
+    $top_students = $query->result_array();
+} else {
+    $top_students = [];
+}
 ?>
 
 <!-- Full-screen score overlay -->
@@ -195,7 +199,13 @@ $top_students = $query->result_array();
 </div>
 
 <div class="container mt-3">
-    <?php $this->load->view('profile_info') ?>
+    <?php if (!empty($test_mode)): ?>
+        <div class="alert alert-warning text-center">
+            <strong>Test Mode</strong> &mdash; this attempt was not scored or recorded.
+        </div>
+    <?php else: ?>
+        <?php $this->load->view('profile_info') ?>
+    <?php endif; ?>
     <div class="card" style="border: none">
         <div class="card-body text-center">
             <button id="showScoreBtn" class="btn btn-primary btn-block">Show Score</button>

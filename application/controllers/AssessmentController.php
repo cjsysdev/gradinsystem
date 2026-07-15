@@ -43,6 +43,13 @@ class AssessmentController extends CI_Controller
             return;
         }
 
+        // Timed/Secure Quiz is its own fullscreen/timer/lockdown page, not a
+        // form embedded in this one — see SecureQuizController.
+        if ($widget && $widget['widget_key'] === 'secure_quiz') {
+            redirect('secure_quiz/' . $classwork['assessment_id']);
+            return;
+        }
+
         // Interactive Discussion/Quiz wraps an assets/json/{topic}.json lesson,
         // not a form either — hand off to InteractiveQuizController, which
         // records the score/answers on first completion (see save_result()).

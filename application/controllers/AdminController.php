@@ -415,6 +415,8 @@ class AdminController extends CI_Controller
 
     public function manage_assessments()
     {
+        $this->load->library('pagination');
+
         $schedule_id = $this->input->get('schedule_id');
         // No schedule_id in the query string at all (first page load, not an
         // explicit "All Sections" pick) — default the filter to whichever
@@ -424,7 +426,48 @@ class AdminController extends CI_Controller
             $current_class = $this->class_schedule->class_today($day);
             $schedule_id = $current_class['schedule_id'] ?? null;
         }
-        $data['assessments'] = $this->assessments->get_all_for_admin($schedule_id ?: null);
+
+        $per_page = 20;
+        $offset   = (int) $this->input->get('per_page');
+        $total    = $this->assessments->count_all_for_admin($schedule_id ?: null);
+
+        $config = [
+            'base_url'             => base_url('manage_assessments') . ($schedule_id ? '?schedule_id=' . $schedule_id : ''),
+            'total_rows'           => $total,
+            'per_page'             => $per_page,
+            'page_query_string'    => TRUE,
+            'query_string_segment' => 'per_page',
+            'reuse_query_string'   => TRUE,
+            'use_page_numbers'     => FALSE,
+            'full_tag_open'        => '<ul class="pagination pagination-sm mb-0">',
+            'full_tag_close'       => '</ul>',
+            'first_link'           => '&laquo;',
+            'first_tag_open'       => '<li class="page-item">',
+            'first_tag_close'      => '</li>',
+            'last_link'            => '&raquo;',
+            'last_tag_open'        => '<li class="page-item">',
+            'last_tag_close'       => '</li>',
+            'next_link'            => '&rsaquo;',
+            'next_tag_open'        => '<li class="page-item">',
+            'next_tag_close'       => '</li>',
+            'prev_link'            => '&lsaquo;',
+            'prev_tag_open'        => '<li class="page-item">',
+            'prev_tag_close'       => '</li>',
+            'num_tag_open'         => '<li class="page-item">',
+            'num_tag_close'        => '</li>',
+            'cur_tag_open'         => '<li class="page-item active"><a class="page-link" href="#">',
+            'cur_tag_close'        => '</a></li>',
+            'attributes'           => ['class' => 'page-link'],
+            'num_links'            => 4,
+        ];
+        $this->pagination->initialize($config);
+
+        $data['assessments']         = $this->assessments->get_all_for_admin($schedule_id ?: null, $per_page, $offset);
+        $data['all_assessment_ids']  = $this->assessments->get_all_ids_for_admin($schedule_id ?: null);
+        $data['pagination']          = $this->pagination->create_links();
+        $data['total']               = $total;
+        $data['per_page']            = $per_page;
+        $data['offset']              = $offset;
         $data['schedules'] = $this->class_schedule->get_all_active();
         $data['io_types'] = $this->db->get('io_type')->result_array();
         $data['selected_schedule'] = $schedule_id;
@@ -820,13 +863,13 @@ class AdminController extends CI_Controller
 
     public function students_by_section()
     {
+        $this->load->model('class_student');
         $section = $this->input->get('section');
-        $data['sections'] = $this->class_schedule->get_sections();
+        $data['sections'] = $this->class_student->get_sections_with_counts();
         $data['selected_section'] = $section;
         $data['students'] = [];
 
         if ($section) {
-            $this->load->model('class_student');
             $data['students'] = $this->class_student->get_students_with_profile_by_section($section);
         }
 

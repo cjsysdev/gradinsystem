@@ -1,0 +1,101 @@
+{
+  "topic": "html_attributes",
+  "title": "HTML Attributes",
+  "description": "Core rules for writing, reading, and safely using HTML attributes.",
+  "congratsText": "You mastered HTML Attributes!",
+  "sections": [
+    {
+      "id": 0,
+      "title": "Objectives",
+      "lesson": "<div class=\"lesson-title\">Objectives</div><div class=\"lesson-text\"><ul><li>Write valid HTML attributes using correct syntax</li><li>Use global attributes like id, class, style, and title on any element</li><li>Apply element-specific attributes such as src, href, and alt</li><li>Use boolean and data-* attributes correctly</li><li>Avoid common attribute security mistakes</li></ul></div>"
+    },
+    {
+      "id": 1,
+      "title": "Attribute Syntax",
+      "lesson": "<div class=\"lesson-title\">Attribute Syntax</div><div class=\"lesson-text\">An <span class=\"highlight\">attribute</span> adds extra information to a tag. It goes inside the opening tag as <strong>name=\"value\"</strong>.</div><div class=\"lesson-text\">Attribute names are case-insensitive, but values belong in quotes.</div><div class=\"code-block\">&lt;img src=\"cat.jpg\" alt=\"A cat\"&gt;</div><div class=\"lesson-text\">Here <span class=\"highlight\">src</span> and <span class=\"highlight\">alt</span> are both attributes of the img tag.</div>",
+      "quiz": {
+        "question": "Where does an attribute go in an HTML element?",
+        "options": ["Inside the opening tag, after the name", "Inside the closing tag, before the slash", "Between the opening tag and closing tag", "On its own line above the tag"],
+        "correct": 0
+      }
+    },
+    {
+      "id": 2,
+      "title": "Global Attributes",
+      "lesson": "<div class=\"lesson-title\">Global Attributes</div><div class=\"lesson-text\"><span class=\"highlight\">Global attributes</span> work on almost any HTML element.</div><div class=\"lesson-text\"><ul><li><strong>id</strong> — unique identifier for one element</li><li><strong>class</strong> — reusable label for styling or scripting</li><li><strong>style</strong> — inline CSS for that element</li><li><strong>title</strong> — tooltip text shown on hover</li></ul></div><div class=\"code-block\">&lt;p id=\"intro\" class=\"highlight-text\" title=\"Read this first\"&gt;Welcome&lt;/p&gt;</div>",
+      "quiz": {
+        "question": "Which global attribute must be unique on the page?",
+        "options": ["id", "class", "style", "title"],
+        "correct": 0
+      }
+    },
+    {
+      "id": 3,
+      "title": "Element-Specific Attributes",
+      "lesson": "<div class=\"lesson-title\">Element-Specific Attributes</div><div class=\"lesson-text\">Some attributes only make sense on certain tags. <span class=\"highlight\">src</span> and <span class=\"highlight\">alt</span> belong to img; <span class=\"highlight\">href</span> belongs to a.</div><div class=\"code-block\">&lt;a href=\"page.html\"&gt;Go&lt;/a&gt;\n&lt;img src=\"logo.png\" alt=\"Site logo\"&gt;</div><div class=\"lesson-text\"><strong>alt</strong> is not optional — it describes the image for screen readers and shows if the image fails to load.</div>",
+      "quiz": {
+        "question": "What happens if logo.png fails to load in this code?",
+        "code": "<img src=\"logo.png\" alt=\"Site logo\">",
+        "options": ["The alt text \"Site logo\" displays instead", "The page stops loading entirely", "The img tag is removed automatically", "The browser shows a blank white box"],
+        "correct": 0
+      }
+    },
+    {
+      "id": 4,
+      "title": "Boolean Attributes",
+      "lesson": "<div class=\"lesson-title\">Boolean Attributes</div><div class=\"lesson-text\">A <span class=\"highlight\">boolean attribute</span> is on just by being present — it needs no value.</div><div class=\"code-block\">&lt;input type=\"text\" disabled&gt;\n&lt;input type=\"checkbox\" checked&gt;</div><div class=\"lesson-text\">Writing <strong>disabled=\"disabled\"</strong> or just <strong>disabled</strong> means the same thing. Leaving it out means the feature is off.</div>",
+      "quiz": {
+        "question": "How do you make a checkbox checked by default?",
+        "options": ["Add the checked attribute, no value", "Set checked equal to false", "Add a value of checked", "Set default equal to true"],
+        "correct": 0
+      }
+    },
+    {
+      "id": 5,
+      "title": "data-* Custom Attributes",
+      "lesson": "<div class=\"lesson-title\">data-* Custom Attributes</div><div class=\"lesson-text\">A <span class=\"highlight\">data-*</span> attribute stores extra info on an element without showing it to the user.</div><div class=\"code-block\">&lt;li data-user-id=\"42\" data-role=\"admin\"&gt;Criscel&lt;/li&gt;</div><div class=\"lesson-text\">Any name after <strong>data-</strong> works, as long as it's lowercase. The browser ignores it visually — it's just stored on the tag.</div>",
+      "quiz": {
+        "question": "What does a data-* attribute do to the page a user sees?",
+        "code": "<li data-user-id=\"42\">Criscel</li>",
+        "options": ["Nothing visible — it stores info on the tag", "It shows the value as bold text", "It adds a number badge next to the item", "It changes the list item's color"],
+        "correct": 0
+      }
+    },
+    {
+      "id": 6,
+      "title": "Quoting Rules",
+      "lesson": "<div class=\"lesson-title\">Quoting Rules</div><div class=\"lesson-text\">Attribute values should always be in <span class=\"highlight\">quotes</span> — double quotes are the standard in this course.</div><div class=\"code-block\">&lt;p class=\"note\"&gt;Correct&lt;/p&gt;\n&lt;p class=note&gt;Works but avoid&lt;/p&gt;</div><div class=\"lesson-text\">Skip quotes only when the value has no spaces — but always quoting keeps your HTML consistent and avoids bugs.</div>",
+      "quiz": {
+        "question": "Why should attribute values always be quoted?",
+        "options": ["Values with spaces break without quotes", "Quotes make the browser load faster", "Unquoted attributes are removed by HTML5", "Quotes are required for every HTML tag"],
+        "correct": 0
+      }
+    },
+    {
+      "id": 7,
+      "title": "Combining Attributes — Full Example",
+      "lesson": "<div class=\"lesson-title\">Combining Attributes — Full Example</div><div class=\"lesson-text\">Real elements usually carry several attributes at once, in any order.</div><div class=\"code-block\">&lt;input\n  type=\"email\"\n  id=\"user-email\"\n  class=\"form-control\"\n  placeholder=\"you@example.com\"\n  required&gt;</div><div class=\"lesson-text\">This input has five attributes: a <span class=\"highlight\">type</span>, an <strong>id</strong> for scripting, a <strong>class</strong> for styling, a <strong>placeholder</strong> hint, and the boolean <strong>required</strong>.</div>",
+      "quiz": {
+        "question": "In the input above, which attribute makes the field mandatory?",
+        "code": "<input type=\"email\" id=\"user-email\" class=\"form-control\" placeholder=\"you@example.com\" required>",
+        "options": ["required", "type", "placeholder", "id"],
+        "correct": 0
+      }
+    },
+    {
+      "id": 8,
+      "title": "Security & Best Practice",
+      "lesson": "<div class=\"lesson-title\">Security & Best Practice</div><div class=\"lesson-text\">Never build attribute values by pasting in raw user input — it opens the door to <span class=\"highlight\">HTML injection</span>.</div><div class=\"code-block\">&lt;!-- Risky: unescaped user input --&gt;\n&lt;div title=\"&lt;?php echo $_GET['name']; ?&gt;\"&gt;&lt;/div&gt;</div><div class=\"lesson-text\">Escape special characters like <strong>&lt;</strong>, <strong>&gt;</strong>, and quotes before inserting outside data into an attribute value.</div>",
+      "quiz": {
+        "question": "What is the main risk of inserting raw user input into an attribute?",
+        "options": ["It can let attackers inject malicious code", "It slows down the page load time", "It makes the HTML file larger", "It breaks CSS styling on the element"],
+        "correct": 0
+      }
+    },
+    {
+      "id": 9,
+      "title": "Recap",
+      "lesson": "<div class=\"lesson-title\">Recap</div><div class=\"lesson-text\"><ul><li>Attributes sit inside the opening tag as name=\"value\" pairs</li><li>Global attributes like id, class, style, and title work almost anywhere</li><li>Some attributes, like src, href, and alt, belong to specific elements</li><li>Boolean attributes (disabled, checked, required) work by presence alone</li><li>data-* attributes store custom info on a tag without showing it to users</li><li>Always quote attribute values to avoid bugs</li><li>Elements can carry several attributes at once, in any order</li><li>Never insert raw user input into an attribute — escape it first</li></ul></div>"
+    }
+  ]
+}

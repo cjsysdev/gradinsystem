@@ -42,6 +42,12 @@
         </select>
     </form>
 
+    <?php if ($total > 0): ?>
+        <p class="text-muted mb-2">
+            Showing <?= $offset + 1 ?>–<?= min($offset + $per_page, $total) ?> of <?= $total ?> assessment<?= $total != 1 ? 's' : '' ?>
+        </p>
+    <?php endif; ?>
+
     <div class="table-responsive">
         <table class="table table-bordered table-hover table-sm">
             <thead class="thead-light">
@@ -116,6 +122,12 @@
             </tbody>
         </table>
     </div>
+
+    <?php if ($pagination): ?>
+        <nav aria-label="Page navigation" class="mb-5">
+            <?= $pagination ?>
+        </nav>
+    <?php endif; ?>
 </div>
 
 <!-- Add / Edit Modal -->
@@ -423,6 +435,15 @@ const widgetExamples = {
     },
     quiz: {
         hint: 'Auto-graded. Empty/omitted "choices" = free-text question (case-insensitive match).',
+        example: {
+            questions: [
+                { question: '2 + 2 = ?', choices: ['3', '4', '5'], answer: '4' },
+                { question: 'Capital of France?', choices: [], answer: 'Paris' }
+            ]
+        }
+    },
+    secure_quiz: {
+        hint: 'Same question format as Multiple Choice Quiz, but students take it in a dedicated fullscreen/timed page instead of an inline form (timer auto-submits, tab-switching shows a warning, one attempt). Auto-graded.',
         example: {
             questions: [
                 { question: '2 + 2 = ?', choices: ['3', '4', '5'], answer: '4' },
@@ -901,19 +922,18 @@ function openEditModal(a) {
     if (typeof $ !== 'undefined') $('#assessmentModal').modal('show');
 }
 
-// Applies to every assessment currently shown in the table (i.e. respecting
-// the Section filter above), not the whole database.
+// Applies to every assessment matching the current Section filter, across
+// every page (not just the ones currently rendered in the table).
+const allAssessmentIds = <?= json_encode(array_values($all_assessment_ids)) ?>;
+
 function bulkUpdateStatus(status) {
-    const selects = Array.from(document.querySelectorAll('select[data-id]'));
-    const targets = selects.filter(s => s.value !== String(status));
-    if (!targets.length) return;
+    if (!allAssessmentIds.length) return;
 
     const label = status === 1 ? 'Open' : 'Close';
-    if (!confirm(`${label} all ${selects.length} assessment(s) shown?`)) return;
+    if (!confirm(`${label} all ${allAssessmentIds.length} assessment(s) matching this filter?`)) return;
 
-    const ids = targets.map(s => s.dataset.id);
     const body = new URLSearchParams();
-    ids.forEach(id => body.append('assessment_ids[]', id));
+    allAssessmentIds.forEach(id => body.append('assessment_ids[]', id));
     body.append('status', status);
 
     fetch('<?= base_url('AdminController/bulk_update_assessment_status') ?>', {
@@ -924,7 +944,7 @@ function bulkUpdateStatus(status) {
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            targets.forEach(s => s.value = String(status));
+            location.reload();
         } else {
             alert('Failed to update status.');
         }

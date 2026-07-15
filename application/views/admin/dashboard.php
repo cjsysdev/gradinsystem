@@ -11,13 +11,11 @@
         </div>
 
     </div>
-    <div class="col text-center">
-        <!-- Display the current state of discussion mode -->
+    <!-- <div class="col text-center">
         <p>Discussion Mode: <strong><?php echo $discussion_mode
                                         ? 'Activated'
                                         : 'Deactivated'; ?></strong></p>
 
-        <!-- Button to toggle discussion mode -->
         <form action="<?php echo site_url(
                             'AdminController/toggle_discussion_mode'
                         ); ?>" method="post">
@@ -27,7 +25,7 @@
                     : 'Activate Discussion Mode'; ?>
             </button>
         </form>
-    </div>
+    </div> -->
 
     <div class="row justify-content-center mt-3">
         <div class="col-md-8">

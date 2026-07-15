@@ -101,7 +101,7 @@ class assessments extends MY_Model
         return $query->result_array();
     }
 
-    public function get_all_for_admin($schedule_id = null)
+    public function get_all_for_admin($schedule_id = null, $limit = null, $offset = 0)
     {
         $base = "
             SELECT
@@ -126,15 +126,67 @@ class assessments extends MY_Model
             LEFT JOIN assessment_groupings ag ON ag.assessment_id = a.assessment_id
         ";
 
+        $params = [];
         if ($schedule_id) {
             $sql = $base . " WHERE a.schedule_id = ? GROUP BY a.assessment_id ORDER BY a.assessment_id DESC, cs.section, a.term, a.created_at DESC";
-            $query = $this->db->query($sql, [(int)$schedule_id]);
+            $params[] = (int) $schedule_id;
         } else {
             $sql = $base . " GROUP BY a.assessment_id ORDER BY a.assessment_id DESC, cs.section, a.term, a.created_at DESC";
-            $query = $this->db->query($sql);
         }
 
+        if ($limit !== null) {
+            $sql .= " LIMIT ? OFFSET ?";
+            $params[] = (int) $limit;
+            $params[] = (int) $offset;
+        }
+
+        $query = $this->db->query($sql, $params);
+
         return $query ? $query->result_array() : [];
+    }
+
+    // Total assessments matching the same filter/joins as get_all_for_admin(),
+    // for the manage_assessments pager — no aggregate/LEFT JOINs needed since
+    // we're only counting assessment rows, not classwork submissions.
+    public function count_all_for_admin($schedule_id = null)
+    {
+        $sql = "
+            SELECT COUNT(*) AS c
+            FROM assessments a
+            JOIN class_schedule cs ON a.schedule_id = cs.schedule_id
+            JOIN semester_master sem ON cs.semester_id = sem.trans_no AND sem.is_active = 1
+        ";
+
+        $params = [];
+        if ($schedule_id) {
+            $sql .= " WHERE a.schedule_id = ?";
+            $params[] = (int) $schedule_id;
+        }
+
+        $query = $this->db->query($sql, $params);
+        return $query ? (int) $query->row_array()['c'] : 0;
+    }
+
+    // Every assessment_id matching the same filter as get_all_for_admin(), for
+    // the manage_assessments "Open All"/"Close All" buttons to act on every
+    // filtered assessment, not just the ones on the current page.
+    public function get_all_ids_for_admin($schedule_id = null)
+    {
+        $sql = "
+            SELECT a.assessment_id
+            FROM assessments a
+            JOIN class_schedule cs ON a.schedule_id = cs.schedule_id
+            JOIN semester_master sem ON cs.semester_id = sem.trans_no AND sem.is_active = 1
+        ";
+
+        $params = [];
+        if ($schedule_id) {
+            $sql .= " WHERE a.schedule_id = ?";
+            $params[] = (int) $schedule_id;
+        }
+
+        $query = $this->db->query($sql, $params);
+        return $query ? array_column($query->result_array(), 'assessment_id') : [];
     }
 
     public function get_for_schedule($schedule_id = null)

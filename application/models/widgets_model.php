@@ -70,6 +70,13 @@ class Widgets_model extends CI_Model
         // same manual-score-entry pattern as the other worksheet-style widgets.
         $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
             VALUES ('case_dossier', 'Case Dossier Rating', 'widgets/case_dossier', NULL)");
+        // Timed/Secure Quiz: same {question, choices, answer} config/grading as
+        // the 'quiz' widget above, but students take it in a dedicated
+        // fullscreen/timer/tab-switch-lockdown page (SecureQuizController)
+        // instead of an inline card form — see the redirect in
+        // AssessmentController::assessment_view_code().
+        $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
+            VALUES ('secure_quiz', 'Timed/Secure Quiz', 'widgets/secure_quiz', NULL)");
     }
 
     public function get_all()

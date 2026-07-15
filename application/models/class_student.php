@@ -177,4 +177,23 @@ class class_student extends MY_Model
         return $query ? $query->result_array() : [];
     }
 
+    // Distinct sections in the active semester, each with its enrolled-student
+    // count — powers the clickable section cards on students_by_section.
+    public function get_sections_with_counts()
+    {
+        $sql = "
+            SELECT
+                cs.section,
+                COUNT(DISTINCT cs.student_id) AS student_count
+            FROM class_student cs
+            JOIN semester_master sem ON cs.semester_id = sem.trans_no
+            WHERE sem.is_active = 1
+            GROUP BY cs.section
+            ORDER BY cs.section
+        ";
+
+        $query = $this->db->query($sql);
+        return $query ? $query->result_array() : [];
+    }
+
 }
