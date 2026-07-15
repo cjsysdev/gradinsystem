@@ -150,6 +150,11 @@ class Grouping_model extends CI_Model
         return $this->db->where('group_id', $group_id)->get($this->table)->row_array();
     }
 
+    public function rename_group($group_id, $name)
+    {
+        $this->db->where('group_id', $group_id)->update($this->table, ['group_name' => $name]);
+    }
+
     // ── Assessment linkage ──────────────────────────────────────────────────
 
     public function get_set_for_assessment($assessment_id)

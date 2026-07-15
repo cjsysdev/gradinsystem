@@ -12,6 +12,7 @@ class Groupings extends CI_Controller
         $this->load->model('Grouping_model');
         $this->load->model('Group_member_model');
         $this->load->model('attendance');
+        $this->load->model('class_student');
     }
 
     // One-time (idempotent) schema setup/upgrade — run once as admin.
@@ -158,6 +159,17 @@ class Groupings extends CI_Controller
             $g['members'] = $this->Group_member_model->get_members_by_group($g['group_id']);
         }
         unset($g);
+
+        // Section students not currently in any group of this set — e.g.
+        // students marked late/absent who were skipped by the auto-assign,
+        // or anyone enrolled after the set was created. Surfaced so the
+        // admin can manually place them.
+        $section_students = $this->class_student->get_students_with_profile_by_section($set['section_id']);
+        $grouped_ids = $this->Group_member_model->get_grouped_student_ids($set_id);
+        $data['ungrouped'] = array_values(array_filter($section_students, function ($s) use ($grouped_ids) {
+            return !in_array($s['student_id'], $grouped_ids);
+        }));
+
         $this->load->view('groupings/view_set', $data);
     }
 
@@ -169,5 +181,78 @@ class Groupings extends CI_Controller
         $this->Grouping_model->delete_set($set_id);
         $this->session->set_flashdata('success', 'Grouping set deleted.');
         redirect('Groupings/sets/' . $set['section_id']);
+    }
+
+    // ── Manual editing ──────────────────────────────────────────────────────
+
+    public function add_group($set_id)
+    {
+        $set = $this->Grouping_model->get_set($set_id);
+        if (!$set) show_404();
+
+        $name = trim($this->input->post('group_name'));
+        if ($name === '') {
+            $this->session->set_flashdata('error', 'Group name required.');
+            redirect('Groupings/view_set/' . $set_id);
+            return;
+        }
+
+        $this->Grouping_model->create_group(['set_id' => $set_id, 'group_name' => $name]);
+        $this->session->set_flashdata('success', 'Group added.');
+        redirect('Groupings/view_set/' . $set_id);
+    }
+
+    public function rename_group($group_id)
+    {
+        $group = $this->Grouping_model->get($group_id);
+        if (!$group) show_404();
+
+        $name = trim($this->input->post('group_name'));
+        if ($name === '') {
+            $this->session->set_flashdata('error', 'Group name required.');
+            redirect('Groupings/view_set/' . $group['set_id']);
+            return;
+        }
+
+        $this->Grouping_model->rename_group($group_id, $name);
+        $this->session->set_flashdata('success', 'Group renamed.');
+        redirect('Groupings/view_set/' . $group['set_id']);
+    }
+
+    public function add_member()
+    {
+        $group_id = $this->input->post('group_id');
+        $student_id = $this->input->post('student_id');
+        $group = $this->Grouping_model->get($group_id);
+        if (!$group || !$student_id) show_404();
+
+        $this->Group_member_model->add_member($group_id, $student_id);
+        $this->session->set_flashdata('success', 'Student added to group.');
+        redirect('Groupings/view_set/' . $group['set_id']);
+    }
+
+    public function remove_member()
+    {
+        $group_id = $this->input->post('group_id');
+        $student_id = $this->input->post('student_id');
+        $group = $this->Grouping_model->get($group_id);
+        if (!$group) show_404();
+
+        $this->Group_member_model->remove_member($group_id, $student_id);
+        $this->session->set_flashdata('success', 'Student removed from group.');
+        redirect('Groupings/view_set/' . $group['set_id']);
+    }
+
+    public function move_member()
+    {
+        $from_group_id = $this->input->post('from_group_id');
+        $to_group_id = $this->input->post('to_group_id');
+        $student_id = $this->input->post('student_id');
+        $group = $this->Grouping_model->get($from_group_id);
+        if (!$group || !$to_group_id) show_404();
+
+        $this->Group_member_model->move_member($from_group_id, $to_group_id, $student_id);
+        $this->session->set_flashdata('success', 'Student moved.');
+        redirect('Groupings/view_set/' . $group['set_id']);
     }
 }
