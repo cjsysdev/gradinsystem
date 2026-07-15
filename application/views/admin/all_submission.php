@@ -384,6 +384,26 @@
         document.getElementById('studentSearchInput').focus();
     }
 
+    // Draw-without-replacement pool: every eligible student must be picked
+    // once before anyone repeats. Persisted in localStorage per assessment so
+    // the round survives a page reload; once the pool empties (everyone's
+    // had a turn) it resets and the whole class goes through again.
+    function randomizerPoolKey() {
+        return `randomizerPool_${assessmentId}`;
+    }
+
+    function getRandomizedPicks() {
+        try {
+            return new Set(JSON.parse(localStorage.getItem(randomizerPoolKey()) || '[]'));
+        } catch (e) {
+            return new Set();
+        }
+    }
+
+    function saveRandomizedPicks(picked) {
+        localStorage.setItem(randomizerPoolKey(), JSON.stringify(Array.from(picked)));
+    }
+
     function openFullscreenRandomizer() {
         const overlay = document.getElementById('randomizerOverlay');
         overlay.style.display = 'flex';
@@ -416,13 +436,27 @@
             return;
         }
 
+        // Drop ids that are no longer eligible (e.g. already scored to max
+        // since their last draw), then fall back to the full eligible list
+        // (and start a fresh round) once every eligible student has been drawn.
+        const eligibleIds = new Set(students.map(s => String(s.classwork_id)));
+        let picked = new Set(Array.from(getRandomizedPicks()).filter(id => eligibleIds.has(id)));
+
+        let pool = students.filter(s => !picked.has(String(s.classwork_id)));
+        let isNewRound = false;
+        if (pool.length === 0) {
+            picked = new Set();
+            pool = students;
+            isNewRound = true;
+        }
+
         if (btn) { btn.disabled = true; }
         if (badgeArea) badgeArea.innerHTML = '';
 
         let animationCount = 20, currentFrame = 0, interval = 30;
 
         function animate() {
-            const s = students[Math.floor(Math.random() * students.length)];
+            const s = pool[Math.floor(Math.random() * pool.length)];
 
             if (isFullscreen) {
                 nameElem.style.animation = 'none';
@@ -441,15 +475,19 @@
             if (currentFrame < animationCount) {
                 setTimeout(animate, interval);
             } else {
-                const pick = students[Math.floor(Math.random() * students.length)];
-                showFinalPick(pick, nameElem, badgeArea, isFullscreen);
+                const pick = pool[Math.floor(Math.random() * pool.length)];
+                picked.add(String(pick.classwork_id));
+                saveRandomizedPicks(picked);
+                showFinalPick(pick, nameElem, badgeArea, isFullscreen, isNewRound);
                 if (btn) btn.disabled = false;
             }
         }
         animate();
     }
 
-    function showFinalPick(student, nameElem, badgeArea, isFullscreen) {
+    function showFinalPick(student, nameElem, badgeArea, isFullscreen, isNewRound) {
+        const roundNotice = isNewRound ? '<div style="font-size:1rem;letter-spacing:1px;opacity:0.85;margin-top:6px;">🔄 New round — everyone\'s back in the pool</div>' : '';
+
         if (isFullscreen) {
             nameElem.style.animation = 'none';
             nameElem.offsetHeight;
@@ -457,6 +495,8 @@
             nameElem.style.textShadow = '0 0 80px rgba(104,211,145,0.9),0 2px 8px rgba(0,0,0,0.5)';
             nameElem.style.animation  = 'fsReveal 0.55s cubic-bezier(0.34,1.56,0.64,1) forwards';
             nameElem.textContent = `${student.lastname}, ${student.firstname}`;
+            const eligibleCountEl = document.getElementById('fsEligibleCount');
+            if (eligibleCountEl) eligibleCountEl.innerHTML = eligibleCountEl.textContent + roundNotice;
             badgeArea.innerHTML = `
                 <a href="#" onclick="addRandScoreIncremental(${student.classwork_id}, 2); return false;"
                    style="display:inline-block;background:linear-gradient(135deg,#276749,#38a169);color:#fff;font-size:2rem;font-weight:800;padding:14px 52px;border-radius:50px;text-decoration:none;box-shadow:0 4px 24px rgba(56,161,105,0.5);letter-spacing:2px;transition:transform 0.15s,box-shadow 0.15s;"
@@ -475,7 +515,8 @@
             nameElem.innerHTML = `
                 <b>${student.lastname}, ${student.firstname}</b>
                 <a class="badge bg-success m-2 text-white" href="#" onclick="addRandScoreIncremental(${student.classwork_id}, 2); return false;">II</a>
-                <a class="badge bg-primary m-2 text-white" href="#" onclick="addRandScoreIncremental(${student.classwork_id}, 1); return false;">I</a>`;
+                <a class="badge bg-primary m-2 text-white" href="#" onclick="addRandScoreIncremental(${student.classwork_id}, 1); return false;">I</a>
+                ${roundNotice}`;
         }
     }
 

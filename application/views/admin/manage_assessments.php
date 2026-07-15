@@ -76,8 +76,12 @@
                             <td><?= date('M d, Y H:i', strtotime($a['due'])) ?></td>
                             <td>
                                 <span class="badge badge-info"><?= $a['submission_count'] ?></span>
+                                <?php $missing_count = max(0, (int) $a['enrolled_count'] - (int) $a['submitted_student_count']); ?>
+                                <?php if ($missing_count > 0): ?>
+                                    <span class="badge badge-danger" title="Enrolled students who haven't submitted"><?= $missing_count ?></span>
+                                <?php endif; ?>
                                 <?php if ((int) $a['unscored_count'] > 0): ?>
-                                    <span class="badge badge-warning" title="Submitted but not yet scored"><?= (int) $a['unscored_count'] ?> unscored</span>
+                                    <span class="badge badge-warning" title="Submitted but not yet scored"><?= (int) $a['unscored_count'] ?></span>
                                 <?php endif; ?>
                             </td>
                             <td>
