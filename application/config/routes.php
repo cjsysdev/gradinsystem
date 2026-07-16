@@ -57,6 +57,14 @@ $route['translate_uri_dashes'] = FALSE;
 $route['login'] = 'AuthenticationController/login';
 $route['logout'] = 'AuthenticationController/logout';
 
+// Forgot Password Routes (student-facing, public)
+$route['forgot_password'] = 'AuthenticationController/forgot_password';
+$route['forgot_password/submit'] = 'AuthenticationController/submit_forgot_password';
+
+// Password Reset Routes (admin — confirm & issue temporary credentials)
+$route['admin/password_resets'] = 'AdminController/password_resets';
+$route['admin/process_password_reset'] = 'AdminController/process_password_reset';
+
 // Student Routes
 $route['student_info'] = 'StudentController/student_info';
 $route['find_id'] = 'StudentController/find_id';

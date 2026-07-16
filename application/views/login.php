@@ -112,7 +112,7 @@
       <div class="mb-4">
         <div class="d-flex justify-content-between">
           <label class="form-label small fw-semibold text-secondary">Password</label>
-          <!-- <a href="<?= base_url('find_id') ?>" class="small text-primary text-decoration-none">Find ID?</a> -->
+          <a href="<?= base_url('forgot_password') ?>" class="small text-primary text-decoration-none">Forgot Password?</a>
         </div>
         <input type="password" class="form-control" placeholder="••••••••" name="password" required autocomplete="current-password">
       </div>

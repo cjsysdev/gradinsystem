@@ -34,9 +34,16 @@ class AuthenticationController extends CI_Controller
                 'online'       => true,
                 'exam_term'    => false,
                 'exam_review'  => false,
+                'must_change_password' => (int) ($user->must_change_password ?? 0),
             ];
 
             $this->session->set_userdata($session_data);
+
+            // Student was reset to a temporary password by the admin — force a change first.
+            if ($user->role !== 'admin' && !empty($session_data['must_change_password'])) {
+                redirect('update_account_form');
+            }
+
             if ($user->role === 'admin') {
                 redirect('dashboard');
             } else {
@@ -52,6 +59,63 @@ class AuthenticationController extends CI_Controller
     {
         $this->session->sess_destroy();
         redirect();
+    }
+
+    // Public: shows the "Forgot Password" request form. Locked-out students
+    // land here from the login page. install() lazily creates the storage.
+    public function forgot_password()
+    {
+        $this->password_reset_request->install();
+        $this->load->view('forgot_password');
+    }
+
+    // Public: records a pending reset request. The student identifies themselves
+    // by student number + last name (two fields to reduce abuse). The request
+    // becomes an admin notification; no password is exposed here.
+    public function submit_forgot_password()
+    {
+        $this->password_reset_request->install();
+
+        $student_no = trim($this->input->post('student_no'));
+        $lastname   = trim($this->input->post('lastname'));
+
+        if ($student_no === '' || $lastname === '') {
+            $this->session->set_flashdata('error', 'Please enter your student number and last name.');
+            redirect('forgot_password');
+            return;
+        }
+
+        $student = $this->student_master
+            ->where(['student_no' => $student_no, 'lastname' => $lastname])
+            ->get();
+
+        if (!$student) {
+            $this->session->set_flashdata('error', 'No student found with that student number and last name. Please check with your instructor.');
+            redirect('forgot_password');
+            return;
+        }
+
+        $account = $this->accounts->get(['student_id' => $student->trans_no]);
+        if (!$account) {
+            $this->session->set_flashdata('error', 'No account is linked to that student. Please see your instructor.');
+            redirect('forgot_password');
+            return;
+        }
+
+        if ($this->password_reset_request->has_pending($student->trans_no)) {
+            $this->session->set_flashdata('success', 'You already have a pending request. Please see your instructor to get your temporary password.');
+            redirect('forgot_password');
+            return;
+        }
+
+        $this->password_reset_request->insert([
+            'student_id' => $student->trans_no,
+            'student_no' => $student_no,
+            'status'     => 'pending',
+        ]);
+
+        $this->session->set_flashdata('success', 'Your request was sent to your instructor/admin. Please see them to get your temporary password.');
+        redirect('forgot_password');
     }
 
     // Restores the admin session stashed by AdminController::login_as_student()

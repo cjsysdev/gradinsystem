@@ -1350,6 +1350,78 @@ class AdminController extends CI_Controller
         redirect('admin/student_requests');
     }
 
+    // ── Password Reset Requests ──────────────────────────────────────────────
+
+    public function password_resets()
+    {
+        $this->password_reset_request->install();
+
+        $status = $this->input->get('status') ?: null;
+        $data['requests']        = $this->password_reset_request->get_all($status);
+        $data['selected_status'] = $status;
+        $this->load->view('admin/password_resets', $data);
+    }
+
+    public function process_password_reset()
+    {
+        $post        = $this->input->post();
+        $request_id  = (int) ($post['request_id'] ?? 0);
+        $action      = $post['action'] ?? '';
+        $admin_notes = trim($post['admin_notes'] ?? '');
+
+        if (!$request_id || !in_array($action, ['approved', 'rejected'])) {
+            $this->session->set_flashdata('error', 'Invalid request.');
+            redirect('admin/password_resets');
+            return;
+        }
+
+        $request = $this->db->get_where('password_reset_requests', ['request_id' => $request_id])->row_array();
+        if (!$request || $request['status'] !== 'pending') {
+            $this->session->set_flashdata('error', 'Request not found or already processed.');
+            redirect('admin/password_resets');
+            return;
+        }
+
+        $update = [
+            'status'      => $action,
+            'admin_notes' => $admin_notes,
+            'updated_at'  => date('Y-m-d H:i:s'),
+        ];
+
+        if ($action === 'approved') {
+            $account = $this->db->get_where('accounts', ['student_id' => $request['student_id']])->row_array();
+            if (!$account) {
+                $this->session->set_flashdata('error', 'No account linked to that student.');
+                redirect('admin/password_resets');
+                return;
+            }
+
+            $default = $request['student_no'];
+
+            // Default username = student number, unless another account already
+            // uses it — then keep the existing username and reset the password only.
+            $username_taken = $this->db
+                ->where('username', $default)
+                ->where('account_id !=', $account['account_id'])
+                ->count_all_results('accounts') > 0;
+            $new_username = $username_taken ? $account['username'] : $default;
+
+            $this->db->where('account_id', $account['account_id'])->update('accounts', [
+                'username'             => $new_username,
+                'password'             => $default,
+                'must_change_password' => 1,
+            ]);
+
+            $update['default_username'] = $new_username;
+            $update['default_password'] = $default;
+        }
+
+        $this->db->where('request_id', $request_id)->update('password_reset_requests', $update);
+
+        $this->session->set_flashdata('success', 'Password reset request ' . $action . '.');
+        redirect('admin/password_resets');
+    }
+
     // ── Discussion Management ────────────────────────────────────────────────
 
     public function manage_discussions()

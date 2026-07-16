@@ -39,6 +39,14 @@
         <a href="<?= base_url(
                         'admin/student_requests'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Student Requests"><i class="fa fa-hand"></i></a>
+        <?php $pw_pending = $this->db->table_exists('password_reset_requests') ? $this->password_reset_request->count_pending() : 0; ?>
+        <a href="<?= base_url(
+                        'admin/password_resets'
+                    ) ?>" class="btn btn-outline-secondary col m-2 position-relative" title="Password Resets"><i class="fa fa-key"></i>
+            <?php if ($pw_pending > 0): ?>
+                <span class="badge badge-danger position-absolute" style="top:0; right:0; transform:translate(25%,-25%);"><?= $pw_pending ?></span>
+            <?php endif; ?>
+        </a>
         <a href="<?= base_url(
                         'poll/dashboard'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Polls"><i class="fa fa-poll"></i></a>

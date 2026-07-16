@@ -1,15 +1,25 @@
 <?php $this->load->view('header'); ?>
 
+<?php $force_change = (bool) $this->session->must_change_password; ?>
+
 <div class="container">
     <?php $this->load->view('profile_info') ?>
 
     <div class="row justify-content-center mt-4 mb-5">
         <div class="col-md-7 col-lg-6">
             <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
+                <div class="card-header <?= $force_change ? 'bg-warning text-dark' : 'bg-primary text-white' ?>">
                     <h5 class="mb-0"><i class="fa fa-user-circle mr-2"></i>Update Account</h5>
                 </div>
                 <div class="card-body">
+
+                    <?php if ($force_change): ?>
+                        <div class="alert alert-warning">
+                            <i class="fa fa-exclamation-triangle mr-1"></i>
+                            <strong>You're using a temporary password.</strong>
+                            You must set a new password (different from your temporary one) before you can continue.
+                        </div>
+                    <?php endif; ?>
 
                     <?php if ($this->session->flashdata('success')): ?>
                         <div class="alert alert-success alert-dismissible fade show">
@@ -72,12 +82,16 @@
                             <label class="font-weight-bold">
                                 <i class="fa fa-lock mr-1 text-secondary"></i>Password
                             </label>
-                            <small class="text-muted ml-1">(leave blank to keep current)</small>
+                            <?php if ($force_change): ?>
+                                <small class="text-danger ml-1">(required)</small>
+                            <?php else: ?>
+                                <small class="text-muted ml-1">(leave blank to keep current)</small>
+                            <?php endif; ?>
                         </div>
                         <div class="form-group">
                             <div class="input-group">
                                 <input type="password" name="password" id="password" class="form-control"
-                                       placeholder="New password">
+                                       placeholder="New password" <?= $force_change ? 'required' : '' ?>>
                                 <div class="input-group-append">
                                     <button class="btn btn-outline-secondary toggle-pw" type="button" data-target="password">
                                         <i class="fa fa-eye"></i>
@@ -142,10 +156,16 @@
     });
 
     // Confirm password match check
+    var forceChange = <?= $force_change ? 'true' : 'false' ?>;
     document.getElementById('submit-btn').addEventListener('click', function (e) {
         var pw = document.getElementById('password').value;
         var cpw = document.getElementById('confirm_password').value;
         var msg = document.getElementById('pw-mismatch');
+        if (forceChange && !pw) {
+            e.preventDefault();
+            alert('You must set a new password to continue.');
+            return;
+        }
         if (pw && pw !== cpw) {
             e.preventDefault();
             msg.classList.remove('d-none');
