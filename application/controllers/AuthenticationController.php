@@ -8,7 +8,27 @@ class AuthenticationController extends CI_Controller
         $post = $this->input->post();
         $user = $this->accounts->with_student()->get(['username' => $post['username']]);
 
-        if ($user && $user->password == $post['password']) {
+        $authenticated = false;
+        if ($user) {
+            $stored = (string) $user->password;
+            $info = password_get_info($stored);
+            if (!empty($info['algo'])) {
+                // Stored value is already a bcrypt hash — normal verification.
+                $authenticated = password_verify($post['password'], $stored);
+            } else {
+                // Legacy plaintext row: timing-safe compare, then upgrade the
+                // stored value to a hash in place so it migrates on first login.
+                if (hash_equals($stored, (string) $post['password'])) {
+                    $authenticated = true;
+                    $this->accounts->update(
+                        ['password' => password_hash($post['password'], PASSWORD_DEFAULT)],
+                        $user->account_id
+                    );
+                }
+            }
+        }
+
+        if ($user && $authenticated) {
             $active_semester = $this->db->where('is_active', 1)->get('semester_master')->row_array();
 
             $enrollment = null;

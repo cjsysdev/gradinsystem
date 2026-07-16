@@ -48,7 +48,7 @@ class StudentController extends CI_Controller
         $update_data = ['username' => $username];
 
         if (!empty($input['password'])) {
-            $update_data['password'] = $input['password'];
+            $update_data['password'] = password_hash($input['password'], PASSWORD_DEFAULT);
         }
 
         // Handle profile picture upload

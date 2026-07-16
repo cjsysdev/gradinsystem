@@ -1166,7 +1166,7 @@ class AdminController extends CI_Controller
             $this->db->insert('accounts', [
                 'student_id'  => $student_id,
                 'username'    => $username,
-                'password'    => $password,
+                'password'    => password_hash($password, PASSWORD_DEFAULT),
                 'role'        => 'student',
                 'created_at'  => date('Y-m-d'),
             ]);

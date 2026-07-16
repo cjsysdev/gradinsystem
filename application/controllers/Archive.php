@@ -60,7 +60,7 @@ class Main extends CI_Controller
             $acc_data = [
                 'student_id' => $trans_no,
                 'username' => $input['username'],
-                'password' => $input['password']
+                'password' => password_hash($input['password'], PASSWORD_DEFAULT)
             ];
 
             $this->accounts->insert($acc_data);
