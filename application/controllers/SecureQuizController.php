@@ -45,7 +45,10 @@ class SecureQuizController extends CI_Controller
         if ($value) redirect('attendance');
 
         // Load and shuffle questions from the widget config
-        if (!$this->session->userdata('shuffled_questions')) {
+        // Session key is scoped per assessment_id so a stale question set
+        // from a previously-taken quiz isn't reused for a different one.
+        $session_key = 'shuffled_questions_' . $assessment_id;
+        if (!$this->session->userdata($session_key)) {
             $allQuestions = $config['questions'] ?? [];
             shuffle($allQuestions);
             $questions = array_slice($allQuestions, 0, (int)$query_max_items ?: 10);
@@ -57,9 +60,9 @@ class SecureQuizController extends CI_Controller
             }
             unset($question);
 
-            $this->session->set_userdata('shuffled_questions', $questions);
+            $this->session->set_userdata($session_key, $questions);
         } else {
-            $questions = $this->session->userdata('shuffled_questions');
+            $questions = $this->session->userdata($session_key);
         }
 
         $data['questions'] = $questions;
@@ -69,10 +72,12 @@ class SecureQuizController extends CI_Controller
 
     public function submit($assessment_id)
     {
-        $questions = $this->session->userdata('shuffled_questions') ?: [];
+        $session_key = 'shuffled_questions_' . $assessment_id;
+        $questions = $this->session->userdata($session_key) ?: [];
         $userAnswers = $this->input->post('answers') ?: [];
 
         $graded = $this->Widgets_model->grade_quiz(['questions' => $questions], $userAnswers);
+        $this->session->unset_userdata($session_key);
 
         $value = $this->classworks->where(
             [

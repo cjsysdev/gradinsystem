@@ -49,7 +49,10 @@ class QuizController extends CI_Controller
         if ($this->is_offline) redirect();
 
         // Load and shuffle questions from the JSON file
-        if (!$this->session->userdata('shuffled_questions')) {
+        // Session key is scoped per assessment_id so a stale question set
+        // from a previously-taken quiz isn't reused for a different one.
+        $session_key = 'shuffled_questions_' . $assessment_id;
+        if (!$this->session->userdata($session_key)) {
             if (!file_exists($jsonFilePath)) {
                 show_error('The JSON file does not exist.', 404);
                 return;
@@ -59,16 +62,16 @@ class QuizController extends CI_Controller
             $allQuestions = json_decode($json, true);
 
             shuffle($allQuestions);
-            $questions = array_slice($allQuestions, 0, (int)$query_max_items ?? 10);
+            $questions = array_slice($allQuestions, 0, (int)$query_max_items ?: 10);
 
             foreach ($questions as &$question) {
                 shuffle($question['choices']);
             }
             unset($question);
 
-            $this->session->set_userdata('shuffled_questions', $questions);
+            $this->session->set_userdata($session_key, $questions);
         } else {
-            $questions = $this->session->userdata('shuffled_questions');
+            $questions = $this->session->userdata($session_key);
         }
 
         $data['questions'] = $questions;
@@ -77,7 +80,8 @@ class QuizController extends CI_Controller
 
     public function submit($assessment_id)
     {
-        $questions = $this->session->userdata('shuffled_questions');
+        $session_key = 'shuffled_questions_' . $assessment_id;
+        $questions = $this->session->userdata($session_key);
         $userAnswers = $this->input->post('answers');
 
         $score = 0;
@@ -139,6 +143,8 @@ class QuizController extends CI_Controller
                 'code' => json_encode($data['results'], JSON_PRETTY_PRINT)
             ]);
         }
+
+        $this->session->unset_userdata($session_key);
 
         $data['assessment_id'] = $assessment_id;
         $this->load->view('quiz_result', $data);
