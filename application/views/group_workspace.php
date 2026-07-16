@@ -142,6 +142,9 @@ if (empty($widget) && ($assessment['iotype_id'] == '4' || $assessment['iotype_id
 
     let saveTimer = null;
     let lastSavedContent = getCurrentContent();
+    // Version of the shared content we currently hold. Echoed to the server as
+    // ?since= so it skips resending the (possibly large) blob when unchanged.
+    let lastVersion = <?= json_encode((string) $state['updated_at']) ?>;
 
     // Called by the submit form's onsubmit, before navigation — captures
     // whatever is actually on screen instead of trusting the debounced
@@ -166,7 +169,12 @@ if (empty($widget) && ($assessment['iotype_id'] == '4' || $assessment['iotype_id
             body: 'content=' + encodeURIComponent(content),
         })
         .then(r => r.json())
-        .then(d => { saveStatus.textContent = d.ok ? 'Saved' : 'Failed to save'; });
+        .then(d => {
+            saveStatus.textContent = d.ok ? 'Saved' : 'Failed to save';
+            // Advance our marker to the version we just wrote so the next poll
+            // doesn't get our own content echoed back to us.
+            if (d.ok && d.updated_at) lastVersion = d.updated_at;
+        });
     }
 
     function queueSave() {
@@ -193,17 +201,34 @@ if (empty($widget) && ($assessment['iotype_id'] == '4' || $assessment['iotype_id
     }
 
     function pollState() {
-        fetch(BASE + 'GroupWorkController/state/' + assessmentId)
+        fetch(BASE + 'GroupWorkController/state/' + assessmentId + '?since=' + encodeURIComponent(lastVersion))
             .then(r => r.json())
             .then(d => {
                 if (!d.ok) return;
 
-                // Don't clobber the widget/draft while the student is actively editing,
-                // and don't wipe the freshly-rendered default state with an empty
-                // "nothing saved yet" response from the server.
-                if (!isEditing() && d.content && d.content !== lastSavedContent) {
-                    applyRemoteContent(d.content);
-                    lastSavedContent = d.content;
+                // A teammate submitted for the whole group elsewhere — bounce to
+                // the workspace route, which redirects on to the classwork list
+                // (with the "already submitted" notice) via the server guard.
+                if (d.submitted) {
+                    stopPolling();
+                    window.location = BASE + 'GroupWorkController/workspace/' + assessmentId;
+                    return;
+                }
+
+                if (d.content_changed && typeof d.content === 'string') {
+                    // A newer shared version exists. Don't clobber the widget/draft
+                    // while the student is actively editing — and in that case leave
+                    // lastVersion stale so the server keeps offering this content and
+                    // we adopt it once they stop typing, rather than losing it.
+                    if (!isEditing() && d.content !== lastSavedContent) {
+                        applyRemoteContent(d.content);
+                        lastSavedContent = d.content;
+                        lastVersion = d.updated_at;
+                    } else if (!isEditing()) {
+                        lastVersion = d.updated_at; // already matches what we hold
+                    }
+                } else if (!d.content_changed && d.updated_at) {
+                    lastVersion = d.updated_at;
                 }
 
                 d.members.forEach(m => {
@@ -220,7 +245,27 @@ if (empty($widget) && ($assessment['iotype_id'] == '4' || $assessment['iotype_id
             .catch(() => {});
     }
 
-    setInterval(pollState, 2000);
+    // Poll only while the tab is visible — a backgrounded workspace was still
+    // hitting the server every 2s for nothing. Resume (with an immediate catch-up
+    // poll) when the student comes back to the tab.
+    let pollTimer = null;
+    function startPolling() {
+        if (pollTimer) return;
+        pollTimer = setInterval(pollState, 2000);
+    }
+    function stopPolling() {
+        clearInterval(pollTimer);
+        pollTimer = null;
+    }
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            stopPolling();
+        } else {
+            pollState();
+            startPolling();
+        }
+    });
+    if (!document.hidden) startPolling();
 })();
 </script>
 

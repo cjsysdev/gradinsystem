@@ -107,6 +107,7 @@
                     <th>Section</th>
                     <th>Title</th>
                     <th>Type</th>
+                    <th>Widget</th>
                     <th>Term</th>
                     <th>Max Score</th>
                     <th>Due</th>
@@ -124,13 +125,20 @@
                             <td><?= htmlspecialchars($a['title']) ?></td>
                             <td><?= htmlspecialchars($a['iotype']) ?></td>
                             <td>
+                                <?php if (!empty($a['widget_name'])): ?>
+                                    <span class="badge badge-primary"><?= htmlspecialchars($a['widget_name']) ?></span>
+                                <?php else: ?>
+                                    <span class="text-muted">&mdash;</span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
                                 <?php
                                 $termLabels = ['midterm' => 'Midterm', 'tentative-final' => 'Tentative Final', 'final' => 'Final'];
                                 echo $termLabels[$a['term']] ?? $a['term'];
                                 ?>
                             </td>
                             <td><?= $a['max_score'] ?></td>
-                            <td><?= date('M d, Y H:i', strtotime($a['due'])) ?></td>
+                            <td><?= date('M j, y, D', strtotime($a['due'])) ?></td>
                             <td>
                                 <span class="badge badge-info"><?= $a['submission_count'] ?></span>
                                 <?php $missing_count = max(0, (int) $a['enrolled_count'] - (int) $a['submitted_student_count']); ?>
@@ -167,7 +175,7 @@
                     <?php endforeach; ?>
                 <?php else: ?>
                     <tr>
-                        <td colspan="10" class="text-center text-muted">No assessments found.</td>
+                        <td colspan="11" class="text-center text-muted">No assessments found.</td>
                     </tr>
                 <?php endif; ?>
             </tbody>

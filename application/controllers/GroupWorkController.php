@@ -89,10 +89,24 @@ class GroupWorkController extends CI_Controller
             $widget = $this->Widgets_model->get($resolved['assessment']['widget_id']);
         }
 
+        $is_iq = $widget && $widget['widget_key'] === 'iq_discussion';
+
+        // Any member's "Submit for Group" fans a classworks row out to every
+        // member, so once one submits the whole group is done. Send teammates
+        // still sitting on the workspace straight to their classwork list —
+        // they see it's submitted instead of re-editing a draft that no longer
+        // counts. The interactive-quiz path has its own "already submitted →
+        // show score" screen, so leave that one to _render_group_iq().
+        if (!$is_iq && $this->_already_submitted($assessment_id)) {
+            $this->session->set_flashdata('success', 'Your group has already submitted this assessment.');
+            redirect('classwork');
+            return;
+        }
+
         // Interactive Discussion/Quiz group play: the whole group runs one
         // shared/synced copy of the full-screen quiz (lockstep via the same
         // Live_state_model blob), not the generic shared-draft workspace.
-        if ($widget && $widget['widget_key'] === 'iq_discussion') {
+        if ($is_iq) {
             $this->_render_group_iq($resolved['assessment'], $group, $state, $members);
             return;
         }
@@ -204,10 +218,19 @@ class GroupWorkController extends CI_Controller
 
         $state = $this->Live_state_model->get_or_create($assessment_id, $resolved['group']['group_id']);
         $this->Live_state_model->save_content($state['state_id'], $this->input->post('content'), $this->session->student_id);
-        $this->_json(['ok' => true]);
+        // Return the fresh version stamp so the saver can advance its own
+        // poll marker and not have the server echo this content straight back.
+        $fresh = $this->Live_state_model->get_state($assessment_id, $resolved['group']['group_id']);
+        $this->_json(['ok' => true, 'updated_at' => $fresh['updated_at']]);
     }
 
-    // AJAX: polled every 2s by the workspace view
+    // AJAX: polled every 2s by the workspace view.
+    //
+    // Conditional payload: if the caller passes ?since=<updated_at> and it still
+    // matches the row, the (potentially large) shared content blob is omitted —
+    // only the small members/ready payload ships. Callers that don't send
+    // ?since (e.g. the interactive-quiz template) always get the full content,
+    // so this stays backward-compatible.
     public function state($assessment_id)
     {
         $resolved = $this->_resolve($assessment_id);
@@ -229,13 +252,26 @@ class GroupWorkController extends CI_Controller
             ];
         }, $members);
 
-        $this->_json([
-            'ok'             => true,
-            'content'        => $state['content'],
-            'last_edited_by' => $state['last_edited_by'],
-            'updated_at'     => $state['updated_at'],
-            'members'        => $member_payload,
-        ]);
+        // Ready flags live in a separate table and don't bump this row's
+        // updated_at, so members/ready are always sent — only the big content
+        // blob is gated on the version the client last applied.
+        $since   = $this->input->get('since');
+        $changed = ($since === null || $since !== $state['updated_at']);
+
+        $payload = [
+            'ok'              => true,
+            'updated_at'      => $state['updated_at'],
+            'content_changed' => $changed,
+            'members'         => $member_payload,
+            // Lets a teammate's still-open workspace notice a submission that
+            // happened elsewhere and bounce itself to the classwork list.
+            'submitted'       => $this->_already_submitted($assessment_id),
+        ];
+        if ($changed) {
+            $payload['content']        = $state['content'];
+            $payload['last_edited_by'] = $state['last_edited_by'];
+        }
+        $this->_json($payload);
     }
 
     // AJAX: toggle the current student's own ready flag
@@ -371,6 +407,18 @@ class GroupWorkController extends CI_Controller
         }
 
         redirect('classwork');
+    }
+
+    // True once this student has a submitted classworks row for the assessment —
+    // which, for a group assessment, means some member already turned it in for
+    // everyone (submit_group / submit_group_iq fan the row out to all members).
+    private function _already_submitted($assessment_id)
+    {
+        $row = $this->classworks->where([
+            'student_id'    => $this->session->student_id,
+            'assessment_id' => $assessment_id,
+        ])->get();
+        return $row && $row->status === 'submitted';
     }
 
     // Recursively checks a decoded widget payload (or a plain string) for any

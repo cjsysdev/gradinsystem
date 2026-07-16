@@ -162,6 +162,7 @@ class assessments extends MY_Model
                 cl.class_name,
                 cl.class_code,
                 ag.set_id AS grouping_set_id,
+                w.name AS widget_name,
                 COUNT(cw.classwork_id) AS submission_count,
                 SUM(CASE WHEN cw.classwork_id IS NOT NULL AND cw.score IS NULL THEN 1 ELSE 0 END) AS unscored_count,
                 (SELECT COUNT(*) FROM class_student cst WHERE cst.schedule_id = a.schedule_id AND cst.status = 'enrolled') AS enrolled_count,
@@ -173,6 +174,7 @@ class assessments extends MY_Model
             JOIN semester_master sem ON cs.semester_id = sem.trans_no AND sem.is_active = 1
             LEFT JOIN classworks cw ON cw.assessment_id = a.assessment_id
             LEFT JOIN assessment_groupings ag ON ag.assessment_id = a.assessment_id
+            LEFT JOIN widgets w ON w.widget_id = a.widget_id
         ";
 
         $params = [];
