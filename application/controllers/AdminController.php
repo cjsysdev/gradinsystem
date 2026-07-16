@@ -11,6 +11,57 @@ class AdminController extends CI_Controller
         }
     }
 
+    // Read-only browse of students' project progress logs, optionally filtered
+    // by course and/or section. Also carries the group-designation panel: for
+    // every course, which grouping set(s) (if any) govern its project log.
+    public function project_logs()
+    {
+        $this->load->model(['Project_log_model', 'classes']);
+
+        $class_id = $this->input->get('class_id') ?: null;
+        $section  = $this->input->get('section') ?: null;
+
+        $all_courses = $this->classes->as_array()->order_by('class_code')->get_all();
+
+        $designations = [];
+        foreach ($all_courses as $course) {
+            $designations[$course['class_id']] = [
+                'course'         => $course,
+                'available_sets' => $this->Project_log_model->get_available_sets_for_class($course['class_id']),
+                'set_ids'        => $this->Project_log_model->get_set_ids_for_class($course['class_id']),
+            ];
+        }
+
+        $data['courses']      = $this->Project_log_model->get_logged_courses();
+        $data['sections']     = $this->class_schedule->get_sections();
+        $data['class_id']     = $class_id;
+        $data['section']      = $section;
+        $data['logs']         = $this->Project_log_model->get_all_for_admin($class_id, $section);
+        $data['designations'] = $designations;
+
+        $this->load->view('admin/project_logs', $data);
+    }
+
+    // Admin write: designate which grouping set(s) govern a course's project
+    // log (or clear the designation to fall back to per-student logging).
+    public function save_project_log_groupings()
+    {
+        $this->load->model('Project_log_model');
+
+        $class_id = (int) $this->input->post('class_id');
+        $set_ids  = (array) $this->input->post('set_id');
+
+        if (empty($class_id)) {
+            $this->session->set_flashdata('error', 'Course is required.');
+            redirect('admin/project_logs');
+            return;
+        }
+
+        $this->Project_log_model->set_class_groupings($class_id, $set_ids);
+        $this->session->set_flashdata('success', 'Project log groupings updated.');
+        redirect('admin/project_logs');
+    }
+
     public function dashboard()
     {
         $today = date('Y-m-d');
@@ -492,12 +543,30 @@ class AdminController extends CI_Controller
             $schedule_id = $current_class['schedule_id'] ?? null;
         }
 
+        // Search + filter set — applied identically to the list, the pager total,
+        // and the bulk-action id set (see assessments::_admin_filters_sql()).
+        $filters = [
+            'schedule_id' => $schedule_id ?: null,
+            'q'           => trim($this->input->get('q') ?? ''),
+            'iotype_id'   => $this->input->get('iotype_id') ?: null,
+            'term'        => $this->input->get('term') ?: null,
+            'status'      => ($this->input->get('status') !== null && $this->input->get('status') !== '') ? $this->input->get('status') : '',
+            'submission'  => $this->input->get('submission') ?: '',
+        ];
+
         $per_page = 20;
         $offset   = (int) $this->input->get('per_page');
-        $total    = $this->assessments->count_all_for_admin($schedule_id ?: null);
+        $total    = $this->assessments->count_all_for_admin($filters);
+
+        // Preserve every active filter across page links.
+        $qs = [];
+        foreach (['schedule_id', 'q', 'iotype_id', 'term', 'status', 'submission'] as $k) {
+            if ($filters[$k] !== null && $filters[$k] !== '') $qs[] = $k . '=' . urlencode($filters[$k]);
+        }
+        $base_url = base_url('manage_assessments') . ($qs ? '?' . implode('&', $qs) : '');
 
         $config = [
-            'base_url'             => base_url('manage_assessments') . ($schedule_id ? '?schedule_id=' . $schedule_id : ''),
+            'base_url'             => $base_url,
             'total_rows'           => $total,
             'per_page'             => $per_page,
             'page_query_string'    => TRUE,
@@ -527,15 +596,20 @@ class AdminController extends CI_Controller
         ];
         $this->pagination->initialize($config);
 
-        $data['assessments']         = $this->assessments->get_all_for_admin($schedule_id ?: null, $per_page, $offset);
-        $data['all_assessment_ids']  = $this->assessments->get_all_ids_for_admin($schedule_id ?: null);
+        $data['assessments']         = $this->assessments->get_all_for_admin($filters, $per_page, $offset);
+        $data['all_assessment_ids']  = $this->assessments->get_all_ids_for_admin($filters);
         $data['pagination']          = $this->pagination->create_links();
         $data['total']               = $total;
         $data['per_page']            = $per_page;
         $data['offset']              = $offset;
         $data['schedules'] = $this->class_schedule->get_all_active();
         $data['io_types'] = $this->db->get('io_type')->result_array();
-        $data['selected_schedule'] = $schedule_id;
+        $data['selected_schedule']   = $schedule_id;
+        $data['search_q']            = $filters['q'];
+        $data['selected_iotype']     = $filters['iotype_id'];
+        $data['selected_term']       = $filters['term'];
+        $data['selected_status']     = $filters['status'];
+        $data['selected_submission'] = $filters['submission'];
 
         // Distinct classes behind those active sections, for the "Entire Class" apply mode.
         $seen_classes = [];
@@ -847,7 +921,13 @@ class AdminController extends CI_Controller
              WHERE c.classwork_id = ?",
             [$points, $classwork_id]
         );
-        echo json_encode(['success' => (bool)$result]);
+
+        $score = $this->db->select('score')
+            ->where('classwork_id', $classwork_id)
+            ->get('classworks')
+            ->row('score');
+
+        echo json_encode(['success' => (bool)$result, 'score' => $score]);
     }
 
     public function student_violations()

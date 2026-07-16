@@ -79,7 +79,7 @@ if (empty($widget) && ($classwork['iotype_id'] == '4' || $classwork['iotype_id']
                          CodeMirror to that id on every page, which would render an
                          empty editor box next to the widget. -->
                     <input type="hidden" id="widget-code-value" name="code">
-                    <?php $this->load->view($widget['input_view'], ['config' => $widget_config, 'readonly' => false, 'existing' => null]); ?>
+                    <?php $this->load->view($widget['input_view'], ['config' => $widget_config, 'readonly' => false, 'existing' => $widget_existing ?? null]); ?>
                 <?php else: ?>
                     <!-- Option to choose between code input or file upload -->
                     <div class="mb-4">
@@ -196,6 +196,11 @@ if (empty($widget) && ($classwork['iotype_id'] == '4' || $classwork['iotype_id']
     // implements for group_workspace.php's live-collaboration sync.
     const DRAFT_KEY = 'classwork_draft_' + <?= json_encode($classwork['assessment_id']) ?> +
         '_' + <?= json_encode($this->session->student_id) ?>;
+    // True once the server has rendered a real prior submission into the
+    // widget (see AssessmentController::assessment_view_code()). In that
+    // case the widget already reflects genuine saved work — restoring a
+    // possibly-stale localStorage draft over it risks clobbering it.
+    const HAS_SERVER_EXISTING = <?= (!empty($widget) && !empty($widget_existing)) ? 'true' : 'false' ?>;
 
     function getCurrentAnswer() {
         if (typeof window.getWidgetState === 'function') return window.getWidgetState();
@@ -217,6 +222,7 @@ if (empty($widget) && ($classwork['iotype_id'] == '4' || $classwork['iotype_id']
     }
 
     function restoreDraft() {
+        if (HAS_SERVER_EXISTING) return;
         const draft = localStorage.getItem(DRAFT_KEY);
         if (!draft) return;
         if (typeof window.setWidgetState === 'function') {

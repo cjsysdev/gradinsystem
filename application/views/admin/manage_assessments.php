@@ -30,16 +30,67 @@
         <div class="alert alert-danger mt-2"><?= $this->session->flashdata('error') ?></div>
     <?php endif; ?>
 
-    <form method="get" action="<?= base_url('manage_assessments') ?>" class="form-inline mt-3 mb-3">
-        <label class="mr-2">Section:</label>
-        <select name="schedule_id" class="form-control mr-2" onchange="this.form.submit()">
-            <option value="">All Sections</option>
-            <?php foreach ($schedules as $s): ?>
-                <option value="<?= $s['schedule_id'] ?>" <?= $selected_schedule == $s['schedule_id'] ? 'selected' : '' ?>>
-                    <?= htmlspecialchars($s['section']) ?> &mdash; <?= htmlspecialchars($s['class_code']) ?> (<?= $s['type'] ?>)
-                </option>
-            <?php endforeach; ?>
-        </select>
+    <?php $has_filters = ($search_q !== '' || $selected_iotype || $selected_term || $selected_submission || ($selected_status !== '')); ?>
+    <form method="get" action="<?= base_url('manage_assessments') ?>" class="form-row align-items-end mt-3 mb-3">
+        <div class="form-group col-sm-3 mb-2">
+            <label class="small mb-1">Section</label>
+            <select name="schedule_id" class="form-control form-control-sm">
+                <option value="">All Sections</option>
+                <?php foreach ($schedules as $s): ?>
+                    <option value="<?= $s['schedule_id'] ?>" <?= (string)$selected_schedule === (string)$s['schedule_id'] ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($s['section']) ?> &mdash; <?= htmlspecialchars($s['class_code']) ?> (<?= $s['type'] ?>)
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div class="form-group col-sm-2 mb-2">
+            <label class="small mb-1">Submissions</label>
+            <select name="submission" class="form-control form-control-sm">
+                <option value="">Any</option>
+                <option value="none"     <?= $selected_submission === 'none'     ? 'selected' : '' ?>>No submissions</option>
+                <option value="has"      <?= $selected_submission === 'has'      ? 'selected' : '' ?>>Has submissions</option>
+                <option value="unscored" <?= $selected_submission === 'unscored' ? 'selected' : '' ?>>Has unscored</option>
+                <option value="missing"  <?= $selected_submission === 'missing'  ? 'selected' : '' ?>>Has missing submitters</option>
+            </select>
+        </div>
+        <div class="form-group col-sm-2 mb-2">
+            <label class="small mb-1">Type</label>
+            <select name="iotype_id" class="form-control form-control-sm">
+                <option value="">All types</option>
+                <?php foreach ($io_types as $t): ?>
+                    <option value="<?= $t['iotype_id'] ?>" <?= (string)$selected_iotype === (string)$t['iotype_id'] ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($t['type']) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div class="form-group col-sm-2 mb-2">
+            <label class="small mb-1">Term</label>
+            <select name="term" class="form-control form-control-sm">
+                <option value="">All terms</option>
+                <option value="midterm"         <?= $selected_term === 'midterm'         ? 'selected' : '' ?>>Midterm</option>
+                <option value="tentative-final" <?= $selected_term === 'tentative-final' ? 'selected' : '' ?>>Tentative Final</option>
+                <option value="final"           <?= $selected_term === 'final'           ? 'selected' : '' ?>>Final</option>
+            </select>
+        </div>
+        <div class="form-group col-sm-1 mb-2">
+            <label class="small mb-1">Status</label>
+            <select name="status" class="form-control form-control-sm">
+                <option value="">All</option>
+                <option value="1" <?= $selected_status === '1' ? 'selected' : '' ?>>Open</option>
+                <option value="0" <?= $selected_status === '0' ? 'selected' : '' ?>>Closed</option>
+            </select>
+        </div>
+        <div class="form-group col-sm-2 mb-2">
+            <label class="small mb-1">Search</label>
+            <input type="text" name="q" class="form-control form-control-sm" placeholder="Title or section" value="<?= htmlspecialchars($search_q) ?>">
+        </div>
+        <div class="form-group col-sm-auto mb-2">
+            <button type="submit" class="btn btn-sm btn-outline-primary"><i class="fas fa-filter"></i> Filter</button>
+            <?php if ($has_filters): ?>
+                <a href="<?= base_url('manage_assessments') ?>" class="btn btn-sm btn-outline-secondary">Clear</a>
+            <?php endif; ?>
+        </div>
     </form>
 
     <?php if ($total > 0): ?>

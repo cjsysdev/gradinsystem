@@ -91,7 +91,8 @@ if (empty($widget) && ($assessment['iotype_id'] == '4' || $assessment['iotype_id
                         <?php endforeach; ?>
                     </ul>
                     <form method="post" action="<?= base_url('GroupWorkController/submit_group/' . $assessment['assessment_id']) ?>"
-                          onsubmit="return confirm('Submit this draft for the whole group?');">
+                          onsubmit="return window.prepareGroupSubmit();">
+                        <input type="hidden" name="content" id="group-submit-content">
                         <button type="submit" class="btn btn-primary btn-block">
                             <i class="fas fa-paper-plane"></i> Submit for Group
                         </button>
@@ -141,6 +142,18 @@ if (empty($widget) && ($assessment['iotype_id'] == '4' || $assessment['iotype_id
 
     let saveTimer = null;
     let lastSavedContent = getCurrentContent();
+
+    // Called by the submit form's onsubmit, before navigation — captures
+    // whatever is actually on screen instead of trusting the debounced
+    // autosave to have already landed (confirm() blocks the JS event loop,
+    // so a pending save can't fire while the dialog is open, and submitting
+    // aborts any in-flight fetch).
+    window.prepareGroupSubmit = function () {
+        if (!confirm('Submit this draft for the whole group?')) return false;
+        clearTimeout(saveTimer);
+        document.getElementById('group-submit-content').value = getCurrentContent();
+        return true;
+    };
 
     function saveDraft() {
         const content = getCurrentContent();

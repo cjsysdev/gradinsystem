@@ -1,0 +1,138 @@
+{
+  "topic": "pointers_and_arrays_c",
+  "title": "Pointers and Arrays in C",
+  "description": "How pointers store addresses, how they connect to arrays, and how to use both together.",
+  "congratsText": "You mastered Pointers and Arrays in C!",
+  "sections": [
+    {
+      "id": 0,
+      "title": "Objectives",
+      "lesson": "<div class=\"lesson-title\">Objectives</div><div class=\"lesson-text\"><ul><li>Explain what a pointer stores, using &amp; and *</li><li>Show that an array's name is the address of its first element</li><li>Change a value by writing through a pointer</li><li>Pass a pointer to a function to change the caller's data</li></ul></div>"
+    },
+    {
+      "id": 1,
+      "title": "What Is a Pointer?",
+      "lesson": "<div class=\"lesson-title\">What Is a Pointer?</div><div class=\"lesson-text\">Every variable lives at an address in memory, like a house on a street. A normal variable's house holds a value, like 10. A <span class=\"highlight\">pointer</span> is different &mdash; it holds the <strong>address</strong> of another variable's house, not a value.</div><div class=\"code-block\">int x = 10;\nint *p = &x;</div><div class=\"lesson-text\">Think of p as a sticky note with x's house address written on it. p itself is not 10 &mdash; you read the note, walk to that address, and 10 is what you find there. That \"walk over and look inside\" step is called <strong>dereferencing</strong>.</div>",
+      "quiz": {
+        "question": "What does a pointer variable actually store?",
+        "options": [
+          "A separate copy of another variable's value",
+          "The memory address of another variable",
+          "The default value of another variable",
+          "The size in bytes of another variable"
+        ],
+        "correct": 1
+      }
+    },
+    {
+      "id": 2,
+      "title": "Declaring and Using a Pointer",
+      "lesson": "<div class=\"lesson-title\">Declaring and Using a Pointer</div><div class=\"lesson-text\"><strong>&amp;</strong> asks \"what's this variable's address?\" <strong>*</strong> means something different depending on where it shows up.</div><div class=\"comparison\"><div class=\"comparison-col\"><div class=\"comparison-label\">* in a declaration</div>\"This variable will hold an address.\" <code>int *p</code> means \"p is a pointer to an int.\"</div><div class=\"comparison-col\"><div class=\"comparison-label\">* anywhere else</div>\"Go to this address and get the value there.\" This is called <span class=\"highlight\">dereferencing</span>.</div></div><div class=\"code-block\">int x = 10;\nint *p = &x;\n\nprintf(\"%d\", *p);  // 10\n*p = 20;\nprintf(\"%d\", x);   // 20</div><div class=\"lesson-text\">p's note still points at x's house. Writing through *p changes what's inside that house, so x changes too &mdash; there's only one house, not two.</div>",
+      "quiz": {
+        "question": "p points at x. What does `int y = *p;` do?",
+        "options": [
+          "Copies x's current value into y",
+          "Makes y point at the same address as p",
+          "Changes x to equal y",
+          "Causes a compile error since p is a pointer"
+        ],
+        "correct": 0
+      }
+    },
+    {
+      "id": 3,
+      "title": "Pointers and Arrays",
+      "lesson": "<div class=\"lesson-title\">Pointers and Arrays</div><div class=\"lesson-text\">An array is a row of houses built right next to each other, with no gaps. An array's name, in most expressions, <span class=\"highlight\">decays into the address of the first house in the row</span>.</div><div class=\"code-block\">int scores[5] = {90, 85, 78, 92, 88};\nint *p = scores;       // same as &scores[0]\n\nprintf(\"%d\", *p);       // 90</div><div class=\"comparison\"><div class=\"comparison-col\"><div class=\"comparison-label\">scores</div>The whole row of 5 houses. sizeof(scores) counts all 5.</div><div class=\"comparison-col\"><div class=\"comparison-label\">p</div>One sticky note holding one address. sizeof(p) only counts the note.</div></div><div class=\"lesson-text\">scores never becomes a real pointer variable with its own note &mdash; it's just always understood as \"the address of house #1.\"</div>",
+      "quiz": {
+        "question": "Why does sizeof(scores) give a different answer than sizeof(p) when p = scores?",
+        "options": [
+          "sizeof always rounds arrays up to the nearest pointer size",
+          "p secretly points to a smaller copy of the array",
+          "scores is the whole array; p is only one pointer variable",
+          "scores stores its address twice, p only once"
+        ],
+        "correct": 2
+      }
+    },
+    {
+      "id": 4,
+      "title": "Changing a Value Through a Pointer",
+      "lesson": "<div class=\"lesson-title\">Changing a Value Through a Pointer</div><div class=\"lesson-text\">p points at scores[0]. Writing through *p reaches into that same house and changes what's inside &mdash; there's only one house, so scores[0] changes too.</div><div class=\"code-block\">int *p = scores;   // p -> scores[0] (90)\n*p = 100;\nprintf(\"%d\", scores[0]);  // 100</div><div class=\"comparison\"><div class=\"comparison-col\"><div class=\"comparison-label\">*p = 100;</div>Follow the note, walk to the house, change what's inside. scores[0] becomes 100.</div><div class=\"comparison-col\"><div class=\"comparison-label\">p = 100;</div>Scribble a new (invalid) address on the note itself. scores[0] never gets touched.</div></div><div class=\"lesson-text\">The star is what tells C \"go to the house,\" not \"change the note.\"</div>",
+      "quiz": {
+        "question": "p points at scores[0], which holds 90. After *p = 100;, what does scores[0] hold now?",
+        "options": [
+          "90, unchanged",
+          "100",
+          "It becomes a pointer itself",
+          "The program will not compile"
+        ],
+        "correct": 1
+      }
+    },
+    {
+      "id": 5,
+      "title": "How Big Is a Pointer?",
+      "lesson": "<div class=\"lesson-title\">How Big Is a Pointer?</div><div class=\"lesson-text\">A house address is written the same size on paper whether the house is small or huge. In the same way, <span class=\"highlight\">a pointer's size never depends on what it points to</span> &mdash; it only has to hold one address.</div><div class=\"code-block\">printf(\"%lu\", sizeof(int));     // 4\nprintf(\"%lu\", sizeof(int*));    // 8 (typical 64-bit)\nprintf(\"%lu\", sizeof(double*)); // 8</div><div class=\"lesson-text\">An int* and a double* take up the same space on the sticky note, even though an int house and a double house are different sizes inside.</div>",
+      "quiz": {
+        "question": "On a 64-bit system, why is sizeof(int*) the same as sizeof(double*)?",
+        "options": [
+          "int and double are secretly the same size on 64-bit systems",
+          "The compiler rounds all sizeof results up to 8 bytes",
+          "Pointers to double always store two addresses instead of one",
+          "Both pointers only store an address, regardless of type"
+        ],
+        "correct": 3
+      }
+    },
+    {
+      "id": 6,
+      "title": "Passing a Pointer to a Function",
+      "lesson": "<div class=\"lesson-title\">Passing a Pointer to a Function</div><div class=\"lesson-text\">Normally, calling a function in C hands it a photocopy of your variable &mdash; it can scribble on the copy, but your original stays untouched. <span class=\"highlight\">Passing an address instead</span> hands over the real house's location, so the function can walk over and change the original.</div><div class=\"code-block\">void addTen(int *n) {\n    *n = *n + 10;\n}\n\nint score = 90;\naddTen(&score);\nprintf(\"%d\", score);  // 100</div><div class=\"lesson-text\">addTen() never receives score itself, only directions to its house. Following those directions with *n reaches the real variable back in main.</div>",
+      "quiz": {
+        "question": "Why does addTen() need & at the call site, but its parameter is declared as int *?",
+        "options": [
+          "& and * mean the same thing in C",
+          "& turns a variable into its address, matching the int * parameter",
+          "& only works with arrays, not plain variables",
+          "int * tells C to ignore whatever is passed in"
+        ],
+        "correct": 1
+      }
+    },
+    {
+      "id": 7,
+      "title": "Pointer Pitfalls and Best Practices",
+      "lesson": "<div class=\"lesson-title\">Pointer Pitfalls and Best Practices</div><div class=\"lesson-text\">An <span class=\"highlight\">uninitialized pointer</span> isn't a blank sticky note &mdash; it already has some leftover address scribbled on it from whatever used that memory before. Follow that scribble, and there's no telling which house you'll end up at.</div><div class=\"code-block\">int *p;           // dangerous: p holds a leftover scribble\nprintf(\"%d\", *p);  // undefined behavior</div><div class=\"lesson-text\"><ul><li>Write a real address on every pointer's note right away, or set it to NULL</li><li>Check for NULL before following a pointer that might not have a real address yet</li><li>Never follow a pointer to a house that's already been torn down</li></ul></div>",
+      "quiz": {
+        "question": "What is the actual danger of `int *p;` followed by `printf(\"%d\", *p);`?",
+        "options": [
+          "p is automatically set to 0, so *p always prints 0",
+          "The compiler blocks this code from running at all",
+          "p points at itself, creating an infinite loop",
+          "p holds an unknown address, so *p reads unpredictable memory"
+        ],
+        "correct": 3
+      }
+    },
+    {
+      "id": 8,
+      "title": "NULL and Pointers to Pointers",
+      "lesson": "<div class=\"lesson-title\">NULL and Pointers to Pointers</div><div class=\"lesson-text\"><span class=\"highlight\">NULL</span> is a sticky note that plainly says \"no address yet &mdash; don't follow me.\" It's the safe default until a pointer has somewhere real to point.</div><div class=\"lesson-text\">A pointer can also point at another pointer. int **pp is a note that says \"go find another note\" &mdash; that second note (p) is the one that finally points at the real house.</div><div class=\"code-block\">int x = 10;\nint *p = &x;\nint **pp = &p;\n\nprintf(\"%d\", **pp);  // 10 — follow two notes to get there</div><div class=\"lesson-text\">This is handy when a function needs to change which address a pointer holds, not just the value at that address &mdash; it needs a note pointing at the note.</div>",
+      "quiz": {
+        "question": "In `int **pp = &p;`, what does pp store?",
+        "options": [
+          "The value that p points to",
+          "A copy of p's address, but for a different variable",
+          "The address of the pointer variable p itself",
+          "The address of x, skipping p entirely"
+        ],
+        "correct": 2
+      }
+    },
+    {
+      "id": 9,
+      "title": "Recap",
+      "lesson": "<div class=\"lesson-title\">Recap</div><div class=\"lesson-text\"><ul><li>A pointer is a sticky note holding another variable's address, not its value</li><li>* follows the note to read or write the real value; &amp; writes the address on a new note</li><li>An array name is always the address of its first house, but isn't a pointer variable itself</li><li>Writing through *p changes the real variable; assigning to p itself just rewrites the note</li><li>A pointer's own size never changes &mdash; it's always just one address</li><li>Passing an address to a function lets it change the caller's real variable</li><li>An uninitialized pointer holds a leftover scribble &mdash; always give it a real address or NULL</li><li>A pointer to a pointer is a note that leads you to another note</li></ul></div>"
+    }
+  ]
+}

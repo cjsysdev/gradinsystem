@@ -56,6 +56,24 @@ $assessment_id     = isset($assessment_id) ? (int) $assessment_id : 0;
 $already_submitted = !empty($already_submitted);
 $previous_score    = $previous_score ?? null;
 $previous_answers  = $previous_answers ?? [];
+
+// ── Group (shared/synced) mode ───────────────────────────────
+// Set by GroupWorkController::_render_group_iq(). When on, the whole group
+// plays one lockstep copy: option order is deterministic (no per-client
+// shuffle), section/score/answers sync via the Live_state_model blob, and
+// finishing grades server-side + fans out to every member's classworks row.
+$group_mode    = !empty($group_mode);
+$group         = $group ?? null;
+$group_members = $group_members ?? [];
+$state_content = $state_content ?? '';
+$my_student_id = isset($student_id) ? (string) $student_id : '';
+$group_name    = $group['group_name'] ?? '';
+$group_member_js = array_map(function ($m) {
+    return [
+        'id'   => (string) $m['student_id'],
+        'name' => trim(($m['firstname'] ?? '') . ' ' . ($m['lastname'] ?? '')),
+    ];
+}, $group_members);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -64,6 +82,14 @@ $previous_answers  = $previous_answers ?? [];
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title><?= $title ?> - Interactive Learning</title>
     <link rel="stylesheet" href="<?= base_url('assets/interactive-quiz-style.css') ?>">
+    <?php if ($group_mode): ?>
+    <style>
+        .group-bar { display:flex; flex-wrap:wrap; gap:6px; align-items:center; justify-content:center;
+            padding:6px 10px; background:rgba(53,122,189,0.10); border-bottom:1px solid rgba(53,122,189,0.2); }
+        .group-bar .group-label { font-size:12px; font-weight:700; color:#357abd; margin-right:4px; }
+        .group-bar .group-chip { font-size:12px; background:#357abd; color:#fff; border-radius:12px; padding:2px 10px; }
+    </style>
+    <?php endif; ?>
 </head>
 <body>
     <div class="container">
@@ -82,6 +108,10 @@ $previous_answers  = $previous_answers ?? [];
                 </div>
             </div>
         </div>
+
+        <?php if ($group_mode): ?>
+            <div class="group-bar" id="groupBar"></div>
+        <?php endif; ?>
 
         <?php if ($already_submitted): ?>
             <div class="already-submitted-banner" id="alreadySubmittedBanner">
@@ -158,6 +188,14 @@ $previous_answers  = $previous_answers ?? [];
         // which increments `score` again (only the record_attempt AJAX/quizAnswers
         // push is de-duped via answeredSections) — so it's hidden entirely.
         const ALREADY_SUBMITTED = <?= $already_submitted ? 'true' : 'false' ?>;
+
+        // ── Group mode (shared/synced play) ─────────────────────────
+        const GROUP_MODE    = <?= $group_mode ? 'true' : 'false' ?>;
+        const GROUP_NAME    = <?= json_encode($group_name) ?>;
+        const MY_STUDENT_ID = <?= json_encode($my_student_id) ?>;
+        const GROUP_MEMBERS = <?= json_encode($group_member_js) ?>;
+        // The shared live-state blob as last saved (null on a fresh group).
+        const GROUP_STATE_INIT = <?= ($group_mode && $state_content !== '' && json_decode($state_content) !== null) ? $state_content : 'null' ?>;
         // recorded answers from an earlier completed attempt (see save_result()) —
         // used so the PDF export can show what was actually picked, keyed by section index.
         const prevAnswerBySection = {};
@@ -175,6 +213,16 @@ $previous_answers  = $previous_answers ?? [];
         let quizAnswers            = []; // per-question record, sent to save_result so it can be reviewed later
         let streakHighlight        = false;
         const answeredSections     = new Set(); // prevent double-recording on back-nav
+        let congratsShown          = false;     // guard against re-showing the finish modal
+
+        // ── Group sync state ────────────────────────────────────────
+        let groupState = {
+            v: 0, currentSection: 0, score: 0, streak: 0, bestStreak: 0,
+            finished: false, by: MY_STUDENT_ID, sections: {}
+        };
+        let lastRemoteV    = 0;      // highest revision seen from the server
+        let applyingRemote = false;  // suppress push loops while applying remote state
+        let groupPollTimer = null;
 
         // ── Fisher-Yates shuffle ────────────────────────────────────
         function shuffleArray(array) {
@@ -187,6 +235,11 @@ $previous_answers  = $previous_answers ?? [];
         }
 
         function createShuffledOptions(options, correctIndex) {
+            // Group mode keeps a deterministic order so every member sees the
+            // same options — selection is synced by index, so order must match.
+            if (GROUP_MODE) {
+                return { options: [...options], correctIndex };
+            }
             const tagged   = options.map((text, i) => ({ text, originalIndex: i }));
             const shuffled = shuffleArray(tagged);
             return {
@@ -260,6 +313,15 @@ $previous_answers  = $previous_answers ?? [];
             document.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
             document.querySelector(`[data-index="${index}"]`).classList.add('selected');
             selectedOption = index;
+
+            // Share the pick with the group (before submitting) so teammates
+            // see the highlighted choice on their screens.
+            if (GROUP_MODE && !applyingRemote) {
+                groupState.sections[currentSection] = Object.assign(
+                    {}, groupState.sections[currentSection], { selected: index, submitted: false }
+                );
+                pushGroupState();
+            }
         }
 
         function submitAnswer() {
@@ -303,19 +365,32 @@ $previous_answers  = $previous_answers ?? [];
                     is_correct:     correct
                 });
 
-                fetch(BASE_URL + 'interactive_quiz/record_attempt', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams({
-                        topic:          TOPIC_SLUG,
-                        section_index:  currentSection,
-                        section_title:  section.title || '',
-                        question_index: 0,
-                        question_text:  section.quiz.question || '',
-                        is_correct:     correct ? '1' : '0',
-                        chosen_option:  currentShuffledOptions[selectedOption] || ''
-                    })
-                }).catch(() => {});
+                // Per-student analytics only make sense for solo play — in group
+                // mode the shared result is recorded server-side on finish.
+                if (!GROUP_MODE) {
+                    fetch(BASE_URL + 'interactive_quiz/record_attempt', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({
+                            topic:          TOPIC_SLUG,
+                            section_index:  currentSection,
+                            section_title:  section.title || '',
+                            question_index: 0,
+                            question_text:  section.quiz.question || '',
+                            is_correct:     correct ? '1' : '0',
+                            chosen_option:  currentShuffledOptions[selectedOption] || ''
+                        })
+                    }).catch(() => {});
+                }
+            }
+
+            // Share the graded result with the group (index-based, deterministic
+            // order — so teammates see the same correct/incorrect reveal).
+            if (GROUP_MODE && !applyingRemote) {
+                groupState.sections[currentSection] = {
+                    selected: selectedOption, submitted: true, correct: correct
+                };
+                pushGroupState();
             }
 
             updateUI();
@@ -335,11 +410,40 @@ $previous_answers  = $previous_answers ?? [];
             }, 1500);
         }
 
-        function showCongratsModal() {
+        // fromRemote = true when a teammate's finish synced to us — show the
+        // modal but don't re-submit (only the finisher records the score).
+        function showCongratsModal(fromRemote) {
+            congratsShown = true;
             document.getElementById('finalScore').textContent = score;
             document.getElementById('bestStreak').textContent = bestStreak;
             document.getElementById('congratsModal').classList.add('show');
             document.getElementById('congratsBackdrop').classList.add('show');
+
+            if (GROUP_MODE) {
+                if (!fromRemote) {
+                    // Broadcast the finish so teammates also see the result...
+                    groupState.finished = true;
+                    pushGroupState();
+                    // ...and grade the whole group server-side (fans out to
+                    // every member's classworks row; score is authoritative).
+                    fetch(BASE_URL + 'GroupWorkController/submit_group_iq/' + ASSESSMENT_ID, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: ''
+                    })
+                    .then(r => r.json())
+                    .then(d => {
+                        if (d && d.success && typeof d.score !== 'undefined') {
+                            document.getElementById('finalScore').textContent = d.score;
+                        }
+                    })
+                    .catch(() => {});
+                }
+                return;
+            }
 
             // Save classwork score if this discussion is linked to an assessment
             if (ASSESSMENT_ID) {
@@ -363,8 +467,14 @@ $previous_answers  = $previous_answers ?? [];
             if (currentSection < sections.length - 1) {
                 currentSection++;
                 renderContent();
+                // Reflect any answer teammates already recorded for this section,
+                // then advance the shared pointer so everyone moves together.
+                if (GROUP_MODE && !applyingRemote) {
+                    reflectSection(currentSection);
+                    pushGroupState();
+                }
             } else {
-                showCongratsModal();
+                showCongratsModal(false);
             }
         }
 
@@ -378,6 +488,7 @@ $previous_answers  = $previous_answers ?? [];
             selectedOption  = null;
             answered        = false;
             streakHighlight = false;
+            congratsShown   = false;
             document.getElementById('congratsModal').classList.remove('show');
             document.getElementById('congratsBackdrop').classList.remove('show');
             renderContent();
@@ -496,7 +607,133 @@ $previous_answers  = $previous_answers ?? [];
             });
         }
 
-        window.addEventListener('load', renderContent);
+        // ── Group sync (lockstep shared state) ──────────────────────
+        // Mirror the live quiz vars into the shared blob before every push.
+        function gsSyncFromLive() {
+            groupState.currentSection = currentSection;
+            groupState.score          = score;
+            groupState.streak         = streak;
+            groupState.bestStreak     = bestStreak;
+            groupState.by             = MY_STUDENT_ID;
+        }
+
+        function pushGroupState() {
+            if (!GROUP_MODE || applyingRemote) return;
+            gsSyncFromLive();
+            // Monotonic revision so peers apply the newest state and ignore echoes.
+            groupState.v  = Math.max(groupState.v, lastRemoteV) + 1;
+            lastRemoteV   = groupState.v;
+            fetch(BASE_URL + 'GroupWorkController/save_draft/' + ASSESSMENT_ID, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'content=' + encodeURIComponent(JSON.stringify(groupState))
+            }).catch(() => {});
+        }
+
+        function pollGroupState() {
+            if (!GROUP_MODE) return;
+            fetch(BASE_URL + 'GroupWorkController/state/' + ASSESSMENT_ID)
+                .then(r => r.json())
+                .then(d => {
+                    if (!d || !d.ok) return;
+                    if (d.members) renderGroupBar(d.members);
+                    if (!d.content) return;
+                    let remote;
+                    try { remote = JSON.parse(d.content); } catch (e) { return; }
+                    if (!remote || typeof remote.v !== 'number') return;
+                    if (remote.v > groupState.v) applyGroupState(remote);
+                })
+                .catch(() => {});
+        }
+
+        function applyGroupState(remote) {
+            applyingRemote = true;
+            lastRemoteV = remote.v;
+            groupState  = remote;
+            if (!groupState.sections) groupState.sections = {};
+
+            score      = remote.score      || 0;
+            streak     = remote.streak     || 0;
+            bestStreak = remote.bestStreak || 0;
+
+            if (remote.currentSection !== currentSection) {
+                currentSection = remote.currentSection;
+                renderContent();
+            }
+            reflectSection(currentSection);
+            updateUI();
+
+            if (remote.finished && !congratsShown) {
+                showCongratsModal(true);
+            }
+            applyingRemote = false;
+        }
+
+        // Re-apply a section's shared answer to the DOM (highlight the pick and,
+        // if submitted, reveal correct/incorrect) — used after render + on sync.
+        function reflectSection(idx) {
+            const entry = groupState.sections ? groupState.sections[idx] : null;
+            if (!entry) return;
+            const section = sections[idx];
+            const hasQuiz = section.quiz
+                && typeof section.quiz.question === 'string'
+                && Array.isArray(section.quiz.options)
+                && section.quiz.options.length >= 2;
+            if (!hasQuiz) return;
+
+            if (entry.selected !== null && entry.selected !== undefined) {
+                document.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
+                const el = document.querySelector(`[data-index="${entry.selected}"]`);
+                if (el) el.classList.add('selected');
+                selectedOption = entry.selected;
+            }
+
+            if (entry.submitted) {
+                answered = true;
+                const correctIdx = section.quiz.correct;
+                document.querySelectorAll('.option').forEach(o => o.classList.add('disabled'));
+                const sel  = document.querySelector(`[data-index="${entry.selected}"]`);
+                const corr = document.querySelector(`[data-index="${correctIdx}"]`);
+                const feedback = document.getElementById('feedback');
+                if (entry.correct) {
+                    if (sel) sel.classList.add('correct');
+                    feedback.className   = 'feedback show correct';
+                    feedback.textContent = '✓ Correct! +1 point';
+                } else {
+                    if (sel) sel.classList.add('incorrect');
+                    if (corr) corr.classList.add('correct');
+                    feedback.className   = 'feedback show incorrect';
+                    feedback.textContent = `✗ Incorrect. The correct answer is option ${correctIdx + 1}.`;
+                }
+                document.getElementById('submitBtn').textContent =
+                    (currentSection === sections.length - 1) ? 'Finish' : 'Next →';
+            }
+        }
+
+        function renderGroupBar(members) {
+            const bar = document.getElementById('groupBar');
+            if (!bar) return;
+            const list = (members && members.length)
+                ? members
+                : GROUP_MEMBERS.map(m => ({ name: m.name }));
+            const chips = list.map(m =>
+                `<span class="group-chip">${String(m.name || '').replace(/[<>&]/g, '')}</span>`
+            ).join('');
+            bar.innerHTML = `<span class="group-label">&#128101; ${String(GROUP_NAME).replace(/[<>&]/g, '')}</span>` + chips;
+        }
+
+        window.addEventListener('load', function () {
+            renderContent();
+
+            if (GROUP_MODE) {
+                renderGroupBar(GROUP_MEMBERS.map(m => ({ name: m.name })));
+                // Sync to the group's progress so far (a late joiner lands here).
+                if (GROUP_STATE_INIT && typeof GROUP_STATE_INIT.v === 'number') {
+                    applyGroupState(GROUP_STATE_INIT);
+                }
+                groupPollTimer = setInterval(pollGroupState, 1500);
+            }
+        });
     </script>
 </body>
 </html>

@@ -38,11 +38,13 @@
                                 <h3 id="student_name" class="card-title text-center">lastname, firstname</h3>
                             </div>
                         </div>
+                        <div id="turnStatus" class="text-muted small text-center mb-2"></div>
                         <div class="row justify-content-center mt-3">
                             <div class="col text-center">
                                 <button type="button" class="btn btn-secondary mb-4 mr-2" onclick="randomizeStudent()"><i class="fa fa-shuffle" aria-hidden="true"></i></button>
                                 <button type="button" class="btn btn-secondary mb-4 mr-2" onclick="openFullscreenRandomizer()">&#x26F6;</button>
-                                <button type="button" class="btn btn-secondary mb-4" onclick="toggleSubmissions()"><i class="fa fa-eye" aria-hidden="true"></i></button>
+                                <button type="button" class="btn btn-secondary mb-4 mr-2" onclick="toggleSubmissions()"><i class="fa fa-eye" aria-hidden="true"></i></button>
+                                <button type="button" class="btn btn-outline-secondary mb-4" onclick="resetRandomizerRound()" title="Start a fresh round"><i class="fa fa-rotate-left" aria-hidden="true"></i> Reset round</button>
                             </div>
                         </div>
                         <div class="dropdown-menu w-100 shadow-sm p-2" aria-labelledby="assessmentDropdown">
@@ -150,8 +152,8 @@
                                     <div class="input-group mb-3">
                                         <button type="button" class="btn btn-outline-secondary mr-1 ml-1" onclick="addScore(<?= $row['classwork_id'] ?>, 5)">Late</button>
                                         <input type="number" step="any" class="form-control mr-1 ml-1 manual-score-input" placeholder="Enter score" min="0" value="<?= isset($row['score']) ? $row['score'] : '' ?>">
-                                        <button type="button" class="btn btn-outline-secondary mr-1 ml-1" onclick="addScore(<?= $row['classwork_id'] ?>, 1)">1</button>
-                                        <button type="button" class="btn btn-outline-secondary mr-1 ml-1" onclick="addScore(<?= $row['classwork_id'] ?>, 2)">2</button>
+                                        <button type="button" class="btn btn-outline-secondary mr-1 ml-1" onclick="addRandScoreIncremental(<?= $row['classwork_id'] ?>, 1)">+1</button>
+                                        <button type="button" class="btn btn-outline-secondary mr-1 ml-1" onclick="addRandScoreIncremental(<?= $row['classwork_id'] ?>, 2)">+2</button>
                                         <button type="button" class="btn btn-outline-secondary mr-1 ml-1" onclick="addScore(<?= $row['classwork_id'] ?>, <?= $row['max_score'] ?>)"><?= $row['max_score'] ?></button>
                                         <button type="button" class="btn btn-info mr-1 ml-1" onclick="submitManualScore(this)">Submit</button>
                                     </div>
@@ -227,7 +229,8 @@
 
     <button onclick="closeFullscreenRandomizer()" style="position:absolute;top:24px;right:28px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.25);color:#fff;border-radius:8px;padding:8px 20px;cursor:pointer;font-size:1rem;transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.18)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'">&#x2715; Close</button>
 
-    <div id="fsEligibleCount" style="color:rgba(255,255,255,0.38);font-size:0.9rem;letter-spacing:2px;text-transform:uppercase;margin-bottom:28px;"></div>
+    <div id="fsEligibleCount" style="color:rgba(255,255,255,0.38);font-size:0.9rem;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;"></div>
+    <div id="fsTurnStatus" style="color:rgba(255,255,255,0.55);font-size:0.9rem;letter-spacing:1px;margin-bottom:28px;"></div>
 
     <div id="fsNameDisplay" style="font-size:clamp(2.5rem,9vw,6.5rem);font-weight:900;color:#fff;text-align:center;letter-spacing:3px;text-shadow:0 0 60px rgba(99,179,237,0.7),0 2px 8px rgba(0,0,0,0.5);min-height:1.2em;display:flex;align-items:center;justify-content:center;padding:0 40px;">
         Ready
@@ -404,12 +407,62 @@
         localStorage.setItem(randomizerPoolKey(), JSON.stringify(Array.from(picked)));
     }
 
+    // Students still in play this round (not yet scored to max).
+    function eligibleStudents() {
+        return allStudents.filter(s =>
+            s.score === null || parseFloat(s.score) < parseFloat(s.max_score)
+        );
+    }
+
+    // Renders "N called · M remaining" for the round in both the main card and
+    // the fullscreen overlay. Reads the persisted picked set so the count is
+    // correct immediately after a page refresh (the round is never lost).
+    function updateTurnStatus() {
+        const eligible = eligibleStudents();
+        const picked = getRandomizedPicks();
+        const called = picked.size;
+        const remaining = eligible.filter(s => !picked.has(String(s.classwork_id))).length;
+
+        let text;
+        if (eligible.length === 0) {
+            text = 'No eligible students.';
+        } else if (remaining === 0) {
+            text = `🔄 All ${called} called — next draw starts a new round`;
+        } else {
+            text = `✅ ${called} called · ${remaining} remaining`;
+        }
+
+        const mainEl = document.getElementById('turnStatus');
+        if (mainEl) mainEl.textContent = text;
+        const fsEl = document.getElementById('fsTurnStatus');
+        if (fsEl) fsEl.textContent = text;
+    }
+
+    // Manual reset so a new class session starts everyone fresh (the round
+    // otherwise survives refresh and only auto-resets once everyone's called).
+    function resetRandomizerRound() {
+        if (!confirm('Reset the round? Every student goes back into the pool.')) return;
+        localStorage.removeItem(randomizerPoolKey());
+        const nameEl = document.getElementById('student_name');
+        if (nameEl) nameEl.textContent = 'lastname, firstname';
+        const fsName = document.getElementById('fsNameDisplay');
+        if (fsName) {
+            fsName.style.animation = 'none';
+            fsName.style.color = '#fff';
+            fsName.textContent = 'Ready';
+        }
+        const fsBadge = document.getElementById('fsBadgeArea');
+        if (fsBadge) fsBadge.innerHTML = '';
+        updateTurnStatus();
+    }
+
     function openFullscreenRandomizer() {
         const overlay = document.getElementById('randomizerOverlay');
         overlay.style.display = 'flex';
-        const eligible = allStudents.filter(s => s.score === null || parseFloat(s.score) < parseFloat(s.max_score));
+        const eligible = eligibleStudents();
         document.getElementById('fsEligibleCount').textContent = `${eligible.length} student${eligible.length !== 1 ? 's' : ''} eligible`;
         document.getElementById('fsBadgeArea').innerHTML = '';
+        updateTurnStatus();
         const fsName = document.getElementById('fsNameDisplay');
         fsName.style.animation = 'none';
         fsName.style.color = '#fff';
@@ -422,9 +475,7 @@
     }
 
     function randomizeStudent(isFullscreen = false) {
-        const students = allStudents.filter(s =>
-            s.score === null || parseFloat(s.score) < parseFloat(s.max_score)
-        );
+        const students = eligibleStudents();
 
         const nameElem  = isFullscreen ? document.getElementById('fsNameDisplay')  : document.getElementById('student_name');
         const badgeArea = isFullscreen ? document.getElementById('fsBadgeArea')     : null;
@@ -436,11 +487,11 @@
             return;
         }
 
-        // Drop ids that are no longer eligible (e.g. already scored to max
-        // since their last draw), then fall back to the full eligible list
-        // (and start a fresh round) once every eligible student has been drawn.
-        const eligibleIds = new Set(students.map(s => String(s.classwork_id)));
-        let picked = new Set(Array.from(getRandomizedPicks()).filter(id => eligibleIds.has(id)));
+        // Keep the full round history (including students already scored to max
+        // since their draw) so the "N called" counter stays accurate. Ineligible
+        // ids never affect the pool, which is computed from the eligible list;
+        // once every eligible student has been drawn we start a fresh round.
+        let picked = getRandomizedPicks();
 
         let pool = students.filter(s => !picked.has(String(s.classwork_id)));
         let isNewRound = false;
@@ -478,6 +529,7 @@
                 const pick = pool[Math.floor(Math.random() * pool.length)];
                 picked.add(String(pick.classwork_id));
                 saveRandomizedPicks(picked);
+                updateTurnStatus();
                 showFinalPick(pick, nameElem, badgeArea, isFullscreen, isNewRound);
                 if (btn) btn.disabled = false;
             }
@@ -584,7 +636,23 @@
             .then(response => response.json())
             .then(data => {
                 if (!data.success) { showScoreAlert(false, 'Failed to add points.'); return; }
+
+                // Reflect the incremented score in the card + randomizer data,
+                // same as addScore(), instead of overwriting it with a flat value.
+                const card = document.querySelector('.submission-card[data-classwork-id="' + classwork_id + '"]');
+                if (card) {
+                    card.dataset.hasScore = 'true';
+                    const currentScoreEl = card.querySelector('.current-score');
+                    if (currentScoreEl) currentScoreEl.textContent = data.score;
+                    const manualInput = card.querySelector('.manual-score-input');
+                    if (manualInput) manualInput.value = data.score;
+                }
+                const student = allStudents.find(s => String(s.classwork_id) === String(classwork_id));
+                if (student) student.score = data.score;
+
                 showScoreAlert(true, `+${points} point${points !== 1 ? 's' : ''} added!`);
+                filterSubmissions(currentFilterMode);
+                updateTurnStatus();
             })
             .catch(() => showScoreAlert(false, 'Error adding score.'));
     }
@@ -615,6 +683,7 @@
 
                 showScoreAlert(true, 'Score saved: ' + score);
                 filterSubmissions(currentFilterMode);
+                updateTurnStatus();
             })
             .catch(() => showScoreAlert(false, 'Error saving score.'));
     }
@@ -672,6 +741,10 @@
     }
 
     const assessmentId = <?= json_encode($selected_assessment_id) ?>;
+
+    // Reflect the persisted round immediately on load, so a refresh visibly
+    // keeps the "N called" progress instead of looking like it reset.
+    updateTurnStatus();
 
     function checkNewSubmissions() {
         console.log("checking");

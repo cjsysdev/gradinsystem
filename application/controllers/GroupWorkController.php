@@ -89,6 +89,14 @@ class GroupWorkController extends CI_Controller
             $widget = $this->Widgets_model->get($resolved['assessment']['widget_id']);
         }
 
+        // Interactive Discussion/Quiz group play: the whole group runs one
+        // shared/synced copy of the full-screen quiz (lockstep via the same
+        // Live_state_model blob), not the generic shared-draft workspace.
+        if ($widget && $widget['widget_key'] === 'iq_discussion') {
+            $this->_render_group_iq($resolved['assessment'], $group, $state, $members);
+            return;
+        }
+
         $this->load->view('group_workspace', [
             'assessment'    => $resolved['assessment'],
             'group'         => $group,
@@ -267,10 +275,31 @@ class GroupWorkController extends CI_Controller
             return;
         }
 
+        // The submitter's own screen is the source of truth — the debounced
+        // autosave may not have landed yet (see prepareGroupSubmit() in
+        // group_workspace.php). Fall back to the last saved state only if the
+        // client didn't send anything (JS disabled/degraded).
+        $posted = $this->input->post('content');
+        $content = ($posted !== null && $posted !== '') ? $posted : $state['content'];
+
         $is_widget = !empty($resolved['assessment']['widget_id']);
 
         $widget = $is_widget ? $this->Widgets_model->get($resolved['assessment']['widget_id']) : null;
         $is_quiz = $widget && $widget['widget_key'] === 'quiz';
+
+        // Refuse to fan out a blank submission over every member's row —
+        // getWidgetState() always returns non-empty JSON shells like
+        // {"rows":[]} or {"answers":{"0":"","1":""}}, so a plain emptiness
+        // check on the raw string would never catch an untouched widget.
+        $decoded = $is_widget ? (json_decode($content ?? '', true) ?: []) : $content;
+        if (!$this->_has_content($decoded)) {
+            $this->session->set_flashdata('error', 'Nothing has been filled in yet — there is nothing to submit.');
+            redirect('GroupWorkController/workspace/' . $assessment_id);
+            return;
+        }
+
+        // Persist what's actually being submitted so the stored draft matches.
+        $this->Live_state_model->save_content($state['state_id'], $content, $this->session->student_id);
 
         $filename = null;
         $quiz_score = null;
@@ -280,7 +309,7 @@ class GroupWorkController extends CI_Controller
             // Auto-graded, shared across the whole group — never trust a
             // client-computed score, grade server-side from the config.
             $config = json_decode($resolved['assessment']['given'] ?? '', true) ?: [];
-            $answers = json_decode($state['content'] ?? '', true)['answers'] ?? [];
+            $answers = json_decode($content ?? '', true)['answers'] ?? [];
             $graded = $this->Widgets_model->grade_quiz($config, $answers);
             $quiz_score = $graded['score'];
             $quiz_results_json = json_encode($graded['results']);
@@ -295,7 +324,7 @@ class GroupWorkController extends CI_Controller
             if (!is_dir($upload_path)) {
                 mkdir($upload_path, 0777, true);
             }
-            file_put_contents($upload_path . $filename, (string) $state['content']);
+            file_put_contents($upload_path . $filename, (string) $content);
         }
 
         $my_classwork_id = null;
@@ -310,7 +339,7 @@ class GroupWorkController extends CI_Controller
                 // Widget submissions are structured JSON — kept in the code
                 // column (like the solo widget path) instead of a shared file.
                 'file_upload'   => $is_widget ? null : $filename,
-                'code'          => $is_quiz ? $quiz_results_json : ($is_widget ? $state['content'] : null),
+                'code'          => $is_quiz ? $quiz_results_json : ($is_widget ? $content : null),
             ];
             if ($is_quiz) {
                 $submission_data['score'] = $quiz_score;
@@ -342,6 +371,207 @@ class GroupWorkController extends CI_Controller
         }
 
         redirect('classwork');
+    }
+
+    // Recursively checks a decoded widget payload (or a plain string) for any
+    // non-blank value. trim((string) 0) !== '' is true, so numeric 0 ratings
+    // (decision_matrix, case_dossier) correctly count as content.
+    private function _has_content($decoded)
+    {
+        if (is_array($decoded)) {
+            foreach ($decoded as $v) {
+                if ($this->_has_content($v)) return true;
+            }
+            return false;
+        }
+        return trim((string) $decoded) !== '';
+    }
+
+    // Renders the interactive quiz template in group mode. Group forming,
+    // membership and the live-state row are already resolved by workspace();
+    // this just loads the topic JSON and hands the template the sync context.
+    private function _render_group_iq($assessment, $group, $state, $members)
+    {
+        $config = json_decode($assessment['given'] ?? '', true) ?: [];
+        $topic  = $config['topic'] ?? '';
+        $file   = $topic ? $this->_resolve_topic_file($topic) : false;
+
+        if (!$file) {
+            show_error('Interactive topic not found for this assessment.', 404);
+            return;
+        }
+
+        $topic_data = json_decode(file_get_contents($file), true);
+        if (!$topic_data || !isset($topic_data['sections'])) {
+            show_error('Invalid or malformed topic data.', 500);
+            return;
+        }
+
+        // If the group already submitted, this student has a recorded row —
+        // show their score up front and treat replays as practice (same
+        // first-try-only contract as the solo InteractiveQuizController flow).
+        $already_submitted = false;
+        $previous_score    = null;
+        $previous_answers  = [];
+
+        $existing = $this->classworks->where([
+            'student_id'    => $this->session->student_id,
+            'assessment_id' => $assessment['assessment_id'],
+        ])->get();
+
+        if ($existing) {
+            $already_submitted = true;
+            $previous_score    = $existing->score;
+            $previous_answers  = json_decode($existing->code ?? '', true) ?: [];
+        }
+
+        $this->load->view('discussions/_interactive_quiz_template', [
+            'topic_data'        => $topic_data,
+            'assessment_id'     => (int) $assessment['assessment_id'],
+            'already_submitted' => $already_submitted,
+            'previous_score'    => $previous_score,
+            'previous_answers'  => $previous_answers,
+            // Group-mode context (consumed only when group_mode is set):
+            'group_mode'        => true,
+            'group'             => $group,
+            'group_members'     => $members,
+            'state_content'     => $state['content'],
+            'student_id'        => $this->session->student_id,
+        ]);
+    }
+
+    // AJAX: grade a group's interactive-quiz play server-side from the topic
+    // JSON (never trusting a client score) and fan one result out to every
+    // member's classworks row. Mirrors submit_group()'s fan-out + the solo
+    // save_result()'s first-completion-only recording.
+    public function submit_group_iq($assessment_id)
+    {
+        $resolved = $this->_resolve($assessment_id);
+        if (!$resolved || !$resolved['group']) {
+            $this->_json(['success' => false, 'message' => 'Group not found'], 400);
+            return;
+        }
+
+        $group      = $resolved['group'];
+        $assessment = $resolved['assessment'];
+
+        $config = json_decode($assessment['given'] ?? '', true) ?: [];
+        $topic  = $config['topic'] ?? '';
+        $file   = $topic ? $this->_resolve_topic_file($topic) : false;
+        if (!$file) {
+            $this->_json(['success' => false, 'message' => 'Topic not found'], 404);
+            return;
+        }
+
+        $topic_data = json_decode(file_get_contents($file), true);
+        $sections   = $topic_data['sections'] ?? [];
+
+        // Authoritative answers come from the shared live-state blob, not the
+        // POST body — the same blob every member has been syncing into.
+        $state  = $this->Live_state_model->get_or_create($assessment_id, $group['group_id']);
+        $blob   = json_decode($state['content'] ?? '', true) ?: [];
+        $picked = $blob['sections'] ?? [];
+
+        $score   = 0;
+        $total   = 0;
+        $results = [];
+
+        foreach ($sections as $i => $section) {
+            $quiz = $section['quiz'] ?? null;
+            if (!is_array($quiz) || empty($quiz['question']) || empty($quiz['options'])) {
+                continue; // lesson-only section — not graded
+            }
+            $total++;
+
+            $sel            = isset($picked[$i]['selected']) ? (int) $picked[$i]['selected'] : -1;
+            $correct_idx    = (int) ($quiz['correct'] ?? -1);
+            $chosen         = ($sel >= 0 && isset($quiz['options'][$sel])) ? $quiz['options'][$sel] : '';
+            $correct_answer = isset($quiz['options'][$correct_idx]) ? $quiz['options'][$correct_idx] : '';
+            $is_correct     = ($sel >= 0 && $sel === $correct_idx);
+
+            if ($is_correct) {
+                $score++;
+            }
+
+            $results[] = [
+                'section'        => $i,
+                'section_title'  => $section['title'] ?? '',
+                'question'       => $quiz['question'],
+                'chosen'         => $chosen,
+                'correct_answer' => $correct_answer,
+                'is_correct'     => $is_correct,
+            ];
+        }
+
+        // First-completion-only: if this student already has a row, the group
+        // already submitted — report the recorded score, don't overwrite.
+        $mine = $this->classworks->where([
+            'student_id'    => $this->session->student_id,
+            'assessment_id' => $assessment_id,
+        ])->get();
+
+        if ($mine) {
+            $this->_json([
+                'success'  => true,
+                'recorded' => false,
+                'score'    => (int) $mine->score,
+                'total'    => $total,
+                'message'  => 'Score already recorded.',
+            ]);
+            return;
+        }
+
+        $members      = $this->Group_member_model->get_members_by_group($group['group_id']);
+        $results_json = json_encode($results);
+        $now          = date('Y-m-d H:i:s');
+
+        foreach ($members as $member) {
+            $data = [
+                'student_id'    => $member['student_id'],
+                'assessment_id' => $assessment_id,
+                'status'        => 'submitted',
+                'submitted_at'  => $now,
+                'created_at'    => $now,
+                'score'         => $score,
+                'code'          => $results_json,
+            ];
+
+            $existing = $this->classworks->where([
+                'student_id'    => $member['student_id'],
+                'assessment_id' => $assessment_id,
+            ])->get();
+
+            if (!$existing) {
+                $this->classworks->insert($data);
+            } else {
+                $this->classworks->update($data, $existing->classwork_id);
+            }
+        }
+
+        $this->_json([
+            'success'  => true,
+            'recorded' => true,
+            'score'    => $score,
+            'total'    => $total,
+        ]);
+    }
+
+    // Topic JSON files live in assets/json/ or one class-code folder down —
+    // same resolution InteractiveQuizController uses.
+    private function _resolve_topic_file($topic)
+    {
+        if (!preg_match('/^[a-z0-9_]+$/', $topic)) {
+            return false;
+        }
+        $base   = FCPATH . 'assets/json/';
+        $direct = $base . $topic . '.json';
+        if (file_exists($direct)) {
+            return $direct;
+        }
+        foreach (glob($base . '*/' . $topic . '.json') ?: [] as $match) {
+            return $match;
+        }
+        return false;
     }
 
     private function _json($data, $status = 200)

@@ -53,12 +53,22 @@ class AssessmentController extends CI_Controller
         // Interactive Discussion/Quiz wraps an assets/json/{topic}.json lesson,
         // not a form either — hand off to InteractiveQuizController, which
         // records the score/answers on first completion (see save_result()).
+        // Exception: when it's also a grouping assessment, fall through to the
+        // is_groupings block below so the whole group plays one shared/synced
+        // copy via GroupWorkController::workspace() instead of solo.
         if ($widget && $widget['widget_key'] === 'iq_discussion') {
-            $config = json_decode($classwork['given'] ?? '', true) ?: [];
-            $topic  = $config['topic'] ?? '';
-            if ($topic) {
-                redirect('interactive_quiz/discussion/' . $topic . '/' . $classwork_id);
-                return;
+            $is_group_iq = false;
+            if (!empty($classwork['is_groupings'])) {
+                $this->load->model('Grouping_model');
+                $is_group_iq = (bool) $this->Grouping_model->get_set_for_assessment($classwork_id);
+            }
+            if (!$is_group_iq) {
+                $config = json_decode($classwork['given'] ?? '', true) ?: [];
+                $topic  = $config['topic'] ?? '';
+                if ($topic) {
+                    redirect('interactive_quiz/discussion/' . $topic . '/' . $classwork_id);
+                    return;
+                }
             }
         }
 
@@ -75,11 +85,27 @@ class AssessmentController extends CI_Controller
             redirect('attendance');
         }
 
+        // Prefill the widget with the student's prior submission (if any) —
+        // without this, re-opening a submitted widget always renders blank,
+        // and Turn In would overwrite the good submission with blank JSON.
+        // Excluded for `quiz`: classworks.code there holds graded *results*
+        // (a list), not the {'answers': ...} shape input mode expects — see
+        // the $existing contract documented in widgets/quiz.php.
+        $widget_existing = null;
+        if ($widget && $widget['widget_key'] !== 'quiz') {
+            $prior = $this->classworks->where([
+                'student_id'    => $this->session->student_id,
+                'assessment_id' => $classwork_id,
+            ])->get();
+            $widget_existing = $prior ? (json_decode($prior->code ?? '', true) ?: null) : null;
+        }
+
         $data = [
             'classwork' => $classwork,
-            'is_cleared' => $is_cleared,
+            'is_cleared' => $student_info['is_cleared'],
             'widget' => $widget,
             'widget_config' => $widget ? (json_decode($classwork['given'] ?? '', true) ?: []) : [],
+            'widget_existing' => $widget_existing,
         ];
 
         $this->load->view('assessment_view_code', $data);

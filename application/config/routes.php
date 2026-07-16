@@ -151,6 +151,16 @@ $route['interactive_quiz/discussion/(:any)'] = 'InteractiveQuizController/discus
 $route['interactive_quiz/discussion_results/(:any)'] = 'InteractiveQuizController/discussion_results/$1';
 $route['interactive_quiz/choice_stats/(:any)'] = 'InteractiveQuizController/get_choice_stats/$1';
 
+// Project Log Routes
+$route['project_log'] = 'ProjectLogController/index';
+$route['project_log/save'] = 'ProjectLogController/save';
+$route['project_log/update/(:num)'] = 'ProjectLogController/update/$1';
+$route['project_log/delete/(:num)'] = 'ProjectLogController/delete/$1';
+$route['project_log/install'] = 'ProjectLogController/install';
+$route['project_log/(:num)'] = 'ProjectLogController/index/$1'; // keep after the specific routes above
+$route['admin/project_logs'] = 'AdminController/project_logs';
+$route['admin/save_project_log_groupings'] = 'AdminController/save_project_log_groupings';
+
 // Miscellaneous Routes
 $route['test'] = 'Main/test';
 $route['signup'] = 'Main/signup';

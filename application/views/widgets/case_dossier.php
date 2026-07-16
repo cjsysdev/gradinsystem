@@ -46,6 +46,7 @@ $reflection_answers = $existing['reflection_answers'] ?? [];
 
 // Shared text/list/choice question renderer — same shapes as
 // widgets/case_study.php, kept local since every widget here is self-contained.
+if (!function_exists('cd_render_question')) {
 function cd_render_question($q, $idx, $answers, $readonly, $section_prefix)
 {
     $type   = $q['type'] ?? 'text';
@@ -123,6 +124,7 @@ function cd_render_question($q, $idx, $answers, $readonly, $section_prefix)
     </div>
     <?php
     return ob_get_clean();
+}
 }
 
 $accent_map = [

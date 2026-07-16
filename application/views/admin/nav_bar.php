@@ -45,6 +45,9 @@
         <a href="<?= base_url(
                         'Groupings'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Groupings"><i class="fa fa-people-group"></i></a>
+        <a href="<?= base_url(
+                        'admin/project_logs'
+                    ) ?>" class="btn btn-outline-secondary col m-2" title="Project Logs"><i class="fa fa-diagram-project"></i></a>
         <!-- <a href="<?= base_url(
                         'uncleared_students'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Uncleared Students"><i class="fa fa-user-times"></i></a> -->

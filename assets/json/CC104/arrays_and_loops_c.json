@@ -1,0 +1,132 @@
+{
+  "topic": "arrays_and_loops_c",
+  "title": "Arrays and Loops in C",
+  "description": "How to declare a fixed-size array, read and change its elements by index, and use a for loop to visit every element.",
+  "congratsText": "You mastered Arrays and Loops in C!",
+  "sections": [
+    {
+      "id": 0,
+      "title": "Objectives",
+      "lesson": "<div class=\"lesson-title\">Objectives</div><div class=\"lesson-text\"><ul><li>Declare and fill a fixed-size array with starting values</li><li>Read and change array elements using an index</li><li>Use a for loop to print or add up every element in an array</li></ul></div>"
+    },
+    {
+      "id": 1,
+      "title": "What Is an Array?",
+      "lesson": "<div class=\"lesson-title\">What Is an Array?</div><div class=\"lesson-text\">A variable holds one value. An <span class=\"highlight\">array</span> holds many values of the same type, stored one after another under a single name.</div><div class=\"lesson-text\">Think of an array as a row of numbered boxes. Each box holds one value, and each box has a position number called an <span class=\"highlight\">index</span>.</div><div class=\"lesson-text\">The first box is always index 0, not index 1.</div>",
+      "quiz": {
+        "question": "What does an array store, compared to a normal variable?",
+        "options": [
+          "Many values of the same type, in one named row of boxes",
+          "One value that can change type at any time",
+          "A single value, exactly like a normal variable",
+          "A list of variable names, not their values"
+        ],
+        "correct": 0
+      }
+    },
+    {
+      "id": 2,
+      "title": "Declaring and Initializing an Array",
+      "lesson": "<div class=\"lesson-title\">Declaring and Initializing an Array</div><div class=\"lesson-text\">An array declaration lists the type, a name, and how many boxes to make. <span class=\"highlight\">The size is fixed</span> the moment the array is created.</div><div class=\"code-block\">int scores[5] = {90, 85, 78, 92, 88};</div><div class=\"lesson-text\">This makes 5 int boxes named scores, filled left to right with the values in the braces. scores[0] is 90, scores[4] is 88.</div>",
+      "quiz": {
+        "question": "In `int scores[5] = {90, 85, 78, 92, 88};`, what does the 5 control?",
+        "code": "int scores[5] = {90, 85, 78, 92, 88};",
+        "options": [
+          "How many boxes the array has",
+          "The value stored in the first box",
+          "How many times the array can be resized",
+          "The highest value allowed in the array"
+        ],
+        "correct": 0
+      }
+    },
+    {
+      "id": 3,
+      "title": "Reading Elements by Index",
+      "lesson": "<div class=\"lesson-title\">Reading Elements by Index</div><div class=\"lesson-text\">To read one value out of an array, write the array name followed by an index in square brackets.</div><div class=\"code-block\">int scores[5] = {90, 85, 78, 92, 88};\nprintf(\"%d\", scores[0]);  // 90\nprintf(\"%d\", scores[3]);  // 92</div><div class=\"lesson-text\">scores[0] is the first box, scores[3] is the fourth box. <span class=\"highlight\">Indexing always starts at 0</span>, so the last valid index is one less than the array's size.</div>",
+      "quiz": {
+        "question": "Given int scores[5] = {90, 85, 78, 92, 88};, what does scores[3] print?",
+        "code": "int scores[5] = {90, 85, 78, 92, 88};\nprintf(\"%d\", scores[3]);",
+        "options": ["78", "92", "88", "85"],
+        "correct": 1
+      }
+    },
+    {
+      "id": 4,
+      "title": "Writing to an Element",
+      "lesson": "<div class=\"lesson-title\">Writing to an Element</div><div class=\"lesson-text\">An array element can be changed the same way any variable can &mdash; assign a new value to that index.</div><div class=\"code-block\">int scores[5] = {90, 85, 78, 92, 88};\nscores[0] = 100;\nprintf(\"%d\", scores[0]);  // 100</div><div class=\"lesson-text\">Only the box at index 0 changes. The rest of the array stays exactly as it was.</div>",
+      "quiz": {
+        "question": "After scores[0] = 100; runs, what happens to scores[1]?",
+        "options": [
+          "scores[1] stays exactly the same",
+          "scores[1] also becomes 100",
+          "scores[1] is deleted from the array",
+          "scores[1] shifts into scores[0]'s old spot"
+        ],
+        "correct": 0
+      }
+    },
+    {
+      "id": 5,
+      "title": "The for Loop",
+      "lesson": "<div class=\"lesson-title\">The for Loop</div><div class=\"lesson-text\">A <span class=\"highlight\">for loop</span> repeats a block of code a set number of times. It has three parts: a starting value, a condition that keeps it going, and a step that runs after each repeat.</div><div class=\"code-block\">for (int i = 0; i < 5; i++) {\n    printf(\"%d \", i);\n}</div><div class=\"lesson-text\">i starts at 0, the loop keeps running while i &lt; 5, and i++ adds 1 to i after each repeat. This prints 0 1 2 3 4.</div>",
+      "quiz": {
+        "question": "In for (int i = 0; i < 5; i++), when does the loop stop repeating?",
+        "options": [
+          "As soon as i < 5 is no longer true",
+          "After exactly 5 seconds have passed",
+          "As soon as i reaches 0",
+          "It never stops on its own"
+        ],
+        "correct": 0
+      }
+    },
+    {
+      "id": 6,
+      "title": "Looping to Print an Array",
+      "lesson": "<div class=\"lesson-title\">Looping to Print an Array</div><div class=\"lesson-text\">A for loop's counter can be used as an array index. As i counts from 0 to 4, scores[i] visits every box in order.</div><div class=\"code-block\">int scores[5] = {90, 85, 78, 92, 88};\nfor (int i = 0; i < 5; i++) {\n    printf(\"%d \", scores[i]);\n}</div><div class=\"lesson-text\">This prints all 5 values without writing 5 separate printf lines. <span class=\"highlight\">i < 5</span> matches the array's size, so the loop never asks for a box that doesn't exist.</div>",
+      "quiz": {
+        "question": "Why does the loop use i < 5 for an array declared as scores[5]?",
+        "code": "int scores[5] = {90, 85, 78, 92, 88};\nfor (int i = 0; i < 5; i++) {\n    printf(\"%d \", scores[i]);\n}",
+        "options": [
+          "So the loop visits index 0 through 4, matching the array's 5 boxes",
+          "So the loop visits index 1 through 5, matching the array's 5 boxes",
+          "Because 5 is the value stored in scores[0]",
+          "Because for loops always stop at 5 by default"
+        ],
+        "correct": 0
+      }
+    },
+    {
+      "id": 7,
+      "title": "Looping to Sum an Array",
+      "lesson": "<div class=\"lesson-title\">Looping to Sum an Array</div><div class=\"lesson-text\">A loop can also build up a total. A variable started at 0 collects each element's value as the loop runs.</div><div class=\"code-block\">int scores[5] = {90, 85, 78, 92, 88};\nint total = 0;\nfor (int i = 0; i < 5; i++) {\n    total = total + scores[i];\n}\nprintf(\"%d\", total);  // 433</div><div class=\"lesson-text\">total starts at 0 so the first value added isn't thrown off by leftover data. Each repeat adds one more box's value onto total.</div>",
+      "quiz": {
+        "question": "In the sum loop above, what is total right before the loop starts?",
+        "code": "int total = 0;\nfor (int i = 0; i < 5; i++) {\n    total = total + scores[i];\n}",
+        "options": ["0", "5", "90", "The value of scores[4]"],
+        "correct": 0
+      }
+    },
+    {
+      "id": 8,
+      "title": "Common Array Mistakes",
+      "lesson": "<div class=\"lesson-title\">Common Array Mistakes</div><div class=\"lesson-text\">The most common array bug is asking for a box that doesn't exist. An array of size 5 has valid indexes 0 through 4 &mdash; index 5 is one step <span class=\"highlight\">past the end</span>.</div><div class=\"code-block\">int scores[5] = {90, 85, 78, 92, 88};\nprintf(\"%d\", scores[5]);  // reads memory outside the array</div><div class=\"lesson-text\">C does not stop this at compile time. The program keeps running and prints whatever value happens to sit in that memory spot &mdash; not a real array value.</div><div class=\"lesson-text\">The same bug hides in a loop that uses &lt;= instead of &lt;: a loop condition of i &lt;= 5 also reads scores[5] on its last repeat.</div>",
+      "quiz": {
+        "question": "Why is scores[5] a problem for an array declared as int scores[5]?",
+        "options": [
+          "Valid indexes only go from 0 to 4, so 5 is outside the array",
+          "5 is reserved as the array's total-size value",
+          "C automatically resizes the array to fit index 5",
+          "scores[5] always causes an immediate compiler error"
+        ],
+        "correct": 0
+      }
+    },
+    {
+      "id": 9,
+      "title": "Recap",
+      "lesson": "<div class=\"lesson-title\">Recap</div><div class=\"lesson-text\"><ul><li>An array stores many values of the same type under one name</li><li>Array size is fixed when it's declared, and filled left to right</li><li>scores[i] reads the value at index i; indexing starts at 0</li><li>Assigning to scores[i] changes only that one element</li><li>A for loop repeats using a start, a condition, and a step</li><li>A loop's counter can be used as an array index to visit every element</li><li>A total variable started at 0 can add up every element in a loop</li><li>Valid indexes only run from 0 to size-1; going past that reads bad memory</li></ul></div>"
+    }
+  ]
+}
