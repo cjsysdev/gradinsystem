@@ -1,3 +1,30 @@
+<?php
+	// Forced temporary-password change: block the rest of the app until the
+	// student sets a new password. Skipped on the update form itself so they can
+	// actually complete the change. Client-side guard; the authoritative checks
+	// live in AuthenticationController::login and StudentController::update_account.
+	$force_pw_block = $this->session->must_change_password
+		&& $this->router->fetch_method() !== 'update_account_form';
+?>
+<?php if ($force_pw_block): ?>
+	<div style="position:fixed; inset:0; z-index:2000; background:rgba(0,0,0,0.75); display:flex; align-items:center; justify-content:center;">
+		<div class="bg-white rounded shadow p-4 text-center" style="max-width:420px;">
+			<i class="fa fa-key fa-2x text-warning mb-2"></i>
+			<h5 class="fw-bold">Set a New Password</h5>
+			<p class="text-muted small mb-3">
+				You're signed in with a temporary password. For your security, you
+				must set a new password before you can use the system.
+			</p>
+			<a href="<?= base_url('update_account_form') ?>" class="btn btn-warning">
+				<i class="fa fa-lock mr-1"></i> Change Password Now
+			</a>
+			<div class="mt-2">
+				<a href="<?= base_url('logout') ?>" class="small text-muted">Log out</a>
+			</div>
+		</div>
+	</div>
+<?php endif; ?>
+
 <div class="container">
 	<div class="row profile-section text-center mt-3">
 		<div class="col">

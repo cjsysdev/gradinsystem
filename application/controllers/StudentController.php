@@ -40,15 +40,34 @@ class StudentController extends CI_Controller
 
         $username = !empty($input['username']) ? $input['username'] : $this->session->username;
 
+        $must_change = (bool) $this->session->must_change_password;
+
         if (!empty($input['password']) && $input['password'] !== $input['confirm_password']) {
             $this->session->set_flashdata('error', 'Passwords do not match.');
             redirect('update_account_form');
+        }
+
+        // When forced (temporary password issued by admin), a new password is
+        // mandatory and must differ from the default (their student number).
+        if ($must_change) {
+            if (empty($input['password'])) {
+                $this->session->set_flashdata('error', 'You must set a new password to continue.');
+                redirect('update_account_form');
+            }
+            if ($input['password'] === $this->session->student_no) {
+                $this->session->set_flashdata('error', 'Please choose a new password that is different from your temporary one.');
+                redirect('update_account_form');
+            }
         }
 
         $update_data = ['username' => $username];
 
         if (!empty($input['password'])) {
             $update_data['password'] = password_hash($input['password'], PASSWORD_DEFAULT);
+            // Clear the forced-change flag once a real password is set.
+            if ($must_change) {
+                $update_data['must_change_password'] = 0;
+            }
         }
 
         // Handle profile picture upload
@@ -125,6 +144,13 @@ class StudentController extends CI_Controller
         $this->session->set_userdata('username', $username);
         if ($profile_pic) {
             $this->session->set_userdata('profile_pic', $profile_pic);
+        }
+
+        // A forced password change is now satisfied — lift the block.
+        if ($must_change && !empty($input['password'])) {
+            $this->session->set_userdata('must_change_password', 0);
+            $this->session->set_flashdata('success', 'Your password has been changed. You now have full access.');
+            redirect('attendance');
         }
 
         $this->session->set_flashdata('success', 'Account updated successfully.');

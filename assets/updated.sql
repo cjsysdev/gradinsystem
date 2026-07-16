@@ -6,10 +6,26 @@ CREATE TABLE `accounts` (
   `password` varchar(255) NOT NULL,
   `created_at` date NOT NULL,
   `role` varchar(32) DEFAULT NULL,
+  `must_change_password` tinyint(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`account_id`),
   UNIQUE KEY `username` (`username`),  -- Removed duplicate
   KEY `student_id` (`student_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=489 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `password_reset_requests` (
+  `request_id` int unsigned NOT NULL AUTO_INCREMENT,
+  `student_id` int NOT NULL,
+  `student_no` varchar(50) DEFAULT NULL,
+  `status` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+  `default_username` varchar(50) DEFAULT NULL,
+  `default_password` varchar(255) DEFAULT NULL,
+  `admin_notes` varchar(255) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`request_id`),
+  KEY `idx_student` (`student_id`),
+  KEY `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Convert to InnoDB + consistent collation
 CREATE TABLE `assessments` (
