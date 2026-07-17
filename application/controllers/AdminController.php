@@ -1408,7 +1408,7 @@ class AdminController extends CI_Controller
 
             $this->db->where('account_id', $account['account_id'])->update('accounts', [
                 'username'             => $new_username,
-                'password'             => $default,
+                'password'             => password_hash($default, PASSWORD_DEFAULT),
                 'must_change_password' => 1,
             ]);
 

@@ -16,6 +16,7 @@
 
         #performance-sheet {
             width: 794px;
+            max-width: 100%;
             margin: auto;
         }
 
@@ -80,6 +81,31 @@
             .no-print { display: none !important; }
             #performance-sheet { width: 100%; }
         }
+
+        @media (max-width: 575.98px) {
+            #performance-sheet {
+                padding-left: 10px;
+                padding-right: 10px;
+            }
+
+            .stat-card {
+                padding: 12px 6px;
+            }
+
+            .stat-card h2 {
+                font-size: 1.4rem;
+            }
+
+            .stat-card small {
+                font-size: 0.65rem;
+            }
+
+            .avatar-circle {
+                width: 48px;
+                height: 48px;
+                font-size: 1.1rem;
+            }
+        }
     </style>
 
     <script src="<?= base_url('assets/2-jquery-3.5.1.slim.min.js') ?>"></script>
@@ -107,17 +133,17 @@
 
         <!-- ── Header ── -->
         <div class="card shadow-sm mb-4">
-            <div class="card-body d-flex align-items-center">
-                <div class="avatar-circle mr-3"><?= $initials ?></div>
-                <div>
-                    <h4 class="mb-0 font-weight-bold">
+            <div class="card-body d-flex flex-wrap align-items-center" style="gap:12px;">
+                <div class="avatar-circle mr-md-3"><?= $initials ?></div>
+                <div class="mr-auto" style="min-width:0;">
+                    <h4 class="mb-0 font-weight-bold text-truncate">
                         <?= htmlspecialchars($student['lastname'] . ', ' . $student['firstname']) ?>
                     </h4>
                     <span class="text-muted" style="font-size:0.9rem;">
                         BS Information System &bull; <?= htmlspecialchars($this->session->section) ?>
                     </span>
                 </div>
-                <div class="ml-auto d-flex" style="gap:8px;">
+                <div class="d-flex flex-wrap" style="gap:8px;">
                     <span class="badge badge-pill p-2 px-3 <?= $total_absences > 3 ? 'badge-danger' : 'badge-secondary' ?>"
                           style="font-size:0.85rem;">
                         <?= $total_absences ?> Absent
@@ -133,25 +159,25 @@
         <!-- ── Attendance Summary ── -->
         <p class="section-title"><i class="fas fa-calendar-check mr-1"></i>Attendance Summary</p>
         <div class="row mb-4">
-            <div class="col-3">
+            <div class="col-6 col-md-3 mb-3 mb-md-0">
                 <div class="stat-card shadow-sm" style="background:linear-gradient(135deg,#1cc88a,#13855c);">
                     <h2><?= (int)($attendance_summary['present_count'] ?? 0) ?></h2>
                     <small>Present</small>
                 </div>
             </div>
-            <div class="col-3">
+            <div class="col-6 col-md-3 mb-3 mb-md-0">
                 <div class="stat-card shadow-sm" style="background:linear-gradient(135deg,#e74a3b,#be2617);">
                     <h2><?= (int)($attendance_summary['absent_count'] ?? 0) ?></h2>
                     <small>Absent</small>
                 </div>
             </div>
-            <div class="col-3">
+            <div class="col-6 col-md-3">
                 <div class="stat-card shadow-sm" style="background:linear-gradient(135deg,#f6c23e,#dda20a);">
                     <h2><?= (int)($attendance_summary['late_count'] ?? 0) ?></h2>
                     <small>Late</small>
                 </div>
             </div>
-            <div class="col-3">
+            <div class="col-6 col-md-3">
                 <div class="stat-card shadow-sm" style="background:linear-gradient(135deg,#36b9cc,#258391);">
                     <h2><?= (int)($attendance_summary['excuse_count'] ?? 0) ?></h2>
                     <small>Excused</small>

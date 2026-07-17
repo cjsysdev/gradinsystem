@@ -197,10 +197,22 @@
     <div class="card-header d-flex justify-content-between align-items-center">
       <h5 class="mb-0">Your Work - <?= $classwork['classwork_id'] ?></h5>
       <span class="badge badge-success">
-        <?php if ($classwork['assessments'][0]->max_score == 0)
+        <?php
+        $max_score = $classwork['assessments'][0]->max_score;
+        if ($max_score == 0) {
           echo 'Turned In';
-        else
-          echo $classwork['score'] . '/' . $classwork['assessments'][0]->max_score;
+        } elseif ($classwork['score'] === null) {
+          echo 'Not yet graded';
+        } else {
+          $pct = ($classwork['score'] / $max_score) * 100;
+          if ($pct >= 85) {
+            echo 'Excellent';
+          } elseif ($pct >= 70) {
+            echo 'Good';
+          } else {
+            echo 'Fair';
+          }
+        }
         ?>
       </span>
     </div>
