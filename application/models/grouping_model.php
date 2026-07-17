@@ -58,6 +58,7 @@ class Grouping_model extends CI_Model
             `group_id`       INT UNSIGNED DEFAULT NULL,
             `content`        LONGTEXT,
             `last_edited_by` VARCHAR(50) DEFAULT NULL,
+            `revision`       INT UNSIGNED NOT NULL DEFAULT 0,
             `updated_at`     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             UNIQUE KEY `uq_assessment_group` (`assessment_id`, `group_id`),
             FOREIGN KEY (`assessment_id`) REFERENCES `assessments`(`assessment_id`) ON DELETE CASCADE,
@@ -81,6 +82,14 @@ class Grouping_model extends CI_Model
         // via a safe column check rather than folding into the CREATE TABLE
         // above, since grouping_sets already exists in live installs.
         $this->_add_column_if_missing('grouping_sets', 'self_select', 'TINYINT(1) NOT NULL DEFAULT 0');
+
+        // Monotonic revision for the shared live-state row. The old sync token
+        // was the DATETIME updated_at, whose 1-second resolution made two saves
+        // in the same second look unchanged — a client already holding that
+        // second was told "no change" and never received a teammate's answers.
+        // A counter bumped on every save is collision-free. Added here (not in
+        // the CREATE TABLE) so live installs get it too.
+        $this->_add_column_if_missing('assessment_live_state', 'revision', 'INT UNSIGNED NOT NULL DEFAULT 0');
     }
 
     private function _add_column_if_missing($table, $column, $definition)
