@@ -62,10 +62,11 @@ $previous_answers  = $previous_answers ?? [];
 // plays one lockstep copy: option order is deterministic (no per-client
 // shuffle), section/score/answers sync via the Live_state_model blob, and
 // finishing grades server-side + fans out to every member's classworks row.
-$group_mode    = !empty($group_mode);
-$group         = $group ?? null;
-$group_members = $group_members ?? [];
-$state_content = $state_content ?? '';
+$group_mode       = !empty($group_mode);
+$group            = $group ?? null;
+$group_members    = $group_members ?? [];
+$state_content    = $state_content ?? '';
+$state_updated_at = $state_updated_at ?? '';
 $my_student_id = isset($student_id) ? (string) $student_id : '';
 $group_name    = $group['group_name'] ?? '';
 $group_member_js = array_map(function ($m) {
@@ -223,6 +224,13 @@ $group_member_js = array_map(function ($m) {
         let lastRemoteV    = 0;      // highest revision seen from the server
         let applyingRemote = false;  // suppress push loops while applying remote state
         let groupPollTimer = null;
+        // Version stamp (updated_at) of the shared blob we last saw — echoed as
+        // ?since= so the server skips resending the full blob when unchanged.
+        let lastVersion    = <?= json_encode((string) $state_updated_at) ?>;
+        let groupPollCount = 0;
+        let pushInFlight   = false;  // one save_draft in flight at a time
+        let pushDirty      = false;  // a newer state arrived while one was in flight
+        let pushRetryDelay = 2000;
 
         // ── Fisher-Yates shuffle ────────────────────────────────────
         function shuffleArray(array) {
@@ -421,26 +429,16 @@ $group_member_js = array_map(function ($m) {
 
             if (GROUP_MODE) {
                 if (!fromRemote) {
-                    // Broadcast the finish so teammates also see the result...
+                    // Persist the finished state and grade it in ONE request —
+                    // the server saves this exact blob before grading, so an
+                    // in-flight autosave can't race the submit and drop the
+                    // final answers. Teammates still learn of the finish from
+                    // the saved blob's finished flag on their next poll.
                     groupState.finished = true;
-                    pushGroupState();
-                    // ...and grade the whole group server-side (fans out to
-                    // every member's classworks row; score is authoritative).
-                    fetch(BASE_URL + 'GroupWorkController/submit_group_iq/' + ASSESSMENT_ID, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                            'X-Requested-With': 'XMLHttpRequest'
-                        },
-                        body: ''
-                    })
-                    .then(r => r.json())
-                    .then(d => {
-                        if (d && d.success && typeof d.score !== 'undefined') {
-                            document.getElementById('finalScore').textContent = d.score;
-                        }
-                    })
-                    .catch(() => {});
+                    gsSyncFromLive();
+                    groupState.v = Math.max(groupState.v, lastRemoteV) + 1;
+                    lastRemoteV  = groupState.v;
+                    submitGroupIq(0);
                 }
                 return;
             }
@@ -623,21 +621,85 @@ $group_member_js = array_map(function ($m) {
             // Monotonic revision so peers apply the newest state and ignore echoes.
             groupState.v  = Math.max(groupState.v, lastRemoteV) + 1;
             lastRemoteV   = groupState.v;
+            sendGroupState();
+        }
+
+        // One push in flight at a time; a failed push retries with backoff
+        // instead of silently losing the answer on a flaky WLAN. The whole
+        // latest blob is resent each time, so retrying only the newest state
+        // is enough — intermediate pushes are subsumed by it.
+        function sendGroupState() {
+            if (pushInFlight) { pushDirty = true; return; }
+            pushInFlight = true;
             fetch(BASE_URL + 'GroupWorkController/save_draft/' + ASSESSMENT_ID, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: 'content=' + encodeURIComponent(JSON.stringify(groupState))
-            }).catch(() => {});
+            })
+            .then(r => r.json())
+            .then(d => {
+                pushInFlight = false;
+                if (!d || !d.ok) throw new Error('save failed');
+                pushRetryDelay = 2000;
+                if (d.updated_at) lastVersion = d.updated_at;
+                if (pushDirty) { pushDirty = false; sendGroupState(); }
+            })
+            .catch(() => {
+                pushInFlight = false;
+                pushDirty    = false; // the retry resends the latest state anyway
+                setTimeout(sendGroupState, pushRetryDelay);
+                pushRetryDelay = Math.min(pushRetryDelay * 2, 8000);
+            });
+        }
+
+        // Records the group's score — retried up to 3 times because this is
+        // the one request that must not fail silently (it writes everyone's
+        // classworks row; the server's first-completion guard makes duplicate
+        // attempts safe).
+        function submitGroupIq(attempt) {
+            fetch(BASE_URL + 'GroupWorkController/submit_group_iq/' + ASSESSMENT_ID, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: 'content=' + encodeURIComponent(JSON.stringify(groupState))
+            })
+            .then(r => r.json())
+            .then(d => {
+                if (!d || !d.success) throw new Error('submit failed');
+                if (typeof d.score !== 'undefined') {
+                    document.getElementById('finalScore').textContent = d.score;
+                }
+            })
+            .catch(() => {
+                if (attempt < 3) {
+                    setTimeout(() => submitGroupIq(attempt + 1), 2000 * Math.pow(2, attempt));
+                } else {
+                    alert('Could not record the group score — check your connection and tell your teacher before closing this page.');
+                }
+            });
         }
 
         function pollGroupState() {
             if (!GROUP_MODE) return;
-            fetch(BASE_URL + 'GroupWorkController/state/' + ASSESSMENT_ID)
+            // ?since= lets the server answer with a tiny envelope when nothing
+            // changed instead of the full blob every 1.5s; ?bare=1 skips the
+            // members/ready queries (the member bar is rendered once at load).
+            // updated_at only has one-second resolution, so every 8th poll
+            // drops the since gate to self-heal a same-second missed update.
+            groupPollCount++;
+            let url = BASE_URL + 'GroupWorkController/state/' + ASSESSMENT_ID + '?bare=1';
+            if (groupPollCount % 8 !== 0) {
+                url += '&since=' + encodeURIComponent(lastVersion);
+            }
+            fetch(url)
                 .then(r => r.json())
                 .then(d => {
                     if (!d || !d.ok) return;
                     if (d.members) renderGroupBar(d.members);
-                    if (!d.content) return;
+                    if (d.updated_at) lastVersion = d.updated_at;
+                    if (d.content_changed === false || !d.content) return;
                     let remote;
                     try { remote = JSON.parse(d.content); } catch (e) { return; }
                     if (!remote || typeof remote.v !== 'number') return;

@@ -129,18 +129,28 @@ if (empty($widget) && ($assessment['iotype_id'] == '4' || $assessment['iotype_id
         return draft ? draft.value : '';
     }
     function applyRemoteContent(content) {
+        // The only caller gates on !isEditing(), so applying is always safe
+        // here — including into a focused-but-idle textarea.
         if (hasWidget && typeof window.setWidgetState === 'function') {
             window.setWidgetState(content);
-        } else if (draft && document.activeElement !== draft) {
+        } else if (draft) {
             draft.value = content;
         }
     }
     function isEditing() {
-        if (hasWidget && typeof window.isWidgetFocused === 'function') return window.isWidgetFocused();
-        return draft && document.activeElement === draft;
+        const focused = (hasWidget && typeof window.isWidgetFocused === 'function')
+            ? window.isWidgetFocused()
+            : (draft && document.activeElement === draft);
+        // Merely parking the cursor in a field shouldn't block sync forever —
+        // a student counts as editing only while input is actually recent,
+        // so they adopt teammates' newer content once they pause.
+        return focused && (Date.now() - lastInputAt) < 4000;
     }
 
     let saveTimer = null;
+    let saveInFlight = false;
+    let saveRetryDelay = 2000;
+    let lastInputAt = 0;
     let lastSavedContent = getCurrentContent();
     // Version of the shared content we currently hold. Echoed to the server as
     // ?since= so it skips resending the (possibly large) blob when unchanged.
@@ -152,16 +162,21 @@ if (empty($widget) && ($assessment['iotype_id'] == '4' || $assessment['iotype_id
     // so a pending save can't fire while the dialog is open, and submitting
     // aborts any in-flight fetch).
     window.prepareGroupSubmit = function () {
-        if (!confirm('Submit this draft for the whole group?')) return false;
+        if (!confirm('Submit this draft for the whole group? What is currently on YOUR screen is what gets submitted.')) return false;
         clearTimeout(saveTimer);
         document.getElementById('group-submit-content').value = getCurrentContent();
         return true;
     };
 
     function saveDraft() {
+        if (saveInFlight) {
+            // Let the in-flight request settle; its success handler re-queues
+            // if the content moved on in the meantime.
+            return;
+        }
         const content = getCurrentContent();
-        if (content === lastSavedContent) return;
-        lastSavedContent = content;
+        if (content === lastSavedContent) { saveStatus.textContent = 'Saved'; return; }
+        saveInFlight = true;
         saveStatus.textContent = 'Saving...';
         fetch(BASE + 'GroupWorkController/save_draft/' + assessmentId, {
             method: 'POST',
@@ -170,10 +185,32 @@ if (empty($widget) && ($assessment['iotype_id'] == '4' || $assessment['iotype_id
         })
         .then(r => r.json())
         .then(d => {
-            saveStatus.textContent = d.ok ? 'Saved' : 'Failed to save';
-            // Advance our marker to the version we just wrote so the next poll
-            // doesn't get our own content echoed back to us.
-            if (d.ok && d.updated_at) lastVersion = d.updated_at;
+            saveInFlight = false;
+            if (!d || !d.ok) throw new Error('save failed');
+            saveRetryDelay = 2000;
+            // Only mark the content saved once the server confirms it — a
+            // failed save must stay eligible for retry, not be silently
+            // considered saved.
+            lastSavedContent = content;
+            saveStatus.textContent = 'Saved';
+            if (d.skipped) {
+                // Server refused to replace real group content with an empty
+                // shell — blank our version marker so the next poll re-fetches
+                // and restores the shared draft onto this screen.
+                lastVersion = '';
+            } else if (d.updated_at) {
+                // Advance our marker to the version we just wrote so the next
+                // poll doesn't get our own content echoed back to us.
+                lastVersion = d.updated_at;
+            }
+            if (getCurrentContent() !== lastSavedContent) queueSave();
+        })
+        .catch(() => {
+            saveInFlight = false;
+            saveStatus.textContent = 'Not saved — retrying...';
+            clearTimeout(saveTimer);
+            saveTimer = setTimeout(saveDraft, saveRetryDelay);
+            saveRetryDelay = Math.min(saveRetryDelay * 2, 8000);
         });
     }
 
@@ -185,9 +222,9 @@ if (empty($widget) && ($assessment['iotype_id'] == '4' || $assessment['iotype_id
 
     // Event delegation so this works whether the wrap contains the plain
     // textarea or an arbitrary widget's own inputs/buttons.
-    widgetWrap.addEventListener('input', queueSave);
+    widgetWrap.addEventListener('input', () => { lastInputAt = Date.now(); queueSave(); });
     widgetWrap.addEventListener('click', (e) => {
-        if (e.target.closest('button')) queueSave();
+        if (e.target.closest('button')) { lastInputAt = Date.now(); queueSave(); }
     });
 
     if (readyToggle) {
@@ -200,8 +237,14 @@ if (empty($widget) && ($assessment['iotype_id'] == '4' || $assessment['iotype_id
         });
     }
 
+    let pollCount = 0;
     function pollState() {
-        fetch(BASE + 'GroupWorkController/state/' + assessmentId + '?since=' + encodeURIComponent(lastVersion))
+        // updated_at only has one-second resolution — two saves in the same
+        // second share a stamp, so a since-gated poll could skip the newer
+        // one. Every 8th poll drops the gate to self-heal that blind spot.
+        pollCount++;
+        const query = (pollCount % 8 !== 0) ? '?since=' + encodeURIComponent(lastVersion) : '';
+        fetch(BASE + 'GroupWorkController/state/' + assessmentId + query)
             .then(r => r.json())
             .then(d => {
                 if (!d.ok) return;

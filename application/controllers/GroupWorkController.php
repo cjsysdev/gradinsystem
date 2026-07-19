@@ -216,8 +216,23 @@ class GroupWorkController extends CI_Controller
             return;
         }
 
-        $state = $this->Live_state_model->get_or_create($assessment_id, $resolved['group']['group_id']);
-        $this->Live_state_model->save_content($state['state_id'], $this->input->post('content'), $this->session->student_id);
+        $state    = $this->Live_state_model->get_or_create($assessment_id, $resolved['group']['group_id']);
+        $incoming = $this->input->post('content');
+
+        // Never let an empty widget shell (e.g. a client whose widget hadn't
+        // finished initializing when an input event fired) overwrite a
+        // teammate's real work — same emptiness rule submit_group() applies
+        // before fan-out. Answer ok so the client doesn't spin retrying;
+        // skipped tells it to re-fetch the good draft on its next poll.
+        if (
+            $this->_has_content($this->_decoded_or_raw($state['content']))
+            && !$this->_has_content($this->_decoded_or_raw($incoming))
+        ) {
+            $this->_json(['ok' => true, 'skipped' => true, 'updated_at' => $state['updated_at']]);
+            return;
+        }
+
+        $this->Live_state_model->save_content($state['state_id'], $incoming, $this->session->student_id);
         // Return the fresh version stamp so the saver can advance its own
         // poll marker and not have the server echo this content straight back.
         $fresh = $this->Live_state_model->get_state($assessment_id, $resolved['group']['group_id']);
@@ -241,16 +256,25 @@ class GroupWorkController extends CI_Controller
 
         $group = $resolved['group'];
         $state = $this->Live_state_model->get_or_create($assessment_id, $group['group_id']);
-        $members = $this->Group_member_model->get_members_by_group($group['group_id']);
-        $ready_map = $this->Live_state_model->get_ready_map($state['state_id']);
 
-        $member_payload = array_map(function ($m) use ($ready_map) {
-            return [
-                'student_id' => $m['student_id'],
-                'name'       => trim($m['firstname'] . ' ' . $m['lastname']),
-                'ready'      => !empty($ready_map[$m['student_id']]),
-            ];
-        }, $members);
+        // ?bare=1 (interactive-quiz poll): the caller has no ready UI and its
+        // member bar is server-rendered once at load, so skip the members
+        // JOIN + ready-map query on every poll — 2 fewer queries per student
+        // every 1.5s. The workspace view keeps the full payload.
+        $bare = (bool) $this->input->get('bare');
+        $member_payload = [];
+        if (!$bare) {
+            $members = $this->Group_member_model->get_members_by_group($group['group_id']);
+            $ready_map = $this->Live_state_model->get_ready_map($state['state_id']);
+
+            $member_payload = array_map(function ($m) use ($ready_map) {
+                return [
+                    'student_id' => $m['student_id'],
+                    'name'       => trim($m['firstname'] . ' ' . $m['lastname']),
+                    'ready'      => !empty($ready_map[$m['student_id']]),
+                ];
+            }, $members);
+        }
 
         // Ready flags live in a separate table and don't bump this row's
         // updated_at, so members/ready are always sent — only the big content
@@ -262,11 +286,13 @@ class GroupWorkController extends CI_Controller
             'ok'              => true,
             'updated_at'      => $state['updated_at'],
             'content_changed' => $changed,
-            'members'         => $member_payload,
             // Lets a teammate's still-open workspace notice a submission that
             // happened elsewhere and bounce itself to the classwork list.
             'submitted'       => $this->_already_submitted($assessment_id),
         ];
+        if (!$bare) {
+            $payload['members'] = $member_payload;
+        }
         if ($changed) {
             $payload['content']        = $state['content'];
             $payload['last_edited_by'] = $state['last_edited_by'];
@@ -421,6 +447,15 @@ class GroupWorkController extends CI_Controller
         return $row && $row->status === 'submitted';
     }
 
+    // Widget content is a JSON string, plain drafts are raw text — normalize
+    // either into the shape _has_content() inspects (same decode rule as
+    // submit_group()'s guard).
+    private function _decoded_or_raw($content)
+    {
+        $decoded = json_decode($content ?? '', true);
+        return is_array($decoded) ? $decoded : $content;
+    }
+
     // Recursively checks a decoded widget payload (or a plain string) for any
     // non-blank value. trim((string) 0) !== '' is true, so numeric 0 ratings
     // (decision_matrix, case_dossier) correctly count as content.
@@ -484,6 +519,7 @@ class GroupWorkController extends CI_Controller
             'group'             => $group,
             'group_members'     => $members,
             'state_content'     => $state['content'],
+            'state_updated_at'  => $state['updated_at'],
             'student_id'        => $this->session->student_id,
         ]);
     }
@@ -514,10 +550,28 @@ class GroupWorkController extends CI_Controller
         $topic_data = json_decode(file_get_contents($file), true);
         $sections   = $topic_data['sections'] ?? [];
 
-        // Authoritative answers come from the shared live-state blob, not the
-        // POST body — the same blob every member has been syncing into.
-        $state  = $this->Live_state_model->get_or_create($assessment_id, $group['group_id']);
-        $blob   = json_decode($state['content'] ?? '', true) ?: [];
+        // The finisher POSTs the exact blob their screen finished on — persist
+        // it, then grade THAT, so the submit is a single request and an
+        // in-flight autosave can't race it and drop the final answers (the
+        // old two-request flow produced empty/low-score group submissions
+        // under lag). Clients that POST nothing (degraded JS) fall back to
+        // grading the last-saved shared blob.
+        $state      = $this->Live_state_model->get_or_create($assessment_id, $group['group_id']);
+        $stored     = json_decode($state['content'] ?? '', true) ?: [];
+        $posted_raw = $this->input->post('content');
+        $posted     = ($posted_raw !== null && $posted_raw !== '') ? (json_decode($posted_raw, true) ?: []) : [];
+
+        if (isset($posted['v']) && is_numeric($posted['v'])) {
+            // Persisting the finished state (finished: true) is also how
+            // teammates' polls learn of the finish and show the score modal —
+            // but never regress the stored blob if a teammate's copy is newer.
+            if ((float) $posted['v'] >= (float) ($stored['v'] ?? 0)) {
+                $this->Live_state_model->save_content($state['state_id'], $posted_raw, $this->session->student_id);
+            }
+            $blob = $posted;
+        } else {
+            $blob = $stored;
+        }
         $picked = $blob['sections'] ?? [];
 
         $score   = 0;

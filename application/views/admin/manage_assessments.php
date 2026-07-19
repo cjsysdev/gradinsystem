@@ -170,6 +170,11 @@
                                    title="View Submissions">
                                     <i class="fas fa-list"></i>
                                 </a>
+                                <!-- <button class="btn btn-sm btn-outline-danger"
+                                        onclick="deleteAssessment(<?= (int) $a['assessment_id'] ?>, <?= htmlspecialchars(json_encode($a['title']), ENT_QUOTES) ?>)"
+                                        title="Delete">
+                                    <i class="fas fa-trasgith"></i>
+                                </button> -->
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -1218,6 +1223,43 @@ function bulkUpdateStatus(status) {
             location.reload();
         } else {
             alert('Failed to update status.');
+        }
+    })
+    .catch(() => alert('Request failed.'));
+}
+
+// Delete button on each row. Always confirms once up front; the server then
+// checks for existing student submissions itself (see
+// AdminController::delete_assessment()) rather than trusting the
+// submission_count already rendered in this row, which can be stale by the
+// time the admin clicks. If submissions are found, a second confirm shows
+// the fresh count and re-sends the request with force=1 to cascade-delete
+// them along with the assessment.
+function deleteAssessment(id, title) {
+    if (!confirm(`Delete assessment "${title}"? This cannot be undone.`)) return;
+    sendDeleteAssessment(id, false);
+}
+
+function sendDeleteAssessment(id, force) {
+    const body = new URLSearchParams();
+    if (force) body.append('force', '1');
+
+    fetch('<?= base_url('AdminController/delete_assessment/') ?>' + id, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else if (data.blocked) {
+            const n = data.submission_count;
+            if (confirm(`This assessment already has ${n} student submission(s). Deleting it will permanently remove those submissions and their scores too. This cannot be undone. Delete anyway?`)) {
+                sendDeleteAssessment(id, true);
+            }
+        } else {
+            alert(data.error || 'Failed to delete assessment.');
         }
     })
     .catch(() => alert('Request failed.'));

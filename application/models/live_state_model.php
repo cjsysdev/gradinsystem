@@ -39,7 +39,12 @@ class Live_state_model extends CI_Model
             'last_edited_by' => $student_id,
         ]);
         // Ready reflects agreement with the current content, not stale content.
-        $this->db->where('state_id', $state_id)->delete('assessment_live_state_ready');
+        // affected_rows is 0 when the row didn't actually change (identical
+        // content re-saved by the same editor), so a no-op echo save neither
+        // wipes ready flags nor bumps updated_at.
+        if ($this->db->affected_rows() > 0) {
+            $this->db->where('state_id', $state_id)->delete('assessment_live_state_ready');
+        }
     }
 
     // ── Ready / soft consensus ───────────────────────────────────────────────

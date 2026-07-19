@@ -921,6 +921,48 @@ class AdminController extends CI_Controller
         echo json_encode(['success' => true]);
     }
 
+    // Delete button on manage_assessments. Two-step: without `force`, a
+    // pending student submission blocks the delete and reports how many exist
+    // (so the modal JS can re-confirm with the admin using a fresh count —
+    // never trusting the row count already rendered in the table, which can
+    // go stale between page load and click). Only with `force=1` does it
+    // cascade-delete the classworks rows too; otherwise a zero-submission
+    // assessment is removed outright.
+    public function delete_assessment($id)
+    {
+        header('Content-Type: application/json');
+
+        if ($this->input->method() !== 'post') {
+            echo json_encode(['success' => false, 'error' => 'Invalid request method.']);
+            return;
+        }
+
+        $assessment_id = (int) $id;
+        if (!$assessment_id || !$this->assessments->get($assessment_id)) {
+            echo json_encode(['success' => false, 'error' => 'Assessment not found.']);
+            return;
+        }
+
+        $submission_count = (int) $this->db
+            ->where('assessment_id', $assessment_id)
+            ->count_all_results('classworks');
+
+        $force = $this->input->post('force') === '1';
+
+        if ($submission_count > 0 && !$force) {
+            echo json_encode(['success' => false, 'blocked' => true, 'submission_count' => $submission_count]);
+            return;
+        }
+
+        if ($submission_count > 0) {
+            $this->db->where('assessment_id', $assessment_id)->delete('classworks');
+        }
+        $this->db->where('assessment_id', $assessment_id)->delete('assessment_groupings');
+        $this->assessments->delete($assessment_id);
+
+        echo json_encode(['success' => true]);
+    }
+
     public function increment_randomized_count($classwork_id)
     {
         $this->classworks->set('randomized_count', 'randomized_count+1', FALSE)

@@ -19,7 +19,10 @@
       "Bash(php -l \"D:\\\\wamp64\\\\www\\\\gradingSystem\\\\application\\\\models\\\\assessments.php\")",
       "Bash(php -l \"D:\\\\wamp64\\\\www\\\\gradingSystem\\\\application\\\\controllers\\\\AdminController.php\")",
       "Bash(php -l \"D:\\\\wamp64\\\\www\\\\gradingSystem\\\\application\\\\views\\\\admin\\\\manage_assessments.php\")",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost/gradingSystem/)"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost/gradingSystem/)",
+      "Bash(php -l application/models/live_state_model.php)",
+      "Bash(php -l application/views/group_workspace.php)",
+      "Bash(php -l application/views/discussions/_interactive_quiz_template.php)"
     ]
   }
 }
