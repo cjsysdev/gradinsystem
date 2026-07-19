@@ -1,0 +1,120 @@
+{
+  "topic": "pivot1_get_vs_post",
+  "title": "Pivot 1 — Where Did Submit Go? (GET vs POST)",
+  "description": "How a submitted form actually travels through CodeIgniter 3: controllers, GET vs POST, what CI3's 404 proves, and the line between client and server.",
+  "congratsText": "You mastered Pivot 1 — GET vs POST!",
+  "sections": [
+    {
+      "id": 0,
+      "title": "Objectives",
+      "lesson": "<div class=\"lesson-title\">Objectives</div><div class=\"lesson-text\"><ul><li>Explain what happens the moment you click Submit</li><li>Tell GET and POST apart by where the data goes</li><li>Explain what CI3's 404 error actually proves</li></ul></div>"
+    },
+    {
+      "id": 1,
+      "title": "Click Submit — Where Does It Go?",
+      "lesson": "<div class=\"lesson-title\">Click Submit — Where Does It Go?</div><div class=\"lesson-text\">You fill out a form and click <strong>Submit</strong>. The browser packs up what you typed and sends it somewhere.</div><div class=\"lesson-text\">That \"somewhere\" is set by the form's <span class=\"highlight\">action</span> attribute. Point it at a destination that isn't ready to catch it, and the trip goes nowhere.</div><div class=\"code-block\">&lt;form action=\"pivot/login\" method=\"post\"&gt;</div><div class=\"lesson-text\">A plain HTML page cannot read what you typed. Something else has to catch the data.</div>",
+      "quiz": {
+        "question": "In the form below, which attribute decides where the submitted data travels?",
+        "code": "&lt;form action=\"pivot/login\" method=\"post\"&gt;",
+        "options": ["action", "method", "name", "id"],
+        "correct": 0
+      }
+    },
+    {
+      "id": 2,
+      "title": "Client vs Server — Two Computers, Two Jobs",
+      "lesson": "<div class=\"lesson-title\">Client vs Server — Two Computers, Two Jobs</div><div class=\"lesson-text\">Two computers are always involved. The <span class=\"highlight\">client</span> is the browser on your screen. The <span class=\"highlight\">server</span> is the computer that stores and runs the site's files.</div><div class=\"lesson-text\">Think of a restaurant. You, the client, place an order. The kitchen, the server, is the only place that can cook it and send it back.</div><div class=\"lesson-text\">The browser can show a page. It cannot run PHP, save data, or check a password. Only the server can do that.</div>",
+      "quiz": {
+        "question": "In the restaurant idea from this lesson, what does the server represent?",
+        "options": ["The kitchen that prepares the order", "The customer placing the order", "The menu sitting on the table", "The receipt at the end of the meal"],
+        "correct": 0
+      }
+    },
+    {
+      "id": 3,
+      "title": "A Framework Needs a Controller",
+      "lesson": "<div class=\"lesson-title\">A Framework Needs a Controller</div><div class=\"lesson-text\">In plain PHP, any .php file can run on its own. CI3 works differently — every request has to land on a <span class=\"highlight\">controller</span> method.</div><div class=\"lesson-text\">A controller is a PHP class that <strong>extends CI_Controller</strong>. Each public method inside it is something a URL can call.</div><div class=\"code-block\">class Pivot extends CI_Controller {\n    public function hello() {\n        echo \"Hello from CI3\";\n    }\n}</div><div class=\"lesson-text\">Save that as <strong>Pivot.php</strong> inside <span class=\"highlight\">application/controllers/</span>, and CI3 can now run it.</div>",
+      "quiz": {
+        "question": "What must a PHP class do before CI3 will treat it as a controller?",
+        "options": ["Extend CI_Controller", "Save with a .html extension", "Sit outside the application folder", "Start every method name with get_"],
+        "correct": 0
+      }
+    },
+    {
+      "id": 4,
+      "title": "Segments in the URL — Controller and Method",
+      "lesson": "<div class=\"lesson-title\">Segments in the URL — Controller and Method</div><div class=\"lesson-text\">Visit <strong>index.php/pivot/hello</strong>, and CI3 reads the address in two pieces, called <span class=\"highlight\">segments</span>.</div><div class=\"lesson-text\">The first segment, <strong>pivot</strong>, names the controller class. The second segment, <strong>hello</strong>, names the method inside it.</div><div class=\"code-block\">index.php/pivot/hello\n             controller  method</div><div class=\"lesson-text\">Change either segment, and CI3 looks for a different class or a different method, not the same page under a new name.</div>",
+      "quiz": {
+        "question": "In the URL index.php/pivot/hello, what does the segment hello tell CI3 to run?",
+        "options": ["The method inside the Pivot controller", "The name of the project folder", "The database table to query", "The file extension to load"],
+        "correct": 0
+      }
+    },
+    {
+      "id": 5,
+      "title": "The GET Method — Data Rides in the URL",
+      "lesson": "<div class=\"lesson-title\">The GET Method — Data Rides in the URL</div><div class=\"lesson-text\">Set a form's <span class=\"highlight\">method</span> to <strong>get</strong>, and the browser tacks every field onto the end of the web address.</div><div class=\"code-block\">&lt;form action=\"index.php/pivot/login\" method=\"get\"&gt;</div><div class=\"lesson-text\">Submit a login form with GET, and the address bar shows something like this:</div><div class=\"code-block\">index.php/pivot/login?username=criscel&amp;password=1234</div><div class=\"lesson-text\">Anyone who looks at your screen, or your browser history, can read that value.</div>",
+      "quiz": {
+        "question": "A form uses method=\"get\" and is submitted. Where does the typed data end up?",
+        "options": ["Attached to the end of the URL", "Hidden inside the request body", "Saved straight to the database", "Stored only in browser memory"],
+        "correct": 0
+      }
+    },
+    {
+      "id": 6,
+      "title": "Seeing GET's Danger — A Password in Plain Sight",
+      "lesson": "<div class=\"lesson-title\">Seeing GET's Danger — A Password in Plain Sight</div><div class=\"lesson-text\">The login form from an earlier lab asks for a <strong>username</strong> and a <strong>password</strong>. Switch its method to GET and submit it.</div><div class=\"lesson-text\">The password now sits in the address bar for anyone nearby to read. It also gets saved in the browser's history.</div><div class=\"lesson-text\">This is why <span class=\"highlight\">GET is never used for passwords</span>, or for any data that should stay private — framework or no framework.</div>",
+      "quiz": {
+        "question": "A student submits the login form with method=\"get\" while a classmate is watching the screen. What can the classmate see?",
+        "options": ["The typed password, sitting in the address bar", "Nothing, GET data is always hidden", "Only the username, never the password", "A 404 error instead of the login page"],
+        "correct": 0
+      }
+    },
+    {
+      "id": 7,
+      "title": "The POST Method — Data Hides in the Request",
+      "lesson": "<div class=\"lesson-title\">The POST Method — Data Hides in the Request</div><div class=\"lesson-text\">Set method to <strong>post</strong> instead, and the same fields travel inside the request body, not the URL.</div><div class=\"code-block\">&lt;form action=\"index.php/pivot/login\" method=\"post\"&gt;</div><div class=\"lesson-text\">Submit that form and the address bar stays clean: just <strong>index.php/pivot/login</strong>, no visible password.</div><div class=\"comparison\"><div class=\"comparison-col\"><div class=\"comparison-label\">GET</div>Data shows in the URL. Fine for a search box.</div><div class=\"comparison-col\"><div class=\"comparison-label\">POST</div>Data hides in the body. Use for passwords and anything private.</div></div>",
+      "quiz": {
+        "question": "Which situation is method=\"post\" meant for?",
+        "options": ["Submitting a login form with a password", "Running a search box for public results", "Sharing a link to a specific page", "Bookmarking a page in the browser"],
+        "correct": 0
+      }
+    },
+    {
+      "id": 8,
+      "title": "CI3's 404 — Proof the Controller Wasn't There",
+      "lesson": "<div class=\"lesson-title\">CI3's 404 — Proof the Controller Wasn't There</div><div class=\"lesson-text\">Point a form's action at a method that doesn't exist yet, like <strong>pivot/store</strong>, and submit it.</div><div class=\"lesson-text\">CI3 shows its own <span class=\"highlight\">404 error</span> page. That error is good news: it proves CI3 received the request and searched for a matching controller and method.</div><div class=\"lesson-text\">A 404 means \"I looked, and found nothing to run.\" It's proof the trip worked, the destination just isn't built yet.</div>",
+      "quiz": {
+        "question": "A form submits to pivot/store, which does not exist yet. CI3 shows a 404 error. What does that error actually prove?",
+        "options": ["CI3 received the request and found no matching controller or method", "The form's HTML contains a typo", "The internet connection was interrupted", "The browser blocked the form from submitting"],
+        "correct": 0
+      }
+    },
+    {
+      "id": 9,
+      "title": "Reading Segments Wrong — Controller vs Method Typos",
+      "lesson": "<div class=\"lesson-title\">Reading Segments Wrong — Controller vs Method Typos</div><div class=\"lesson-text\">Misspell the <strong>method</strong> segment, like <span class=\"highlight\">pivot/helo</span>, and CI3 still finds the Pivot controller — it just has no matching method inside it.</div><div class=\"lesson-text\">Misspell the <strong>controller</strong> segment instead, like <span class=\"highlight\">pivott/store</span>, and CI3 never finds a matching class at all.</div><div class=\"lesson-text\">Both mistakes end in the same 404 page, but for a different reason — one is a missing method, the other is a missing class.</div>",
+      "quiz": {
+        "question": "A URL reads index.php/pivott/store — the controller name is misspelled. What is CI3 unable to find?",
+        "options": ["A controller class matching that name", "A method matching that name", "A database table matching that name", "A view file matching that name"],
+        "correct": 0
+      }
+    },
+    {
+      "id": 10,
+      "title": "Catching the Request for Real",
+      "lesson": "<div class=\"lesson-title\">Catching the Request for Real</div><div class=\"lesson-text\">Build <strong>store()</strong> inside Pivot.php for real this time, with one line of code:</div><div class=\"code-block\">public function store() {\n    print_r($this->input->post());\n}</div><div class=\"lesson-text\">Submit the form now, and the page prints every field you typed, labeled by its <strong>name</strong> attribute.</div><div class=\"lesson-text\"><span class=\"highlight\">$this->input->post()</span> is CI3's own way of reading $_POST. No name attribute, no entry in the array.</div>",
+      "quiz": {
+        "question": "A form has &lt;input name=\"item\"&gt;. It submits to store(), which contains print_r($this->input->post());. What appears on screen?",
+        "code": "public function store() {\n    print_r($this->input->post());\n}",
+        "options": ["Array ( [item] => the typed value )", "Array ( [0] => the typed value )", "The literal text $this->input->post()", "A blank page with no output"],
+        "correct": 0
+      }
+    },
+    {
+      "id": 11,
+      "title": "Recap",
+      "lesson": "<div class=\"lesson-title\">Recap</div><div class=\"lesson-text\"><ul><li>Submit sends your data to whatever controller and method the form's action points to</li><li>The client is the browser; only the server can run PHP and save data</li><li>CI3 only runs classes that extend CI_Controller, saved inside application/controllers/</li><li>A URL's segments name the controller first, then the method</li><li>GET attaches your data to the URL, in plain view</li><li>Never use GET for a password, it shows on screen and saves in history</li><li>POST hides your data inside the request body, not the URL</li><li>CI3's 404 proves it searched for a controller and method, and found neither</li><li>A misspelled controller and a misspelled method both 404, for different reasons</li><li>CI3 reads POST data through $this->input->post(), keyed by each field's name attribute</li></ul></div>"
+    }
+  ]
+}

@@ -1,11 +1,17 @@
 {
   "topic": "html_forms",
   "title": "HTML Forms",
-  "description": "Learn how to build a real HTML form: inputs, labels, required fields, radio buttons, checkboxes, dropdowns, and submitting data.",
+  "description": "Learn how to build a real HTML form: inputs, labels, required fields, radio buttons, and checkboxes.",
   "congratsText": "Great work! You can now build a real HTML form.",
   "sections": [
     {
       "id": 0,
+      "title": "Objectives",
+      "quiz": null,
+      "lesson": "<div class=\"lesson-title\">What You Will Learn</div><div class=\"lesson-text\">By the end of this discussion, you will be able to:</div><div class=\"lesson-text\"><ul><li>Build a form with properly linked labels and input fields</li><li>Use different input types and built-in checks like required and placeholder</li><li>Group choices correctly with radio buttons and checkboxes</li></ul></div>"
+    },
+    {
+      "id": 1,
       "title": "What Is a Form?",
       "quiz": {
         "question": "What is the main job of the <form> tag?",
@@ -17,23 +23,7 @@
         ],
         "correct": 0
       },
-      "lesson": "<div class=\"lesson-title\">What Is a Form?</div><div class=\"lesson-text\">A form lets users type information and send it somewhere — like a search box, a login screen, or a signup page. The <span class=\"highlight\">&lt;form&gt;</span> tag wraps all the input fields together.</div><div class=\"lesson-text\"><strong>Forms are how a page collects data</strong> from a real person, instead of just showing static text.</div><div class=\"code-block\">&lt;form&gt;\n  Name: &lt;input type=\"text\"&gt;\n&lt;/form&gt;</div>"
-    },
-    {
-      "id": 1,
-      "title": "The <input> Tag",
-      "quiz": {
-        "question": "Which attribute controls what kind of input field this is?",
-        "code": "<input type=\"text\">",
-        "options": [
-          "type",
-          "name",
-          "value",
-          "class"
-        ],
-        "correct": 0
-      },
-      "lesson": "<div class=\"lesson-title\">The &lt;input&gt; Tag</div><div class=\"lesson-text\">&lt;input&gt; creates a field a user can fill in. The <span class=\"highlight\">type</span> attribute decides what kind of field it is.</div><div class=\"code-block\">&lt;input type=\"text\"&gt;</div><div class=\"lesson-text\"><strong>Note:</strong> &lt;input&gt; is a self-closing tag — it has no separate closing tag like &lt;/input&gt;.</div>"
+      "lesson": "<div class=\"lesson-title\">What Is a Form?</div><div class=\"lesson-text\">A form lets users type information and send it somewhere — like a search box, a login screen, or a signup page. The <span class=\"highlight\">&lt;form&gt;</span> tag wraps all the input fields together.</div><div class=\"lesson-text\">Inside a form, the <span class=\"highlight\">&lt;input&gt;</span> tag creates a field a user can fill in. &lt;input&gt; is a self-closing tag — it has no separate closing tag like &lt;/input&gt;.</div><div class=\"code-block\">&lt;form&gt;\n  Name: &lt;input type=\"text\"&gt;\n&lt;/form&gt;</div><div class=\"lesson-text\"><strong>Forms are how a page collects data</strong> from a real person, instead of just showing static text.</div>"
     },
     {
       "id": 2,
@@ -130,34 +120,18 @@
     },
     {
       "id": 8,
-      "title": "Dropdown Lists",
+      "title": "Recap",
       "quiz": {
-        "question": "Why might you choose <select> over many radio buttons?",
+        "question": "A signup form needs a required email field with a hint, plus a way to pick exactly one account type. Which combination is correct?",
         "options": [
-          "It saves space when there are many choices",
-          "It is the only way to make a choice required",
-          "It lets users pick more than one item by default",
-          "It removes the need for a name attribute"
+          "type=\"email\" with required and placeholder, plus radio buttons sharing one name",
+          "type=\"text\" with no attributes, plus checkboxes sharing one name",
+          "type=\"email\" with no required, plus radio buttons with different names",
+          "type=\"password\" with placeholder only, plus a single checkbox"
         ],
         "correct": 0
       },
-      "lesson": "<div class=\"lesson-title\">Dropdown Lists</div><div class=\"lesson-text\"><span class=\"highlight\">&lt;select&gt;</span> shows a list of choices that opens when clicked, saving space compared to many radio buttons.</div><div class=\"code-block\">&lt;select name=\"course\"&gt;\n  &lt;option value=\"ws\"&gt;Web Systems&lt;/option&gt;\n  &lt;option value=\"cc104\"&gt;Data Structures&lt;/option&gt;\n&lt;/select&gt;</div><div class=\"lesson-text\">Each choice is an <span class=\"highlight\">&lt;option&gt;</span> tag. Only one option can be picked unless the multiple attribute is added.</div>"
-    },
-    {
-      "id": 9,
-      "title": "Submitting a Form",
-      "quiz": {
-        "question": "Why is GET a poor choice for submitting a password field?",
-        "code": "<form>\n  <input type=\"text\" name=\"q\">\n  <button type=\"submit\">Search</button>\n</form>\n\n<!-- After submit, the URL may look like: -->\n<!-- page.html?q=hello -->",
-        "options": [
-          "GET puts the data in the visible URL and history",
-          "GET only works with checkbox and radio inputs",
-          "GET cannot be used with a submit button",
-          "GET always deletes the form after submitting"
-        ],
-        "correct": 0
-      },
-      "lesson": "<div class=\"lesson-title\">Submitting a Form</div><div class=\"lesson-text\">Clicking a <span class=\"highlight\">submit</span> button sends the form's data somewhere. By default, a form uses the <span class=\"highlight\">GET</span> method, which adds the data to the end of the URL.</div><div class=\"code-block\">&lt;form&gt;\n  &lt;input type=\"text\" name=\"q\"&gt;\n  &lt;button type=\"submit\"&gt;Search&lt;/button&gt;\n&lt;/form&gt;\n\n&lt;!-- After submit, the URL may look like: --&gt;\n&lt;!-- page.html?q=hello --&gt;</div><div class=\"lesson-text\"><strong>Best practice:</strong> GET is fine for searches, but never use it for passwords or private data — the data is visible right in the address bar and browser history. Use POST instead for sensitive data.</div>"
+      "lesson": "<div class=\"lesson-title\">Recap</div><div class=\"lesson-text\">A form collects data through <span class=\"highlight\">&lt;input&gt;</span> fields, each linked to a <span class=\"highlight\">&lt;label&gt;</span> by matching for and id.</div><div class=\"lesson-text\"><ul><li>type sets the kind of field (text, email, password, number)</li><li>required blocks submission until the field has a value</li><li>placeholder is a hint, not a real value</li><li>radio buttons share one name and allow only one pick; checkboxes allow several</li></ul></div><div class=\"code-block\">&lt;label for=\"email\"&gt;Email:&lt;/label&gt;\n&lt;input type=\"email\" id=\"email\" required placeholder=\"you@example.com\"&gt;</div>"
     }
   ]
 }

@@ -77,6 +77,16 @@ class Widgets_model extends CI_Model
         // AssessmentController::assessment_view_code().
         $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
             VALUES ('secure_quiz', 'Timed/Secure Quiz', 'widgets/secure_quiz', NULL)");
+        // Chapter Worksheet: read-only timed-move table + "the model" worked
+        // example -> a fixed sequence of typed steps (text/grid/choice/
+        // checklist) -> read-only "the trap" warning -> peer-check question
+        // -> team/date/filed/peer-checked-by sign-off. Built for the
+        // Feasibility Study Worksheet Pack (10x45min dossier-chapter
+        // worksheets) but reusable for any worked-model-then-steps worksheet.
+        // Not auto-graded, same manual-score-entry pattern as the other
+        // worksheet-style widgets.
+        $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
+            VALUES ('chapter_worksheet', 'Chapter Worksheet', 'widgets/chapter_worksheet', NULL)");
     }
 
     public function get_all()

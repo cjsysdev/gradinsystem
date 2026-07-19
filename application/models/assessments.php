@@ -230,6 +230,27 @@ class assessments extends MY_Model
         return $query ? array_column($query->result_array(), 'assessment_id') : [];
     }
 
+    // Every assessment in the active semester, for the manage_assessments Add
+    // modal's "Copy from existing assessment" picker — pre-fills the form from
+    // another assessment so admins can drop one onto a different section
+    // instead of re-typing title/type/description/widget/config by hand.
+    // class_code is included (not just section) so the modal JS can filter the
+    // picker to the target section's class, same as it does for iq_topics.
+    public function get_copyable_for_active_semester()
+    {
+        $sql = "
+            SELECT a.assessment_id, a.title, a.iotype_id, a.description,
+                   a.max_score, a.term, a.due, a.widget_id, a.given, a.is_groupings,
+                   cs.section, cl.class_code
+            FROM assessments a
+            JOIN class_schedule cs ON a.schedule_id = cs.schedule_id
+            JOIN classes cl ON cs.class_id = cl.class_id
+            JOIN semester_master sem ON cs.semester_id = sem.trans_no AND sem.is_active = 1
+            ORDER BY cl.class_code, cs.section, a.title";
+        $query = $this->db->query($sql);
+        return $query ? $query->result_array() : [];
+    }
+
     public function get_for_schedule($schedule_id = null)
     {
         if ($schedule_id) {

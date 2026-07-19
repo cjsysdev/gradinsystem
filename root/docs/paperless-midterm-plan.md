@@ -430,6 +430,85 @@ patterns. Build 6 reusable widgets, not 16 custom interfaces.
   is the full Session 2.1 "Innovation Triangle" worksheet (all 3 dossiers),
   ready to use as-is.
 
+### Widget K — Chapter Worksheet (added outside original scope)
+- **Why:** the Feasibility Study Worksheet Pack (`uploads/Feasibility_Study_
+  Worksheet_Pack_10x45min.docx`, IS Innovations & New Technologies — "Innovation
+  Feasibility & Adoption Study") is ten 45-minute worksheets, each producing
+  one chapter of a team's dossier, that all share one shape: a read-only
+  timed-move table, a read-only "the model" worked-example callout (drawn
+  from the pack's running "Should the Carmen Public Market Adopt QR-Based
+  Digital Payments?" case), a fixed sequence of typed steps mixing free-text
+  answers, fixed-row/typed-column grids (e.g. an evidence grid, a technology
+  selection matrix), single-choice picks (e.g. Incremental/Disruptive), and
+  checklists (e.g. a PT1 assembly check), a read-only "the trap" warning
+  callout, a peer-check question, and a fixed team/date/filed/peer-checked-by
+  sign-off. None of Widgets B–J combine a worked-model callout, a trap
+  callout, and a sign-off block around a mixed-type step sequence, so this is
+  a genuinely new shape rather than a config variant of an existing widget —
+  per the widget-creation skill's escalation rule, it's built as one new
+  widget rather than 10 one-off configs, since the shape recurs unchanged
+  across all 10 worksheets in the pack.
+- **UI:** read-only meta header (eyebrow/title/sub) → read-only timed-move
+  table → read-only "Model" callout (blue accent) → each step in order
+  (`text`: prefixed free-text answer; `grid`: fixed row labels × typed
+  columns, mirrors Widget F/`decision_matrix`'s row/column shape; `choice`:
+  button group with an optional rationale note, reuses Widget I/J's
+  interaction; `checklist`: plain checkboxes) → read-only "Trap" callout
+  (amber accent) → peer-check instruction + task + free-text answer → a
+  fixed team/date/filed-checkbox/peer-checked-by sign-off row.
+- **Config (`assessments.given`):**
+  ```json
+  {
+    "meta": {"eyebrow": "WORKSHEET 1 · 45 MINUTES · PRODUCES DOSSIER CHAPTER 1", "title": "The Problem", "sub": "..."},
+    "timeline": {"label": "How this session runs", "moves": [{"time": "0–5", "move": "Read the model", "detail": "..."}]},
+    "model": {"label": "THE MODEL — how the Carmen Market study did it", "html": "<p>...</p>"},
+    "steps": [
+      {"type": "text", "label": "STEP 1 — ...", "instruction": "...", "prefix": "Our problem is:", "rows": 2, "placeholder": "..."},
+      {"type": "grid", "label": "STEP 2 — ...", "instruction": "...", "columns": [{"name": "...", "type": "text|select|checkbox", "options": [...]}], "rows": [{"label": "Someone said it", "sub": "(a real quote)"}], "note": "CORE/BONUS grading note"},
+      {"type": "choice", "label": "...", "instruction": "...", "options": [{"text": "...", "note": "..."}]},
+      {"type": "checklist", "label": "...", "instruction": "...", "items": ["Ch. 1 The Problem", "Ch. 2 Innovation Triangle"]}
+    ],
+    "trap": {"label": "THE TRAP", "html": "<p>...</p>"},
+    "peer_check": {"label": "PEER CHECK", "instruction": "...", "task": "...", "rows": 3},
+    "file_it": {"label": "FILE IT", "instruction": "..."}
+  }
+  ```
+- **Submission (`classworks.code`):**
+  ```json
+  {
+    "steps": {
+      "0": "free text answer",
+      "1": {"Someone said it": {"0": "quote text", "1": "source"}, "A number": {"0": "...", "1": "..."}},
+      "2": 1,
+      "3": [true, false, true]
+    },
+    "peer_check": "free text answer",
+    "file_it": {"team": "Team Alpha", "date": "2026-08-10", "filed": true, "peer_checked_by": "J.D."}
+  }
+  ```
+  `steps` is a flat, index-keyed-object map (same convention as every other
+  widget) whose value shape depends on that step's `type`: `text` → string;
+  `grid` → row-label-keyed object of column-index-keyed values (same
+  row-label-as-key convention as Widget F/`decision_matrix`'s `cells`);
+  `choice` → selected option index or `null`; `checklist` → a bool array
+  parallel to `items`. `file_it` is always the same 4 fixed fields
+  regardless of config.
+- **Not auto-graded** — manual score entry, same as every worksheet-style
+  widget so far.
+- **Implemented:** `application/views/widgets/chapter_worksheet.php`. Fully
+  self-contained (no shared base class with Widget I/J), matching the rest
+  of this widget family. Renders inline via the standard
+  `assessment_view_code.php` flow, no special-case redirect. The admin
+  "Widget" dropdown's example JSON (`widgetExamples.chapter_worksheet`) is
+  the full Worksheet 1 "The Problem" chapter, ready to use as-is; Worksheets
+  2–10 from the same pack reuse this widget unchanged, just with a different
+  config JSON per worksheet. Worksheet 2 ("Why It's Unsolved — The
+  Innovation Triangle") is also authored — config JSON handed to CJ directly
+  (not stored in the repo, same as every other per-assessment widget config)
+  — using only the `grid`/`text` step types already built for Worksheet 1,
+  confirming no widget code changes are needed per worksheet. Worksheets
+  3–10 remain unauthored — see the pack's docx for their content.
+
 ## 5. Full Session-to-Widget Mapping (Weeks 1–8)
 
 | Session | Concept Portion | Hands-On Activity | Widget |

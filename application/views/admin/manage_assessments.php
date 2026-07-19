@@ -202,6 +202,23 @@
                     <input type="hidden" name="assessment_id" id="modal_assessment_id">
                     <input type="hidden" name="schedule_id_filter" value="<?= $selected_schedule ?>">
 
+                    <div class="form-group" id="modal_copy_from_wrap">
+                        <label>Copy from existing assessment <small class="text-muted">(optional)</small></label>
+                        <select id="modal_copy_from" class="form-control">
+                            <option value="">Start blank &mdash; don't copy</option>
+                            <?php foreach ($copyable_assessments as $ca): ?>
+                                <option value="<?= $ca['assessment_id'] ?>" data-class-code="<?= htmlspecialchars($ca['class_code']) ?>">
+                                    <?= htmlspecialchars($ca['section']) ?> &mdash; <?= htmlspecialchars($ca['title']) ?> (<?= htmlspecialchars($ca['class_code']) ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <small class="form-text text-muted">
+                            Pre-fills the form from another assessment (filtered to the selected section's class),
+                            so you can drop an existing assessment onto a different section. Only the target
+                            section, status, and grouping set stay yours to choose.
+                        </small>
+                    </div>
+
                     <div class="form-group" id="modal_apply_mode_wrap">
                         <label>Apply To</label>
                         <div class="form-check form-check-inline">
@@ -398,6 +415,10 @@ const iqTopicClasses = <?= json_encode($iq_topic_classes) ?>;
 // Title/Description fields from the topic JSON when a topic is picked.
 const iqTopicMeta = <?= json_encode($iq_topic_meta) ?>;
 
+// assessment_id -> assessment fields, used by the "Copy from existing
+// assessment" picker to pre-fill the Add modal from another assessment.
+const copyableAssessments = <?= json_encode(array_column($copyable_assessments, null, 'assessment_id')) ?>;
+
 // section -> [{set_id, name}], used to populate the grouping-set dropdown
 const setsBySection = {};
 <?php foreach ($grouping_sets as $gs): ?>
@@ -456,6 +477,27 @@ function refreshIqTopicOptions() {
     }
 }
 
+// Same class-filtering approach as refreshIqTopicOptions(), but for the "Copy
+// from existing assessment" picker — only offer assessments belonging to the
+// section/class currently selected above.
+function refreshCopyFromOptions() {
+    const select = document.getElementById('modal_copy_from');
+    const classCode = currentSelectedClassCode();
+    let selectedStillVisible = !select.value;
+
+    Array.from(select.options).forEach(opt => {
+        if (!opt.value) return; // keep the placeholder
+        const optClass = opt.dataset.classCode || '';
+        const visible = !classCode || !optClass || optClass === classCode;
+        opt.hidden = !visible;
+        if (opt.value === select.value && visible) selectedStillVisible = true;
+    });
+
+    if (!selectedStillVisible) {
+        select.value = '';
+    }
+}
+
 function toggleGroupingSetWrap() {
     document.getElementById('modal_grouping_set_wrap').style.display =
         document.getElementById('modal_is_groupings').checked ? '' : 'none';
@@ -478,6 +520,7 @@ function toggleApplyMode() {
         toggleGroupingSetWrap();
     }
     refreshIqTopicOptions();
+    refreshCopyFromOptions();
 }
 
 // Example config JSON per widget_key — shown as the textarea's placeholder
@@ -769,6 +812,79 @@ const widgetExamples = {
                 ]
             }
         }
+    },
+    chapter_worksheet: {
+        hint: 'Read-only timed-move table + a worked-example "Model" callout + a fixed sequence of typed steps (text/grid/choice/checklist) + a "Trap" warning callout + a peer-check question + a team/date/filed/peer-checked-by sign-off. Not auto-graded. This example is the full Worksheet 1 "The Problem" chapter from the Feasibility Study Worksheet Pack (IS Innovations, 10x45min dossier pack) — ready to use as-is; the other 9 worksheets in the pack follow this exact same shape.',
+        example: {
+            meta: {
+                eyebrow: 'WORKSHEET 1 · 45 MINUTES · PRODUCES DOSSIER CHAPTER 1',
+                title: 'The Problem',
+                sub: 'You leave this session with: Chapter 1 — your problem, stated with evidence instead of anecdote'
+            },
+            timeline: {
+                label: 'How this session runs',
+                moves: [
+                    { time: '0–5', move: 'Read the model', detail: "Read Ch. 1 of the Carmen Market study. Notice it never says the word 'app'." },
+                    { time: '5–12', move: 'Name it', detail: 'Write your problem in ONE sentence, with no solution in it.' },
+                    { time: '12–25', move: 'Evidence hunt', detail: 'Fill the evidence grid — who said it, what number, what you saw.' },
+                    { time: '25–35', move: 'Make it an IS problem', detail: 'Write the paragraph explaining why this is a records/data problem.' },
+                    { time: '35–42', move: 'Peer check', detail: 'Partner hunts for a solution hiding inside your problem statement.' },
+                    { time: '42–45', move: 'File it', detail: 'Date, initial, file.' }
+                ]
+            },
+            model: {
+                label: 'THE MODEL — how the Carmen Market study did it',
+                html: '<p><strong>Problem sentence:</strong> “Carmen market vendors have no transaction record, so they cannot qualify for microfinance — and the treasurer reconciles rental income by hand with no audit trail.”</p>' +
+                      '<p><strong>Notice:</strong> no solution appears anywhere in that sentence. No QR, no app, no GCash. Just the problem.</p>' +
+                      '<p>Their evidence had three layers — vendor quotes (what people said), national statistics (56% of adults banked; 52.8% of PH retail payments now digital), and a process observation (paper logbook, manual cash count).</p>'
+            },
+            steps: [
+                {
+                    type: 'text',
+                    label: 'STEP 1 — Your problem, in one sentence',
+                    instruction: "Banned words: app, system, website, platform, digital, automate, AI. If you need one of these to state your problem, you are stating a solution, not a problem.",
+                    prefix: 'Our problem is:',
+                    rows: 2,
+                    placeholder: 'State the pain, not the fix...'
+                },
+                {
+                    type: 'grid',
+                    label: 'STEP 2 — Evidence grid',
+                    instruction: 'Three kinds of evidence. You need at least two rows filled to pass; the third is where good teams separate themselves.',
+                    columns: [
+                        { name: 'What you actually have', type: 'text' },
+                        { name: 'Where it came from', type: 'text' }
+                    ],
+                    rows: [
+                        { label: 'Someone said it', sub: '(a real quote)' },
+                        { label: 'A number', sub: '(a real statistic)' },
+                        { label: 'You observed it', sub: '(a real process)' }
+                    ],
+                    note: 'CORE: two evidence rows filled, one from a real named source. BONUS: all three rows, with a citation your instructor could verify.'
+                },
+                {
+                    type: 'text',
+                    label: 'STEP 3 — Why is this an Information Systems problem?',
+                    instruction: "Not 'why does it matter' — why is it about records, data, or information flow? If you cannot answer this, you may have picked a problem for a different course.",
+                    prefix: 'This is an IS problem because:',
+                    rows: 3
+                }
+            ],
+            trap: {
+                label: 'THE TRAP',
+                html: "<p>The most common failure in this worksheet is a problem sentence with the answer already inside it — 'our barangay needs a mobile app for reporting floods.' That is not a problem, it is a solution wearing a problem's clothes. It locks your team into one answer before Chapter 4 has had a chance to tell you something better already exists. State the pain, not the fix.</p>"
+            },
+            peer_check: {
+                label: 'PEER CHECK',
+                instruction: 'Swap with another team. Their job is not to be nice — it is to find the specific weakness named below.',
+                task: "Read their problem sentence. Is there a solution hidden in it? Circle the word. Then ask: 'what number or quote proves this problem is real, and not just annoying?' Write their answer — or write NONE GIVEN.",
+                rows: 3
+            },
+            file_it: {
+                label: 'FILE IT',
+                instruction: "Date it, initial it, and add it to your team's dossier folder. A chapter that is not filed does not exist."
+            }
+        }
     }
 };
 
@@ -860,6 +976,41 @@ function toggleGivenWrap() {
     fetchWidgetPreview();
 }
 
+// Pre-fills the Add modal's content fields from another assessment (picked
+// via the "Copy from existing assessment" select), so an assessment created
+// for one section can be dropped onto a different section without re-typing
+// title/type/description/widget/config by hand. Target section, status, and
+// grouping set are deliberately NOT copied — grouping sets are per-section
+// (see refreshGroupingSetOptions()) and status defaults fresh like any new row.
+function applyCopyFrom() {
+    const src = copyableAssessments[document.getElementById('modal_copy_from').value];
+    if (!src) return;
+
+    document.getElementById('modal_iotype_id').value = src.iotype_id || '';
+    document.getElementById('modal_title').value = src.title || '';
+    document.getElementById('modal_description').value = src.description || '';
+    document.getElementById('modal_max_score').value = src.max_score || '';
+    document.getElementById('modal_term').value = src.term || 'midterm';
+    document.getElementById('modal_due').value = src.due ? src.due.replace(' ', 'T').substring(0, 16) : '';
+    document.getElementById('modal_is_groupings').checked = parseInt(src.is_groupings) === 1;
+    refreshGroupingSetOptions();
+    toggleGroupingSetWrap();
+
+    document.getElementById('modal_widget_id').value = src.widget_id || '';
+    document.getElementById('modal_given').value = src.given || '';
+    lastAutoFilledExample = null;
+    lastAutoFilledTitle = null;
+    lastAutoFilledDescription = null;
+
+    let givenTopic = '';
+    if (src.given) {
+        try { givenTopic = JSON.parse(src.given).topic || ''; } catch (e) {}
+    }
+    refreshIqTopicOptions();
+    document.getElementById('modal_iq_topic').value = givenTopic;
+    toggleGivenWrap();
+}
+
 // <script> tags inserted via innerHTML don't execute — re-create them so the
 // widget's own interactivity (Add Row, live calculator, etc.) works in the preview.
 function runScriptsIn(container) {
@@ -906,18 +1057,21 @@ function refreshWidgetPreviewDebounced() {
     widgetPreviewTimer = setTimeout(fetchWidgetPreview, 400);
 }
 
-document.getElementById('modal_schedule_id').addEventListener('change', () => { refreshGroupingSetOptions(); refreshIqTopicOptions(); });
-document.getElementById('modal_class_id').addEventListener('change', refreshIqTopicOptions);
+document.getElementById('modal_schedule_id').addEventListener('change', () => { refreshGroupingSetOptions(); refreshIqTopicOptions(); refreshCopyFromOptions(); });
+document.getElementById('modal_class_id').addEventListener('change', () => { refreshIqTopicOptions(); refreshCopyFromOptions(); });
 document.getElementById('modal_is_groupings').addEventListener('change', toggleGroupingSetWrap);
 document.getElementById('modal_widget_id').addEventListener('change', toggleGivenWrap);
 document.getElementById('modal_given').addEventListener('input', refreshWidgetPreviewDebounced);
 document.getElementById('modal_iq_topic').addEventListener('change', syncIqTopicToGiven);
 document.getElementById('modal_apply_mode_section').addEventListener('change', toggleApplyMode);
 document.getElementById('modal_apply_mode_class').addEventListener('change', toggleApplyMode);
+document.getElementById('modal_copy_from').addEventListener('change', applyCopyFrom);
 
 function openAddModal() {
     document.getElementById('modalTitle').textContent = 'Add Assessment';
     document.getElementById('modal_assessment_id').value = '';
+    document.getElementById('modal_copy_from_wrap').style.display = '';
+    document.getElementById('modal_copy_from').value = '';
     document.getElementById('modal_apply_mode_wrap').style.display = '';
     document.getElementById('modal_apply_mode_section').checked = true;
     document.getElementById('modal_schedule_id').value = '<?= $selected_schedule ?: '' ?>';
@@ -948,7 +1102,10 @@ function openAddModal() {
 function openEditModal(a) {
     document.getElementById('modalTitle').textContent = 'Edit Assessment';
     document.getElementById('modal_assessment_id').value = a.assessment_id;
-    // Editing always applies to the one section the assessment is already on.
+    // Copy-from is an add-only helper; editing always applies to the one
+    // section the assessment is already on.
+    document.getElementById('modal_copy_from_wrap').style.display = 'none';
+    document.getElementById('modal_copy_from').value = '';
     document.getElementById('modal_apply_mode_wrap').style.display = 'none';
     document.getElementById('modal_apply_mode_section').checked = true;
     document.getElementById('modal_class_id').value = '';

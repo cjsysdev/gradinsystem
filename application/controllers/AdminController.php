@@ -624,6 +624,8 @@ class AdminController extends CI_Controller
         $this->load->model('Widgets_model');
         $data['widgets'] = $this->Widgets_model->get_all();
 
+        $data['copyable_assessments'] = $this->assessments->get_copyable_for_active_semester();
+
         // Topics available to the "Interactive Discussion/Quiz" widget — only
         // the lesson+quiz format InteractiveQuizController::discussion() can
         // render (sections[].quiz), not the multi-question sections[].questions

@@ -78,3 +78,22 @@ inline via the standard `assessment_view_code.php` flow (no special-case
 redirect). Reuses Case Study Worksheet's `text`/`list`/`choice` question
 shapes for its hook/reflection sections, but duplicated locally in its own
 view file rather than shared — every widget here is self-contained.
+A sixth widget, **Chapter Worksheet** (`chapter_worksheet` widget_key, not
+in the original 6-widget plan — see plan doc §4 "Widget K"), covers the
+Feasibility Study Worksheet Pack (`uploads/Feasibility_Study_Worksheet_Pack_
+10x45min.docx`, IS Innovations — ten 45-minute worksheets, each producing
+one chapter of a team's "Innovation Feasibility & Adoption Study" dossier):
+a read-only timed-move table, a read-only "the model" worked-example
+callout, a fixed sequence of typed steps (`text` free-answer, `grid`
+fixed-row/typed-column tables reusing Widget F's row-label-keyed cell
+convention, `choice` button picks reusing Widget I/J's interaction,
+`checklist` checkboxes), a read-only "the trap" warning callout, a
+peer-check question, and a fixed team/date/filed/peer-checked-by sign-off.
+Not auto-graded, same manual-score-entry pattern as the other
+worksheet-style widgets. Renders inline via the standard
+`assessment_view_code.php` flow (no special-case redirect). Fully
+self-contained, no shared base class with other widgets. The admin "Widget"
+dropdown's example JSON (`widgetExamples.chapter_worksheet`) is the full
+Worksheet 1 "The Problem" chapter, ready to use as-is — Worksheets 2–10
+from the same pack reuse this same widget with a different config JSON
+each (not yet authored).
