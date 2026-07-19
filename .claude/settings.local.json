@@ -18,7 +18,8 @@
       "Bash(/d/wamp64/bin/mysql/mysql8.3.0/bin/mysql.exe -u root -pcmcp@ssw0rd -h 127.0.0.1 gradingsystem2025a -e ' *)",
       "Bash(php -l \"D:\\\\wamp64\\\\www\\\\gradingSystem\\\\application\\\\models\\\\assessments.php\")",
       "Bash(php -l \"D:\\\\wamp64\\\\www\\\\gradingSystem\\\\application\\\\controllers\\\\AdminController.php\")",
-      "Bash(php -l \"D:\\\\wamp64\\\\www\\\\gradingSystem\\\\application\\\\views\\\\admin\\\\manage_assessments.php\")"
+      "Bash(php -l \"D:\\\\wamp64\\\\www\\\\gradingSystem\\\\application\\\\views\\\\admin\\\\manage_assessments.php\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost/gradingSystem/)"
     ]
   }
 }

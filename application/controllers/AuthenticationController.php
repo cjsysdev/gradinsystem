@@ -20,10 +20,14 @@ class AuthenticationController extends CI_Controller
                 // stored value to a hash in place so it migrates on first login.
                 if (hash_equals($stored, (string) $post['password'])) {
                     $authenticated = true;
-                    $this->accounts->update(
-                        ['password' => password_hash($post['password'], PASSWORD_DEFAULT)],
-                        $user->account_id
-                    );
+                    // Direct db call: the accounts MY_Model has timestamps
+                    // enabled but the table has no updated_at column, so
+                    // $this->accounts->update() fails silently here.
+                    $this->db
+                        ->where('account_id', $user->account_id)
+                        ->update('accounts', [
+                            'password' => password_hash($post['password'], PASSWORD_DEFAULT),
+                        ]);
                 }
             }
         }
