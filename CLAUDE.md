@@ -28,6 +28,12 @@ whenever you touch widget-related controllers/models/views or the plan doc.
 ## Conventions
 - Follow existing controller patterns (see `AssessmentController.php`,
   `ClassworkController.php`) for any new widget submission endpoints.
+- Widget config storage rule: per-assessment widget config is a JSON string
+  in `assessments.given` (validated on save in `AdminController::save_assessment()`);
+  the `assets/json/` topic-file library is ONLY for shared, reusable lesson
+  content (`iq_discussion`, where `given` holds just `{"topic": slug}`). Never
+  add new file-based widget config or `json_file_path`-style uploads — that
+  legacy quiz flow is soft-deprecated (kept working for old data only).
 - Store structured widget data as JSON strings in existing longtext columns
   where possible; only add new columns/tables when the plan doc says to.
 - Session/auth check pattern: `if (!isset($_SESSION['online'])) redirect('login');`

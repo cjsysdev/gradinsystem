@@ -102,15 +102,16 @@
           <small class="form-text text-muted">Max 10MB. Optional.</small>
         </div>
 
-        <!-- JSON File Upload -->
-        <div class="form-group">
-          <label for="json_file">Upload JSON (Assessment Data)</label>
-          <div class="custom-file">
-            <input type="file" class="custom-file-input" id="json_file" name="json_file" accept=".json">
-            <label class="custom-file-label" for="json_file">Choose file...</label>
-          </div>
-          <small class="form-text text-muted">Max 5MB. Optional.</small>
-        </div>
+        <!-- Legacy JSON quiz upload removed: quizzes are now built with the
+             Multiple Choice Quiz widget (Manage Assessments), which stores the
+             questions in the assessment itself instead of an uploaded file.
+             Existing JSON-upload quizzes keep working via QuizController. -->
+        <small class="form-text text-muted mb-3">
+          Need an auto-graded quiz? Create the assessment under
+          <a href="<?php echo base_url('manage_assessments') ?>">Manage Assessments</a>
+          and pick the <strong>Multiple Choice Quiz</strong> widget &mdash; the old
+          JSON file upload is no longer used for new assessments.
+        </small>
 
         <!-- Submit Button -->
         <div class="form-group mt-4">
@@ -127,11 +128,6 @@
 document.getElementById('pdf_file').addEventListener('change', function(e) {
   var fileName = e.target.files[0].name;
   document.querySelector('label[for="pdf_file"]').textContent = fileName;
-});
-
-document.getElementById('json_file').addEventListener('change', function(e) {
-  var fileName = e.target.files[0].name;
-  document.querySelector('label[for="json_file"]').textContent = fileName;
 });
 </script>
 

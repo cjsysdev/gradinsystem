@@ -721,6 +721,7 @@ class AdminController extends CI_Controller
             $widget = $this->Widgets_model->get($base['widget_id']);
             if ($widget && $widget['widget_key'] === 'iq_discussion') {
                 $topic = json_decode($base['given'] ?? '', true)['topic'] ?? '';
+                $topic_found = false;
                 if ($topic) {
                     foreach ($this->_glob_json_topics() as $file) {
                         if (basename($file, '.json') !== $topic) {
@@ -728,8 +729,33 @@ class AdminController extends CI_Controller
                         }
                         $meta = json_decode(file_get_contents($file), true) ?: [];
                         $base['max_score'] = max(1, $this->_count_iq_topic_questions($meta));
+                        $topic_found = true;
                         break;
                     }
+                }
+                if (!$topic_found) {
+                    $this->session->set_flashdata('error', 'Interactive Discussion/Quiz needs a topic — pick one from the Topic dropdown (the selected topic file could not be found).');
+                    redirect('manage_assessments' . (!empty($post['schedule_id']) ? '?schedule_id=' . $post['schedule_id'] : ''));
+                    return;
+                }
+            } elseif ($widget) {
+                // All other widgets keep their config as a JSON string in
+                // assessments.given (the standard — see CLAUDE.md). Reject
+                // invalid/empty JSON here instead of storing it silently and
+                // only breaking when a student opens the assessment.
+                $given = trim((string) ($base['given'] ?? ''));
+                $config = $given !== '' ? json_decode($given, true) : null;
+                if (!is_array($config) || empty($config)) {
+                    if ($given === '') {
+                        $reason = 'an empty config';
+                    } elseif (json_last_error() !== JSON_ERROR_NONE) {
+                        $reason = 'invalid JSON (' . json_last_error_msg() . ')';
+                    } else {
+                        $reason = 'JSON that is not an object';
+                    }
+                    $this->session->set_flashdata('error', 'Widget config not saved — "' . $widget['name'] . '" needs a JSON config, but the form contained ' . $reason . '.');
+                    redirect('manage_assessments' . (!empty($post['schedule_id']) ? '?schedule_id=' . $post['schedule_id'] : ''));
+                    return;
                 }
             }
         }

@@ -578,6 +578,20 @@ ALTER TABLE `assessments` ADD COLUMN `widget_id` INT UNSIGNED DEFAULT NULL;
   `case_study`, `case_dossier`) are seeded now — an `input_view` file exists
   for every one before its row gets inserted.
 
+**Config storage convention (settled Jul 2026):** per-assessment widget
+config lives as a JSON string in `assessments.given` — that is the standard
+for every widget. `AdminController::save_assessment()` validates the JSON
+server-side (invalid/empty config is rejected with a flash error instead of
+stored silently), the Add/Edit modal validates it client-side before submit,
+and a "Load from .json file" button reads a locally authored file into the
+textarea (authoring convenience; storage stays in the DB). The `assets/json/`
+file library is reserved for shared, reusable lesson content only
+(`iq_discussion` topics, where `given` holds just `{"topic": slug}`). The
+legacy `json_file_path` upload flow (`QuizController`) is soft-deprecated:
+existing assessments keep working, but the upload field was removed from the
+legacy add-assessment form and `manage_json_files.php` carries a
+legacy-only warning — new quizzes go through the `quiz` widget.
+
 Widget D (Brainstorm Board) is the one exception, as planned — shared/live
 state across a section rather than one row per student. It reuses the
 generic `assessment_live_state` table (`application/models/live_state_model.php`,

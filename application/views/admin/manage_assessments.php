@@ -193,7 +193,7 @@
 <div class="modal fade" id="assessmentModal" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
-            <form method="post" action="<?= base_url('save_assessment') ?>">
+            <form method="post" action="<?= base_url('save_assessment') ?>" id="assessmentForm">
                 <div class="modal-header">
                     <h5 class="modal-title" id="modalTitle">Add Assessment</h5>
                     <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
@@ -362,6 +362,11 @@
                     </div>
                     <div class="form-group" id="modal_given_wrap" style="display:none">
                         <label>Widget Config (JSON)</label>
+                        <button type="button" class="btn btn-sm btn-outline-secondary mb-1 ml-2"
+                                onclick="document.getElementById('modal_given_file').click()">
+                            <i class="fas fa-file-import"></i> Load from .json file
+                        </button>
+                        <input type="file" id="modal_given_file" accept=".json,application/json" class="d-none">
                         <textarea name="given" id="modal_given" class="form-control" rows="6"></textarea>
                         <small class="form-text text-muted" id="modal_given_hint">
                             Select a widget above to see its example config.
@@ -1056,6 +1061,56 @@ function refreshWidgetPreviewDebounced() {
     clearTimeout(widgetPreviewTimer);
     widgetPreviewTimer = setTimeout(fetchWidgetPreview, 400);
 }
+
+// "Load from .json file" — reads a local file into the config textarea, so
+// big configs can be authored in an editor but still live in the DB (given
+// column is the standard store; files are only for the shared topic library).
+document.getElementById('modal_given_file').addEventListener('change', function () {
+    const file = this.files[0];
+    this.value = ''; // so picking the same file again still fires 'change'
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+        let parsed;
+        try {
+            parsed = JSON.parse(reader.result);
+        } catch (e) {
+            alert('That file is not valid JSON: ' + e.message);
+            return;
+        }
+        const textarea = document.getElementById('modal_given');
+        textarea.value = JSON.stringify(parsed, null, 2);
+        lastAutoFilledExample = null; // real config now — switching widgets must not clobber it
+        fetchWidgetPreview();
+    };
+    reader.readAsText(file);
+});
+
+// Client-side twin of save_assessment()'s given-JSON check — blocks the
+// submit up front so the typed config isn't lost to a server-side redirect.
+document.getElementById('assessmentForm').addEventListener('submit', function (e) {
+    const select = document.getElementById('modal_widget_id');
+    const opt = select.options[select.selectedIndex];
+    if (!select.value || (opt && opt.dataset.key === 'iq_discussion')) return;
+
+    const raw = document.getElementById('modal_given').value.trim();
+    let problem = '';
+    if (!raw) {
+        problem = 'the config is empty';
+    } else {
+        try {
+            const parsed = JSON.parse(raw);
+            if (typeof parsed !== 'object' || parsed === null) problem = 'the config must be a JSON object';
+        } catch (err) {
+            problem = 'the config is not valid JSON — ' + err.message;
+        }
+    }
+    if (problem) {
+        e.preventDefault();
+        alert('Widget config not saved: ' + problem + '.');
+    }
+});
 
 document.getElementById('modal_schedule_id').addEventListener('change', () => { refreshGroupingSetOptions(); refreshIqTopicOptions(); refreshCopyFromOptions(); });
 document.getElementById('modal_class_id').addEventListener('change', () => { refreshIqTopicOptions(); refreshCopyFromOptions(); });

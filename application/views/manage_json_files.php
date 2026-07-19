@@ -1,6 +1,14 @@
 <!-- filepath: c:\xampp\htdocs\gradingsystem\application\views\manage_json_files.php -->
 <div class="container">
     <h1>Manage JSON File Paths</h1>
+    <div class="alert alert-warning">
+        <strong>Legacy tool.</strong> This only maintains the old file-upload quiz flow
+        (<code>json_file_path</code>) for assessments created before widgets existed.
+        New auto-graded quizzes should be created under
+        <a href="<?= base_url('manage_assessments') ?>">Manage Assessments</a> with the
+        <strong>Multiple Choice Quiz</strong> widget, which stores the questions in the
+        assessment itself.
+    </div>
     <?php if ($this->session->flashdata('success')): ?>
         <div class="alert alert-success"><?= $this->session->flashdata('success') ?></div>
     <?php endif; ?>
