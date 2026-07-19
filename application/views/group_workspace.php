@@ -142,9 +142,11 @@ if (empty($widget) && ($assessment['iotype_id'] == '4' || $assessment['iotype_id
 
     let saveTimer = null;
     let lastSavedContent = getCurrentContent();
-    // Version of the shared content we currently hold. Echoed to the server as
-    // ?since= so it skips resending the (possibly large) blob when unchanged.
-    let lastVersion = <?= json_encode((string) $state['updated_at']) ?>;
+    // Monotonic revision of the shared content we currently hold. Echoed to the
+    // server as ?since= so it skips resending the (possibly large) blob when
+    // unchanged. Replaces the old DATETIME stamp, whose 1-second resolution let
+    // same-second saves slip through as "unchanged" and drop teammate answers.
+    let lastVersion = <?= (int) ($state['revision'] ?? 0) ?>;
 
     // Called by the submit form's onsubmit, before navigation — captures
     // whatever is actually on screen instead of trusting the debounced
@@ -166,14 +168,16 @@ if (empty($widget) && ($assessment['iotype_id'] == '4' || $assessment['iotype_id
         fetch(BASE + 'GroupWorkController/save_draft/' + assessmentId, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'content=' + encodeURIComponent(content),
+            // merge=1: the server field-merges this save into the shared draft
+            // so it fills in our answers without wiping a teammate's.
+            body: 'merge=1&content=' + encodeURIComponent(content),
         })
         .then(r => r.json())
         .then(d => {
             saveStatus.textContent = d.ok ? 'Saved' : 'Failed to save';
-            // Advance our marker to the version we just wrote so the next poll
+            // Advance our marker to the revision we just wrote so the next poll
             // doesn't get our own content echoed back to us.
-            if (d.ok && d.updated_at) lastVersion = d.updated_at;
+            if (d.ok && typeof d.revision !== 'undefined') lastVersion = d.revision;
         });
     }
 
@@ -223,12 +227,12 @@ if (empty($widget) && ($assessment['iotype_id'] == '4' || $assessment['iotype_id
                     if (!isEditing() && d.content !== lastSavedContent) {
                         applyRemoteContent(d.content);
                         lastSavedContent = d.content;
-                        lastVersion = d.updated_at;
+                        lastVersion = d.revision;
                     } else if (!isEditing()) {
-                        lastVersion = d.updated_at; // already matches what we hold
+                        lastVersion = d.revision; // already matches what we hold
                     }
-                } else if (!d.content_changed && d.updated_at) {
-                    lastVersion = d.updated_at;
+                } else if (!d.content_changed && typeof d.revision !== 'undefined') {
+                    lastVersion = d.revision;
                 }
 
                 d.members.forEach(m => {

@@ -217,16 +217,21 @@ class GroupWorkController extends CI_Controller
         }
 
         $state = $this->Live_state_model->get_or_create($assessment_id, $resolved['group']['group_id']);
-        $this->Live_state_model->save_content($state['state_id'], $this->input->post('content'), $this->session->student_id);
-        // Return the fresh version stamp so the saver can advance its own
-        // poll marker and not have the server echo this content straight back.
-        $fresh = $this->Live_state_model->get_state($assessment_id, $resolved['group']['group_id']);
-        $this->_json(['ok' => true, 'updated_at' => $fresh['updated_at']]);
+        // merge=1 (the generic shared-widget workspace) field-merges this save
+        // into the stored draft so a teammate's answers can't be clobbered;
+        // the lockstep interactive-quiz sync omits it and keeps last-write.
+        $merge = (bool) $this->input->post('merge');
+        $revision = $this->Live_state_model->save_content(
+            $state['state_id'], $this->input->post('content'), $this->session->student_id, $merge
+        );
+        // Return the fresh revision so the saver can advance its own poll marker
+        // and not have the server echo this content straight back.
+        $this->_json(['ok' => true, 'revision' => $revision]);
     }
 
     // AJAX: polled every 2s by the workspace view.
     //
-    // Conditional payload: if the caller passes ?since=<updated_at> and it still
+    // Conditional payload: if the caller passes ?since=<revision> and it still
     // matches the row, the (potentially large) shared content blob is omitted —
     // only the small members/ready payload ships. Callers that don't send
     // ?since (e.g. the interactive-quiz template) always get the full content,
@@ -253,14 +258,18 @@ class GroupWorkController extends CI_Controller
         }, $members);
 
         // Ready flags live in a separate table and don't bump this row's
-        // updated_at, so members/ready are always sent — only the big content
-        // blob is gated on the version the client last applied.
-        $since   = $this->input->get('since');
-        $changed = ($since === null || $since !== $state['updated_at']);
+        // revision, so members/ready are always sent — only the big content
+        // blob is gated on the revision the client last applied. The revision
+        // counter replaces updated_at as the sync token: a DATETIME's 1-second
+        // resolution made same-second saves look unchanged and silently drop a
+        // teammate's answers.
+        $revision = (string) $state['revision'];
+        $since    = $this->input->get('since');
+        $changed  = ($since === null || $since !== $revision);
 
         $payload = [
             'ok'              => true,
-            'updated_at'      => $state['updated_at'],
+            'revision'        => (int) $state['revision'],
             'content_changed' => $changed,
             'members'         => $member_payload,
             // Lets a teammate's still-open workspace notice a submission that
@@ -311,14 +320,22 @@ class GroupWorkController extends CI_Controller
             return;
         }
 
-        // The submitter's own screen is the source of truth — the debounced
-        // autosave may not have landed yet (see prepareGroupSubmit() in
-        // group_workspace.php). Fall back to the last saved state only if the
-        // client didn't send anything (JS disabled/degraded).
         $posted = $this->input->post('content');
-        $content = ($posted !== null && $posted !== '') ? $posted : $state['content'];
-
         $is_widget = !empty($resolved['assessment']['widget_id']);
+
+        // Combine the submitter's on-screen answers with the shared stored
+        // draft. The submitter's screen leads (its non-blank fields win any
+        // conflict, and it carries keystrokes the debounced autosave may not
+        // have flushed yet — see prepareGroupSubmit() in group_workspace.php),
+        // but the stored draft backfills any field a teammate filled that isn't
+        // on this screen, so a last-moment clobber can't zero out the group's
+        // work. Plain-text drafts can't be field-merged, so they keep the old
+        // "posted, else last saved" rule.
+        if ($is_widget) {
+            $content = $this->Live_state_model->merge_json($state['content'], $posted);
+        } else {
+            $content = ($posted !== null && $posted !== '') ? $posted : $state['content'];
+        }
 
         $widget = $is_widget ? $this->Widgets_model->get($resolved['assessment']['widget_id']) : null;
         $is_quiz = $widget && $widget['widget_key'] === 'quiz';
