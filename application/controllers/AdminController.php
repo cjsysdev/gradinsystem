@@ -214,7 +214,7 @@ class AdminController extends CI_Controller
             redirect('AdminController/manage_json_files');
         }
 
-        $data['assessments'] = $this->db->get('assessments')->result_array();
+        $data['assessments'] = $this->db->get('assessment_full')->result_array();
         $data['json_files'] = $this->db->get('assessment_files')->result_array();
 
         $this->load->view('manage_json_files', $data);
@@ -596,7 +596,29 @@ class AdminController extends CI_Controller
         ];
         $this->pagination->initialize($config);
 
-        $data['assessments']         = $this->assessments->get_all_for_admin($filters, $per_page, $offset);
+        $rows = $this->assessments->get_all_for_admin($filters, $per_page, $offset);
+        // Rows are pre-sorted by master_id (see get_all_for_admin()) so every
+        // section sharing an assessment lands on consecutive rows within this
+        // page. Mark the first row of each run with _rowspan = run length —
+        // the view uses it to merge the shared content cells (title/type/
+        // widget/term/max score) across the group with a single <td rowspan>
+        // instead of repeating them per section.
+        $prev_master = null;
+        $group_start = null;
+        foreach ($rows as $i => $row) {
+            if ($row['master_id'] !== $prev_master) {
+                if ($group_start !== null) {
+                    $rows[$group_start]['_rowspan'] = $i - $group_start;
+                }
+                $group_start = $i;
+                $prev_master = $row['master_id'];
+            }
+        }
+        if ($group_start !== null) {
+            $rows[$group_start]['_rowspan'] = count($rows) - $group_start;
+        }
+
+        $data['assessments']         = $rows;
         $data['all_assessment_ids']  = $this->assessments->get_all_ids_for_admin($filters);
         $data['pagination']          = $this->pagination->create_links();
         $data['total']               = $total;
@@ -624,7 +646,8 @@ class AdminController extends CI_Controller
         $this->load->model('Widgets_model');
         $data['widgets'] = $this->Widgets_model->get_all();
 
-        $data['copyable_assessments'] = $this->assessments->get_copyable_for_active_semester();
+        $data['copyable_assessments']  = $this->assessments->get_copyable_for_active_semester();
+        $data['assignable_masters']    = $this->assessments->get_assignable_masters();
 
         // Topics available to the "Interactive Discussion/Quiz" widget — only
         // the lesson+quiz format InteractiveQuizController::discussion() can
@@ -687,10 +710,17 @@ class AdminController extends CI_Controller
         return $count;
     }
 
+    // $assessment_id posted here is always a SECTION id (assessment_section_id)
+    // — the id space consumers see everywhere (URLs, classworks.assessment_id,
+    // etc.) never changed across the master/assessment_section split (see
+    // Assessment_normalize_model). Content (title/description/max_score/term/
+    // widget/given) lives on the shared master; editing it updates every
+    // section sharing that master. Per-section fields (due/status/
+    // is_groupings) only ever touch the one section being edited.
     public function save_assessment()
     {
         $post = $this->input->post();
-        $assessment_id = !empty($post['assessment_id']) ? (int)$post['assessment_id'] : null;
+        $section_id = !empty($post['assessment_id']) ? (int)$post['assessment_id'] : null;
         $apply_mode = $post['apply_mode'] ?? 'section';
 
         $status = isset($post['status']) ? $post['status'] : 0;
@@ -698,14 +728,12 @@ class AdminController extends CI_Controller
             $status = $status === 'open' ? '1' : '0';
         }
 
-        $base = [
+        $master_fields = [
             'iotype_id'   => $post['iotype_id'],
             'title'       => $post['title'],
             'description' => $post['description'],
             'max_score'   => $post['max_score'],
-            'due'         => $post['due'],
             'term'        => $post['term'],
-            'status'      => (int)$status,
             'widget_id'   => !empty($post['widget_id']) ? (int) $post['widget_id'] : null,
             'given'       => !empty($post['widget_id']) ? ($post['given'] ?? null) : null,
         ];
@@ -716,11 +744,11 @@ class AdminController extends CI_Controller
         // up with the assessment's own max. Derived server-side, not trusted
         // from the posted "Max Score" field, since the modal JS's auto-fill
         // could be stale (e.g. topic file edited after the form loaded).
-        if ($base['widget_id']) {
+        if ($master_fields['widget_id']) {
             $this->load->model('Widgets_model');
-            $widget = $this->Widgets_model->get($base['widget_id']);
+            $widget = $this->Widgets_model->get($master_fields['widget_id']);
             if ($widget && $widget['widget_key'] === 'iq_discussion') {
-                $topic = json_decode($base['given'] ?? '', true)['topic'] ?? '';
+                $topic = json_decode($master_fields['given'] ?? '', true)['topic'] ?? '';
                 $topic_found = false;
                 if ($topic) {
                     foreach ($this->_glob_json_topics() as $file) {
@@ -728,7 +756,7 @@ class AdminController extends CI_Controller
                             continue;
                         }
                         $meta = json_decode(file_get_contents($file), true) ?: [];
-                        $base['max_score'] = max(1, $this->_count_iq_topic_questions($meta));
+                        $master_fields['max_score'] = max(1, $this->_count_iq_topic_questions($meta));
                         $topic_found = true;
                         break;
                     }
@@ -743,7 +771,7 @@ class AdminController extends CI_Controller
                 // assessments.given (the standard — see CLAUDE.md). Reject
                 // invalid/empty JSON here instead of storing it silently and
                 // only breaking when a student opens the assessment.
-                $given = trim((string) ($base['given'] ?? ''));
+                $given = trim((string) ($master_fields['given'] ?? ''));
                 $config = $given !== '' ? json_decode($given, true) : null;
                 if (!is_array($config) || empty($config)) {
                     if ($given === '') {
@@ -761,38 +789,43 @@ class AdminController extends CI_Controller
         }
 
         $auto_create = !empty($post['auto_create_submissions']);
+        $section_fields = [
+            'due'          => $post['due'],
+            'status'       => (int) $status,
+            'is_groupings' => !empty($post['is_groupings']) ? 1 : 0,
+        ];
 
-        // "Entire class" creates one assessment per active section of that
-        // class this semester, instead of the admin repeating the form per
-        // section. Only offered for brand-new assessments — an existing
-        // assessment row is already tied to one schedule_id. Group Submission
+        // "Entire class" creates ONE shared master, assigned to every active
+        // section of that class this semester, instead of a full duplicate
+        // row per section. Only offered for brand-new assessments — an
+        // existing assessment is already tied to a master. Group Submission
         // isn't offered in this mode since grouping sets are section-scoped
         // (see manage_assessments.php JS).
-        if (!$assessment_id && $apply_mode === 'class' && !empty($post['class_id'])) {
+        if (!$section_id && $apply_mode === 'class' && !empty($post['class_id'])) {
             $schedules = $this->class_schedule->get_active_schedules_by_class((int) $post['class_id']);
             if (empty($schedules)) {
                 $this->session->set_flashdata('error', 'That class has no active sections this semester.');
                 redirect('manage_assessments');
             }
 
+            $master_id = $this->assessments->create_master($master_fields);
+
             $created_count = 0;
             $submissions_created = 0;
             foreach ($schedules as $sched) {
-                $data = $base + [
-                    'schedule_id'  => $sched['schedule_id'],
+                $new_section_id = $this->assessments->assign_to_schedule($master_id, $sched['schedule_id'], [
+                    'due'          => $post['due'],
+                    'status'       => (int) $status,
                     'is_groupings' => 0,
-                    'created_at'   => date('Y-m-d H:i:s'),
-                ];
-                $this->assessments->insert($data);
-                $new_assessment_id = $this->db->insert_id();
+                ]);
                 $created_count++;
 
                 if ($auto_create) {
-                    $submissions_created += $this->classworks->create_blank_for_schedule($new_assessment_id, $sched['schedule_id']);
+                    $submissions_created += $this->classworks->create_blank_for_schedule($new_section_id, $sched['schedule_id']);
                 }
             }
 
-            $flash = "Created $created_count assessment(s), one per section.";
+            $flash = "Created 1 assessment, assigned to $created_count section(s).";
             if ($auto_create) {
                 $flash .= " Created $submissions_created blank submission(s) across those sections.";
             }
@@ -800,34 +833,34 @@ class AdminController extends CI_Controller
             redirect('manage_assessments');
         }
 
-        $data = $base + [
-            'schedule_id'  => $post['schedule_id'],
-            'is_groupings' => !empty($post['is_groupings']) ? 1 : 0,
-        ];
-
-        if ($assessment_id) {
-            // MY_Model::update() takes (data, where) — NOT (where, data).
-            // Returns FALSE only on a genuine query failure (0 affected rows
-            // from an already-up-to-date row still returns int 0, not FALSE)
-            // — db_debug is off, so a bad UPDATE fails silently otherwise.
-            if ($this->assessments->update($data, $assessment_id) === false) {
-                $this->session->set_flashdata('error', 'Failed to update assessment — please try again.');
-                redirect('manage_assessments' . (!empty($post['schedule_id']) ? '?schedule_id=' . $post['schedule_id'] : ''));
+        if ($section_id) {
+            $master_id = $this->assessments->master_id_for_section($section_id);
+            if (!$master_id) {
+                $this->session->set_flashdata('error', 'Assessment not found — please try again.');
+                redirect('manage_assessments');
                 return;
             }
+            // Content edits propagate to every section sharing this master —
+            // that's the point of sharing (see CLAUDE.md widget config rule).
+            // schedule_id is included here too: the modal's Section dropdown
+            // stays editable on Edit (re-pointing a single section is a
+            // supported correction), guarded by the same UNIQUE(assessment_id,
+            // schedule_id) constraint that stops "class" mode from double-
+            // assigning a section.
+            $this->assessments->update_master($master_id, $master_fields);
+            $this->assessments->update_section($section_id, $section_fields + ['schedule_id' => $post['schedule_id']]);
             $flash = 'Assessment updated successfully.';
         } else {
-            $data['created_at'] = date('Y-m-d H:i:s');
-            $this->assessments->insert($data);
-            $assessment_id = $this->db->insert_id();
+            $master_id = $this->assessments->create_master($master_fields);
+            $section_id = $this->assessments->assign_to_schedule($master_id, $post['schedule_id'], $section_fields);
             $flash = 'Assessment added successfully.';
         }
 
         $grouping_set_id = !empty($post['grouping_set_id']) ? (int) $post['grouping_set_id'] : null;
-        $this->db->where('assessment_id', $assessment_id)->delete('assessment_groupings');
-        if ($data['is_groupings'] && $grouping_set_id) {
+        $this->db->where('assessment_id', $section_id)->delete('assessment_groupings');
+        if ($section_fields['is_groupings'] && $grouping_set_id) {
             $this->db->insert('assessment_groupings', [
-                'assessment_id' => $assessment_id,
+                'assessment_id' => $section_id,
                 'set_id'        => $grouping_set_id,
             ]);
         }
@@ -836,7 +869,7 @@ class AdminController extends CI_Controller
         // classworks row for every enrolled student in the section so the
         // admin can grade/randomize directly instead of students submitting.
         if ($auto_create) {
-            $created = $this->classworks->create_blank_for_schedule($assessment_id, $data['schedule_id']);
+            $created = $this->classworks->create_blank_for_schedule($section_id, $post['schedule_id']);
             $flash .= $created > 0
                 ? " Created $created blank submission(s) for the section."
                 : ' All enrolled students already have a submission for this assessment.';
@@ -846,6 +879,64 @@ class AdminController extends CI_Controller
 
         $qs = !empty($post['schedule_id']) ? '?schedule_id=' . $post['schedule_id'] : '';
         redirect('manage_assessments' . $qs);
+    }
+
+    // Attaches an EXISTING assessment (master) to an additional section,
+    // instead of cloning its content into a new one — the true "shared
+    // across sections" flow. Distinct from save_assessment()'s "Entire
+    // Class" mode (which creates one master for every active section up
+    // front) and from "Copy from existing assessment" (which pre-fills a
+    // brand-new, independent master). Content fields aren't posted here at
+    // all — only the target section and that section's own due/status/
+    // grouping, since the master's content is fixed.
+    public function assign_master()
+    {
+        $post = $this->input->post();
+        $master_id = !empty($post['master_id']) ? (int) $post['master_id'] : null;
+        $schedule_id = !empty($post['schedule_id']) ? $post['schedule_id'] : null;
+
+        if (!$master_id || !$schedule_id) {
+            $this->session->set_flashdata('error', 'Pick both an assessment and a target section.');
+            redirect('manage_assessments');
+            return;
+        }
+
+        // UNIQUE(assessment_id, schedule_id) would reject this anyway, but a
+        // friendly flash message beats a silently-failed insert (db_debug is
+        // off — see CLAUDE.md).
+        $existing = $this->db->where(['assessment_id' => $master_id, 'schedule_id' => $schedule_id])
+            ->get('assessment_section')->row_array();
+        if ($existing) {
+            $this->session->set_flashdata('error', 'That section is already assigned to this assessment.');
+            redirect('manage_assessments');
+            return;
+        }
+
+        $status = isset($post['status']) ? (int) $post['status'] : 0;
+        $section_fields = [
+            'due'          => $post['due'],
+            'status'       => $status,
+            'is_groupings' => !empty($post['is_groupings']) ? 1 : 0,
+        ];
+
+        $section_id = $this->assessments->assign_to_schedule($master_id, $schedule_id, $section_fields);
+
+        $grouping_set_id = !empty($post['grouping_set_id']) ? (int) $post['grouping_set_id'] : null;
+        if ($section_fields['is_groupings'] && $grouping_set_id) {
+            $this->db->insert('assessment_groupings', [
+                'assessment_id' => $section_id,
+                'set_id'        => $grouping_set_id,
+            ]);
+        }
+
+        $flash = 'Section assigned to the shared assessment.';
+        if (!empty($post['auto_create_submissions'])) {
+            $created = $this->classworks->create_blank_for_schedule($section_id, $schedule_id);
+            $flash .= $created > 0 ? " Created $created blank submission(s) for the section." : '';
+        }
+
+        $this->session->set_flashdata('success', $flash);
+        redirect('manage_assessments');
     }
 
     // Renders a widget's own input_view against admin-authored "given" JSON so
@@ -899,7 +990,7 @@ class AdminController extends CI_Controller
             return;
         }
 
-        $this->db->where('assessment_id', $assessment_id)->update('assessments', ['status' => (int)$status]);
+        $this->db->where('assessment_section_id', $assessment_id)->update('assessment_section', ['status' => (int)$status]);
         echo json_encode(['success' => true]);
     }
 
@@ -917,7 +1008,7 @@ class AdminController extends CI_Controller
             return;
         }
 
-        $this->db->where_in('assessment_id', $assessment_ids)->update('assessments', ['status' => (int)$status]);
+        $this->db->where_in('assessment_section_id', $assessment_ids)->update('assessment_section', ['status' => (int)$status]);
         echo json_encode(['success' => true]);
     }
 
@@ -957,8 +1048,10 @@ class AdminController extends CI_Controller
         if ($submission_count > 0) {
             $this->db->where('assessment_id', $assessment_id)->delete('classworks');
         }
-        $this->db->where('assessment_id', $assessment_id)->delete('assessment_groupings');
-        $this->assessments->delete($assessment_id);
+        // assessment_groupings/assessment_live_state cascade-delete via their
+        // FK to assessment_section — delete_section() handles both that and
+        // deleting the now-orphaned master if this was its last section.
+        $this->assessments->delete_section($assessment_id);
 
         echo json_encode(['success' => true]);
     }
@@ -986,7 +1079,7 @@ class AdminController extends CI_Controller
 
         $result = $this->db->query(
             "UPDATE classworks c
-             JOIN assessments a ON a.assessment_id = c.assessment_id
+             JOIN assessment_full a ON a.assessment_id = c.assessment_id
              SET c.score = LEAST(COALESCE(c.score, 0) + ?, a.max_score)
              WHERE c.classwork_id = ?",
             [$points, $classwork_id]

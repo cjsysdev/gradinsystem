@@ -32,7 +32,7 @@ class classworks extends MY_Model
         s.lastname, c.code, c.file_upload, c.created_at, a.max_score, a.iotype_id
                 FROM classworks c
                 JOIN student_master s ON s.trans_no = c.student_id
-                JOIN assessments a ON a.assessment_id = c.assessment_id
+                JOIN assessment_full a ON a.assessment_id = c.assessment_id
                 JOIN class_schedule cs ON cs.schedule_id = a.schedule_id
                 JOIN semester_master sem ON cs.semester_id = sem.trans_no
                 WHERE a.assessment_id = ?
@@ -56,7 +56,7 @@ class classworks extends MY_Model
         $sql = "SELECT s.trans_no, s.firstname, s.lastname
                 FROM class_student cst
                 JOIN student_master s ON s.trans_no = cst.student_id
-                JOIN assessments a ON a.schedule_id = cst.schedule_id
+                JOIN assessment_full a ON a.schedule_id = cst.schedule_id
                 WHERE a.assessment_id = ?
                 AND cst.status = 'enrolled'
                 AND NOT EXISTS (
@@ -149,7 +149,7 @@ class classworks extends MY_Model
                     SUM(a.max_score)  AS total_max_score,
                     MAX(sem.passing_rate) AS passing_rate
                 FROM classworks c
-                JOIN assessments a      ON c.assessment_id = a.assessment_id
+                JOIN assessment_full a  ON c.assessment_id = a.assessment_id
                 JOIN class_schedule cs  ON a.schedule_id = cs.schedule_id
                 JOIN semester_master sem
                     ON cs.semester_id = sem.trans_no
@@ -224,10 +224,10 @@ class classworks extends MY_Model
                         (SUM(IFNULL(c.score, 0)) / NULLIF(SUM(a.max_score), 0)) * i.percentage
                     , 2) AS weighted_grade
 
-                FROM assessments a
-                JOIN io_type i 
+                FROM assessment_full a
+                JOIN io_type i
                     ON a.iotype_id = i.iotype_id
-                LEFT JOIN classworks c 
+                LEFT JOIN classworks c
                     ON c.assessment_id = a.assessment_id 
                 AND c.student_id = ?
                 JOIN class_schedule cs 
@@ -311,23 +311,23 @@ class classworks extends MY_Model
                     JOIN classes class 
                         ON class.class_id = sched.class_id
 
-                    JOIN assessments a 
-                        ON a.schedule_id = sched.schedule_id 
+                    JOIN assessment_full a
+                        ON a.schedule_id = sched.schedule_id
                     AND a.term = ?
 
-                    JOIN io_type i 
+                    JOIN io_type i
                         ON a.iotype_id = i.iotype_id
 
-                    JOIN semester_master sem 
-                        ON sched.semester_id = sem.trans_no 
+                    JOIN semester_master sem
+                        ON sched.semester_id = sem.trans_no
                     AND sem.is_active = 1
 
-                    LEFT JOIN classworks c 
-                        ON c.assessment_id = a.assessment_id 
+                    LEFT JOIN classworks c
+                        ON c.assessment_id = a.assessment_id
                     AND c.student_id = cs.student_id
 
                     LEFT JOIN (
-                        SELECT 
+                        SELECT
                             a.student_id,
                             SUM(a.status = 'absent') AS absences,
                             SUM(a.status = 'present') AS presents
@@ -431,19 +431,19 @@ class classworks extends MY_Model
                     JOIN classes class 
                         ON class.class_id = sched.class_id
 
-                    JOIN assessments a 
-                        ON a.schedule_id = sched.schedule_id 
+                    JOIN assessment_full a
+                        ON a.schedule_id = sched.schedule_id
                     AND a.term = ?
 
-                    JOIN io_type i 
+                    JOIN io_type i
                         ON a.iotype_id = i.iotype_id
 
-                    JOIN semester_master sem 
-                        ON sched.semester_id = sem.trans_no 
+                    JOIN semester_master sem
+                        ON sched.semester_id = sem.trans_no
                     AND sem.is_active = 1
 
-                    LEFT JOIN classworks c 
-                        ON c.assessment_id = a.assessment_id 
+                    LEFT JOIN classworks c
+                        ON c.assessment_id = a.assessment_id
                     AND c.student_id = cs.student_id
 
                     -- Attendance summary starting from sem.class_started (active semester)
@@ -507,9 +507,9 @@ class classworks extends MY_Model
                 a.iotype_id 
             FROM 
                 classworks c
-            JOIN 
-                assessments a 
-            ON 
+            JOIN
+                assessment_full a
+            ON
                 c.assessment_id = a.assessment_id
             JOIN 
                 student_master s 

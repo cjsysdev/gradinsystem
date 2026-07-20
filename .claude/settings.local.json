@@ -22,7 +22,16 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost/gradingSystem/)",
       "Bash(php -l application/models/live_state_model.php)",
       "Bash(php -l application/views/group_workspace.php)",
-      "Bash(php -l application/views/discussions/_interactive_quiz_template.php)"
+      "Bash(php -l application/views/discussions/_interactive_quiz_template.php)",
+      "Bash(git -C . log --oneline -5)",
+      "Bash(grep -A20 '\\\\$db\\\\[' application/config/database.php)",
+      "Read(//c/wamp64/bin/**)",
+      "Bash(/c/wamp64/bin/mysql/mysql8.3.0/bin/mysql.exe -uroot -pcmcp@ssw0rd gradingsystem2025a -e 'SHOW CREATE TABLE assessments\\\\G SHOW CREATE TABLE classworks\\\\G SHOW CREATE TABLE assessment_groupings\\\\G SHOW CREATE TABLE assessment_live_state\\\\G SHOW CREATE TABLE class_schedule\\\\G')",
+      "Bash(/d/wamp64/bin/mysql/mysql8.3.0/bin/mysql.exe -uroot -pcmcp@ssw0rd gradingsystem2025a -e 'SHOW CREATE TABLE assessments\\\\G SHOW CREATE TABLE classworks\\\\G SHOW CREATE TABLE assessment_groupings\\\\G SHOW CREATE TABLE assessment_live_state\\\\G')",
+      "Bash($MYSQL *)",
+      "Bash(/d/wamp64/bin/mysql/mysql8.3.0/bin/mysql.exe -uroot -pcmcp@ssw0rd gradingsystem2025a -e 'DESCRIBE semester_master;')",
+      "Bash(/d/wamp64/bin/mysql/mysql8.3.0/bin/mysql.exe -uroot -pcmcp@ssw0rd gradingsystem2025a -e 'SELECT trans_no, is_active FROM semester_master ORDER BY trans_no DESC LIMIT 6;')",
+      "Bash(grep -n '$this->table' application/core/MY_Model.php)"
     ]
   }
 }

@@ -3,7 +3,15 @@ defined('BASEPATH') or exit('No direct script access allowed');
 
 class assessments extends MY_Model
 {
-    public $table = 'assessments';
+    // Reads go through the compat view (assessment_id here is always a
+    // SECTION id — see Assessment_normalize_model) so get()/with_assessments()
+    // keep returning the old denormalized shape (schedule_id/status/due
+    // alongside the shared master's title/description/given/etc.). Never
+    // write through this model's inherited insert()/update()/delete() — a
+    // join view rejects writes. All writes go through the explicit
+    // create_master()/update_master()/assign_to_schedule()/update_section()/
+    // delete_section() helpers at the bottom of this class instead.
+    public $table = 'assessment_full';
     public $primary_key = 'assessment_id';
     public $protected = array('assessment_id');
     public $timestamps = TRUE;
@@ -45,10 +53,10 @@ class assessments extends MY_Model
                 a.due,
                 iot.type,
                 cs.section
-            FROM 
-                assessments a
-            LEFT JOIN 
-                classworks c 
+            FROM
+                assessment_full a
+            LEFT JOIN
+                classworks c
                 ON a.assessment_id = c.assessment_id 
                 AND c.student_id = ?
             JOIN 
@@ -83,7 +91,7 @@ class assessments extends MY_Model
         $sql = "
             SELECT *, a.description
             FROM classworks c 
-            JOIN assessments a ON c.assessment_id = a.assessment_id 
+            JOIN assessment_full a ON c.assessment_id = a.assessment_id
             JOIN io_type iot ON a.iotype_id = iot.iotype_id
             JOIN class_schedule cs ON a.schedule_id = cs.schedule_id
             JOIN semester_master sem ON cs.semester_id = sem.trans_no 
@@ -166,8 +174,12 @@ class assessments extends MY_Model
                 COUNT(cw.classwork_id) AS submission_count,
                 SUM(CASE WHEN cw.classwork_id IS NOT NULL AND cw.score IS NULL THEN 1 ELSE 0 END) AS unscored_count,
                 (SELECT COUNT(*) FROM class_student cst WHERE cst.schedule_id = a.schedule_id AND cst.status = 'enrolled') AS enrolled_count,
-                COUNT(DISTINCT cw.student_id) AS submitted_student_count
-            FROM assessments a
+                COUNT(DISTINCT cw.student_id) AS submitted_student_count,
+                (SELECT COUNT(*) FROM assessment_section s2 WHERE s2.assessment_id = a.master_id) AS sibling_count,
+                (SELECT GROUP_CONCAT(cs2.section ORDER BY cs2.section SEPARATOR ', ')
+                    FROM assessment_section s2 JOIN class_schedule cs2 ON cs2.schedule_id = s2.schedule_id
+                    WHERE s2.assessment_id = a.master_id) AS sibling_sections_csv
+            FROM assessment_full a
             JOIN class_schedule cs ON a.schedule_id = cs.schedule_id
             JOIN io_type iot ON a.iotype_id = iot.iotype_id
             JOIN classes cl ON cs.class_id = cl.class_id
@@ -179,7 +191,11 @@ class assessments extends MY_Model
 
         $params = [];
         $where  = $this->_admin_filters_sql($filters, $params);
-        $sql    = $base . $where . " GROUP BY a.assessment_id ORDER BY a.assessment_id DESC, cs.section, a.term, a.created_at DESC";
+        // Grouped by master_id (not assessment_id/section id) so sections
+        // sharing an assessment land on adjacent rows within a page — the
+        // manage_assessments view rowspans the shared content columns
+        // (title/type/widget/term/max score) across a same-master run.
+        $sql    = $base . $where . " GROUP BY a.assessment_id ORDER BY a.master_id DESC, cs.section ASC, a.term, a.created_at DESC";
 
         if ($limit !== null) {
             $sql .= " LIMIT ? OFFSET ?";
@@ -199,7 +215,7 @@ class assessments extends MY_Model
     {
         $sql = "
             SELECT COUNT(*) AS c
-            FROM assessments a
+            FROM assessment_full a
             JOIN class_schedule cs ON a.schedule_id = cs.schedule_id
             JOIN semester_master sem ON cs.semester_id = sem.trans_no AND sem.is_active = 1
         ";
@@ -218,7 +234,7 @@ class assessments extends MY_Model
     {
         $sql = "
             SELECT a.assessment_id
-            FROM assessments a
+            FROM assessment_full a
             JOIN class_schedule cs ON a.schedule_id = cs.schedule_id
             JOIN semester_master sem ON cs.semester_id = sem.trans_no AND sem.is_active = 1
         ";
@@ -242,11 +258,34 @@ class assessments extends MY_Model
             SELECT a.assessment_id, a.title, a.iotype_id, a.description,
                    a.max_score, a.term, a.due, a.widget_id, a.given, a.is_groupings,
                    cs.section, cl.class_code
-            FROM assessments a
+            FROM assessment_full a
             JOIN class_schedule cs ON a.schedule_id = cs.schedule_id
             JOIN classes cl ON cs.class_id = cl.class_id
             JOIN semester_master sem ON cs.semester_id = sem.trans_no AND sem.is_active = 1
             ORDER BY cl.class_code, cs.section, a.title";
+        $query = $this->db->query($sql);
+        return $query ? $query->result_array() : [];
+    }
+
+    // Every shared master in the active semester, for the "Assign existing
+    // assessment" picker — attaches an ADDITIONAL section to an assessment
+    // that already exists elsewhere, instead of cloning its content into a
+    // brand-new one (that's what "Copy from existing assessment" above is
+    // for). assigned_schedule_ids lets the modal JS exclude sections the
+    // master is already on from the target-section picker.
+    public function get_assignable_masters()
+    {
+        $sql = "
+            SELECT m.assessment_id AS master_id, m.title, m.iotype_id, m.term,
+                   m.max_score, m.widget_id, cl.class_code, cl.class_id,
+                   GROUP_CONCAT(DISTINCT s.schedule_id) AS assigned_schedule_ids
+            FROM assessments m
+            JOIN assessment_section s ON s.assessment_id = m.assessment_id
+            JOIN class_schedule cs ON cs.schedule_id = s.schedule_id
+            JOIN classes cl ON cl.class_id = cs.class_id
+            JOIN semester_master sem ON sem.trans_no = cs.semester_id AND sem.is_active = 1
+            GROUP BY m.assessment_id
+            ORDER BY cl.class_code, m.title";
         $query = $this->db->query($sql);
         return $query ? $query->result_array() : [];
     }
@@ -259,16 +298,16 @@ class assessments extends MY_Model
                     a.*,
                     cs.*,
                     iot.type AS iotype
-                FROM 
-                    assessments a
-                JOIN 
+                FROM
+                    assessment_full a
+                JOIN
                     class_schedule cs ON a.schedule_id = cs.schedule_id
                 JOIN
                     io_type iot ON a.iotype_id = iot.iotype_id
                 JOIN
                     semester_master sem ON cs.semester_id = sem.trans_no AND sem.is_active = 1
-                WHERE 
-                    a.schedule_id = ?
+                WHERE
+                    a.schedule_id = ? AND a.status = 1
                 ORDER BY 
                     a.created_at DESC
             ";
@@ -279,9 +318,9 @@ class assessments extends MY_Model
                     a.*,
                     cs.*,
                     iot.type AS iotype
-                FROM 
-                    assessments a
-                JOIN 
+                FROM
+                    assessment_full a
+                JOIN
                     class_schedule cs ON a.schedule_id = cs.schedule_id
                 JOIN
                     io_type iot ON a.iotype_id = iot.iotype_id
@@ -302,5 +341,76 @@ class assessments extends MY_Model
         }
 
         return $query->result_array();
+    }
+
+    // --- Explicit-table write helpers (post-normalization) -----------------
+    // $table is 'assessments' (still the master content table) for reads via
+    // get()/with_assessments() done BEFORE the schema swap; once
+    // Assessment_normalize_model::install() has run, callers that need the
+    // old denormalized shape (schedule_id/status/due) read `assessment_full`
+    // via raw queries above instead of MY_Model's built-in get(). Writes
+    // NEVER go through MY_Model's insert()/update()/delete() for section
+    // data — those operate on $table, and once section fields (due/status/
+    // is_groupings) move to assessment_section, only these explicit methods
+    // know how to route a write to the right table.
+
+    public function master_id_for_section($section_id)
+    {
+        return $this->db->select('assessment_id')
+            ->where('assessment_section_id', $section_id)
+            ->get('assessment_section')
+            ->row('assessment_id');
+    }
+
+    public function create_master(array $content)
+    {
+        $content['created_at'] = date('Y-m-d H:i:s');
+        $this->db->insert('assessments', $content);
+        return $this->db->insert_id();
+    }
+
+    public function update_master($master_id, array $content)
+    {
+        $content['updated_at'] = date('Y-m-d H:i:s');
+        return $this->db->where('assessment_id', $master_id)->update('assessments', $content);
+    }
+
+    public function assign_to_schedule($master_id, $schedule_id, array $section_fields)
+    {
+        $data = $section_fields + [
+            'assessment_id' => $master_id,
+            'schedule_id'   => $schedule_id,
+            'created_at'    => date('Y-m-d H:i:s'),
+        ];
+        $this->db->insert('assessment_section', $data);
+        return $this->db->insert_id();
+    }
+
+    public function update_section($section_id, array $section_fields)
+    {
+        $section_fields['updated_at'] = date('Y-m-d H:i:s');
+        return $this->db->where('assessment_section_id', $section_id)->update('assessment_section', $section_fields);
+    }
+
+    public function sections_of_master($master_id)
+    {
+        return $this->db->where('assessment_id', $master_id)->get('assessment_section')->result_array();
+    }
+
+    // Deletes one section assignment. FK CASCADE on assessment_section takes
+    // its assessment_groupings/assessment_live_state rows with it. If that
+    // was the master's last section, the now-unreachable master is deleted
+    // too — nothing links to a master with zero section assignments.
+    public function delete_section($section_id)
+    {
+        $master_id = $this->master_id_for_section($section_id);
+        $this->db->where('assessment_section_id', $section_id)->delete('assessment_section');
+
+        if ($master_id) {
+            $remaining = $this->db->where('assessment_id', $master_id)->count_all_results('assessment_section');
+            if ($remaining === 0) {
+                $this->db->where('assessment_id', $master_id)->delete('assessments');
+            }
+        }
     }
 }

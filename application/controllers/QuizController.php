@@ -20,7 +20,7 @@ class QuizController extends CI_Controller
         if ($this->db->database == 'gradingsystem') {
             $table = 'assessment_files';
         } else {
-            $table = 'assessments';
+            $table = 'assessment_full';
         }
         $query = $this->db->get_where($table, ['assessment_id' => $assessment_id, 'status' => 1]);
         $fileRecord = $query->row();

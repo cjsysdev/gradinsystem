@@ -21,7 +21,7 @@ class student_master extends MY_Model
         $sql = "SELECT student_id, asm.assessment_id, score, cw.created_at, iotype_id,
                 title, max_score, section, is_active
                 FROM classworks cw
-                JOIN assessments asm ON asm.assessment_id = cw.assessment_id
+                JOIN assessment_full asm ON asm.assessment_id = cw.assessment_id
                 JOIN class_schedule cs ON cs.schedule_id = asm.schedule_id
                 JOIN semester_master sem ON sem.trans_no = cs.semester_id
                 WHERE student_id = $student_id AND sem.is_active = 1";

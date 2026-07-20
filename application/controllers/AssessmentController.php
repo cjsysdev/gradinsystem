@@ -111,94 +111,20 @@ class AssessmentController extends CI_Controller
         $this->load->view('assessment_view_code', $data);
     }
 
+    // Retired: this was the pre-modal add-assessment form, predating the
+    // widget system and the master/assessment_section split — it wrote a
+    // flat row with no widget support and a legacy 'active' status string,
+    // which is now the wrong shape entirely (content vs. per-section fields
+    // live on different tables). manage_assessments' Add/Edit modal
+    // (AdminController::save_assessment()) fully supersedes it.
     public function input_submit()
     {
-        $this->assessments->insert($this->input->post());
+        redirect('manage_assessments');
     }
 
     public function add_assessment()
     {
-        if ($this->is_offline) redirect();
-
-        // If not a POST request, display the form
-        if ($this->input->method() !== 'post') {
-            // Load schedules for the dropdown
-            $data['schedules'] = $this->class_schedule->get_all();
-            $this->load->view('assessment_view', $data);
-            return;
-        }
-
-        $post = $this->input->post();
-
-        // Prepare assessment data with null coalescing to safely access POST data
-        $assessment_data = [
-            'iotype_id' => $post['iotype_id'] ?? null,
-            'schedule_id' => $post['schedule_id'] ?? null,
-            'title' => $post['title'] ?? null,
-            'description' => $post['description'] ?? null,
-            'is_groupings' => isset($post['is_groupings']) ? 1 : 0,
-            'max_score' => $post['max_score'] ?? null,
-            'status' => $post['status'] ?? 'active',
-            'due' => $post['due'] ?? null,
-            'term' => $post['term'] ?? null,
-            'created_at' => date('Y-m-d H:i:s')
-        ];
-
-        // Validate required fields
-        if (
-            empty($assessment_data['iotype_id']) || empty($assessment_data['schedule_id']) ||
-            empty($assessment_data['title']) || empty($assessment_data['description']) ||
-            empty($assessment_data['max_score']) || empty($assessment_data['due']) ||
-            empty($assessment_data['term'])
-        ) {
-            $this->session->set_flashdata('error', 'Please fill in all required fields');
-            redirect('AssessmentController/add_assessment');
-        }
-
-        // Handle PDF file upload
-        if (!empty($_FILES['pdf_file']['name'])) {
-            $config['upload_path'] = './uploads/assessments';
-            $config['allowed_types'] = 'pdf';
-            $config['max_size'] = 10240; // 10MB
-            $config['file_name'] = 'assessment_' . time() . '_' . sanitize_filename($assessment_data['title']);
-
-            $this->load->library('upload', $config);
-
-            if (!$this->upload->do_upload('pdf_file')) {
-                $this->session->set_flashdata('error', 'PDF upload failed: ' . $this->upload->display_errors());
-                redirect('AssessmentController/add_assessment');
-            } else {
-                $upload_data = $this->upload->data();
-                $assessment_data['pdf_file_path'] = 'uploads/assessments/' . $upload_data['file_name'];
-            }
-        }
-
-        // Handle JSON file upload
-        if (!empty($_FILES['json_file']['name'])) {
-            $config['upload_path'] = './uploads/assessments';
-            $config['allowed_types'] = 'json';
-            $config['max_size'] = 5120; // 5MB
-            $config['file_name'] = 'assessment_' . time() . '_' . sanitize_filename($assessment_data['title']);
-
-            $this->upload->initialize($config);
-
-            if (!$this->upload->do_upload('json_file')) {
-                $this->session->set_flashdata('error', 'JSON upload failed: ' . $this->upload->display_errors());
-                redirect('AssessmentController/add_assessment');
-            } else {
-                $upload_data = $this->upload->data();
-                $assessment_data['json_file_path'] = 'uploads/assessments/' . $upload_data['file_name'];
-            }
-        }
-
-        // Insert assessment into database
-        if ($this->assessments->insert($assessment_data)) {
-            $this->session->set_flashdata('success', 'Assessment added successfully!');
-            redirect('AssessmentController/add_assessment');
-        } else {
-            $this->session->set_flashdata('error', 'Failed to add assessment');
-            redirect('AssessmentController/add_assessment');
-        }
+        redirect('manage_assessments');
     }
 
     public function upload_activity()
@@ -371,9 +297,16 @@ class AssessmentController extends CI_Controller
             $upload_data = $this->upload->data();
             $pdf_file_path = 'uploads/assessments/' . $upload_data['file_name'];
 
-            // Update the assessment with the PDF file path
-            $this->db->where('assessment_id', $assessment_id);
-            $this->db->update('assessments', ['pdf_file_path' => $pdf_file_path]);
+            // $assessment_id posted here is a section id (assessment_section_id)
+            // — pdf_file_path lives on the shared master, so it's set via a
+            // join rather than a direct update keyed by assessment_id.
+            $this->db->query(
+                "UPDATE assessments m
+                 JOIN assessment_section s ON s.assessment_id = m.assessment_id
+                 SET m.pdf_file_path = ?
+                 WHERE s.assessment_section_id = ?",
+                [$pdf_file_path, $assessment_id]
+            );
 
             $this->session->set_flashdata('success', 'PDF uploaded successfully!');
             redirect('AdminController/manage_assessments');

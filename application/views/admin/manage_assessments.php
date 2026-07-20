@@ -17,6 +17,9 @@
             <button class="btn btn-outline-secondary" onclick="bulkUpdateStatus(0)">
                 <i class="fas fa-lock"></i> Close All
             </button>
+            <button class="btn btn-outline-primary" data-toggle="modal" data-target="#assignModal" onclick="openAssignModal()">
+                <i class="fas fa-link"></i> Assign to Section
+            </button>
             <button class="btn btn-primary" data-toggle="modal" data-target="#assessmentModal" onclick="openAddModal()">
                 <i class="fas fa-plus"></i> Add Assessment
             </button>
@@ -99,6 +102,12 @@
         </p>
     <?php endif; ?>
 
+    <style>
+        /* Rows sharing one assessment across multiple sections (see
+           get_all_for_admin()'s sibling_count/rowspan grouping) get a faint
+           tint so the group reads as one entry at a glance. */
+        tr.table-shared-group { background-color: rgba(0, 123, 255, 0.035); }
+    </style>
     <div class="table-responsive">
         <table class="table table-bordered table-hover table-sm">
             <thead class="thead-light">
@@ -119,25 +128,35 @@
             <tbody>
                 <?php if (!empty($assessments)): ?>
                     <?php foreach ($assessments as $a): ?>
-                        <tr>
+                        <?php $is_group_head = isset($a['_rowspan']); ?>
+                        <tr class="<?= (int) $a['sibling_count'] > 1 ? 'table-shared-group' : '' ?>">
                             <td><?= $a['assessment_id'] ?></td>
                             <td><span class="badge badge-secondary"><?= htmlspecialchars($a['section']) ?></span></td>
-                            <td><?= htmlspecialchars($a['title']) ?></td>
-                            <td><?= htmlspecialchars($a['iotype']) ?></td>
-                            <td>
-                                <?php if (!empty($a['widget_name'])): ?>
-                                    <span class="badge badge-primary"><?= htmlspecialchars($a['widget_name']) ?></span>
-                                <?php else: ?>
-                                    <span class="text-muted">&mdash;</span>
-                                <?php endif; ?>
-                            </td>
-                            <td>
-                                <?php
-                                $termLabels = ['midterm' => 'Midterm', 'tentative-final' => 'Tentative Final', 'final' => 'Final'];
-                                echo $termLabels[$a['term']] ?? $a['term'];
-                                ?>
-                            </td>
-                            <td><?= $a['max_score'] ?></td>
+                            <?php if ($is_group_head): ?>
+                                <td rowspan="<?= (int) $a['_rowspan'] ?>">
+                                    <?= htmlspecialchars($a['title']) ?>
+                                    <?php if ((int) $a['sibling_count'] > 1): ?>
+                                        <br><small class="text-muted" title="This assessment is shared across these sections — editing content here applies to all of them.">
+                                            <i class="fas fa-link"></i> Shared: <?= htmlspecialchars($a['sibling_sections_csv']) ?>
+                                        </small>
+                                    <?php endif; ?>
+                                </td>
+                                <td rowspan="<?= (int) $a['_rowspan'] ?>"><?= htmlspecialchars($a['iotype']) ?></td>
+                                <td rowspan="<?= (int) $a['_rowspan'] ?>">
+                                    <?php if (!empty($a['widget_name'])): ?>
+                                        <span class="badge badge-primary"><?= htmlspecialchars($a['widget_name']) ?></span>
+                                    <?php else: ?>
+                                        <span class="text-muted">&mdash;</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td rowspan="<?= (int) $a['_rowspan'] ?>">
+                                    <?php
+                                    $termLabels = ['midterm' => 'Midterm', 'tentative-final' => 'Tentative Final', 'final' => 'Final'];
+                                    echo $termLabels[$a['term']] ?? $a['term'];
+                                    ?>
+                                </td>
+                                <td rowspan="<?= (int) $a['_rowspan'] ?>"><?= $a['max_score'] ?></td>
+                            <?php endif; ?>
                             <td><?= date('M j, y, D', strtotime($a['due'])) ?></td>
                             <td>
                                 <span class="badge badge-info"><?= $a['submission_count'] ?></span>
@@ -170,11 +189,11 @@
                                    title="View Submissions">
                                     <i class="fas fa-list"></i>
                                 </a>
-                                <!-- <button class="btn btn-sm btn-outline-danger"
+                                <button class="btn btn-sm btn-outline-danger"
                                         onclick="deleteAssessment(<?= (int) $a['assessment_id'] ?>, <?= htmlspecialchars(json_encode($a['title']), ENT_QUOTES) ?>)"
                                         title="Delete">
-                                    <i class="fas fa-trasgith"></i>
-                                </button> -->
+                                    <i class="fa fa-trash"></i>
+                                </button>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -404,6 +423,81 @@
     </div>
 </div>
 
+<!-- Assign to Section Modal -->
+<div class="modal fade" id="assignModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <form method="post" action="<?= base_url('AdminController/assign_master') ?>">
+                <div class="modal-header">
+                    <h5 class="modal-title">Assign Existing Assessment to a Section</h5>
+                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small">
+                        Attaches an assessment that already exists to ANOTHER section, sharing its content
+                        (title/description/max score/widget config) &mdash; editing it later updates every section
+                        it's assigned to. For a similar-but-separate assessment, use "Copy from existing assessment"
+                        in the Add Assessment form instead.
+                    </p>
+                    <div class="form-group">
+                        <label>Assessment <span class="text-danger">*</span></label>
+                        <select id="assign_master_id" class="form-control" required>
+                            <option value="">Select assessment...</option>
+                            <?php foreach ($assignable_masters as $m): ?>
+                                <option value="<?= (int) $m['master_id'] ?>"
+                                        data-class-id="<?= (int) $m['class_id'] ?>"
+                                        data-assigned="<?= htmlspecialchars($m['assigned_schedule_ids']) ?>">
+                                    <?= htmlspecialchars($m['class_code']) ?> &mdash; <?= htmlspecialchars($m['title']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Target Section <span class="text-danger">*</span></label>
+                        <select name="schedule_id" id="assign_schedule_id" class="form-control" required disabled>
+                            <option value="">Select an assessment first...</option>
+                        </select>
+                        <small class="form-text text-muted">Only sections of the same class, not already assigned, are shown.</small>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label>Status</label>
+                            <select name="status" id="assign_status" class="form-control">
+                                <option value="1">Open</option>
+                                <option value="0" selected>Closed</option>
+                            </select>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label>Due Date &amp; Time <span class="text-danger">*</span></label>
+                            <input type="datetime-local" name="due" id="assign_due" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" name="is_groupings" id="assign_is_groupings" class="form-check-input" value="1">
+                        <label class="form-check-label" for="assign_is_groupings">Group Submission</label>
+                    </div>
+                    <div class="form-group mt-2" id="assign_grouping_set_wrap" style="display:none">
+                        <label>Grouping Set</label>
+                        <select name="grouping_set_id" id="assign_grouping_set_id" class="form-control">
+                            <option value="">Select grouping set...</option>
+                        </select>
+                    </div>
+                    <div class="form-check mt-2">
+                        <input type="checkbox" name="auto_create_submissions" id="assign_auto_create_submissions" class="form-check-input" value="1">
+                        <label class="form-check-label" for="assign_auto_create_submissions">
+                            Participation: auto-create a blank submission for every enrolled student in the section
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Assign</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
 // schedule_id -> section, used to filter grouping sets to the assessment's section
 const scheduleSections = {
@@ -428,6 +522,30 @@ const iqTopicMeta = <?= json_encode($iq_topic_meta) ?>;
 // assessment_id -> assessment fields, used by the "Copy from existing
 // assessment" picker to pre-fill the Add modal from another assessment.
 const copyableAssessments = <?= json_encode(array_column($copyable_assessments, null, 'assessment_id')) ?>;
+
+// Every active section, used by the Assign modal to populate the target
+// Section dropdown once a master is picked (filtered to that master's class
+// and to sections it isn't already assigned to).
+const allSchedules = <?= json_encode(array_map(function ($s) {
+    return [
+        'schedule_id' => (int) $s['schedule_id'],
+        'section'     => $s['section'],
+        'class_id'    => (int) $s['class_id'],
+        'class_code'  => $s['class_code'],
+        'type'        => $s['type'],
+    ];
+}, $schedules)) ?>;
+
+// master_id -> {class_id, assigned: [schedule_id, ...]}, used by the Assign
+// modal to filter the Section dropdown to the picked master's class, minus
+// sections it's already on.
+const assignableMasters = {};
+<?php foreach ($assignable_masters as $m): ?>
+    assignableMasters[<?= (int) $m['master_id'] ?>] = {
+        class_id: <?= (int) $m['class_id'] ?>,
+        assigned: <?= json_encode(array_map('intval', explode(',', $m['assigned_schedule_ids']))) ?>
+    };
+<?php endforeach; ?>
 
 // section -> [{set_id, name}], used to populate the grouping-set dropdown
 const setsBySection = {};
@@ -1066,6 +1184,71 @@ function refreshWidgetPreviewDebounced() {
     clearTimeout(widgetPreviewTimer);
     widgetPreviewTimer = setTimeout(fetchWidgetPreview, 400);
 }
+
+function openAssignModal() {
+    document.getElementById('assign_master_id').value = '';
+    document.getElementById('assign_schedule_id').innerHTML = '<option value="">Select an assessment first...</option>';
+    document.getElementById('assign_schedule_id').disabled = true;
+    document.getElementById('assign_status').value = '0';
+    document.getElementById('assign_due').value = '';
+    document.getElementById('assign_is_groupings').checked = false;
+    toggleAssignGroupingSetWrap();
+    document.getElementById('assign_auto_create_submissions').checked = false;
+    if (typeof $ !== 'undefined') $('#assignModal').modal('show');
+}
+
+// Populates the Target Section dropdown once a master is picked — only
+// sections belonging to the same class, and not already assigned to this
+// master (see assignableMasters, built from get_assignable_masters()).
+function refreshAssignSections() {
+    const masterId = document.getElementById('assign_master_id').value;
+    const select = document.getElementById('assign_schedule_id');
+    const info = assignableMasters[masterId];
+
+    select.innerHTML = '';
+    if (!info) {
+        select.innerHTML = '<option value="">Select an assessment first...</option>';
+        select.disabled = true;
+        return;
+    }
+
+    const candidates = allSchedules.filter(s => s.class_id === info.class_id && info.assigned.indexOf(s.schedule_id) === -1);
+    if (!candidates.length) {
+        select.innerHTML = '<option value="">No unassigned sections left for this class</option>';
+        select.disabled = true;
+        return;
+    }
+
+    select.disabled = false;
+    select.innerHTML = '<option value="">Select section...</option>' + candidates.map(s =>
+        `<option value="${s.schedule_id}">${s.section} — ${s.class_code} (${s.type})</option>`
+    ).join('');
+    refreshAssignGroupingSetOptions();
+}
+
+function refreshAssignGroupingSetOptions() {
+    const scheduleId = document.getElementById('assign_schedule_id').value;
+    const section = scheduleSections[scheduleId];
+    const select = document.getElementById('assign_grouping_set_id');
+    const sets = (section && setsBySection[section]) || [];
+
+    select.innerHTML = '<option value="">Select grouping set...</option>';
+    sets.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.set_id;
+        opt.textContent = s.name;
+        select.appendChild(opt);
+    });
+}
+
+function toggleAssignGroupingSetWrap() {
+    document.getElementById('assign_grouping_set_wrap').style.display =
+        document.getElementById('assign_is_groupings').checked ? '' : 'none';
+}
+
+document.getElementById('assign_master_id').addEventListener('change', refreshAssignSections);
+document.getElementById('assign_schedule_id').addEventListener('change', refreshAssignGroupingSetOptions);
+document.getElementById('assign_is_groupings').addEventListener('change', toggleAssignGroupingSetWrap);
 
 // "Load from .json file" — reads a local file into the config textarea, so
 // big configs can be authored in an editor but still live in the DB (given

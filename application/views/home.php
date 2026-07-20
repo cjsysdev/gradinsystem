@@ -13,7 +13,7 @@
                         <div class="progress m-2">
                             <div class="progress-bar bg-info" role="progressbar" style="width: <?= $grade['percentage'] ?>%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
                         </div>
-                        <?= round($grade['total_score'] ?? 0, 1) . '/' .  round($grade['total_max_score'] ?? 0, 1) ?>
+                        <?= number_format((float) ($grade['percentage'] ?? 0), 1) ?>%
                         (<?= number_format(floor($grade['grade_point'] * 10) / 10, 1) ?>)
                     </div>
                 <?php endforeach; ?>
@@ -39,7 +39,7 @@
                         <div class="progress m-2">
                             <div class="progress-bar bg-info" role="progressbar" style="width: <?= $grade['percentage'] ?>%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
                         </div>
-                        <?= round($grade['total_score'] ?? 0, 1) . '/' .  round($grade['total_max_score'] ?? 0, 1) ?>
+                        <?= number_format((float) ($grade['percentage'] ?? 0), 1) ?>%
                         (<?= number_format($grade['grade_point'] ?? 0, 1) ?>)
                     </div>
                 <?php endforeach; ?>
