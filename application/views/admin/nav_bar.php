@@ -9,6 +9,9 @@
         <a href="<?= base_url(
                         'all_submissions/1'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Classwork"><i class="fa fa-folder-open"></i></a>
+        <a href="<?= base_url(
+                        'group_submissions/1'
+                    ) ?>" class="btn btn-outline-secondary col m-2" title="Group Submissions"><i class="fa fa-user-group"></i></a>
         <!-- <a href="<?= base_url(
                         'AdminController/student_submissions'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Submissions"><i class="fa fa-file-alt"></i></a> -->

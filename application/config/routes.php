@@ -187,6 +187,7 @@ $route['update_assessment_status'] = 'AdminController/update_assessment_status';
 $route['dashboard'] = 'AdminController/dashboard';
 $route['manage_json_files'] = 'AdminController/manage_json_files';
 $route['all_submissions/(:num)'] = 'AdminController/all_submissions/$1';
+$route['group_submissions/(:num)'] = 'AdminController/group_submissions/$1';
 $route['student_submissions/(:num)'] = 'AdminController/view_student_submissions/$1';
 $route['view_attendance'] = 'AdminController/view_attendance';
 $route['admin/student_attendance/(:num)'] = 'AdminController/student_attendance/$1';
