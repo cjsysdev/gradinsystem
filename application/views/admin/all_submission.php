@@ -96,6 +96,13 @@
                             <span class="badge badge-secondary p-2">Missing: 0</span>
                         <?php endif; ?>
                     </div>
+                    <?php if (!empty($selected_assessment) && !empty($selected_assessment['is_groupings'])): ?>
+                        <div class="mb-3">
+                            <a href="<?= base_url('group_submissions/' . $selected_assessment_id) ?>" class="btn btn-sm btn-outline-info">
+                                <i class="fa fa-user-group"></i> This is a group assessment — grade by group &rarr;
+                            </a>
+                        </div>
+                    <?php endif; ?>
                 <?php endif; ?>
                 <div class="input-group mb-3">
                     <input type="text" class="form-control" id="studentSearchInput"

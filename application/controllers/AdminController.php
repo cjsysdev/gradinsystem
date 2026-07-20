@@ -197,6 +197,166 @@ class AdminController extends CI_Controller
         $this->load->view('admin/all_submission', $data);
     }
 
+    // Group-aware sibling of all_submissions(): shows one card per group with
+    // the group's single shared submission, instead of the flat per-student
+    // list (where a group submission appears N identical times). Group
+    // submissions are fanned out into one classworks row per member
+    // (GroupWorkController::submit_group), so membership is derived from the
+    // grouping tables and the submission content is read off any member's row.
+    public function group_submissions($assessment_id = null)
+    {
+        $this->load->model(['Grouping_model', 'Group_member_model']);
+
+        $day   = date('D');
+        $class = $this->class_schedule->class_today($day);
+
+        // Dropdown lists only the group-enabled assessments for today's class.
+        $all_for_schedule    = $this->assessments->get_for_schedule($class['schedule_id']);
+        $data['assessments'] = array_values(array_filter($all_for_schedule, function ($a) {
+            return !empty($a['is_groupings']);
+        }));
+
+        $data['widget']                 = null;
+        $data['widget_config']          = [];
+        $data['groups']                 = [];
+        $data['missing_students']       = [];
+        $data['is_group_assessment']    = false;
+        $data['selected_assessment_id'] = $assessment_id ? (int) $assessment_id : null;
+
+        if ($assessment_id) {
+            $set_id     = $this->Grouping_model->get_set_for_assessment($assessment_id);
+            $assessment = $this->assessments->as_array()->get($assessment_id);
+
+            // A group view only makes sense when the assessment is linked to a
+            // grouping set; otherwise the view renders a notice + link back to
+            // the per-student page.
+            if ($set_id) {
+                $data['is_group_assessment'] = true;
+
+                // Widget resolution — copied from all_submissions().
+                if (!empty($assessment['widget_id'])) {
+                    $this->load->model('Widgets_model');
+                    $data['widget']        = $this->Widgets_model->get($assessment['widget_id']);
+                    $data['widget_config'] = json_decode($assessment['given'] ?? '', true) ?: [];
+                }
+
+                // Index every fanned-out submission row by the member's trans_no.
+                $submissions = $this->classworks->get_all_submissions($assessment_id);
+                $by_student  = [];
+                foreach ($submissions as $s) {
+                    $by_student[$s['trans_no']] = $s;
+                }
+
+                // Build one entry per group: members annotated with their own
+                // row, plus the shared submission (identical across members).
+                $groups = $this->Grouping_model->get_groups_with_members($set_id);
+                foreach ($groups as &$g) {
+                    $submitted_count = 0;
+                    $shared          = null;
+                    $classwork_ids   = [];
+
+                    foreach ($g['members'] as &$m) {
+                        $row               = $by_student[$m['trans_no']] ?? null;
+                        $m['classwork_id'] = $row['classwork_id'] ?? null;
+                        $m['score']        = $row['score'] ?? null;
+                        $m['submitted']    = $row !== null;
+                        if ($row) {
+                            $submitted_count++;
+                            $classwork_ids[] = $row['classwork_id'];
+                            if ($shared === null) {
+                                $shared = $row; // first submitted member's content
+                            }
+                        }
+                    }
+                    unset($m);
+
+                    $g['submission']      = $shared;                 // null = no submission yet
+                    $g['member_count']    = count($g['members']);
+                    $g['submitted_count'] = $submitted_count;
+                    $g['classwork_ids']   = $classwork_ids;
+                    $g['score']           = $shared['score'] ?? null;
+                    $g['max_score']       = $shared['max_score'] ?? ($assessment['max_score'] ?? null);
+                }
+                unset($g);
+
+                $data['groups']           = $groups;
+                $data['missing_students'] = $this->classworks->get_missing_submissions($assessment_id);
+            }
+        }
+
+        $this->load->view('admin/group_submission', $data);
+    }
+
+    // Applies one score to a whole group: writes the same score to every
+    // member's classworks row for this assessment. Since a group submission is
+    // fanned out into per-member rows, grading it once has to update them all.
+    // Every write goes through classworks::set_score() (the single validated,
+    // max_score-clamped score-write path) — never raw score SQL.
+    public function add_group_score($assessment_id, $group_id, $score)
+    {
+        $this->load->model('Group_member_model');
+
+        $members     = $this->Group_member_model->get_members_by_group($group_id);
+        $student_ids = array_column($members, 'trans_no');
+
+        if (empty($student_ids)) {
+            echo json_encode([
+                'success'       => false,
+                'notice'        => 'This group has no members.',
+                'score'         => null,
+                'updated_count' => 0,
+            ]);
+            return;
+        }
+
+        // Resolve each member's classworks row for this assessment. Members who
+        // have no row yet (nobody in the group has submitted, or the row was
+        // never fanned out to them) are skipped and reported.
+        $rows = $this->db->select('classwork_id')
+            ->from('classworks')
+            ->where('assessment_id', $assessment_id)
+            ->where_in('student_id', $student_ids)
+            ->get()->result_array();
+
+        if (empty($rows)) {
+            echo json_encode([
+                'success'       => false,
+                'notice'        => 'No submissions to score for this group yet.',
+                'score'         => null,
+                'updated_count' => 0,
+            ]);
+            return;
+        }
+
+        $updated = 0;
+        $notice  = null;
+        $stored  = null;
+        foreach ($rows as $row) {
+            $err = null;
+            $ok  = $this->classworks->set_score($row['classwork_id'], $score, $err);
+            // set_score() still succeeds when it caps to max_score, carrying the
+            // cap notice in $err — so surface $err on success too, not just fail.
+            if ($err !== null) {
+                $notice = $err;
+            }
+            if ($ok) {
+                $updated++;
+                $stored = $this->db->select('score')
+                    ->where('classwork_id', $row['classwork_id'])
+                    ->get('classworks')
+                    ->row('score');
+            }
+        }
+
+        echo json_encode([
+            'success'       => $updated > 0,
+            'notice'        => $notice,
+            'score'         => $stored,
+            'updated_count' => $updated,
+            'skipped_count' => count($student_ids) - $updated,
+        ]);
+    }
+
     public function manage_json_files()
     {
         $this->load->database();
