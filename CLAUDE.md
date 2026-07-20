@@ -12,9 +12,27 @@ submission, and interactive JSON-driven discussions/quizzes.
 
 ## Key Data Model
 - `classes` → `class_schedule` (LEC/LAB) → `class_student` (enrollment)
-- `assessments` (io_type: 1=Activity, 2=Performance Task, 3=Major Exam,
-  4=Quiz; term: midterm/tentative-final/final) → `classworks` (one row per
-  student submission: `file_upload` OR `code` text, plus `score`)
+- `assessments` (master, content-only) → `assessment_section` (junction:
+  due/status/is_groupings per `schedule_id`) → `classworks` (one row per
+  student submission: `file_upload` OR `code` text, plus `score`). One
+  assessment can be shared across multiple sections as a single master row.
+  `classworks.assessment_id` and `assessment_groupings`/`assessment_live_state`'s
+  `assessment_id` all point at `assessment_section.assessment_section_id`
+  (a **section** id, not the master id) — preserved from the pre-normalization
+  `assessment_id` values, so this column name is legacy but the value it
+  holds changed meaning. `given` (widget config JSON), `title`, `description`,
+  `max_score`, `term`, `widget_id` live on the **master** (`assessments`)
+  and are shared by every section; editing them via
+  `AdminController::save_assessment()` propagates to all sibling sections.
+  `assessment_full` is a compat VIEW (`assessment_section` ⋈ `assessments`)
+  reproducing the old one-row-per-section denormalized shape
+  (`assessment_id` = section id, `master_id` = master id) — nearly all
+  read-only query sites use this view; never write through it (see
+  `Assessment_normalize_model`, `assessments::create_master()` /
+  `update_master()` / `assign_to_schedule()` / `update_section()` /
+  `delete_section()` for the real write paths). `io_type`: 1=Activity,
+  2=Performance Task, 3=Major Exam, 4=Quiz; `term`:
+  midterm/tentative-final/final.
 - `discussions` (type: `static` link, or `interactive` → JSON file in
   `assets/json/{slug}.json`, rendered via `InteractiveQuizController`)
 
