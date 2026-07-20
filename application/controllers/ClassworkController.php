@@ -58,31 +58,46 @@ class ClassworkController extends CI_Controller
         redirect('classwork');
     }
 
+    /**
+     * Grade a submission. Admin only — the class constructor checks that a
+     * session exists, which every logged-in student also has.
+     */
     public function add_score()
     {
-        $classwork_id = $this->input->post('classwork_id');
-        $student_id = $this->input->post('student_id');
-        $score = $this->input->post('score');
+        $this->_require_admin();
+
+        $classwork_id  = $this->input->post('classwork_id');
+        $student_id    = $this->input->post('student_id');
+        $score         = $this->input->post('score');
         $assessment_id = $this->input->post('assessment_id');
 
-        // Validate inputs
-        if (!is_numeric($score) || $score < 0) {
-            $this->session->set_flashdata('error', 'Invalid score.');
-            redirect('all_submissions');
+        $error = null;
+        if (!$this->classworks->update_score($classwork_id, $student_id, $score, $error)) {
+            $this->session->set_flashdata('error', $error ?: 'Invalid score.');
+            redirect("all_submissions/$assessment_id");
         }
 
-        // Update the score in the database
-        $this->classworks->update_score($classwork_id, $student_id, $score);
-
-        $this->session->set_flashdata('success', 'Score updated successfully!');
+        // set_score() clamps rather than rejects, so a capped write still
+        // succeeds — surface that instead of reporting a clean save.
+        $this->session->set_flashdata(
+            $error ? 'warning' : 'success',
+            $error ?: 'Score updated successfully!'
+        );
         redirect("all_submissions/$assessment_id");
     }
 
-    public function add_rand_score($classwork_id, $score, $assessment_id)
-    {
+    // add_rand_score() was removed. It was routed as
+    // GET /add_rand_score/{classwork_id}/{score}/{assessment_id}, had no
+    // role check, no validation and no cap, so any logged-in student could
+    // write an arbitrary score to their own submission. It had no callers.
+    // Randomised scoring lives in AdminController::add_rand_score_incremental(),
+    // which is admin-gated and clamps to max_score.
 
-        $this->classworks->add_score($classwork_id, $score);
-        redirect("all_submissions/$assessment_id");
+    private function _require_admin()
+    {
+        if ($this->session->userdata('role') !== 'admin') {
+            show_error('You are not authorised to grade submissions.', 403);
+        }
     }
 
     public function student_submission($classwork_id)

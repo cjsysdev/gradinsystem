@@ -56,6 +56,14 @@
         <a href="<?= base_url(
                         'admin/project_logs'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Project Logs"><i class="fa fa-diagram-project"></i></a>
+        <?php $over_max_count = $this->classworks->count_scores_exceeding_max(); ?>
+        <a href="<?= base_url(
+                        'admin/score_integrity'
+                    ) ?>" class="btn btn-outline-secondary col m-2 position-relative" title="Score Integrity"><i class="fa fa-scale-unbalanced"></i>
+            <?php if ($over_max_count > 0): ?>
+                <span class="badge badge-danger position-absolute" style="top:0; right:0; transform:translate(25%,-25%);"><?= $over_max_count ?></span>
+            <?php endif; ?>
+        </a>
         <!-- <a href="<?= base_url(
                         'uncleared_students'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Uncleared Students"><i class="fa fa-user-times"></i></a> -->

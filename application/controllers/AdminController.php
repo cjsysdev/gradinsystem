@@ -1066,8 +1066,19 @@ class AdminController extends CI_Controller
 
     public function add_score($classwork_id, $score)
     {
-        $result = $this->classworks->add_score($classwork_id, $score);
-        echo json_encode(['success' => $result]);
+        $error  = null;
+        $result = $this->classworks->set_score($classwork_id, $score, $error);
+
+        // A capped write still succeeds; $error carries the notice so the
+        // grading UI can show what was actually stored.
+        echo json_encode([
+            'success' => $result,
+            'notice'  => $error,
+            'score'   => $this->db->select('score')
+                ->where('classwork_id', $classwork_id)
+                ->get('classworks')
+                ->row('score'),
+        ]);
     }
 
     public function add_rand_score_incremental($classwork_id, $points = 2)
@@ -1091,6 +1102,44 @@ class AdminController extends CI_Controller
             ->row('score');
 
         echo json_encode(['success' => (bool)$result, 'score' => $score]);
+    }
+
+    /** Every classworks row currently scored above its assessment's max_score. */
+    public function score_integrity()
+    {
+        $violations = $this->classworks->get_scores_exceeding_max();
+
+        $this->load->view('admin/score_integrity', [
+            'violations' => $violations,
+        ]);
+    }
+
+    /**
+     * Cap one over-max row down to its assessment's max_score. Reuses
+     * set_score()'s own clamp — passing the row's current (over-max) score
+     * back in is what triggers the cap, so there is exactly one place that
+     * decides what "capped" means.
+     */
+    public function fix_score($classwork_id)
+    {
+        $row = $this->db->select('score')
+            ->where('classwork_id', $classwork_id)
+            ->get('classworks')
+            ->row_array();
+
+        if (!$row) {
+            echo json_encode(['success' => FALSE, 'message' => 'Submission not found.']);
+            return;
+        }
+
+        $error = null;
+        $ok = $this->classworks->set_score($classwork_id, $row['score'], $error);
+
+        echo json_encode([
+            'success' => $ok,
+            'message' => $error ?: 'Score capped.',
+            'score'   => $this->db->select('score')->where('classwork_id', $classwork_id)->get('classworks')->row('score'),
+        ]);
     }
 
     public function student_violations()

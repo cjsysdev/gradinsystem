@@ -117,7 +117,9 @@ $route['student_submission/(:num)'] = 'ClassworkController/student_submission/$1
 $route['start_class'] = 'ClassworkController/start_class';
 $route['add_score'] = 'ClassworkController/add_score';
 $route['error_submission'] = 'ClassworkController/error_submission';
-$route['add_rand_score/(:num)/(:num)/(:num)'] = 'ClassworkController/add_rand_score/$1/$2/$3';
+// Removed: add_rand_score was an unauthenticated GET route that wrote an
+// arbitrary, unclamped score straight into classworks. Use
+// AdminController/add_rand_score_incremental instead.
 
 // Discussion Routes
 $route['discussion'] = 'DiscussionController/index';
@@ -193,6 +195,8 @@ $route['admin/check_new_submissions_by_assessment/(:num)'] = 'AdminController/ch
 $route['admin/emergency_contacts'] = 'AdminController/emergency_contacts';
 $route['admin/export_emergency_contacts'] = 'AdminController/export_emergency_contacts';
 $route['admin/student_violations'] = 'AdminController/student_violations';
+$route['admin/score_integrity'] = 'AdminController/score_integrity';
+$route['admin/fix_score/(:num)'] = 'AdminController/fix_score/$1';
 $route['admin/add_violation'] = 'AdminController/add_violation';
 $route['admin/update_violation_status'] = 'AdminController/update_violation_status';
 $route['admin/search_students'] = 'AdminController/search_students';

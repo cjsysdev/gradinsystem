@@ -87,10 +87,12 @@ class SecureQuizController extends CI_Controller
         )->get();
 
         if (!$value) {
+            // Defensive: grade_quiz() bounds the score by question count, but
+            // clamp anyway in case an admin edited max_score to be smaller.
             $this->classworks->insert([
                 'student_id' => $this->session->student_id,
                 'assessment_id' => $assessment_id,
-                'score' => $graded['score'],
+                'score' => $this->classworks->clamp_score_for_assessment($assessment_id, $graded['score']),
                 'code' => json_encode($graded['results'], JSON_PRETTY_PRINT)
             ]);
         }

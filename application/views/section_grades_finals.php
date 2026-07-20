@@ -92,33 +92,28 @@
         $i = 1;
         if (!empty($studentsGrades)):
             foreach ($studentsGrades as $student): ?>
-                <tr<?php if (strtoupper($student['final_grade']) === 'INC' || (float)$student['final_grade'] > 3.00) echo ' class="highlight-inc"'; ?>>
+                <?php // Grades arrive display-ready from Grade_calculator. This view
+                      // no longer converts a percentage to a grade point at render
+                      // time, nor applies its own INC cutoff. ?>
+                <tr<?php if ($student['is_inc']) echo ' class="highlight-inc"'; ?>>
                     <td style="text-align:left;">
-                        <?= strtoupper($student['student_no']) ?>
+                        <?= strtoupper(htmlspecialchars($student['student_no'])) ?>
                     </td>
                     <td style="text-align:left;">
-                        <?= strtoupper($student['lastname']) ?>
+                        <?= strtoupper(htmlspecialchars($student['lastname'])) ?>
                     </td>
                     <td style="text-align:left;">
-                        <?= strtoupper($student['firstname']) ?>
+                        <?= strtoupper(htmlspecialchars($student['firstname'])) ?>
                     </td>
                     <td>
-                        <?php
-                        // Always show one decimal place for numeric grades
-                        if (is_numeric($student['midterm_grade'])) {
-                            echo number_format(round(convertPercentageToGradePoint($student['midterm_grade']), 1), 1);
-                        }
-                        ?>
+                        <?= htmlspecialchars($student['midterm_grade']) ?>
                     </td>
                     <td style="text-align:left;">
-                        <?php
-                        // Always show one decimal place for numeric grades
-                        if (is_numeric($student['final_grade'])) {
-                            echo '<b>' . number_format($student['final_grade'], 1) . '</b>';
-                        } else {
-                            echo $student['final_grade'];
-                        }
-                        ?>
+                        <?php if (is_numeric($student['overall_grade'])): ?>
+                            <b><?= htmlspecialchars($student['overall_grade']) ?></b>
+                        <?php else: ?>
+                            <?= htmlspecialchars($student['overall_grade']) ?>
+                        <?php endif; ?>
                     </td>
                     </tr>
                 <?php endforeach;

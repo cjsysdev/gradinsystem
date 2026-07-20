@@ -373,7 +373,10 @@ class GroupWorkController extends CI_Controller
             $config = json_decode($resolved['assessment']['given'] ?? '', true) ?: [];
             $answers = json_decode($content ?? '', true)['answers'] ?? [];
             $graded = $this->Widgets_model->grade_quiz($config, $answers);
-            $quiz_score = $graded['score'];
+            // Defensive: grade_quiz() is bounded by question count, but clamp
+            // anyway in case an admin edited max_score to be smaller than the
+            // widget's actual question count.
+            $quiz_score = $this->classworks->clamp_score_for_assessment($assessment_id, $graded['score']);
             $quiz_results_json = json_encode($graded['results']);
         } elseif (!$is_widget) {
             // Plain text/code drafts are written to one shared file — matches
@@ -626,6 +629,11 @@ class GroupWorkController extends CI_Controller
         $members      = $this->Group_member_model->get_members_by_group($group['group_id']);
         $results_json = json_encode($results);
         $now          = date('Y-m-d H:i:s');
+
+        // Defensive: $score is bounded by $total (graded section count), but
+        // clamp anyway in case an admin edited max_score to be smaller than
+        // the topic's actual graded section count.
+        $score = $this->classworks->clamp_score_for_assessment($assessment_id, $score);
 
         foreach ($members as $member) {
             $data = [

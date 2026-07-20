@@ -129,20 +129,20 @@
     <tbody>
         <?php if (!empty($studentsGrades)): ?>
             <?php foreach ($studentsGrades as $student): ?>
-                <tr class="<?= $student['grade_point'] === 'INC' ? 'highlight-inc' : '' ?>">
-                    <!-- <td>***</td> -->
-                    <!-- <td><?= $student['student_id'] ?></td> -->
-                    <!-- <td><?= $student['lastname'] ?>, <?= $student['firstname'] ?>
-                        <?php if ($student['middlename'] != 'N/A') {
-                            echo $student['middlename'][0] . '.';
-                        } else '' ?></td> -->
-                    <td><?= $student['lastname'] ?>, <?= $student['firstname'] ?></td>
-                    <!-- <td><?= $student['firstname'] ?></td> -->
-                    <!-- <td>*****, ***** </td> -->
-                    <td><?= is_numeric($student['grade_point']) ? number_format(($student['grade_point'] * 10) / 10, 1) : $student['grade_point'] ?></td>
-                    <td><?= floor($student['present'] / 2) ?></td>
-                    <td><?= floor($student['absent'] / 2) ?></td>
-                    <td><?= floor($student['late'] / 2) ?></td>
+                <tr class="<?= $student['is_inc'] ? 'highlight-inc' : '' ?>">
+                    <td><?= htmlspecialchars($student['lastname']) ?>, <?= htmlspecialchars($student['firstname']) ?></td>
+                    <td>
+                        <?= htmlspecialchars($student['grade_point']) ?>
+                        <?php if ($student['is_inc'] && $student['inc_reason']): ?>
+                            <br><small class="text-muted"><?= htmlspecialchars($student['inc_reason']) ?></small>
+                        <?php endif; ?>
+                    </td>
+                    <?php // Attendance is scoped to this schedule, so these are real
+                          // counts. The old /2 undid the previous query's
+                          // cross-schedule double counting and would now halve them. ?>
+                    <td><?= (int) $student['present'] ?></td>
+                    <td><?= (int) $student['absent'] ?></td>
+                    <td><?= (int) $student['late'] ?></td>
                 </tr>
             <?php endforeach; ?>
         <?php else: ?>

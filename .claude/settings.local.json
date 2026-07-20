@@ -31,7 +31,19 @@
       "Bash($MYSQL *)",
       "Bash(/d/wamp64/bin/mysql/mysql8.3.0/bin/mysql.exe -uroot -pcmcp@ssw0rd gradingsystem2025a -e 'DESCRIBE semester_master;')",
       "Bash(/d/wamp64/bin/mysql/mysql8.3.0/bin/mysql.exe -uroot -pcmcp@ssw0rd gradingsystem2025a -e 'SELECT trans_no, is_active FROM semester_master ORDER BY trans_no DESC LIMIT 6;')",
-      "Bash(grep -n '$this->table' application/core/MY_Model.php)"
+      "Bash(grep -n '$this->table' application/core/MY_Model.php)",
+      "Bash(awk '/^INSERT INTO `class_schedule`/,/;$/' uploads/db_backups/gradingsystem2025a_pre_normalize_20260720_095813.sql)",
+      "Bash(awk '/^INSERT INTO `io_type`/,/;$/' uploads/db_backups/gradingsystem2025a_pre_normalize_20260720_095813.sql)",
+      "Bash(awk '/^INSERT INTO `semester_master`/,/;$/' uploads/db_backups/gradingsystem2025a_pre_normalize_20260720_095813.sql)",
+      "Bash(awk '/^INSERT INTO `class_student`/,/;$/' uploads/db_backups/gradingsystem2025a_pre_normalize_20260720_095813.sql)",
+      "Bash(awk -F, '{print $3\",\"$4\",\"$5\",\"$6\",\"$7}')",
+      "Bash(grep -n \"INSERT INTO \\\\`io_type\\\\`\" -A3 \"uploads/db_backups/gradingsystem2025a_pre_normalize_20260720_095813.sql\")",
+      "Bash(grep -n \"INSERT INTO \\\\`semester_master\\\\`\" -A5 \"uploads/db_backups/gradingsystem2025a_pre_normalize_20260720_095813.sql\")",
+      "Bash(sed 's/^INSERT INTO `class_student` VALUES //')",
+      "Bash(sed 's/\\),\\(/\\\\n/g')",
+      "Bash(awk -F, '{print \"cls=\"$3\" sched=\"$4\" sec=\"$5\" cleared=\"$6\" sem=\"$7\" st=\"$8}')",
+      "Bash(awk '/^INSERT INTO `assessments`/,/;$/' uploads/db_backups/gradingsystem2025a_pre_normalize_20260720_095813.sql)",
+      "Bash(./mysql.exe -uroot -pcmcp@ssw0rd gradingsystem2025a -e ' *)"
     ]
   }
 }

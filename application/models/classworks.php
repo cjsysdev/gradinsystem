@@ -77,19 +77,127 @@ class classworks extends MY_Model
         return $query->result_array();
     }
 
-    public function add_score($classwork_id, $score)
+    /**
+     * The single validated way to write a score.
+     *
+     * Every scoring path should go through here. Scores used to be written raw
+     * from several controllers with no validation and no upper bound, which is
+     * how 14 rows ended up scoring above their assessment's max_score — and
+     * those inflate the student's percentage directly.
+     *
+     * @param  int        $classwork_id
+     * @param  mixed      $score        must be numeric and >= 0
+     * @param  string|null $error       set to a reason when the write is refused
+     * @return bool                     TRUE when the row was updated
+     */
+    public function set_score($classwork_id, $score, &$error = null)
     {
-        return $this->db->set(['score' => $score])
-            ->where('classwork_id', $classwork_id)
-            ->from('classworks')
-            ->update();
+        if (!is_numeric($score) || $score < 0) {
+            $error = 'Score must be a number of 0 or greater.';
+            return FALSE;
+        }
+
+        $row = $this->db->query("
+            SELECT c.classwork_id, a.max_score
+            FROM classworks c
+            JOIN assessment_full a ON a.assessment_id = c.assessment_id
+            WHERE c.classwork_id = ?
+        ", [$classwork_id])->row_array();
+
+        if (!$row) {
+            $error = 'Submission not found, or it points at an assessment that no longer exists.';
+            return FALSE;
+        }
+
+        // Clamp rather than reject: graders routinely award the maximum and a
+        // hard failure here would lose the rest of a bulk grading pass.
+        $max = (float) $row['max_score'];
+        if ($max > 0 && $score > $max) {
+            $score = $max;
+            $error = 'Score exceeded the maximum and was capped at ' . $max . '.';
+        }
+
+        $this->db->where('classwork_id', $classwork_id)
+            ->update('classworks', ['score' => $score]);
+
+        return $this->db->affected_rows() >= 0;
     }
 
-    public function update_score($classwork_id, $student_id, $score)
+    /**
+     * Clamp a score against its assessment's max_score, for INSERT paths that
+     * don't have a classwork_id yet (set_score() only handles UPDATEs).
+     *
+     * Every auto-graded widget computes its score server-side already, so this
+     * should normally be a no-op — it exists as a second layer of defense in
+     * case a widget's question count and the assessment's configured max_score
+     * ever drift apart, and it's the only thing standing between a raw
+     * client-supplied score (InteractiveQuizController::save_result()) and the
+     * database.
+     */
+    public function clamp_score_for_assessment($assessment_id, $score)
     {
-        $this->db->where('classwork_id', $classwork_id);
-        $this->db->where('student_id', $student_id);
-        $this->db->update('classworks', ['score' => $score]);
+        if (!is_numeric($score) || $score < 0) {
+            return 0;
+        }
+
+        $max = $this->db->select('max_score')
+            ->where('assessment_id', $assessment_id)
+            ->get('assessment_full')
+            ->row('max_score');
+
+        if ($max !== null && (float) $score > (float) $max) {
+            log_message('info', "clamp_score_for_assessment: assessment $assessment_id score $score capped to $max");
+            return (float) $max;
+        }
+
+        return $score;
+    }
+
+    /** Cheap count for nav badges — avoids the join in get_scores_exceeding_max(). */
+    public function count_scores_exceeding_max()
+    {
+        return (int) $this->db->query("
+            SELECT COUNT(*) c
+            FROM classworks c
+            JOIN assessment_full a ON a.assessment_id = c.assessment_id
+            WHERE c.score > a.max_score
+        ")->row('c');
+    }
+
+    /** classworks rows scored above their own assessment's max_score. */
+    public function get_scores_exceeding_max()
+    {
+        return $this->db->query("
+            SELECT c.classwork_id, c.student_id, c.assessment_id, c.score, a.max_score, a.title,
+                   sm.firstname, sm.lastname, sm.student_no
+            FROM classworks c
+            JOIN assessment_full a      ON a.assessment_id = c.assessment_id
+            LEFT JOIN student_master sm ON sm.trans_no = c.student_id
+            WHERE c.score > a.max_score
+            ORDER BY (c.score - a.max_score) DESC
+        ")->result_array();
+    }
+
+    /** @deprecated Use set_score() — this performs no validation or clamping. */
+    public function add_score($classwork_id, $score)
+    {
+        return $this->set_score($classwork_id, $score);
+    }
+
+    public function update_score($classwork_id, $student_id, $score, &$error = null)
+    {
+        // student_id is kept as a guard so a mismatched pair cannot be written.
+        $owner = $this->db->select('student_id')
+            ->where('classwork_id', $classwork_id)
+            ->get('classworks')
+            ->row('student_id');
+
+        if ((string) $owner !== (string) $student_id) {
+            $error = 'Submission does not belong to that student.';
+            return FALSE;
+        }
+
+        return $this->set_score($classwork_id, $score, $error);
     }
 
     // Bulk-creates a blank (no score/code) classworks row for every enrolled
@@ -139,361 +247,13 @@ class classworks extends MY_Model
         return count($rows);
     }
 
-    public function getActivitiesGrade($term, $iotype, $student_id)
-    {
-        $query = $this->db->query("
-            WITH s AS (
-                SELECT
-                    c.student_id,
-                    SUM(c.score)      AS total_score,
-                    SUM(a.max_score)  AS total_max_score,
-                    MAX(sem.passing_rate) AS passing_rate
-                FROM classworks c
-                JOIN assessment_full a  ON c.assessment_id = a.assessment_id
-                JOIN class_schedule cs  ON a.schedule_id = cs.schedule_id
-                JOIN semester_master sem
-                    ON cs.semester_id = sem.trans_no
-                    AND sem.is_active = 1
-                WHERE a.term = '$term'
-                AND a.iotype_id = $iotype
-                AND c.student_id = $student_id
-                GROUP BY c.student_id
-            )
-            SELECT
-                ROUND(total_score, 2) AS total_score,
-                ROUND(total_max_score, 2) AS total_max_score,
-                ROUND((total_score / NULLIF(total_max_score, 0)) * 100, 2) AS percentage,
-                ROUND(
-                    CASE
-                        WHEN total_max_score = 0 THEN NULL
-                        WHEN passing_rate IS NULL THEN NULL
-
-                        WHEN ((total_score / total_max_score) * 100) <= passing_rate THEN
-                            5.0 - 2.0 * ( ((total_score / total_max_score) * 100) / NULLIF(passing_rate, 0) )
-
-                        ELSE
-                            3.0 - 2.0 * (
-                                ( ((total_score / total_max_score) * 100) - passing_rate )
-                                / NULLIF((100 - passing_rate), 0)
-                            )
-                    END
-                , 2) AS grade_point
-            FROM s;
-            ");
-
-        $result = $query->row_array();
-
-        if ($result) {
-            return $result;
-        } else {
-            return null; // or handle the case when no data is found
-        }
-    }
-
-    public function getGradesByIotype($term, $student_id)
-    {
-        $query = $this->db->query("
-                SELECT 
-                    a.iotype_id,
-                    i.type AS iotype_name,
-                    i.percentage AS iotype_percentage,
-
-                    ROUND(SUM(IFNULL(c.score, 0)), 2) AS total_score,
-                    ROUND(SUM(a.max_score), 2) AS total_max_score,
-
-                    ROUND(
-                        (SUM(IFNULL(c.score, 0)) / NULLIF(SUM(a.max_score), 0)) * 100
-                    , 2) AS percentage,
-
-                    ROUND(
-                        CASE 
-                            WHEN SUM(a.max_score) = 0 THEN NULL
-                            WHEN sem.passing_rate IS NULL THEN NULL
-                            WHEN sem.passing_rate <= 0 OR sem.passing_rate >= 100 THEN NULL
-
-                            WHEN ((SUM(IFNULL(c.score, 0)) / SUM(a.max_score)) * 100) <= sem.passing_rate THEN 
-                                5.0 - (2.0 / sem.passing_rate) * ((SUM(IFNULL(c.score, 0)) / SUM(a.max_score)) * 100)
-
-                            ELSE 
-                                3.0 - (2.0 / (100 - sem.passing_rate)) *
-                                    (((SUM(IFNULL(c.score, 0)) / SUM(a.max_score)) * 100) - sem.passing_rate)
-                        END
-                    , 2) AS grade_point,
-
-                    ROUND(
-                        (SUM(IFNULL(c.score, 0)) / NULLIF(SUM(a.max_score), 0)) * i.percentage
-                    , 2) AS weighted_grade
-
-                FROM assessment_full a
-                JOIN io_type i
-                    ON a.iotype_id = i.iotype_id
-                LEFT JOIN classworks c
-                    ON c.assessment_id = a.assessment_id 
-                AND c.student_id = ?
-                JOIN class_schedule cs 
-                    ON cs.schedule_id = a.schedule_id
-                JOIN semester_master sem 
-                    ON cs.semester_id = sem.trans_no 
-                AND sem.is_active = 1
-                WHERE a.term = ? 
-                AND cs.section = ?
-                GROUP BY a.iotype_id;
-        ", [$student_id, $term, $this->session->section]);
-
-        $result = $query->result_array(); // Return all results grouped by iotype_id
-
-        if ($result) {
-            return $result;
-        } else {
-            return null; // or handle the case when no data is found
-        }
-    }
-
-    public function getGradesBySection($term, $section)
-    {
-        $query = $this->db->query("
-                    SELECT 
-                        cs.section,
-                        class.class_code,
-                        class.class_name,
-                        sched.time_start AS start,
-                        sched.time_end AS end,
-                        sched.day,
-
-                        sm.trans_no AS student_id,
-                        sm.firstname,
-                        sm.lastname,
-                        sm.middlename,
-                        sm.student_no,
-                        a.iotype_id,
-                        i.type AS iotype_name,
-                        i.percentage AS iotype_percentage,
-
-                        ROUND(SUM(IFNULL(c.score, 0)), 2) AS total_score,
-                        ROUND(SUM(a.max_score), 2) AS total_max_score,
-
-                        ROUND(
-                            (SUM(IFNULL(c.score, 0)) / NULLIF(SUM(a.max_score), 0)) * 100
-                        , 2) AS percentage,
-
-                        ROUND(
-                            CASE 
-                                WHEN SUM(a.max_score) = 0 THEN NULL
-                                WHEN sem.passing_rate IS NULL THEN NULL
-                                WHEN sem.passing_rate <= 0 OR sem.passing_rate >= 100 THEN NULL
-
-                                WHEN ((SUM(IFNULL(c.score, 0)) / SUM(a.max_score)) * 100) <= sem.passing_rate THEN 
-                                    5.0 - (2.0 / sem.passing_rate) *
-                                        ((SUM(IFNULL(c.score, 0)) / SUM(a.max_score)) * 100)
-
-                                ELSE 
-                                    3.0 - (2.0 / (100 - sem.passing_rate)) *
-                                        (((SUM(IFNULL(c.score, 0)) / SUM(a.max_score)) * 100) - sem.passing_rate)
-                            END
-                        , 2) AS grade_point,
-
-                        ROUND(
-                            (SUM(IFNULL(c.score, 0)) / NULLIF(SUM(a.max_score), 0)) * i.percentage
-                        , 2) AS weighted_grade,
-
-                        IFNULL(att.absences, 0) AS absences,
-                        IFNULL(att.presents, 0) AS present,
-                        IFNULL(late_att.lates, 0) AS lates
-
-                    FROM class_student cs
-                    JOIN student_master sm 
-                        ON cs.student_id = sm.trans_no
-
-                    JOIN class_schedule sched 
-                        ON cs.section = sched.section 
-                    AND cs.section = ?
-
-                    JOIN classes class 
-                        ON class.class_id = sched.class_id
-
-                    JOIN assessment_full a
-                        ON a.schedule_id = sched.schedule_id
-                    AND a.term = ?
-
-                    JOIN io_type i
-                        ON a.iotype_id = i.iotype_id
-
-                    JOIN semester_master sem
-                        ON sched.semester_id = sem.trans_no
-                    AND sem.is_active = 1
-
-                    LEFT JOIN classworks c
-                        ON c.assessment_id = a.assessment_id
-                    AND c.student_id = cs.student_id
-
-                    LEFT JOIN (
-                        SELECT
-                            a.student_id,
-                            SUM(a.status = 'absent') AS absences,
-                            SUM(a.status = 'present') AS presents
-                        FROM attendance a
-                        JOIN class_schedule cs 
-                            ON a.schedule_id = cs.schedule_id
-                        JOIN semester_master sem 
-                            ON cs.semester_id = sem.trans_no
-                        AND sem.is_active = 1
-                        WHERE DATE(a.date) >= sem.class_started
-                        GROUP BY a.student_id
-                    ) att 
-                        ON att.student_id = sm.trans_no
-
-                    LEFT JOIN (
-                        SELECT 
-                            a.student_id,
-                            COUNT(*) AS lates
-                        FROM attendance a
-                        JOIN class_schedule cs 
-                            ON a.schedule_id = cs.schedule_id
-                        WHERE a.status = 'present'
-                        AND TIMESTAMPDIFF(
-                                MINUTE, 
-                                CONCAT(DATE(a.date), ' ', cs.time_start), 
-                                a.date
-                            ) > 20
-                        GROUP BY a.student_id
-                    ) late_att 
-                        ON late_att.student_id = sm.trans_no
-
-                    GROUP BY 
-                        cs.section, sm.trans_no, a.iotype_id
-
-                    ORDER BY 
-                        cs.section, sm.lastname, sm.firstname;
-                ", [$section, $term]);
-
-        return $query->result_array(); // Return the result as an array of rows
-    }
-
-     public function getAllGradesBySection($term)
-    {
-        $query = $this->db->query("
-                    SELECT 
-                        cs.section,
-                        class.class_code,
-                        class.class_name,
-                        sched.time_start AS start,
-                        sched.time_end AS end,
-                        sched.day,
-
-                        sm.trans_no AS student_id,
-                        sm.firstname,
-                        sm.lastname,
-                        sm.middlename,
-                        sm.student_no,
-
-                        a.iotype_id,
-                        i.type AS iotype_name,
-                        i.percentage AS iotype_percentage,
-
-                        ROUND(SUM(IFNULL(c.score, 0)), 2) AS total_score,
-                        ROUND(SUM(a.max_score), 2) AS total_max_score,
-
-                        ROUND(
-                            (SUM(IFNULL(c.score, 0)) / NULLIF(SUM(a.max_score), 0)) * 100
-                        , 2) AS percentage,
-
-                        ROUND(
-                            CASE 
-                                WHEN SUM(a.max_score) = 0 THEN NULL
-                                WHEN sem.passing_rate IS NULL THEN NULL
-                                WHEN sem.passing_rate <= 0 OR sem.passing_rate >= 100 THEN NULL
-
-                                WHEN ((SUM(IFNULL(c.score, 0)) / SUM(a.max_score)) * 100) <= sem.passing_rate THEN 
-                                    5.0 - (2.0 / sem.passing_rate) *
-                                        ((SUM(IFNULL(c.score, 0)) / SUM(a.max_score)) * 100)
-
-                                ELSE 
-                                    3.0 - (2.0 / (100 - sem.passing_rate)) *
-                                        (((SUM(IFNULL(c.score, 0)) / SUM(a.max_score)) * 100) - sem.passing_rate)
-                            END
-                        , 2) AS grade_point,
-
-                        ROUND(
-                            (SUM(IFNULL(c.score, 0)) / NULLIF(SUM(a.max_score), 0)) * i.percentage
-                        , 2) AS weighted_grade,
-
-                        IFNULL(att.absences, 0) AS absences,
-                        IFNULL(att.presents, 0) AS present,
-                        IFNULL(late_att.lates, 0) AS lates
-
-                    FROM class_student cs
-                    JOIN student_master sm 
-                        ON cs.student_id = sm.trans_no
-
-                    JOIN class_schedule sched 
-                        ON cs.section = sched.section
-
-                    JOIN classes class 
-                        ON class.class_id = sched.class_id
-
-                    JOIN assessment_full a
-                        ON a.schedule_id = sched.schedule_id
-                    AND a.term = ?
-
-                    JOIN io_type i
-                        ON a.iotype_id = i.iotype_id
-
-                    JOIN semester_master sem
-                        ON sched.semester_id = sem.trans_no
-                    AND sem.is_active = 1
-
-                    LEFT JOIN classworks c
-                        ON c.assessment_id = a.assessment_id
-                    AND c.student_id = cs.student_id
-
-                    -- Attendance summary starting from sem.class_started (active semester)
-                    LEFT JOIN (
-                        SELECT 
-                            a.student_id,
-                            SUM(a.status = 'absent')  AS absences,
-                            SUM(a.status = 'present') AS presents
-                        FROM attendance a
-                        JOIN class_schedule cs2 
-                            ON a.schedule_id = cs2.schedule_id
-                        JOIN semester_master sem2
-                            ON cs2.semester_id = sem2.trans_no
-                        AND sem2.is_active = 1
-                        WHERE DATE(a.date) >= sem2.class_started
-                        GROUP BY a.student_id
-                    ) att 
-                        ON att.student_id = sm.trans_no
-
-                    -- Lates: also restricted to active semester + from class_started
-                    LEFT JOIN (
-                        SELECT 
-                            a.student_id,
-                            COUNT(*) AS lates
-                        FROM attendance a
-                        JOIN class_schedule cs3 
-                            ON a.schedule_id = cs3.schedule_id
-                        JOIN semester_master sem3
-                            ON cs3.semester_id = sem3.trans_no
-                        AND sem3.is_active = 1
-                        WHERE a.status = 'present'
-                        AND DATE(a.date) >= sem3.class_started
-                        AND TIMESTAMPDIFF(
-                                MINUTE, 
-                                CONCAT(DATE(a.date), ' ', cs3.time_start), 
-                                a.date
-                            ) > 20
-                        GROUP BY a.student_id
-                    ) late_att 
-                        ON late_att.student_id = sm.trans_no
-
-                    GROUP BY 
-                        cs.section, sm.trans_no, a.iotype_id
-
-                    ORDER BY 
-                        cs.section, sm.lastname, sm.firstname;
-                ", [$term]);
-
-        return $query->result_array(); // Return the result as an array of rows
-    }
+    // NOTE: the four grade-aggregation queries that used to live here
+    // (getActivitiesGrade, getGradesByIotype, getGradesBySection,
+    // getAllGradesBySection) were removed when grading was consolidated into
+    // Grade_calculator. They duplicated the transmutation formula four times
+    // and built the roster from class_student.section, which pulled in
+    // prior-semester and non-enrolled rows. This model now owns submission
+    // CRUD only — it does not compute grades.
 
     public function get_submissions_by_student($student_id)
     {

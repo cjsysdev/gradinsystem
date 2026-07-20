@@ -79,25 +79,32 @@ function randomizeNumber($min, $max)
     return $randomNumber;
 }
 
-function convertPercentageToGradePoint($percentage)
+/**
+ * @deprecated Use Grade_calculator::transmute($percentage, $passing_rate).
+ *
+ * Kept as a shim so any straggling call site keeps working. Two behaviours
+ * changed, both deliberately:
+ *
+ *  - The passing rate now comes from semester_master instead of a hardcoded 60,
+ *    so a semester configured for 50 is finally honoured.
+ *  - It returns a float or NULL, never a formatted string. The old version
+ *    returned number_format() output, so callers comparing it with `>` were
+ *    comparing strings, and passing 'INC' in cast it to 0 and got back "5.00".
+ *
+ * Prefer calling Grade_calculator directly — grades should not be computed in
+ * a view.
+ */
+function convertPercentageToGradePoint($percentage, $passing_rate = null)
 {
-    $passingGrade = 60;
+    $CI = &get_instance();
+    $CI->load->model('Grade_calculator');
 
-    if ($percentage <= $passingGrade) {
-        // Range 1: 0% to passing grade (returns 5.0 → 3.0)
-        $gradePoint = 5.0 - (2.0 / $passingGrade) * $percentage;
-    } elseif ($percentage > $passingGrade && $percentage <= 100) {
-        // Range 2: Passing grade to 100% (returns 3.0 → 1.0)
-        $gradePoint = 3.0 - (2.0 / (100 - $passingGrade)) * ($percentage - $passingGrade);
-    } else {
-        // Invalid percentage (e.g., >100 or <0)
-        return null;
+    if ($passing_rate === null) {
+        $row = $CI->db->query(
+            "SELECT passing_rate FROM semester_master WHERE is_active = 1 LIMIT 1"
+        )->row_array();
+        $passing_rate = $row['passing_rate'] ?? 60;
     }
 
-    // Round DOWN to 1 decimal place (e.g., 3.06 → 3.0)
-    $gradePoint = number_format($gradePoint * 10 / 10, 2);
-
-    // Return as float (e.g., 3.0) or formatted string (e.g., "3.0")
-    return $gradePoint; // Float (recommended for calculations)
-    // return number_format($gradePoint, 1); // String (for display)
+    return $CI->Grade_calculator->transmute($percentage, $passing_rate);
 }

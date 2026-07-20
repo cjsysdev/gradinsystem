@@ -136,10 +136,12 @@ class QuizController extends CI_Controller
         )->get();
 
         if (!$value) {
+            // Defensive: $score is bounded by question count, but clamp anyway
+            // in case an admin edited max_score to be smaller than that.
             $this->classworks->insert([
                 'student_id' => $this->session->student_id,
                 'assessment_id' => $assessment_id,
-                'score' => $score,
+                'score' => $this->classworks->clamp_score_for_assessment($assessment_id, $score),
                 'code' => json_encode($data['results'], JSON_PRETTY_PRINT)
             ]);
         }

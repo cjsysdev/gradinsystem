@@ -224,7 +224,10 @@ class AssessmentController extends CI_Controller
                     $graded = $this->Widgets_model->grade_quiz($config, $answers);
 
                     $submission_data['code'] = json_encode($graded['results']);
-                    $submission_data['score'] = $graded['score'];
+                    // Defensive: grade_quiz() is bounded by question count, but
+                    // clamp anyway in case an admin edited max_score to be
+                    // smaller than the widget's actual question count.
+                    $submission_data['score'] = $this->classworks->clamp_score_for_assessment($assessment_id, $graded['score']);
                     $submission_data['file_upload'] = null;
                     $redirect_to_result = true;
                 } else {

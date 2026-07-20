@@ -36,6 +36,43 @@ submission, and interactive JSON-driven discussions/quizzes.
 - `discussions` (type: `static` link, or `interactive` → JSON file in
   `assets/json/{slug}.json`, rendered via `InteractiveQuizController`)
 
+## Grading (read before touching anything grade-related)
+**`Grade_calculator` (`application/models/Grade_calculator.php`) is the only
+place a grade may be computed.** Never add grade arithmetic to a query, a
+controller, or a view — that duplication is exactly what this model replaced
+(four divergent SQL copies of the transmutation formula, eight copy-pasted
+weighted-sum loops, and a helper that hardcoded the passing rate to 60).
+
+Three layers, kept strictly separate:
+1. **Data** — SQL returns raw sums only (`sum_score`, `sum_max`,
+   `n_assessments`, `n_ungraded`). No transmutation, no weighting in SQL.
+2. **Policy** — `transmute()` / `component()` / `term_grade()` /
+   `final_grade()` are pure PHP and take every rule as an argument.
+   All tunables live in `application/config/grading.php`.
+3. **API** — `for_student()`, `for_schedule()`, `for_schedule_final()`,
+   `for_all_schedules_final()`. Controllers call these and only map to views.
+
+Rules that are easy to break:
+- **Roster = `class_student.schedule_id` + `status='enrolled'` + active
+  semester.** Never join `class_student.section = class_schedule.section` —
+  that ignores semester and enrolment status (it rendered 90 students on a
+  51-student section).
+- **A NULL `classworks.score` counts as 0** and is reported separately as
+  `pending_count`. Do not "fix" this without a decision — it changes grades.
+- **A term is INC unless every `io_type` has at least one assessment.** Weights
+  are never renormalized; a term missing its Major Exam does not scale the rest
+  up. `'INC'` is a `status` field — never put the string into a numeric field.
+- **All score writes go through `classworks::set_score()`**, which validates and
+  clamps to `max_score`.
+- `convertPercentageToGradePoint()` is a deprecated shim; call
+  `Grade_calculator::transmute()` instead.
+
+`GradeAuditController` (admin-only, also CLI-runnable) is the safety net:
+`selftest` (policy unit checks), `diff` (compare against the frozen baseline in
+`uploads/grade_audit/`), `integrity` (data drift report), `scoretest`
+(guardrails, transactional + rolled back), `student/{id}` (spot-check).
+**Run `selftest` and `diff` after any change to grading.**
+
 ## Active Initiative: Paperless Midterm Integration
 Full plan: **`root/docs/paperless-midterm-plan.md`** — read this before working
 on anything related to classwork widgets, the IS Innovations course, or new

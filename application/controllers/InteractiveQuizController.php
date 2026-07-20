@@ -540,12 +540,14 @@ class InteractiveQuizController extends CI_Controller
             $this->classworks->insert([
                 'student_id'    => $student_id,
                 'assessment_id' => $assessment_id,
-                'score'         => $score,
+                // $score is client-supplied and never re-graded server-side
+                // (unlike the "quiz" widget) — clamp_score_for_assessment()
+                // is the only thing preventing a POSTed score above max_score
+                // from landing in the database.
+                'score'         => $this->classworks->clamp_score_for_assessment($assessment_id, $score),
                 // Stored as-is like every other widget's classworks.code — keeps
                 // the student's original picks reviewable later without needing
-                // a second table. Client-computed, same trust level this
-                // endpoint already had for $score (unlike the "quiz" widget,
-                // this isn't re-graded server-side).
+                // a second table.
                 'code'          => $answers ?: null,
             ]);
             $message = 'Score saved successfully!';
