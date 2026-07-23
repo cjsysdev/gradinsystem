@@ -92,13 +92,17 @@ class GroupWorkController extends CI_Controller
         $is_iq = $widget && $widget['widget_key'] === 'iq_discussion';
 
         // Any member's "Submit for Group" fans a classworks row out to every
-        // member, so once one submits the whole group is done. Send teammates
-        // still sitting on the workspace straight to their classwork list —
-        // they see it's submitted instead of re-editing a draft that no longer
-        // counts. The interactive-quiz path has its own "already submitted →
-        // show score" screen, so leave that one to _render_group_iq().
-        if (!$is_iq && $this->_already_submitted($assessment_id)) {
-            $this->session->set_flashdata('success', 'Your group has already submitted this assessment.');
+        // member, so once one submits the whole group is done — but only
+        // *graded* is truly final. While ungraded, send the group back into
+        // the workspace (still prefilled from live_state, which submission
+        // never clears) so they can keep editing and re-submit. The
+        // interactive-quiz path has its own "already submitted → show score"
+        // screen, so leave that one to _render_group_iq() — iq_discussion is
+        // always scored the instant it's submitted, so it's never in this
+        // "submitted but ungraded" state.
+        $already_submitted = !$is_iq && $this->_already_submitted($assessment_id);
+        if ($already_submitted && $this->_is_graded($assessment_id)) {
+            $this->session->set_flashdata('success', 'Your group has already submitted and been graded for this assessment.');
             redirect('classwork');
             return;
         }
@@ -112,14 +116,15 @@ class GroupWorkController extends CI_Controller
         }
 
         $this->load->view('group_workspace', [
-            'assessment'    => $resolved['assessment'],
-            'group'         => $group,
-            'state'         => $state,
-            'members'       => $members,
-            'ready_map'     => $ready_map,
-            'student_id'    => $this->session->student_id,
-            'widget'        => $widget,
-            'widget_config' => $widget ? (json_decode($resolved['assessment']['given'] ?? '', true) ?: []) : [],
+            'assessment'         => $resolved['assessment'],
+            'group'              => $group,
+            'state'              => $state,
+            'members'            => $members,
+            'ready_map'          => $ready_map,
+            'student_id'         => $this->session->student_id,
+            'widget'             => $widget,
+            'widget_config'      => $widget ? (json_decode($resolved['assessment']['given'] ?? '', true) ?: []) : [],
+            'already_submitted'  => $already_submitted,
         ]);
     }
 
@@ -289,6 +294,10 @@ class GroupWorkController extends CI_Controller
             // Lets a teammate's still-open workspace notice a submission that
             // happened elsewhere and bounce itself to the classwork list.
             'submitted'       => $this->_already_submitted($assessment_id),
+            // Only a graded submission is truly final — the client bounces on
+            // this, not on 'submitted' alone (see graded/ungraded distinction
+            // in workspace()).
+            'graded'          => $this->_is_graded($assessment_id),
         ];
         if (!$bare) {
             $payload['members'] = $member_payload;
@@ -334,6 +343,17 @@ class GroupWorkController extends CI_Controller
         if (empty($members)) {
             $this->session->set_flashdata('error', 'No members found in this group.');
             redirect('GroupWorkController/workspace/' . $assessment_id);
+            return;
+        }
+
+        // Once the group has been graded, re-submitting must not silently
+        // overwrite the graded answers/score — mirrors the solo
+        // AssessmentController::submit_classwork() guard. The workspace()
+        // gate normally prevents reaching this action at all once graded,
+        // but this is the authoritative server-side check.
+        if ($this->_is_graded($assessment_id)) {
+            $this->session->set_flashdata('warning', 'This work has already been graded and can no longer be edited.');
+            redirect('classwork');
             return;
         }
 
@@ -448,6 +468,19 @@ class GroupWorkController extends CI_Controller
             'assessment_id' => $assessment_id,
         ])->get();
         return $row && $row->status === 'submitted';
+    }
+
+    // True once this group's submission has been graded. Grading a group is
+    // atomic — AdminController::add_group_score() scores every member's row
+    // in one call — so the current student's own row is a reliable proxy for
+    // "has this group been graded yet."
+    private function _is_graded($assessment_id)
+    {
+        $row = $this->classworks->where([
+            'student_id'    => $this->session->student_id,
+            'assessment_id' => $assessment_id,
+        ])->get();
+        return $row && $row->score !== null;
     }
 
     // Widget content is a JSON string, plain drafts are raw text — normalize

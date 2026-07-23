@@ -315,6 +315,15 @@
       <?php endif; ?>
     </div>
     <div class="card-footer text-center">
+      <?php
+      $noEditWidgets = ['quiz', 'secure_quiz', 'iq_discussion', 'brainstorm'];
+      $canEdit = $classwork['score'] === null
+          && !empty($widget)
+          && !in_array($widget['widget_key'], $noEditWidgets, true);
+      ?>
+      <?php if ($canEdit): ?>
+        <a href="<?= base_url('assessment/' . $classwork['assessment_id']) ?>" class="btn btn-outline-primary btn-block">Edit / Continue</a>
+      <?php endif; ?>
       <?php if (
         $classwork['status'] === 'submitted' &&
         $classwork['score'] <= 0 ||  $classwork['score'] == null

@@ -17,6 +17,9 @@ if (empty($widget) && ($assessment['iotype_id'] == '4' || $assessment['iotype_id
     <?php if ($this->session->flashdata('error')): ?>
         <div class="alert alert-danger"><?= htmlspecialchars($this->session->flashdata('error')) ?></div>
     <?php endif; ?>
+    <?php if (!empty($already_submitted)): ?>
+        <div class="alert alert-info">Your group already submitted this — you can keep editing and re-submit until it's graded.</div>
+    <?php endif; ?>
 
     <div class="card shadow-sm">
         <div class="card-header d-flex justify-content-between align-items-center">
@@ -249,10 +252,13 @@ if (empty($widget) && ($assessment['iotype_id'] == '4' || $assessment['iotype_id
             .then(d => {
                 if (!d.ok) return;
 
-                // A teammate submitted for the whole group elsewhere — bounce to
-                // the workspace route, which redirects on to the classwork list
-                // (with the "already submitted" notice) via the server guard.
-                if (d.submitted) {
+                // The group's submission has been graded elsewhere — it's now
+                // final, so bounce to the workspace route, which redirects on
+                // to the classwork list (with the "graded" notice) via the
+                // server guard. While merely submitted-but-ungraded, stay put:
+                // teammates keep collaborating and the content sync below
+                // picks up any teammate's re-submission.
+                if (d.graded) {
                     stopPolling();
                     window.location = BASE + 'GroupWorkController/workspace/' + assessmentId;
                     return;

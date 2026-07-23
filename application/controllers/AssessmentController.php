@@ -266,6 +266,16 @@ class AssessmentController extends CI_Controller
             $classwork_id = $this->classworks->insert($submission_data);
             $this->session->set_flashdata('success', 'Classwork submitted successfully!');
         } else {
+            // Once a submission is graded, re-submitting must not silently
+            // overwrite the graded answers/score — the student-facing "Edit /
+            // Continue" link only appears while score is null, but this guard
+            // is the authoritative check (URL access bypasses the view gate).
+            if ($existing_submission->score !== null) {
+                $this->session->set_flashdata('warning', 'This work has already been graded and can no longer be edited.');
+                redirect('student_submission/' . $existing_submission->classwork_id);
+                return;
+            }
+
             // Update existing submission.
             // MY_Model::update() takes (data, where) — NOT (where, data).
             $this->classworks->update($submission_data, $existing_submission->classwork_id);
