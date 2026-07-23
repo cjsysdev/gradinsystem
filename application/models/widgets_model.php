@@ -104,9 +104,23 @@ class Widgets_model extends CI_Model
     // widget's getWidgetState() produces: {"answers": {"0": "...", ...}}).
     // Mirrors QuizController::submit()'s comparison logic so results look the
     // same whether an assessment uses the old json_file_path quiz or this widget.
+    // Accepts either the canonical {"questions":[...]} object or a bare list of
+    // question objects [ {...}, {...} ] (the legacy QuizController json-file
+    // shape, and the shape people naturally paste), so a config given in either
+    // form grades/renders identically. Used by grade_quiz(), SecureQuizController,
+    // and the quiz/secure_quiz widget views.
+    public function quiz_questions($config)
+    {
+        if (!is_array($config)) return [];
+        if (array_key_exists('questions', $config)) {
+            return is_array($config['questions']) ? $config['questions'] : [];
+        }
+        return $config === array_values($config) ? $config : []; // bare list only
+    }
+
     public function grade_quiz($config, $answers)
     {
-        $questions = $config['questions'] ?? [];
+        $questions = $this->quiz_questions($config);
         $score = 0;
         $results = [];
 

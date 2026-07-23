@@ -963,6 +963,14 @@ class AdminController extends CI_Controller
                     redirect('manage_assessments' . (!empty($post['schedule_id']) ? '?schedule_id=' . $post['schedule_id'] : ''));
                     return;
                 }
+
+                // Quiz widgets accept a bare list of questions [ {...}, {...} ] as
+                // well as the canonical { "questions":[...] }; canonicalize on save
+                // so the stored config is always the object shape every reader (and
+                // the visual builder) expects. Already-correct configs are untouched.
+                if (in_array($widget['widget_key'], ['quiz', 'secure_quiz'], true) && !isset($config['questions'])) {
+                    $master_fields['given'] = json_encode(['questions' => $this->Widgets_model->quiz_questions($config)]);
+                }
             }
         }
 

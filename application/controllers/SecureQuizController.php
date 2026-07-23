@@ -49,7 +49,7 @@ class SecureQuizController extends CI_Controller
         // from a previously-taken quiz isn't reused for a different one.
         $session_key = 'shuffled_questions_' . $assessment_id;
         if (!$this->session->userdata($session_key)) {
-            $allQuestions = $config['questions'] ?? [];
+            $allQuestions = $this->Widgets_model->quiz_questions($config);
             shuffle($allQuestions);
             $questions = array_slice($allQuestions, 0, (int)$query_max_items ?: 10);
 
@@ -116,7 +116,7 @@ class SecureQuizController extends CI_Controller
         }
 
         $config = json_decode($this->input->post('config') ?? '', true) ?: [];
-        $questions = $config['questions'] ?? [];
+        $questions = $this->Widgets_model->quiz_questions($config);
         shuffle($questions);
 
         foreach ($questions as &$question) {

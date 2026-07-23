@@ -50,6 +50,9 @@
       <a href="<?= base_url('poll/dashboard') ?>" class="btn btn-outline-secondary btn-sm mr-2">
         <i class="fas fa-arrow-left"></i> Back
       </a>
+      <a href="<?= base_url('poll/report/' . $poll['poll_id']) ?>" class="btn btn-outline-light btn-sm mr-2">
+        <i class="fas fa-chart-bar"></i> Results
+      </a>
       <button id="btn-close-poll" class="btn btn-danger btn-sm" data-poll="<?= $poll['poll_id'] ?>">
         <i class="fas fa-stop-circle"></i> Close Poll
       </button>

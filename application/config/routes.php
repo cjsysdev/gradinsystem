@@ -218,6 +218,7 @@ $route['poll/install']                   = 'PollController/install';
 $route['poll/dashboard']                 = 'PollController/dashboard';
 $route['poll/create']                    = 'PollController/create';
 $route['poll/present/(:num)']            = 'PollController/present/$1';
+$route['poll/report/(:num)']             = 'PollController/report/$1';
 $route['poll/activate_question/(:num)']  = 'PollController/activate_question/$1';
 $route['poll/toggle_results/(:num)']     = 'PollController/toggle_results/$1';
 $route['poll/close_poll/(:num)']         = 'PollController/close_poll/$1';

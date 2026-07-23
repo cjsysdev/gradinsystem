@@ -12,7 +12,11 @@
 
 $readonly = $readonly ?? false;
 $existing = $existing ?? null;
-$questions = $config['questions'] ?? [];
+// Accept either {"questions":[...]} or a bare list [ {...}, {...} ] of questions
+// (mirrors Widgets_model::quiz_questions(); inlined so this view has no model dep).
+$questions = (is_array($config ?? null) && array_key_exists('questions', $config))
+    ? (is_array($config['questions']) ? $config['questions'] : [])
+    : ((is_array($config ?? null) && $config === array_values($config)) ? $config : []);
 $prefill = (!$readonly && is_array($existing)) ? ($existing['answers'] ?? []) : [];
 $results = $readonly ? ($existing ?: []) : [];
 ?>

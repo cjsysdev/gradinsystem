@@ -205,6 +205,15 @@
         if (!container) return;
         container.innerHTML = '';
         topGetters = [];
+        // A single-field schema (quiz/secure_quiz — one 'questions' group_list) may
+        // be fed a bare array [ {...}, {...} ] instead of { questions:[...] }; wrap
+        // it into that one field so the builder populates instead of blanking (and
+        // then silently overwriting the pasted config with an empty list).
+        if (Array.isArray(data) && schema.fields.length === 1) {
+            var wrapped = {};
+            wrapped[schema.fields[0].key] = data;
+            data = wrapped;
+        }
         originalData = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
         schema.fields.forEach(function (spec) {
             var built = buildField(spec, originalData[spec.key]);

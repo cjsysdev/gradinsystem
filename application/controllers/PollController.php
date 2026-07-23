@@ -115,6 +115,32 @@ class PollController extends CI_Controller
         ]);
     }
 
+    // ── Teacher: Results report (read-only, no session mutation) ────────────
+
+    public function report($poll_id)
+    {
+        if ($this->session->role != 'admin') {
+            redirect('login');
+        }
+        $poll = $this->Polls->get_poll($poll_id);
+        if (!$poll) show_404();
+
+        $questions = $this->Polls->get_questions($poll_id);
+        foreach ($questions as &$q) {
+            $is_oe = $q['question_type'] === 'open_ended';
+            $q['results'] = $is_oe
+                ? $this->Polls->get_oe_results($q['question_id'])
+                : $this->Polls->get_mc_results($q['question_id']);
+            $q['total'] = $this->Polls->get_total_responses($q['question_id']);
+        }
+        unset($q);
+
+        $this->load->view('polls/teacher_report', [
+            'poll'      => $poll,
+            'questions' => $questions,
+        ]);
+    }
+
     // AJAX: activate a question
     public function activate_question($question_id)
     {

@@ -58,6 +58,10 @@
                  class="btn btn-sm btn-outline-primary">
                 <i class="fas fa-play"></i> Present
               </a>
+              <a href="<?= base_url('poll/report/' . $poll['poll_id']) ?>"
+                 class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-chart-bar"></i> Results
+              </a>
               <button class="btn btn-sm btn-outline-danger btn-delete-poll"
                       data-id="<?= $poll['poll_id'] ?>">
                 <i class="fas fa-trash"></i>
