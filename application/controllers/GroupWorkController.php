@@ -221,14 +221,36 @@ class GroupWorkController extends CI_Controller
             return;
         }
 
-        $state    = $this->Live_state_model->get_or_create($assessment_id, $resolved['group']['group_id']);
-        $incoming = $this->input->post('content');
+        $state = $this->Live_state_model->get_or_create($assessment_id, $resolved['group']['group_id']);
 
-        // Never let an empty widget shell (e.g. a client whose widget hadn't
-        // finished initializing when an input event fired) overwrite a
-        // teammate's real work — same emptiness rule submit_group() applies
-        // before fan-out. Answer ok so the client doesn't spin retrying;
-        // skipped tells it to re-fetch the good draft on its next poll.
+        // Preferred path: a sparse field-level patch of only the leaves this
+        // member changed. Merging (not replacing) is what keeps a teammate's
+        // untouched parts intact — the whole point of the field-level sync.
+        // Patches are inherently sparse, so the empty-shell guard below (which
+        // exists only to stop a blank *whole-blob* overwrite) doesn't apply.
+        $patch_raw = $this->input->post('patch');
+        if ($patch_raw !== null && $patch_raw !== '') {
+            $patch = json_decode($patch_raw, true);
+            if (!is_array($patch)) {
+                $this->_json(['ok' => false, 'error' => 'bad patch'], 400);
+                return;
+            }
+            $fresh = $this->Live_state_model->merge_patch($state['state_id'], $patch, $this->session->student_id);
+            $this->_json([
+                'ok'             => true,
+                'rev'            => (int) ($fresh['rev'] ?? 0),
+                'field_versions' => json_decode($fresh['field_versions'] ?? '', true) ?: (object) [],
+                'content'        => $fresh['content'],
+                'updated_at'     => $fresh['updated_at'],
+            ]);
+            return;
+        }
+
+        // Legacy whole-blob fallback: a client without the patch path (e.g. the
+        // plain no-widget shared textarea, or a degraded/older page) posts the
+        // full content. Kept working unchanged, with the original empty-shell
+        // guard so it can't wipe a teammate's real work.
+        $incoming = $this->input->post('content');
         if (
             $this->_has_content($this->_decoded_or_raw($state['content']))
             && !$this->_has_content($this->_decoded_or_raw($incoming))
@@ -241,7 +263,7 @@ class GroupWorkController extends CI_Controller
         // Return the fresh version stamp so the saver can advance its own
         // poll marker and not have the server echo this content straight back.
         $fresh = $this->Live_state_model->get_state($assessment_id, $resolved['group']['group_id']);
-        $this->_json(['ok' => true, 'updated_at' => $fresh['updated_at']]);
+        $this->_json(['ok' => true, 'rev' => (int) ($fresh['rev'] ?? 0), 'updated_at' => $fresh['updated_at']]);
     }
 
     // AJAX: polled every 2s by the workspace view.
@@ -268,6 +290,7 @@ class GroupWorkController extends CI_Controller
         // every 1.5s. The workspace view keeps the full payload.
         $bare = (bool) $this->input->get('bare');
         $member_payload = [];
+        $presence_payload = [];
         if (!$bare) {
             $members = $this->Group_member_model->get_members_by_group($group['group_id']);
             $ready_map = $this->Live_state_model->get_ready_map($state['state_id']);
@@ -279,17 +302,37 @@ class GroupWorkController extends CI_Controller
                     'ready'      => !empty($ready_map[$m['student_id']]),
                 ];
             }, $members);
+
+            // "Who's editing which field" — only members with a fresh heartbeat.
+            $presence_map = $this->Live_state_model->get_presence_map($state['state_id']);
+            foreach ($members as $m) {
+                if (isset($presence_map[$m['student_id']]) && $presence_map[$m['student_id']] !== null) {
+                    $presence_payload[] = [
+                        'student_id' => $m['student_id'],
+                        'name'       => trim($m['firstname'] . ' ' . $m['lastname']),
+                        'field_path' => $presence_map[$m['student_id']],
+                    ];
+                }
+            }
         }
 
-        // Ready flags live in a separate table and don't bump this row's
-        // updated_at, so members/ready are always sent — only the big content
-        // blob is gated on the version the client last applied.
-        $since   = $this->input->get('since');
-        $changed = ($since === null || $since !== $state['updated_at']);
+        // The workspace polls with ?since_rev= (the integer edit counter) —
+        // clean, high-resolution, so the big content/field_versions payload
+        // ships only when the group's rev actually advanced. The legacy
+        // interactive-quiz caller still polls with ?since=<updated_at>; support
+        // both. Ready/presence flags don't bump rev, so they're always sent.
+        $since_rev = $this->input->get('since_rev');
+        if ($since_rev !== null) {
+            $changed = ((int) $since_rev !== (int) ($state['rev'] ?? 0));
+        } else {
+            $since   = $this->input->get('since');
+            $changed = ($since === null || $since !== $state['updated_at']);
+        }
 
         $payload = [
             'ok'              => true,
             'updated_at'      => $state['updated_at'],
+            'rev'             => (int) ($state['rev'] ?? 0),
             'content_changed' => $changed,
             // Lets a teammate's still-open workspace notice a submission that
             // happened elsewhere and bounce itself to the classwork list.
@@ -300,10 +343,12 @@ class GroupWorkController extends CI_Controller
             'graded'          => $this->_is_graded($assessment_id),
         ];
         if (!$bare) {
-            $payload['members'] = $member_payload;
+            $payload['members']  = $member_payload;
+            $payload['presence'] = $presence_payload;
         }
         if ($changed) {
             $payload['content']        = $state['content'];
+            $payload['field_versions'] = json_decode($state['field_versions'] ?? '', true) ?: (object) [];
             $payload['last_edited_by'] = $state['last_edited_by'];
         }
         $this->_json($payload);
@@ -320,6 +365,24 @@ class GroupWorkController extends CI_Controller
 
         $state = $this->Live_state_model->get_or_create($assessment_id, $resolved['group']['group_id']);
         $this->Live_state_model->set_ready($state['state_id'], $this->session->student_id, (bool) $this->input->post('ready'));
+        $this->_json(['ok' => true]);
+    }
+
+    // AJAX: heartbeat of which field the current student is editing. Posted on
+    // focus and periodically while a field stays focused; an empty field_path
+    // means "not editing anything" (on blur). Powers the presence indicators.
+    public function presence($assessment_id)
+    {
+        $resolved = $this->_resolve($assessment_id);
+        if (!$resolved || !$resolved['group']) {
+            $this->_json(['ok' => false], 400);
+            return;
+        }
+
+        $state = $this->Live_state_model->get_or_create($assessment_id, $resolved['group']['group_id']);
+        $field_path = $this->input->post('field_path');
+        $field_path = ($field_path === '' ? null : $field_path);
+        $this->Live_state_model->set_presence($state['state_id'], $this->session->student_id, $field_path);
         $this->_json(['ok' => true]);
     }
 
@@ -373,14 +436,26 @@ class GroupWorkController extends CI_Controller
             return;
         }
 
-        // The submitter's own screen is the source of truth — the debounced
-        // autosave may not have landed yet (see prepareGroupSubmit() in
-        // group_workspace.php). Fall back to the last saved state only if the
-        // client didn't send anything (JS disabled/degraded).
-        $posted = $this->input->post('content');
-        $content = ($posted !== null && $posted !== '') ? $posted : $state['content'];
-
         $is_widget = !empty($resolved['assessment']['widget_id']);
+
+        if ($is_widget) {
+            // Widgets sync via field-level merge, so the authoritative, fully
+            // merged group draft is the shared blob — NOT the submitter's own
+            // screen, which may still be missing a teammate's un-polled part.
+            // The client flushes its final edits as a patch (synchronously)
+            // just before this POST, so re-reading the stored blob here yields
+            // the union of everyone's parts. This is what stops a mistimed
+            // submit from fanning out a half-empty answer over the whole group.
+            $fresh   = $this->Live_state_model->get_state($assessment_id, $group['group_id']);
+            $content = $fresh['content'];
+        } else {
+            // Plain text/code draft (no widget): the submitter's own screen is
+            // the source of truth — the debounced autosave may not have landed
+            // yet (see prepareGroupSubmit()). Fall back to the last saved state
+            // only if the client didn't send anything (JS disabled/degraded).
+            $posted  = $this->input->post('content');
+            $content = ($posted !== null && $posted !== '') ? $posted : $state['content'];
+        }
 
         $widget = $is_widget ? $this->Widgets_model->get($resolved['assessment']['widget_id']) : null;
         $is_quiz = $widget && $widget['widget_key'] === 'quiz';

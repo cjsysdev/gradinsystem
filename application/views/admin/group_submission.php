@@ -218,6 +218,29 @@
                                         <?php if (!empty($sub['file_upload']) && !str_contains($sub['file_upload'], 'zip')): ?>
                                             <iframe src="<?= base_url("uploads/classworks/{$sub['file_upload']}") ?>" width="100%" height="500px" style="border: none;"></iframe>
                                         <?php endif; ?>
+                                    <?php elseif (!empty($g['live_draft']) && $widget): ?>
+                                        <!-- Not submitted yet, but the group has a shared draft in
+                                             progress (assessment_live_state). Read-only snapshot at page
+                                             load so the instructor can watch their collaborative work —
+                                             ungraded and non-authoritative until they submit. -->
+                                        <details class="mb-2">
+                                            <summary class="text-warning font-weight-bold" style="cursor: pointer;">
+                                                <i class="fa fa-pencil-alt"></i> Draft in progress — click to view
+                                                <?php if (!empty($g['live_updated_at'])): ?>
+                                                    <span class="text-muted small font-weight-normal">
+                                                        (last edited <?= htmlspecialchars(date('M j, g:i A', strtotime($g['live_updated_at']))) ?><?php if (!empty($g['live_edited_by'])): ?> by student <?= htmlspecialchars($g['live_edited_by']) ?><?php endif; ?>)
+                                                    </span>
+                                                <?php endif; ?>
+                                            </summary>
+                                            <div class="border rounded p-2 bg-light mt-2">
+                                                <?php $this->load->view($widget['input_view'], [
+                                                    'config'   => $widget_config,
+                                                    'readonly' => true,
+                                                    'existing' => $g['live_draft'],
+                                                ]); ?>
+                                                <p class="text-muted small mb-0 mt-2"><em>Live draft — not yet submitted or graded.</em></p>
+                                            </div>
+                                        </details>
                                     <?php endif; ?>
                                 </div>
                             </div>

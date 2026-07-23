@@ -336,6 +336,19 @@ foreach ($sections as $s) {
         return widget.contains(document.activeElement);
     };
 
+    // Optional live-collaboration hooks (group_workspace.php) — let teammates
+    // see which question a member is on. A question is the smallest "part" here.
+    window.getFocusedFieldPath = function () {
+        const active = document.activeElement;
+        if (!active || !widget.contains(active)) return null;
+        const qEl = active.closest('.cs-q');
+        return qEl ? 'answers.' + qEl.dataset.idx : null;
+    };
+    window.getFieldElement = function (path) {
+        const m = /^answers\.([^.]+)/.exec(path || '');
+        return m ? widget.querySelector('.cs-q[data-idx="' + m[1] + '"]') : null;
+    };
+
     // Called by the host page right before it submits the form — serializes
     // this widget's state into the hidden #widget-code-value field so the
     // existing AssessmentController::submit_classwork() needs zero changes.

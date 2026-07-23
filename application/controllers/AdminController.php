@@ -205,7 +205,7 @@ class AdminController extends CI_Controller
     // grouping tables and the submission content is read off any member's row.
     public function group_submissions($assessment_id = null)
     {
-        $this->load->model(['Grouping_model', 'Group_member_model']);
+        $this->load->model(['Grouping_model', 'Group_member_model', 'Live_state_model']);
 
         $day   = date('D');
         $class = $this->class_schedule->class_today($day);
@@ -276,6 +276,24 @@ class AdminController extends CI_Controller
                     $g['classwork_ids']   = $classwork_ids;
                     $g['score']           = $shared['score'] ?? null;
                     $g['max_score']       = $shared['max_score'] ?? ($assessment['max_score'] ?? null);
+
+                    // In-progress shared draft (assessment_live_state) so the
+                    // instructor can watch a group's collaborative work before
+                    // it's submitted. Snapshot at page load; ungraded and
+                    // non-authoritative — surfaced only for groups still
+                    // drafting (no submission yet) with something actually filled.
+                    $g['live_draft']    = null;
+                    $g['live_edited_by'] = null;
+                    $g['live_updated_at'] = null;
+                    if ($shared === null) {
+                        $live = $this->Live_state_model->get_state($assessment_id, $g['group_id']);
+                        if ($live && trim((string) $live['content']) !== '') {
+                            $decoded = json_decode($live['content'], true);
+                            $g['live_draft']      = ($decoded === null) ? null : $decoded;
+                            $g['live_edited_by']  = $live['last_edited_by'];
+                            $g['live_updated_at'] = $live['updated_at'];
+                        }
+                    }
                 }
                 unset($g);
 

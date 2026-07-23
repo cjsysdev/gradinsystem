@@ -131,6 +131,25 @@ if (!$readonly && empty($rows)) {
         return document.getElementById('worksheet-widget').contains(document.activeElement);
     };
 
+    // Optional live-collaboration hooks (group_workspace.php) — highlight the
+    // exact cell a teammate is editing. Path mirrors the serialized shape:
+    // rows.<rowIndex>.<column>. Row identity is positional (see the plan's
+    // deferred worksheet-row-identity note), which is fine for presence.
+    window.getFocusedFieldPath = function () {
+        const active = document.activeElement;
+        if (!active || !active.classList || !active.classList.contains('ws-cell')) return null;
+        const tr = active.closest('tr');
+        const rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+        const i = rows.indexOf(tr);
+        return i < 0 ? null : 'rows.' + i + '.' + active.dataset.col;
+    };
+    window.getFieldElement = function (path) {
+        const m = /^rows\.(\d+)\.(.+)$/.exec(path || '');
+        if (!m) return null;
+        const tr = tbody.querySelectorAll('tr')[parseInt(m[1], 10)];
+        return tr ? tr.querySelector('.ws-cell[data-col="' + m[2] + '"]') : null;
+    };
+
     // Called by the host page right before it submits the form — serializes
     // this widget's state into the hidden #widget-code-value field so the
     // existing AssessmentController::submit_classwork() needs zero changes

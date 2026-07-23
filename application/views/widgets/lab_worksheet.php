@@ -185,6 +185,26 @@ $tag_colors = [
         return widget.contains(document.activeElement);
     };
 
+    // Optional live-collaboration hooks (group_workspace.php) — highlight the
+    // exact prompt/field a teammate is editing.
+    window.getFocusedFieldPath = function () {
+        const active = document.activeElement;
+        if (!active || !widget.contains(active)) return null;
+        if (active === exitField) return 'exit_question';
+        const expEl = active.closest('.lw-exp[data-idx]');
+        if (expEl && active.dataset && active.dataset.tag) {
+            return 'answers.' + expEl.dataset.idx + '.' + active.dataset.tag;
+        }
+        return null;
+    };
+    window.getFieldElement = function (path) {
+        if (path === 'exit_question') return exitField;
+        const m = /^answers\.([^.]+)\.(.+)$/.exec(path || '');
+        if (!m) return null;
+        const expEl = widget.querySelector('.lw-exp[data-idx="' + m[1] + '"]');
+        return expEl ? expEl.querySelector('.lw-field[data-tag="' + m[2] + '"]') : null;
+    };
+
     window.serializeWidgetBeforeSubmit = function () {
         const codeField = document.getElementById('widget-code-value');
         if (codeField) codeField.value = window.getWidgetState();

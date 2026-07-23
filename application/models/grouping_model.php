@@ -81,6 +81,31 @@ class Grouping_model extends CI_Model
         // via a safe column check rather than folding into the CREATE TABLE
         // above, since grouping_sets already exists in live installs.
         $this->_add_column_if_missing('grouping_sets', 'self_select', 'TINYINT(1) NOT NULL DEFAULT 0');
+
+        // Field-level live merge: instead of overwriting the whole shared blob
+        // on every save (which let one member's save wipe a teammate's part),
+        // each save now patches only the leaves it changed. `rev` is a
+        // monotonic per-row edit counter; `field_versions` is a JSON map of
+        // flattened leaf-path => the rev at which that leaf was last written,
+        // so clients merge per-field (adopt a remote leaf only when its version
+        // is newer than the one they hold). See Live_state_model::merge_patch().
+        $this->_add_column_if_missing('assessment_live_state', 'rev', 'INT NOT NULL DEFAULT 0');
+        $this->_add_column_if_missing('assessment_live_state', 'field_versions', 'LONGTEXT NULL');
+
+        // Live "who's editing which field" presence: one heartbeat row per
+        // student per live-state row, holding the flattened path of the field
+        // they currently have focused. Stale rows (no recent heartbeat) are
+        // ignored by get_presence_map() and swept opportunistically.
+        $this->db->query("CREATE TABLE IF NOT EXISTS `assessment_live_state_presence` (
+            `id`         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            `state_id`   INT UNSIGNED NOT NULL,
+            `student_id` VARCHAR(50) NOT NULL,
+            `field_path` VARCHAR(191) DEFAULT NULL,
+            `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY `uq_state_student` (`state_id`, `student_id`),
+            KEY `idx_updated` (`updated_at`),
+            FOREIGN KEY (`state_id`) REFERENCES `assessment_live_state`(`state_id`) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
     }
 
     private function _add_column_if_missing($table, $column, $definition)

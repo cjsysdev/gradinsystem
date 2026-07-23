@@ -112,6 +112,14 @@ if (empty($widget) && ($assessment['iotype_id'] == '4' || $assessment['iotype_id
     </div>
 </div>
 
+<style>
+    /* A field a teammate currently has focused — see renderPresence(). */
+    .live-presence-editing {
+        outline: 2px solid #ffc107 !important;
+        box-shadow: 0 0 0 3px rgba(255, 193, 7, .25);
+    }
+    .presence-note { white-space: nowrap; }
+</style>
 <script>
 (function () {
     const BASE = '<?= base_url() ?>';
@@ -150,24 +158,82 @@ if (empty($widget) && ($assessment['iotype_id'] == '4' || $assessment['iotype_id
         return focused && (Date.now() - lastInputAt) < 4000;
     }
 
+    // ── Flatten / diff (mirror of Live_state_model's PHP set_by_path) ────────
+    // We turn the widget's JSON state into a flat map of dotted leaf-path =>
+    // scalar value, so a save can send ONLY the leaves that changed (a patch).
+    // The server merges the patch per-field, so a teammate's untouched parts
+    // survive — that's the whole fix. The heavy field-level merge lives on the
+    // server (merge_patch); the client just sends patches and, when idle,
+    // adopts the server's already-merged blob wholesale.
+    function flatten(obj, prefix, out) {
+        out = out || {};
+        if (obj !== null && typeof obj === 'object') {
+            const keys = Array.isArray(obj) ? obj.map((_, i) => i) : Object.keys(obj);
+            keys.forEach(k => {
+                const path = prefix === '' ? '' + k : prefix + '.' + k;
+                flatten(obj[k], path, out);
+            });
+        } else {
+            out[prefix] = obj; // scalar leaf (string / number / bool / null)
+        }
+        return out;
+    }
+    function flatOf(str) {
+        try { return flatten(JSON.parse(str || '{}'), '', {}); }
+        catch (e) { return {}; }
+    }
+    function diffFlat(base, cur) {
+        const patch = {};
+        for (const k in cur) {
+            if (!(k in base) || base[k] !== cur[k]) patch[k] = cur[k];
+        }
+        return patch;
+    }
+
     let saveTimer = null;
     let saveInFlight = false;
     let saveRetryDelay = 2000;
     let lastInputAt = 0;
     let lastSavedContent = getCurrentContent();
-    // Version of the shared content we currently hold. Echoed to the server as
-    // ?since= so it skips resending the (possibly large) blob when unchanged.
+    // The flat baseline the server currently holds for our leaves — the diff
+    // reference. Kept in sync on every successful save and every adopted poll.
+    let baseFlat = hasWidget ? flatOf(lastSavedContent) : {};
+    // Integer edit counter of the shared row we currently hold (widget mode).
+    // Echoed as ?since_rev= so the server ships the big blob only when it moved.
+    let knownRev = <?= (int) ($state['rev'] ?? 0) ?>;
+    // Legacy no-widget textarea path still versions on updated_at (?since=),
+    // since its whole-blob saves don't bump rev.
     let lastVersion = <?= json_encode((string) $state['updated_at']) ?>;
 
-    // Called by the submit form's onsubmit, before navigation — captures
-    // whatever is actually on screen instead of trusting the debounced
-    // autosave to have already landed (confirm() blocks the JS event loop,
-    // so a pending save can't fire while the dialog is open, and submitting
-    // aborts any in-flight fetch).
+    // Called by the submit form's onsubmit, before navigation. For widgets we
+    // flush a final patch SYNCHRONOUSLY so the server's shared blob has our
+    // last edits before submit_group re-reads it as the authoritative,
+    // fully-merged group answer (it no longer trusts this screen alone —
+    // a teammate's un-polled part must not be dropped). confirm() blocks the
+    // event loop, so the debounced autosave can't have fired on its own.
     window.prepareGroupSubmit = function () {
-        if (!confirm('Submit this draft for the whole group? What is currently on YOUR screen is what gets submitted.')) return false;
+        if (!confirm('Submit this draft for the whole group? Everyone\'s merged answers are submitted — not just what is on your screen.')) return false;
         clearTimeout(saveTimer);
-        document.getElementById('group-submit-content').value = getCurrentContent();
+        if (hasWidget) {
+            const cur = getCurrentContent();
+            const curFlat = flatOf(cur);
+            const patch = diffFlat(baseFlat, curFlat);
+            if (Object.keys(patch).length > 0) {
+                try {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('POST', BASE + 'GroupWorkController/save_draft/' + assessmentId, false); // sync
+                    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+                    xhr.send('patch=' + encodeURIComponent(JSON.stringify(patch)));
+                    baseFlat = curFlat;
+                } catch (e) { /* fall through — server still has the merged blob */ }
+            }
+            // The hidden field is now advisory only; the server ignores it for
+            // widgets and re-reads the merged blob. Send it anyway for the
+            // degraded/no-JS-merge case.
+            document.getElementById('group-submit-content').value = cur;
+        } else {
+            document.getElementById('group-submit-content').value = getCurrentContent();
+        }
         return true;
     };
 
@@ -179,31 +245,49 @@ if (empty($widget) && ($assessment['iotype_id'] == '4' || $assessment['iotype_id
         }
         const content = getCurrentContent();
         if (content === lastSavedContent) { saveStatus.textContent = 'Saved'; return; }
+
+        let body;
+        let curFlat = null;
+        if (hasWidget) {
+            curFlat = flatOf(content);
+            const patch = diffFlat(baseFlat, curFlat);
+            if (Object.keys(patch).length === 0) {
+                // Nothing meaningful changed (e.g. formatting-only) — advance
+                // the baseline and stop, don't spam an empty patch.
+                lastSavedContent = content;
+                baseFlat = curFlat;
+                saveStatus.textContent = 'Saved';
+                return;
+            }
+            body = 'patch=' + encodeURIComponent(JSON.stringify(patch));
+        } else {
+            body = 'content=' + encodeURIComponent(content);
+        }
+
         saveInFlight = true;
         saveStatus.textContent = 'Saving...';
         fetch(BASE + 'GroupWorkController/save_draft/' + assessmentId, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'content=' + encodeURIComponent(content),
+            body: body,
         })
         .then(r => r.json())
         .then(d => {
             saveInFlight = false;
             if (!d || !d.ok) throw new Error('save failed');
             saveRetryDelay = 2000;
-            // Only mark the content saved once the server confirms it — a
-            // failed save must stay eligible for retry, not be silently
-            // considered saved.
+            // Only mark saved once the server confirms it — a failed save must
+            // stay eligible for retry, not be silently considered saved.
             lastSavedContent = content;
             saveStatus.textContent = 'Saved';
-            if (d.skipped) {
+            if (hasWidget) {
+                baseFlat = curFlat;                 // server now holds these leaves
+                if (typeof d.rev === 'number') knownRev = d.rev;
+            } else if (d.skipped) {
                 // Server refused to replace real group content with an empty
-                // shell — blank our version marker so the next poll re-fetches
-                // and restores the shared draft onto this screen.
+                // shell — blank our marker so the next poll restores the draft.
                 lastVersion = '';
             } else if (d.updated_at) {
-                // Advance our marker to the version we just wrote so the next
-                // poll doesn't get our own content echoed back to us.
                 lastVersion = d.updated_at;
             }
             if (getCurrentContent() !== lastSavedContent) queueSave();
@@ -240,13 +324,67 @@ if (empty($widget) && ($assessment['iotype_id'] == '4' || $assessment['iotype_id
         });
     }
 
-    let pollCount = 0;
+    // ── Presence: tell teammates which field I'm editing ─────────────────────
+    // Returns the flattened path of the focused field when the widget maps it,
+    // '*' when a field is focused but unmapped, or null when nothing here is.
+    function activeFieldPath() {
+        if (!widgetWrap.contains(document.activeElement)) return null;
+        if (hasWidget && typeof window.getFocusedFieldPath === 'function') {
+            try { return window.getFocusedFieldPath() || '*'; } catch (e) { return '*'; }
+        }
+        return '*';
+    }
+    let lastPresenceSent = false;
+    function sendPresence(path) {
+        fetch(BASE + 'GroupWorkController/presence/' + assessmentId, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'field_path=' + encodeURIComponent(path == null ? '' : path),
+        }).catch(() => {});
+    }
+    widgetWrap.addEventListener('focusin', () => { lastPresenceSent = true; sendPresence(activeFieldPath()); });
+    widgetWrap.addEventListener('focusout', () => {
+        // Let focus settle — moving between two fields fires focusout then
+        // focusin; only report "left" once focus actually leaves the widget.
+        setTimeout(() => {
+            if (!widgetWrap.contains(document.activeElement)) { lastPresenceSent = false; sendPresence(''); }
+        }, 60);
+    });
+    // Heartbeat so presence stays fresh (server expires it after ~6s).
+    setInterval(() => {
+        const p = activeFieldPath();
+        if (p !== null) { lastPresenceSent = true; sendPresence(p); }
+        else if (lastPresenceSent) { lastPresenceSent = false; sendPresence(''); }
+    }, 3000);
+
+    function renderPresence(list) {
+        document.querySelectorAll('.live-presence-editing').forEach(el => {
+            el.classList.remove('live-presence-editing');
+            el.removeAttribute('title');
+        });
+        document.querySelectorAll('.presence-note').forEach(n => n.remove());
+        (list || []).forEach(p => {
+            if (p.student_id === myStudentId) return;
+            let located = false;
+            if (p.field_path && p.field_path !== '*' && hasWidget && typeof window.getFieldElement === 'function') {
+                let el = null;
+                try { el = window.getFieldElement(p.field_path); } catch (e) {}
+                if (el) { el.classList.add('live-presence-editing'); el.title = p.name + ' is editing this'; located = true; }
+            }
+            const li = document.querySelector('#member-list li[data-student="' + p.student_id + '"]');
+            if (li) {
+                const note = document.createElement('span');
+                note.className = 'presence-note text-warning small ml-1';
+                note.textContent = located ? '✏️' : '✏️ editing';
+                li.appendChild(note);
+            }
+        });
+    }
+
     function pollState() {
-        // updated_at only has one-second resolution — two saves in the same
-        // second share a stamp, so a since-gated poll could skip the newer
-        // one. Every 8th poll drops the gate to self-heal that blind spot.
-        pollCount++;
-        const query = (pollCount % 8 !== 0) ? '?since=' + encodeURIComponent(lastVersion) : '';
+        const query = hasWidget
+            ? '?since_rev=' + encodeURIComponent(knownRev)
+            : '?since=' + encodeURIComponent(lastVersion);
         fetch(BASE + 'GroupWorkController/state/' + assessmentId + query)
             .then(r => r.json())
             .then(d => {
@@ -265,22 +403,30 @@ if (empty($widget) && ($assessment['iotype_id'] == '4' || $assessment['iotype_id
                 }
 
                 if (d.content_changed && typeof d.content === 'string') {
-                    // A newer shared version exists. Don't clobber the widget/draft
-                    // while the student is actively editing — and in that case leave
-                    // lastVersion stale so the server keeps offering this content and
-                    // we adopt it once they stop typing, rather than losing it.
+                    // A newer server-merged version exists. Don't clobber the
+                    // widget/draft while the student is actively editing — leave
+                    // our marker stale so the server keeps offering it and we
+                    // adopt it once they pause (the merge already happened
+                    // server-side, so adopting wholesale is safe & correct).
                     if (!isEditing() && d.content !== lastSavedContent) {
                         applyRemoteContent(d.content);
-                        lastSavedContent = d.content;
-                        lastVersion = d.updated_at;
+                        lastSavedContent = getCurrentContent();
+                        if (hasWidget) {
+                            baseFlat = flatOf(lastSavedContent);
+                            if (typeof d.rev === 'number') knownRev = d.rev;
+                        } else if (d.updated_at) {
+                            lastVersion = d.updated_at;
+                        }
                     } else if (!isEditing()) {
-                        lastVersion = d.updated_at; // already matches what we hold
+                        if (hasWidget) { if (typeof d.rev === 'number') knownRev = d.rev; }
+                        else if (d.updated_at) { lastVersion = d.updated_at; }
                     }
-                } else if (!d.content_changed && d.updated_at) {
-                    lastVersion = d.updated_at;
+                } else if (!d.content_changed) {
+                    if (hasWidget) { if (typeof d.rev === 'number') knownRev = d.rev; }
+                    else if (d.updated_at) { lastVersion = d.updated_at; }
                 }
 
-                d.members.forEach(m => {
+                (d.members || []).forEach(m => {
                     const li = document.querySelector('#member-list li[data-student="' + m.student_id + '"]');
                     if (!li) return;
                     if (m.student_id === myStudentId) return;
@@ -290,6 +436,8 @@ if (empty($widget) && ($assessment['iotype_id'] == '4' || $assessment['iotype_id
                     badge.classList.toggle('badge-success', m.ready);
                     badge.classList.toggle('badge-secondary', !m.ready);
                 });
+
+                renderPresence(d.presence);
             })
             .catch(() => {});
     }
