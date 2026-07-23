@@ -17,8 +17,8 @@
 //   'steps'    => [
 //     ['type'=>'text',  'label'=>'...', 'instruction'=>'...', 'prefix'=>'...', 'rows'=>3, 'placeholder'=>'...'],
 //     ['type'=>'grid',  'label'=>'...', 'instruction'=>'...', 'note'=>'...',
-//        'columns'=>[['name'=>'...','type'=>'text|select|checkbox','options'=>[...]], ...],
-//        'rows'=>[['label'=>'...','sub'=>'...'], ...]],
+//        'columns'=>[['name'=>'...','type'=>'text|textarea|select|checkbox','options'=>[...]], ...],
+//        'rows'=>[['label'=>'...','sub'=>'...'], ...]],  // 'textarea' for answers too long for one line
 //     ['type'=>'choice','label'=>'...', 'instruction'=>'...', 'options'=>[['text'=>'...','note'=>'...'], ...]],
 //     ['type'=>'checklist','label'=>'...', 'instruction'=>'...', 'items'=>['...', ...]],
 //   ],
@@ -188,6 +188,8 @@ $file_it_ans   = $existing['file_it'] ?? [];
                                                 </select>
                                             <?php elseif ($ctype === 'checkbox'): ?>
                                                 <input type="checkbox" class="cw-cell" <?= !empty($cval) ? 'checked' : '' ?>>
+                                            <?php elseif ($ctype === 'textarea'): ?>
+                                                <textarea class="form-control form-control-sm cw-cell" rows="2"><?= htmlspecialchars((string) $cval) ?></textarea>
                                             <?php else: ?>
                                                 <input type="text" class="form-control form-control-sm cw-cell" value="<?= htmlspecialchars((string) $cval) ?>">
                                             <?php endif; ?>

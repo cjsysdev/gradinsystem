@@ -385,16 +385,36 @@
                         </small>
                     </div>
                     <div class="form-group" id="modal_given_wrap" style="display:none">
-                        <label>Widget Config (JSON)</label>
-                        <button type="button" class="btn btn-sm btn-outline-secondary mb-1 ml-2"
-                                onclick="document.getElementById('modal_given_file').click()">
-                            <i class="fas fa-file-import"></i> Load from .json file
-                        </button>
-                        <input type="file" id="modal_given_file" accept=".json,application/json" class="d-none">
-                        <textarea name="given" id="modal_given" class="form-control" rows="6"></textarea>
-                        <small class="form-text text-muted" id="modal_given_hint">
-                            Select a widget above to see its example config.
-                        </small>
+                        <label>Widget Config</label>
+                        <ul class="nav nav-tabs mb-2" id="widget_config_tabs">
+                            <li class="nav-item" id="widget_tab_builder_li">
+                                <a class="nav-link active" href="#" id="widget_tab_builder"
+                                   onclick="switchWidgetConfigTab('builder'); return false;">
+                                    <i class="fas fa-sliders-h"></i> Visual Builder
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="#" id="widget_tab_raw"
+                                   onclick="switchWidgetConfigTab('raw'); return false;">
+                                    <i class="fas fa-code"></i> Raw JSON
+                                </a>
+                            </li>
+                        </ul>
+                        <div class="alert alert-warning py-2 px-3 small" id="modal_builder_warning" style="display:none"></div>
+                        <div id="widget_builder_pane">
+                            <div id="modal_builder_pane"></div>
+                        </div>
+                        <div id="widget_raw_pane" style="display:none">
+                            <button type="button" class="btn btn-sm btn-outline-secondary mb-1"
+                                    onclick="document.getElementById('modal_given_file').click()">
+                                <i class="fas fa-file-import"></i> Load from .json file
+                            </button>
+                            <input type="file" id="modal_given_file" accept=".json,application/json" class="d-none">
+                            <textarea name="given" id="modal_given" class="form-control" rows="6"></textarea>
+                            <small class="form-text text-muted" id="modal_given_hint">
+                                Select a widget above to see its example config.
+                            </small>
+                        </div>
                     </div>
                     <div class="form-group" id="modal_widget_preview_wrap" style="display:none">
                         <label>Preview <small class="text-muted">(how students will see it)</small></label>
@@ -497,6 +517,10 @@
         </div>
     </div>
 </div>
+
+<!-- Visual widget config builder (schema-driven form over the #modal_given textarea) -->
+<script src="<?= base_url('assets/js/widget-schemas.js') ?>"></script>
+<script src="<?= base_url('assets/js/widget-builder.js') ?>"></script>
 
 <script>
 // schedule_id -> section, used to filter grouping sets to the assessment's section
@@ -1100,6 +1124,11 @@ function toggleGivenWrap() {
     } else {
         hint.textContent = 'Select a widget above to see its example config.';
     }
+
+    // Show/hide the Visual Builder tab based on whether this widget has a schema
+    // (widget-schemas.js) and, when it does, render the builder from the current
+    // config JSON. Falls back to raw-JSON-only for widgets without a schema.
+    if (typeof initWidgetConfigUI === 'function') initWidgetConfigUI();
 
     fetchWidgetPreview();
 }
