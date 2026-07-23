@@ -297,6 +297,29 @@ class attendance extends MY_Model
         return array_column($query->result_array(), 'student_id');
     }
 
+    // Students enrolled in $section explicitly marked 'absent' for $date —
+    // used to exclude absent members from group submission fan-out
+    // (GroupWorkController::submit_group()/submit_group_iq()). A blacklist
+    // of just 'absent' rather than a present/late whitelist, so an untaken
+    // attendance roll doesn't get mistaken for a full class of absentees.
+    public function get_absent_student_ids_by_section($section, $date)
+    {
+        $sql = "
+            SELECT DISTINCT a.student_id
+            FROM attendance a
+            JOIN class_schedule cs ON a.schedule_id = cs.schedule_id
+            JOIN semester_master sem ON cs.semester_id = sem.trans_no
+            WHERE cs.section = ?
+            AND DATE(a.date) = ?
+            AND a.status = 'absent'
+            AND sem.is_active = 1
+        ";
+
+        $query = $this->db->query($sql, [$section, $date]);
+
+        return array_column($query->result_array(), 'student_id');
+    }
+
     public function add_reason($attendance_id, $data)
     {
         $this->db->where('attendance_id', $attendance_id);

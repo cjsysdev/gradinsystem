@@ -346,6 +346,22 @@ class GroupWorkController extends CI_Controller
             return;
         }
 
+        // Groups are fixed for the whole project, so by submission time some
+        // members of an already-formed group may be out for the day — skip
+        // writing a classworks row for anyone explicitly marked absent.
+        date_default_timezone_set('Asia/Manila');
+        $today = date('Y-m-d');
+        $absent_ids = $this->attendance->get_absent_student_ids_by_section($resolved['set']['section_id'], $today);
+        $present_members = array_values(array_filter($members, function ($m) use ($absent_ids) {
+            return !in_array($m['student_id'], $absent_ids);
+        }));
+
+        if (empty($present_members)) {
+            $this->session->set_flashdata('error', 'Every member of this group is marked absent today — nothing was submitted.');
+            redirect('GroupWorkController/workspace/' . $assessment_id);
+            return;
+        }
+
         // Once the group has been graded, re-submitting must not silently
         // overwrite the graded answers/score — mirrors the solo
         // AssessmentController::submit_classwork() guard. The workspace()
@@ -414,7 +430,7 @@ class GroupWorkController extends CI_Controller
 
         $my_classwork_id = null;
 
-        foreach ($members as $member) {
+        foreach ($present_members as $member) {
             $submission_data = [
                 'student_id'    => $member['student_id'],
                 'assessment_id' => $assessment_id,
@@ -448,7 +464,12 @@ class GroupWorkController extends CI_Controller
             }
         }
 
-        $this->session->set_flashdata('success', 'Submitted for the whole group!');
+        $skipped = count($members) - count($present_members);
+        $success_message = 'Submitted for the whole group!';
+        if ($skipped > 0) {
+            $success_message .= ' (' . $skipped . ' member(s) marked absent today were not submitted for.)';
+        }
+        $this->session->set_flashdata('success', $success_message);
 
         if ($is_quiz && $my_classwork_id) {
             redirect('student_submission/' . $my_classwork_id);
@@ -663,12 +684,22 @@ class GroupWorkController extends CI_Controller
         $results_json = json_encode($results);
         $now          = date('Y-m-d H:i:s');
 
+        // Groups are fixed for the whole project, so by submission time some
+        // members of an already-formed group may be out for the day — skip
+        // writing a classworks row for anyone explicitly marked absent.
+        date_default_timezone_set('Asia/Manila');
+        $today = date('Y-m-d');
+        $absent_ids = $this->attendance->get_absent_student_ids_by_section($resolved['set']['section_id'], $today);
+        $present_members = array_values(array_filter($members, function ($m) use ($absent_ids) {
+            return !in_array($m['student_id'], $absent_ids);
+        }));
+
         // Defensive: $score is bounded by $total (graded section count), but
         // clamp anyway in case an admin edited max_score to be smaller than
         // the topic's actual graded section count.
         $score = $this->classworks->clamp_score_for_assessment($assessment_id, $score);
 
-        foreach ($members as $member) {
+        foreach ($present_members as $member) {
             $data = [
                 'student_id'    => $member['student_id'],
                 'assessment_id' => $assessment_id,
