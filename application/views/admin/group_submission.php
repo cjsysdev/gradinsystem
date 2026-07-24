@@ -148,6 +148,20 @@
                             $member_names = implode(' ', array_map(function ($m) {
                                 return strtolower($m['lastname'] . ' ' . $m['firstname']);
                             }, $g['members']));
+
+                            // Decoded once, reused for both the progress badge and the
+                            // read-only widget render below — Widgets_model::submission_progress()
+                            // mirrors each widget's own client-side progress bar, so this is
+                            // the same "answered/total" figure the student saw while filling it in.
+                            // Returns null for widgets with no native progress concept (e.g. plain
+                            // tables) or non-worksheet widgets (quiz results, etc.) — no badge then.
+                            $decoded_code = $sub ? (json_decode($sub['code'] ?? '', true) ?: []) : [];
+                            $progress     = ($sub && $widget && !empty($widget['widget_key']))
+                                ? $this->Widgets_model->submission_progress($widget['widget_key'], $widget_config, $decoded_code)
+                                : null;
+                            $draft_progress = (empty($sub) && !empty($g['live_draft']) && $widget && !empty($widget['widget_key']))
+                                ? $this->Widgets_model->submission_progress($widget['widget_key'], $widget_config, $g['live_draft'])
+                                : null;
                             ?>
                             <div class="card mb-3 shadow-sm group-card"
                                 data-has-score="<?= $has_score ? 'true' : 'false' ?>"
@@ -162,6 +176,11 @@
                                             <span class="badge badge-success p-2">Submitted <?= $g['submitted_count'] ?>/<?= $g['member_count'] ?></span>
                                         <?php else: ?>
                                             <span class="badge badge-secondary p-2">No submission</span>
+                                        <?php endif; ?>
+                                        <?php if ($progress !== null): ?>
+                                            <span class="badge <?= $progress['empty'] === 0 ? 'badge-success' : 'badge-warning' ?> p-2" title="Questions answered">
+                                                <?= $progress['answered'] ?>/<?= $progress['total'] ?> answered
+                                            </span>
                                         <?php endif; ?>
                                     </div>
 
@@ -200,7 +219,7 @@
                                                 <?php $this->load->view($widget['input_view'], [
                                                     'config'   => $widget_config,
                                                     'readonly' => true,
-                                                    'existing' => json_decode($sub['code'] ?? '', true) ?: [],
+                                                    'existing' => $decoded_code,
                                                 ]); ?>
                                             </template>
                                         <?php endif; ?>
@@ -226,6 +245,9 @@
                                         <details class="mb-2">
                                             <summary class="text-warning font-weight-bold" style="cursor: pointer;">
                                                 <i class="fa fa-pencil-alt"></i> Draft in progress — click to view
+                                                <?php if ($draft_progress !== null): ?>
+                                                    <span class="badge badge-light border font-weight-normal ml-1"><?= $draft_progress['answered'] ?>/<?= $draft_progress['total'] ?> answered</span>
+                                                <?php endif; ?>
                                                 <?php if (!empty($g['live_updated_at'])): ?>
                                                     <span class="text-muted small font-weight-normal">
                                                         (last edited <?= htmlspecialchars(date('M j, g:i A', strtotime($g['live_updated_at']))) ?><?php if (!empty($g['live_edited_by'])): ?> by student <?= htmlspecialchars($g['live_edited_by']) ?><?php endif; ?>)

@@ -118,6 +118,212 @@ class Widgets_model extends CI_Model
         return $config === array_values($config) ? $config : []; // bare list only
     }
 
+    // "Progress" readout (answered/total) for worksheet-style widgets, mirroring
+    // each widget's own client-side updateProgress() bar exactly — same unit,
+    // same total — so an instructor sees the same figure the student saw while
+    // filling it in. Only implemented for widgets that actually have a progress
+    // bar in their own view (lab_worksheet, case_study, case_dossier,
+    // chapter_worksheet); other widget_keys (including worksheet/decision_matrix,
+    // which have no "answered" concept of their own, and quiz/secure_quiz, which
+    // store graded results rather than raw answers) return null so callers
+    // render no indicator. $config = decoded assessments.given; $answers =
+    // decoded classworks.code, a live_draft array, or [] / null (never opened).
+    public function submission_progress($widget_key, $config, $answers)
+    {
+        $config  = is_array($config) ? $config : [];
+        $answers = is_array($answers) ? $answers : [];
+
+        switch ($widget_key) {
+            case 'lab_worksheet':
+                return $this->_progress_lab_worksheet($config, $answers);
+            case 'case_study':
+                return $this->_progress_case_study($config, $answers);
+            case 'case_dossier':
+                return $this->_progress_case_dossier($config, $answers);
+            case 'chapter_worksheet':
+                return $this->_progress_chapter_worksheet($config, $answers);
+            default:
+                return null;
+        }
+    }
+
+    // Mirrors widgets/lab_worksheet.php's updateProgress(): one unit per
+    // experiment (answered only when every one of its prompt fields is
+    // non-blank, and it has at least one prompt) plus one unit for the exit
+    // question if the config defines one.
+    private function _progress_lab_worksheet($config, $answers)
+    {
+        $experiments = $config['experiments'] ?? [];
+        $exit_q      = $config['exit_question'] ?? '';
+        $exp_answers = $answers['answers'] ?? [];
+
+        $total = 0;
+        $done  = 0;
+
+        foreach ($experiments as $i => $exp) {
+            $total++;
+            $prompts = $exp['prompts'] ?? [];
+            if (empty($prompts)) continue;
+
+            $exp_ans     = $exp_answers[$i] ?? [];
+            $all_filled  = true;
+            foreach ($prompts as $p) {
+                $tag = $p['tag'] ?? 'predict';
+                $val = $exp_ans[$tag] ?? '';
+                if (trim((string) $val) === '') { $all_filled = false; break; }
+            }
+            if ($all_filled) $done++;
+        }
+
+        if ($exit_q !== '') {
+            $total++;
+            if (trim((string) ($answers['exit_question'] ?? '')) !== '') $done++;
+        }
+
+        return ['total' => $total, 'answered' => $done, 'empty' => $total - $done];
+    }
+
+    // Mirrors widgets/case_study.php's updateProgress(): one unit per question
+    // across every section, tested per the question's own type.
+    private function _progress_case_study($config, $answers)
+    {
+        $sections = $config['sections'] ?? [];
+        $qa       = $answers['answers'] ?? [];
+
+        $total = 0;
+        $done  = 0;
+        $idx   = 0;
+
+        foreach ($sections as $section) {
+            foreach ($section['questions'] ?? [] as $q) {
+                $total++;
+                if ($this->_question_answered($q['type'] ?? 'text', $qa[$idx] ?? null)) $done++;
+                $idx++;
+            }
+        }
+
+        return ['total' => $total, 'answered' => $done, 'empty' => $total - $done];
+    }
+
+    // Mirrors widgets/case_dossier.php's updateProgress(): hook questions +
+    // each group's per-factor rating (answered when a 1-5 score is picked,
+    // matching the bar's .cd-rate-btn.picked check) + reflection questions.
+    private function _progress_case_dossier($config, $answers)
+    {
+        $hook       = $config['hook'] ?? [];
+        $groups     = $config['groups'] ?? [];
+        $reflection = $config['reflection'] ?? [];
+
+        $hook_answers       = $answers['hook_answers'] ?? [];
+        $group_ratings      = $answers['group_ratings'] ?? [];
+        $reflection_answers = $answers['reflection_answers'] ?? [];
+
+        $total = 0;
+        $done  = 0;
+
+        foreach ($hook['questions'] ?? [] as $qi => $q) {
+            $total++;
+            if ($this->_question_answered($q['type'] ?? 'text', $hook_answers[$qi] ?? null)) $done++;
+        }
+
+        foreach ($groups as $gi => $group) {
+            $ratings = $group_ratings[$gi] ?? [];
+            foreach ($group['factors'] ?? [] as $fi => $factor) {
+                $total++;
+                $score = $ratings[$fi]['score'] ?? null;
+                if (is_numeric($score)) $done++;
+            }
+        }
+
+        foreach ($reflection['questions'] ?? [] as $qi => $q) {
+            $total++;
+            if ($this->_question_answered($q['type'] ?? 'text', $reflection_answers[$qi] ?? null)) $done++;
+        }
+
+        return ['total' => $total, 'answered' => $done, 'empty' => $total - $done];
+    }
+
+    // Shared text/list/choice "is this answered?" test, matching the identical
+    // logic duplicated in case_study.php's and case_dossier.php's updateProgress().
+    private function _question_answered($type, $value)
+    {
+        if ($type === 'text') {
+            return is_string($value) && trim($value) !== '';
+        }
+        if ($type === 'list') {
+            if (!is_array($value)) return false;
+            foreach ($value as $line) {
+                if (trim((string) $line) !== '') return true;
+            }
+            return false;
+        }
+        if ($type === 'choice') {
+            return is_numeric($value);
+        }
+        if ($type === 'toggle_grid') {
+            return is_array($value) && count($value) > 0;
+        }
+        return false;
+    }
+
+    // Mirrors widgets/chapter_worksheet.php's updateProgress(): one unit per
+    // text/choice/checklist step, one unit per grid row, plus one unit for
+    // peer_check if the config defines it. file_it is intentionally excluded —
+    // the widget's own progress bar doesn't count it either.
+    private function _progress_chapter_worksheet($config, $answers)
+    {
+        $steps      = $config['steps'] ?? [];
+        $peer_check = $config['peer_check'] ?? [];
+        $step_ans   = $answers['steps'] ?? [];
+
+        $total = 0;
+        $done  = 0;
+
+        foreach ($steps as $si => $step) {
+            $type   = $step['type'] ?? 'text';
+            $answer = $step_ans[$si] ?? null;
+
+            if ($type === 'text') {
+                $total++;
+                if (is_string($answer) && trim($answer) !== '') $done++;
+            } elseif ($type === 'grid') {
+                $columns   = $step['columns'] ?? [];
+                $grid_rows = $step['rows'] ?? [];
+                $grid_val  = is_array($answer) ? $answer : [];
+                foreach ($grid_rows as $row) {
+                    $total++;
+                    $row_label = $row['label'] ?? '';
+                    $row_vals  = $grid_val[$row_label] ?? [];
+                    $filled    = false;
+                    foreach ($columns as $ci => $col) {
+                        $cval  = $row_vals[$ci] ?? null;
+                        $ctype = $col['type'] ?? 'text';
+                        $cell_filled = $ctype === 'checkbox' ? !empty($cval) : trim((string) $cval) !== '';
+                        if ($cell_filled) { $filled = true; break; }
+                    }
+                    if ($filled) $done++;
+                }
+            } elseif ($type === 'choice') {
+                $total++;
+                if (is_numeric($answer)) $done++;
+            } elseif ($type === 'checklist') {
+                $total++;
+                if (is_array($answer)) {
+                    foreach ($answer as $checked) {
+                        if (!empty($checked)) { $done++; break; }
+                    }
+                }
+            }
+        }
+
+        if (!empty($peer_check)) {
+            $total++;
+            if (trim((string) ($answers['peer_check'] ?? '')) !== '') $done++;
+        }
+
+        return ['total' => $total, 'answered' => $done, 'empty' => $total - $done];
+    }
+
     public function grade_quiz($config, $answers)
     {
         $questions = $this->quiz_questions($config);
