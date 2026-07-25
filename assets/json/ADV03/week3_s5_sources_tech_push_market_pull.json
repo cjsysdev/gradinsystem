@@ -1,0 +1,139 @@
+{
+  "topic": "week3_s5_sources_tech_push_market_pull",
+  "title": "Session 3.1: Sources of Innovation — Tech-Push vs. Market-Pull",
+  "shuffle": false,
+  "description": "Trace where an innovation's original push came from, and defend that classification with evidence before applying it to your own project.",
+  "congratsText": "You mastered Sources of Innovation — Tech-Push vs. Market-Pull!",
+  "sections": [
+    {
+      "id": 0,
+      "title": "Objectives",
+      "lesson": "<div class=\"lesson-title\">Objectives</div>\n<div class=\"lesson-text\"><ul>\n<li>Tell tech-push and market-pull apart using one deciding question</li>\n<li>Defend a source classification with dated evidence, not opinion</li>\n<li>Name the dominant force when an innovation is hybrid</li>\n</ul></div>"
+    },
+    {
+      "id": 1,
+      "title": "Where Solutions Come From",
+      "lesson": "<div class=\"lesson-title\">Where Solutions Come From</div>\n<div class=\"lesson-text\">Every solution you will ever evaluate started with a push from somewhere. Sometimes a laboratory built a capability and then went looking for someone who needed it. Sometimes people had been complaining about a problem for years and technology finally arrived to answer them.</div>\n<div class=\"lesson-text\">That difference is the <span class=\"highlight\">source</span> of the innovation, and it is the first of three lenses you will use in Chapter 3.</div>\n<div class=\"lesson-text\"><strong>Why the source matters before you judge anything else:</strong></div>\n<div class=\"lesson-text\"><ul>\n<li>It tells you whether the need is already proven or still has to be proven</li>\n<li>It tells you where the adoption risk sits — in the technology, or in the market</li>\n<li>It tells you what evidence a reader will demand from your team</li>\n</ul></div>\n<div class=\"lesson-text\">A solution with no identifiable demand behind it is not automatically a bad idea. It is an idea carrying a heavier burden of proof, and you need to know that before you commit a semester to it.</div>",
+      "quiz": {
+        "question": "Why does identifying an innovation's source matter before you evaluate it?",
+        "options": [
+          "It reveals whether a real need already exists or must be created",
+          "It determines whether the technology is patented or free to use",
+          "It shows how much the original development of the technology cost",
+          "It establishes which company currently holds the largest market share"
+        ],
+        "correct": 0
+      }
+    },
+    {
+      "id": 2,
+      "title": "Tech-Push",
+      "lesson": "<div class=\"lesson-title\">Tech-Push</div>\n<div class=\"lesson-text\">In a tech-push innovation, <span class=\"highlight\">the capability comes first</span>. Someone invents, discovers, or perfects something — and only afterwards does anyone ask what it is good for.</div>\n<div class=\"lesson-text\"><strong>Two classics:</strong></div>\n<div class=\"lesson-text\"><ul>\n<li><strong>Post-it Notes</strong> — 3M produced an adhesive that was too weak to be useful. The product came years later, when someone needed a bookmark that would not fall out of a hymn book.</li>\n<li><strong>Penicillin</strong> — a contaminated dish killed the bacteria around it. Nobody had ordered a mould-based antibiotic; the observation arrived first, the application followed.</li>\n</ul></div>\n<div class=\"lesson-text\"><strong>What tech-push means for a feasibility study:</strong> the technology is usually the safe part, because it demonstrably works. The risk sits on the demand side. Your team has to show that somebody actually wants this, because no queue of complaining customers created it.</div>",
+      "quiz": {
+        "question": "A university lab perfects a new battery chemistry, then spends two years looking for an industry that could use it. How is this classified?",
+        "options": [
+          "Tech-push, because the capability existed before any named need",
+          "Market-pull, because longer battery life is a standing complaint",
+          "Neither, because laboratory research sits outside both categories",
+          "Both equally, because all hardware innovation is hybrid by default"
+        ],
+        "correct": 0
+      }
+    },
+    {
+      "id": 3,
+      "title": "Market-Pull",
+      "lesson": "<div class=\"lesson-title\">Market-Pull</div>\n<div class=\"lesson-text\">In a market-pull innovation, <span class=\"highlight\">the problem comes first</span>. People were already struggling, already improvising workarounds, already paying too much — and technology showed up to serve a demand that was waiting for it.</div>\n<div class=\"lesson-text\"><strong>Two you already know:</strong></div>\n<div class=\"lesson-text\"><ul>\n<li><strong>Smartphones</strong> — people carried a phone, a camera, a music player and a planner. The demand for one device to replace four predates the device by years.</li>\n<li><strong>GCash</strong> — millions of Filipinos had no bank account and were sending money through remittance counters and bus conductors. The pain existed long before the app.</li>\n</ul></div>\n<div class=\"lesson-text\"><strong>What market-pull means for a feasibility study:</strong> demand is the easy part to prove. The hard part is that a visible, painful, documented problem attracts competitors. If the pull is real, somebody is already pulling — which is exactly what your Chapter 4 scan will find.</div>",
+      "quiz": {
+        "question": "Which is the strongest evidence that an innovation is market-pull?",
+        "options": [
+          "Documented complaints about the problem predate the technology",
+          "The technology behind it was expensive and difficult to develop",
+          "Several large companies launched similar products in the same year",
+          "The founders describe their product as solving a real user need"
+        ],
+        "correct": 0
+      }
+    },
+    {
+      "id": 4,
+      "title": "The Deciding Question",
+      "lesson": "<div class=\"lesson-title\">The Deciding Question</div>\n<div class=\"lesson-text\">When a case is genuinely unclear, one question settles it:</div>\n<div class=\"lesson-text\"><span class=\"highlight\">What problem existed BEFORE this technology was built?</span></div>\n<div class=\"comparison\">\n<div class=\"comparison-col\">\n<div class=\"comparison-label\">You can name it</div>\n<div class=\"lesson-text\">You can point to the problem, say roughly when it started, and cite who complained. The technology arrived into an existing gap. <strong>Market-pull.</strong></div>\n</div>\n<div class=\"comparison-col\">\n<div class=\"comparison-label\">You cannot name it</div>\n<div class=\"lesson-text\">The honest answer is that people found uses for it afterwards. The capability arrived first and the applications were assembled around it. <strong>Tech-push.</strong></div>\n</div>\n</div>\n<div class=\"lesson-text\"><strong>The trap to avoid:</strong> \"our idea uses technology, so it must be tech-push.\" Every innovation in this course involves technology. The label is not about whether technology is present — it is about <strong>sequence</strong>. Which came first, the capability or the complaint?</div>",
+      "quiz": {
+        "question": "A team argues \"our idea uses AI, so it is tech-push.\" What is wrong with that reasoning?",
+        "options": [
+          "The presence of technology says nothing about which came first",
+          "AI systems are always classified as market-pull in modern practice",
+          "Tech-push applies only to hardware, never to software systems",
+          "The correct label depends on the size of the market being served"
+        ],
+        "correct": 0
+      }
+    },
+    {
+      "id": 5,
+      "title": "Case Files — Market-Pull",
+      "lesson": "<div class=\"lesson-title\">Case Files — Market-Pull</div>\n<div class=\"lesson-text\">Apply the deciding question to two familiar cases.</div>\n<div class=\"lesson-text\"><strong>YouTube (2005).</strong> Before it launched, people already owned video files — from camcorders, phones and TV clips — and had no way to share them. Email attachments were too large, and personal hosting was too technical for most people. The problem is nameable and dateable. <span class=\"highlight\">Market-pull.</span></div>\n<div class=\"lesson-text\"><strong>Grab and Uber.</strong> Before either existed, riders were refused by taxis, overcharged off the meter, and left waiting late at night with no record of who picked them up. That complaint is decades older than the smartphone. <span class=\"highlight\">Market-pull.</span></div>\n<div class=\"lesson-text\">Notice what makes both classifications defensible: not that the platforms are popular or profitable, but that the <strong>problem is documented earlier than the solution</strong>. That is the shape of evidence Chapter 3 expects.</div>",
+      "quiz": {
+        "question": "What makes YouTube a market-pull case rather than a tech-push one?",
+        "options": [
+          "People were already failing to share video files before it launched",
+          "Flash video streaming was newly invented technology at the time",
+          "It grew faster than every competing video platform of its era",
+          "Its founders came from engineering rather than from media backgrounds"
+        ],
+        "correct": 0
+      }
+    },
+    {
+      "id": 6,
+      "title": "Case Files — Tech-Push",
+      "lesson": "<div class=\"lesson-title\">Case Files — Tech-Push</div>\n<div class=\"lesson-text\">Now two cases that fail the deciding question.</div>\n<div class=\"lesson-text\"><strong>Machine learning and AI.</strong> The research is decades old. What changed recently was capability — cheap parallel computing and enormous datasets made existing methods work. Only then did industries start asking what they could point it at. Nobody was queuing up demanding neural networks. <span class=\"highlight\">Tech-push.</span></div>\n<div class=\"lesson-text\"><strong>Blockchain.</strong> A distributed ledger design was published in 2008, and the decade that followed was a public search for applications — supply chains, land titles, certificates, voting. Many of those pilots were quietly abandoned. <span class=\"highlight\">Tech-push.</span></div>\n<div class=\"lesson-text\"><strong>The lesson underneath both:</strong> a tech-push idea is not disqualified. It simply carries an extra obligation — your team must supply the demand evidence that history did not supply for you. If you cannot, that finding belongs in your study, and a well-evidenced No is a full-marks answer.</div>",
+      "quiz": {
+        "question": "Why is blockchain treated as a tech-push case?",
+        "options": [
+          "The capability came first and applications were sought afterwards",
+          "It failed to attract serious investment during its first decade",
+          "It was created inside an academic laboratory rather than a company",
+          "It answers a problem customers had been complaining about for years"
+        ],
+        "correct": 0
+      }
+    },
+    {
+      "id": 7,
+      "title": "Hybrids — When Both Forces Act",
+      "lesson": "<div class=\"lesson-title\">Hybrids — When Both Forces Act</div>\n<div class=\"lesson-text\">Most real innovations are <span class=\"highlight\">hybrid</span>. Pure cases are teaching examples; the world is messier.</div>\n<div class=\"lesson-text\"><strong>The smartphone, honestly described:</strong></div>\n<div class=\"comparison\">\n<div class=\"comparison-col\">\n<div class=\"comparison-label\">The pull</div>\n<div class=\"lesson-text\">People wanted to stop carrying four devices. That demand was documented years before the product shipped.</div>\n</div>\n<div class=\"comparison-col\">\n<div class=\"comparison-label\">The push</div>\n<div class=\"lesson-text\">Capacitive touchscreens, mobile processors and battery density matured on their own schedule, not on the market's.</div>\n</div>\n</div>\n<div class=\"lesson-text\">GCash reads the same way — a genuine pull from unbanked Filipinos, meeting a push from telecom infrastructure that already existed for other reasons.</div>\n<div class=\"lesson-text\"><strong>How to write a hybrid in Chapter 3:</strong> answering \"both\" and stopping is not a classification. Name the <strong>dominant</strong> force, defend it with dated evidence, then acknowledge the secondary force in one sentence. A reader must be able to see which way you decided and why.</div>",
+      "quiz": {
+        "question": "Your team concludes its idea is hybrid. What does Chapter 3 still require?",
+        "options": [
+          "Name the dominant force and support it with dated evidence",
+          "Pick one label and remove the evidence for the other side",
+          "Cite a published academic source that uses the same label",
+          "Explain why hybrid innovations are more common than pure ones"
+        ],
+        "correct": 0
+      }
+    },
+    {
+      "id": 8,
+      "title": "Classifying Your Own Project",
+      "lesson": "<div class=\"lesson-title\">Classifying Your Own Project</div>\n<div class=\"lesson-text\">In Worksheet 3 you apply this to your own team's idea — so be precise about what you are classifying.</div>\n<div class=\"lesson-text\"><strong>Remember the non-invention rule:</strong> nothing may be proposed that does not already exist somewhere in the world. You are not classifying an invention of your own. You are classifying <span class=\"highlight\">the existing solution your team intends to adopt or adapt</span>.</div>\n<div class=\"lesson-text\"><strong>What a full-marks answer looks like:</strong></div>\n<div class=\"lesson-text\"><ul>\n<li>A named, real, existing solution — not a category or a wish</li>\n<li>A stated label — tech-push, market-pull, or hybrid with a dominant force</li>\n<li>Evidence with dates, showing which came first: the capability or the complaint</li>\n<li>One sentence on what the label implies for adoption risk in your own setting</li>\n</ul></div>\n<div class=\"lesson-text\">Source is only the first of the three axes on Worksheet 3. Next session adds <strong>Type</strong> — disruptive or incremental — and <strong>Pattern</strong> — improvement, application or recombination. Source tells you where the idea came from; those two tell you how risky it is.</div>",
+      "quiz": {
+        "question": "Under the non-invention rule, whose source does your team classify in Chapter 3?",
+        "options": [
+          "The existing solution the team plans to adopt or adapt",
+          "The original problem the team documented in Chapter 1",
+          "The newest technology mentioned anywhere in the scan",
+          "The competitor holding the largest share of the local market"
+        ],
+        "correct": 0
+      }
+    },
+    {
+      "id": 9,
+      "title": "Recap",
+      "lesson": "<div class=\"lesson-title\">Recap</div>\n<div class=\"lesson-text\"><ul>\n<li><strong>Where solutions come from</strong> — the source tells you whether the risk sits in the technology or in the market.</li>\n<li><strong>Tech-push</strong> — capability first, application later; the demand still has to be proven.</li>\n<li><strong>Market-pull</strong> — documented problem first; demand is easy to prove, competitors are already there.</li>\n<li><strong>The deciding question</strong> — what problem existed BEFORE this technology was built?</li>\n<li><strong>Market-pull cases</strong> — YouTube and Grab qualify because the complaint is older than the solution.</li>\n<li><strong>Tech-push cases</strong> — ML/AI and blockchain qualify because applications were hunted for afterwards.</li>\n<li><strong>Hybrids</strong> — most innovations are both; name the dominant force instead of stopping at \"both\".</li>\n<li><strong>Your own project</strong> — classify the real existing solution you will adopt, with dated evidence.</li>\n</ul></div>"
+    }
+  ]
+}

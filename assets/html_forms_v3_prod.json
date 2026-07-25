@@ -1,0 +1,346 @@
+{
+  "topic": "html_forms_v3_prod",
+  "title": "HTML Forms (Production Template Test)",
+  "description": "Every chunk is immediately followed by a quick 2-option check, Sololearn-style, before a bigger checkpoint quiz closes each section.",
+  "congratsText": "You mastered HTML Forms!",
+  "sections": [
+    {
+      "id": 0,
+      "title": "What Is an HTML Form?",
+      "callback": false,
+      "refSection": null,
+      "chunks": [
+        {
+          "text": "An HTML <span class=\"highlight\">form</span> lets users enter data and send it to a server.",
+          "check": {
+            "question": "A form's main job is to...",
+            "options": [
+              "Collect and send user input",
+              "Only display static text"
+            ],
+            "correct": 0
+          }
+        },
+        {
+          "text": "Forms are built using the <span class=\"code-inline\">&lt;form&gt;</span> tag as a container for input fields.",
+          "check": {
+            "question": "True or false: `<form>` acts as a container that wraps input fields.",
+            "options": [
+              "True",
+              "False"
+            ],
+            "correct": 0
+          }
+        },
+        {
+          "text": "Every field inside it gets bundled together when the form is submitted.",
+          "check": {
+            "question": "When a form is submitted, its fields are...",
+            "options": [
+              "Sent together as one submission",
+              "Sent one at a time automatically"
+            ],
+            "correct": 0
+          }
+        }
+      ],
+      "quiz": {
+        "type": "mcq",
+        "question": "What is the main purpose of an HTML `<form>` element?",
+        "options": [
+          "To collect input and send it to the server",
+          "To style the page using colors and fonts",
+          "To link one HTML page directly to another one",
+          "To display images without needing a URL"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Checkpoint: What Is an HTML Form?</div><div class=\"lesson-text\">Quick recap before the checkpoint: forms collect input and send it to the server.</div>"
+    },
+    {
+      "id": 1,
+      "title": "Basic Form Elements",
+      "callback": false,
+      "refSection": null,
+      "chunks": [
+        {
+          "text": "The <span class=\"code-inline\">&lt;input&gt;</span> tag creates a field where users type or select data.",
+          "check": {
+            "question": "`<input>` is used to...",
+            "options": [
+              "Create a field for user data",
+              "Style the page layout"
+            ],
+            "correct": 0
+          }
+        },
+        {
+          "text": "A <span class=\"code-inline\">&lt;label&gt;</span> tag describes what an input is for, improving accessibility.",
+          "check": {
+            "question": "A `<label>` mainly helps...",
+            "options": [
+              "Explain what an input field is for",
+              "Send the form to the server"
+            ],
+            "correct": 0
+          }
+        },
+        {
+          "text": "Connecting a label to its input uses the `for` attribute matching the input's `id`.",
+          "check": {
+            "question": "True or false: the `for` attribute links a label to an input by matching its `id`.",
+            "options": [
+              "True",
+              "False"
+            ],
+            "correct": 0
+          }
+        }
+      ],
+      "quiz": {
+        "type": "type",
+        "question": "Type the tag name used to describe what an input field is for.",
+        "acceptedAnswers": [
+          "label",
+          "<label>"
+        ]
+      },
+      "lesson": "<div class=\"lesson-title\">Checkpoint: Basic Form Elements</div><div class=\"lesson-text\">Quick recap before the checkpoint: <input> creates fields, <label> describes them.</div>"
+    },
+    {
+      "id": 2,
+      "title": "Form Attributes: action & method",
+      "callback": false,
+      "refSection": null,
+      "chunks": [
+        {
+          "text": "The `action` attribute tells the form where to send data when submitted.",
+          "check": {
+            "question": "The `action` attribute defines...",
+            "options": [
+              "Where the form data is sent",
+              "How data looks visually"
+            ],
+            "correct": 0
+          }
+        },
+        {
+          "text": "The `method` attribute controls how data is sent \u2014 commonly `GET` or `POST`.",
+          "check": {
+            "question": "True or false: `method` can be set to GET or POST.",
+            "options": [
+              "True",
+              "False"
+            ],
+            "correct": 0
+          }
+        },
+        {
+          "text": "Together they answer: where does the data go, and how does it travel?",
+          "check": {
+            "question": "`action` and `method` together define...",
+            "options": [
+              "Destination and transport of form data",
+              "The color scheme of the form"
+            ],
+            "correct": 0
+          }
+        }
+      ],
+      "quiz": {
+        "type": "arrange",
+        "question": "Arrange the tokens to build a form tag that submits to `save.php` using POST.",
+        "tokens": [
+          "method=\"POST\"",
+          "<form",
+          "action=\"save.php\"",
+          ">"
+        ],
+        "correctOrder": [
+          "<form",
+          "action=\"save.php\"",
+          "method=\"POST\"",
+          ">"
+        ]
+      },
+      "lesson": "<div class=\"lesson-title\">Checkpoint: Form Attributes: action & method</div><div class=\"lesson-text\">Quick recap before the checkpoint: action says where, method says how.</div>"
+    },
+    {
+      "id": 3,
+      "title": "Input Types",
+      "callback": true,
+      "refSection": 1,
+      "chunks": [
+        {
+          "text": "The `type` attribute of `<input>` changes how the field behaves.",
+          "check": {
+            "question": "Changing `type` changes...",
+            "options": [
+              "How the input field behaves",
+              "The page's background color"
+            ],
+            "correct": 0
+          }
+        },
+        {
+          "text": "Common types include `text`, `email`, `password`, `checkbox`, and `radio`.",
+          "check": {
+            "question": "True or false: `password` is a valid input type.",
+            "options": [
+              "True",
+              "False"
+            ],
+            "correct": 0
+          }
+        },
+        {
+          "text": "Browsers can validate some types automatically, like rejecting a badly formatted email.",
+          "check": {
+            "question": "Automatic browser validation happens for types like...",
+            "options": [
+              "email",
+              "div"
+            ],
+            "correct": 0
+          }
+        }
+      ],
+      "quiz": {
+        "type": "mcq",
+        "code": "<input type=\"email\" name=\"userEmail\">",
+        "question": "What extra behavior does using `type=\"email\"` give this input, compared to `type=\"text\"`?",
+        "options": [
+          "The browser can check that the value looks valid",
+          "The field autofills using the user's saved email",
+          "The field turns read-only until JavaScript allows it",
+          "The field hides typed text the way passwords do"
+        ],
+        "correct": 0
+      },
+      "lesson": "<div class=\"lesson-title\">Checkpoint: Input Types</div><div class=\"lesson-text\">Quick recap before the checkpoint: the type attribute changes an input's behavior.</div>"
+    },
+    {
+      "id": 4,
+      "title": "Form Validation Attributes",
+      "callback": false,
+      "refSection": null,
+      "chunks": [
+        {
+          "text": "The `required` attribute stops a form from submitting if the field is empty.",
+          "check": {
+            "question": "`required` prevents submission when...",
+            "options": [
+              "The field is left empty",
+              "The page loads too slowly"
+            ],
+            "correct": 0
+          }
+        },
+        {
+          "text": "The `pattern` attribute checks input against a regular expression.",
+          "check": {
+            "question": "True or false: `pattern` uses a regular expression to validate input.",
+            "options": [
+              "True",
+              "False"
+            ],
+            "correct": 0
+          }
+        },
+        {
+          "text": "These checks happen in the browser, before any data reaches the server.",
+          "check": {
+            "question": "Browser-side validation happens...",
+            "options": [
+              "Before data is sent to the server",
+              "Only after the server responds"
+            ],
+            "correct": 0
+          }
+        }
+      ],
+      "quiz": {
+        "type": "type",
+        "question": "Type the attribute name that makes a field mandatory before the form can submit.",
+        "acceptedAnswers": [
+          "required"
+        ]
+      },
+      "lesson": "<div class=\"lesson-title\">Checkpoint: Form Validation Attributes</div><div class=\"lesson-text\">Quick recap before the checkpoint: required and pattern validate in the browser.</div>"
+    },
+    {
+      "id": 5,
+      "title": "Submitting Forms: GET vs POST",
+      "callback": true,
+      "refSection": 2,
+      "chunks": [
+        {
+          "text": "`GET` appends form data to the URL as a query string \u2014 visible and bookmarkable.",
+          "check": {
+            "question": "GET puts form data...",
+            "options": [
+              "In the URL as a query string",
+              "In a hidden server log only"
+            ],
+            "correct": 0
+          }
+        },
+        {
+          "text": "`POST` sends data in the request body \u2014 hidden from the URL, better for sensitive or large data.",
+          "check": {
+            "question": "True or false: POST data appears directly in the URL.",
+            "options": [
+              "True",
+              "False"
+            ],
+            "correct": 1
+          }
+        },
+        {
+          "text": "Choosing the right method matters for security and how the server receives data.",
+          "check": {
+            "question": "Method choice affects...",
+            "options": [
+              "Security and how data is received",
+              "Only the page's font size"
+            ],
+            "correct": 0
+          }
+        }
+      ],
+      "quiz": {
+        "type": "arrange",
+        "question": "Arrange the tokens to build a form tag that submits using GET to `search.php`.",
+        "tokens": [
+          "method=\"GET\"",
+          "action=\"search.php\"",
+          "<form",
+          ">"
+        ],
+        "correctOrder": [
+          "<form",
+          "action=\"search.php\"",
+          "method=\"GET\"",
+          ">"
+        ]
+      },
+      "lesson": "<div class=\"lesson-title\">Checkpoint: Submitting Forms: GET vs POST</div><div class=\"lesson-text\">Quick recap before the checkpoint: GET shows data in the URL, POST hides it in the body.</div>"
+    }
+  ],
+  "objectives": [
+    "Explain what an HTML form is and why it's used.",
+    "Identify the core form elements: <input> and <label>.",
+    "Configure a form's action and method attributes.",
+    "Choose appropriate input types for different kinds of data.",
+    "Apply validation attributes like required and pattern.",
+    "Compare GET and POST when submitting form data."
+  ],
+  "recap": [
+    "Forms collect user input and send it to the server.",
+    "<input> creates fields; <label> describes them for accessibility.",
+    "action says where data goes; method says how it travels.",
+    "The type attribute changes how an input behaves and validates.",
+    "required and pattern validate input in the browser before submission.",
+    "GET exposes data in the URL; POST hides it in the request body."
+  ]
+}

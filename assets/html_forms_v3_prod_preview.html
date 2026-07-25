@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>HTML Forms - Interactive Learning (Production Template Test)</title>
+<style>
+/* ══════════════════════════════════════════════════════════════
+   Verbatim copy of interactive-quiz-style.css — unmodified.
+   ══════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
+   interactive-quiz-style.css
+   CMC Interactive Discussion / Quiz Template
+   Usage: <link rel="stylesheet" href="<?= base_url('assets/interactive-quiz-style.css') ?>"/>
+   ══════════════════════════════════════════════════════════════ */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --primary: #4a90e2;
+    --success: #2ecc71;
+    --danger: #e74c3c;
+    --warning: #f39c12;
+    --light: #f5f5f5;
+    --dark: #2c3e50;
+    --border: #ddd;
+    --bg: #ffffff;
+}
+
+html, body {
+    width: 100%;
+    height: 100vh;
+    height: 100dvh; /* real visible height on mobile — 100vh sits behind the browser's own bottom bar */
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background: linear-gradient(135deg, #f0f4ff 0%, #f8f5ff 100%);
+    overflow: hidden;
+}
+
+/* ── Container ── */
+.container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+    width: 100%;
+}
+
+/* ── Header ── */
+.header {
+    background: linear-gradient(135deg, var(--primary) 0%, #357abd 100%);
+    color: white;
+    padding: 1rem;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* ── Already-submitted banner ── */
+.already-submitted-banner {
+    background: #fff8e1;
+    color: #7a5c00;
+    border-bottom: 1px solid #f0dca0;
+    padding: 0.6rem 1rem;
+    font-size: 0.85rem;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.header-top {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.header-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+
+.header-close {
+    background: transparent;
+    border: none;
+    color: white;
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s ease;
+    flex-shrink: 0;
+}
+
+.header-close:active {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* ── Stats Bar ── */
+.stats-bar {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+.stat-item {
+    text-align: center;
+    min-width: 75px;
+}
+
+.stat-label {
+    font-size: 0.7rem;
+    opacity: 0.9;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.25rem;
+}
+
+.stat-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+}
+
+/* ── Progress Bar ── */
+.progress-section {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.25);
+    height: 14px;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(to bottom, #ffffff 0%, #d8d8d8 100%);
+    border-radius: 8px;
+    transition: width 0.4s ease, background 0.4s ease;
+}
+
+.progress-fill.streak-active {
+    background: linear-gradient(to bottom, #fde68a 0%, #f5a623 50%, #d97706 100%);
+}
+
+.header-score {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: white;
+    min-width: 48px;
+    justify-content: flex-end;
+}
+
+/* ── Main Content Area ── */
+.content-wrapper {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    background: transparent;
+}
+
+.content-scroll {
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem 1rem;
+}
+
+/* ── Section Container ── */
+.section-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+/* ── Lesson Content ── */
+.lesson-section {
+    background: white;
+    padding: 1.5rem;
+    animation: slideIn 0.4s ease;
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.lesson-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--dark);
+    margin-bottom: 1rem;
+    word-wrap: break-word;
+}
+
+.lesson-text {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: #555;
+    margin-bottom: 1rem;
+    word-wrap: break-word;
+}
+
+.lesson-text:last-child { margin-bottom: 0; }
+
+.lesson-text ul {
+    margin-left: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.lesson-text li { margin-bottom: 0.5rem; }
+
+.highlight {
+    background: #fff3cd;
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+    font-weight: 600;
+    color: var(--dark);
+}
+
+.code-block {
+    background: #f4f4f4;
+    border: 1px solid #e0e0e0;
+    border-left: 4px solid var(--primary);
+    padding: 1rem;
+    border-radius: 6px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: var(--dark);
+    overflow-x: auto;
+    margin: 1rem 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.comparison {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+.comparison-col {
+    background: #f9f9f9;
+    padding: 1rem;
+    border-radius: 8px;
+    border-top: 3px solid var(--primary);
+}
+
+.comparison-label {
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 0.75rem;
+    font-size: 0.95rem;
+}
+
+.comparison-col ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+.comparison-col li {
+    padding: 0.4rem 0;
+    color: #555;
+    font-size: 0.9rem;
+}
+
+.comparison-col li::before {
+    content: "•";
+    color: var(--primary);
+    font-weight: bold;
+    margin-right: 0.5rem;
+}
+
+/* ── Quiz Section ── */
+.quiz-section {
+    background: white;
+    padding: 1.5rem;
+    border-top: 1px solid #f0f0f0;
+    animation: slideIn 0.4s ease;
+    animation-delay: 0.1s;
+    animation-fill-mode: both;
+}
+
+.quiz-label {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--warning);
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+}
+
+.question-text {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--dark);
+    margin-bottom: 1.25rem;
+    word-wrap: break-word;
+    line-height: 1.5;
+}
+
+.question-code {
+    background: #f4f4f4;
+    border: 1px solid #e0e0e0;
+    border-left: 4px solid var(--primary);
+    padding: 1rem;
+    border-radius: 6px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: var(--dark);
+    margin: 1rem 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.option {
+    padding: 1rem 1.25rem;
+    background: white;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--dark);
+    transition: all 0.2s ease;
+    text-align: left;
+    word-wrap: break-word;
+}
+
+.option:active:not(.disabled) { transform: scale(0.98); }
+
+.option:hover:not(.disabled) {
+    border-color: var(--primary);
+    background: #f0f4ff;
+}
+
+.option.selected {
+    background: #f0f4ff;
+    border-color: var(--primary);
+    color: var(--primary);
+    font-weight: 700;
+}
+
+.option.correct {
+    background: #d4edda;
+    border-color: var(--success);
+    color: #155724;
+    font-weight: 700;
+}
+
+.option.incorrect {
+    background: #f8d7da;
+    border-color: var(--danger);
+    color: #721c24;
+    font-weight: 700;
+}
+
+.option.disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* ── Feedback ── */
+.feedback {
+    display: none;
+    padding: 1rem 1.25rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    font-weight: 600;
+    border-left: 4px solid;
+    animation: slideIn 0.3s ease;
+}
+
+.feedback.show  { display: block; }
+
+.feedback.correct {
+    background: #d4edda;
+    border-color: var(--success);
+    color: #155724;
+}
+
+.feedback.incorrect {
+    background: #f8d7da;
+    border-color: var(--danger);
+    color: #721c24;
+}
+
+/* ── Streak Popup ── */
+.streak-popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 2.5rem 2rem;
+    border-radius: 16px;
+    text-align: center;
+    box-shadow: 0 10px 50px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    animation: popIn 0.4s ease;
+    display: none;
+    max-width: 90%;
+    width: 300px;
+}
+
+.streak-popup.show { display: block; }
+
+.streak-emoji {
+    font-size: 3.5rem;
+    margin-bottom: 0.75rem;
+    animation: bounce 0.6s ease infinite;
+    display: inline-block;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50%       { transform: translateY(-15px); }
+}
+
+.streak-text {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--warning);
+    margin-bottom: 0.5rem;
+}
+
+.streak-subtext {
+    font-size: 1rem;
+    color: #666;
+}
+
+@keyframes popIn {
+    0%   { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+    50%  { transform: translate(-50%, -50%) scale(1.1); }
+    100% { transform: translate(-50%, -50%) scale(1);   opacity: 1; }
+}
+
+/* ── Modal Backdrop ── */
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    display: none;
+    z-index: 999;
+}
+
+.modal-backdrop.show { display: block; }
+
+/* ── Congratulations Modal ── */
+.congrats-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 2.5rem 2rem;
+    border-radius: 20px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    z-index: 1001;
+    animation: slideUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    display: none;
+    max-width: 90%;
+    width: 340px;
+}
+
+.congrats-modal.show { display: block; }
+
+.congrats-emoji {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    animation: bounce 0.8s ease infinite;
+    display: inline-block;
+}
+
+.congrats-title {
+    font-size: 2rem;
+    font-weight: 900;
+    color: var(--dark);
+    margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, var(--primary), var(--warning));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.congrats-text {
+    font-size: 1rem;
+    color: #666;
+    margin-bottom: 1.5rem;
+    line-height: 1.5;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.stat-card {
+    background: linear-gradient(135deg, var(--primary) 0%, #357abd 100%);
+    padding: 1.5rem 1rem;
+    border-radius: 12px;
+    color: white;
+}
+
+.stat-card.success {
+    background: linear-gradient(135deg, var(--success) 0%, #27ae60 100%);
+}
+
+.stat-card-label {
+    font-size: 0.8rem;
+    opacity: 0.9;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.5rem;
+}
+
+.stat-card-value {
+    font-size: 2rem;
+    font-weight: 900;
+}
+
+.congrats-button {
+    background: linear-gradient(135deg, var(--primary), #357abd);
+    color: white;
+    border: none;
+    padding: 1rem 2rem;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 100%;
+    letter-spacing: 0.5px;
+}
+
+.congrats-button:active { transform: scale(0.98); }
+
+/* ── Button Section ── */
+.button-section {
+    background: linear-gradient(135deg, #f0f4ff 0%, #f8f5ff 100%);
+    padding: 1.25rem 1rem;
+    /* clears the phone's own bottom nav / home-indicator bar instead of a guessed pixel value */
+    /* padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px)); */
+    border-top: 1px solid rgba(255, 255, 255, 0.5);
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+button {
+    padding: 0.85rem 1.5rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    letter-spacing: 0.5px;
+    min-width: 110px;
+}
+
+.btn-submit {
+    background: linear-gradient(135deg, var(--primary), #357abd);
+    color: white;
+    flex: 1;
+    max-width: 100%;
+    box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3);
+}
+
+.btn-submit:active:not(:disabled) {
+    transform: scale(0.98);
+    box-shadow: 0 1px 4px rgba(74, 144, 226, 0.2);
+}
+
+.btn-submit:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-back {
+    background: rgba(255, 255, 255, 0.9);
+    color: var(--primary);
+    border: 2px solid white;
+}
+
+.btn-back:active { background: white; }
+
+.btn-back:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    border-color: #ccc;
+    color: #ccc;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #999; }
+
+/* ── Tablet ── */
+@media (min-width: 768px) {
+    .content-scroll {
+        padding: 2rem;
+        max-width: 650px;
+        margin: 0 auto;
+        width: 100%;
+    }
+
+    .lesson-section, .quiz-section { padding: 2rem; }
+    .header-title  { font-size: 1.4rem; }
+    .lesson-title  { font-size: 1.75rem; }
+}
+
+/* ── Desktop ── */
+@media (min-width: 1024px) {
+    .content-scroll {
+        padding: 2.5rem;
+        max-width: 700px;
+    }
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   EXTENSION STYLES — not in the original stylesheet.
+   Added only to support: chunk micro-checks, arrange/type item
+   types, and callback tags. Reuses existing CSS variables and
+   follows the same visual language as the base file.
+   ══════════════════════════════════════════════════════════════ */
+.item-tag {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 0.2rem 0.6rem;
+    border-radius: 10px;
+    margin-bottom: 0.75rem;
+}
+.item-tag.tag-checkpoint { background: #fff3cd; color: #7a5c00; }
+.item-tag.tag-callback   { background: #fde2c8; color: #8a4a0f; }
+.item-tag.tag-micro      { background: #eef1f5; color: #556; }
+
+.token-pool {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+.token-chip {
+    padding: 0.6rem 0.9rem;
+    background: #f4f4f4;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.token-chip:active:not(.used) { transform: scale(0.96); }
+.token-chip.used { opacity: 0.3; pointer-events: none; }
+
+.built-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    min-height: 48px;
+    padding: 0.75rem;
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+.built-chip {
+    padding: 0.6rem 0.9rem;
+    background: #f0f4ff;
+    border: 1px solid var(--primary);
+    border-radius: 8px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    color: var(--primary);
+}
+
+.type-input {
+    width: 100%;
+    padding: 0.85rem 1rem;
+    font-family: 'Courier New', monospace;
+    font-size: 0.95rem;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    box-sizing: border-box;
+}
+.type-input:focus { outline: none; border-color: var(--primary); }
+
+.arrange-actions { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+.btn-clear-tokens, .btn-check-answer {
+    padding: 0.6rem 1.1rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    min-width: unset;
+}
+.btn-clear-tokens { background: #eceff3; color: #444; }
+.btn-check-answer { background: linear-gradient(135deg, var(--primary), #357abd); color: white; flex: 1; }
+</style>
+</head>
+<body>
+<div class="container">
+
+    <!-- Header (identical structure to production template) -->
+    <div class="header">
+        <div class="header-top">
+            <button class="header-close" onclick="exitQuiz()">&#x2715;</button>
+            <div class="progress-section">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="header-score">
+                <span>&#x2B50;</span>
+                <span id="score">0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="content-wrapper">
+        <div class="content-scroll">
+            <div class="section-container">
+                <div class="lesson-section" id="lessonSection"></div>
+
+                <div class="quiz-section">
+                    <div class="item-tag" id="itemTag"></div>
+                    <div class="question-text" id="questionText"></div>
+                    <div id="answerArea"></div>
+                    <div class="feedback" id="feedback"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Button Section -->
+    <div class="button-section">
+        <button class="btn-back" id="backBtn" onclick="previousScreen()">&#x2190; Back</button>
+        <button class="btn-submit" id="submitBtn" onclick="submitAnswer()">Submit</button>
+    </div>
+</div>
+
+<!-- Modals (identical structure to production template) -->
+<div class="modal-backdrop" id="backdrop"></div>
+<div class="streak-popup" id="streakPopup">
+    <div class="streak-emoji">&#x1F525;</div>
+    <div class="streak-text"><span id="streakCount">3</span> in a row!</div>
+    <div class="streak-subtext">Keep it up!</div>
+</div>
+
+<div class="modal-backdrop" id="congratsBackdrop"></div>
+<div class="congrats-modal" id="congratsModal">
+    <div class="congrats-emoji">&#x1F389;</div>
+    <div class="congrats-title">Congratulations!</div>
+    <div class="congrats-text" id="congratsText"></div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-card-label">Final Score</div>
+            <div class="stat-card-value" id="finalScore">0</div>
+        </div>
+        <div class="stat-card success">
+            <div class="stat-card-label">Best Streak</div>
+            <div class="stat-card-value" id="bestStreak">0</div>
+        </div>
+    </div>
+
+    <button class="congrats-button" onclick="restartQuiz()">Start Over</button>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// Topic data — normally injected server-side via $sections_json.
+// Extended schema: sections[].chunks[] (microlearning + micro-check
+// pairs) render before sections[].quiz (the checkpoint). quiz.type
+// is 'mcq' | 'arrange' | 'type'. section.callback/refSection drive
+// the callback tag. None of this changes the base CSS.
+// ══════════════════════════════════════════════════════════════
+const TOPIC_DATA = {"topic": "html_forms_v3_prod", "title": "HTML Forms (Production Template Test)", "description": "Every chunk is immediately followed by a quick 2-option check, Sololearn-style, before a bigger checkpoint quiz closes each section.", "congratsText": "You mastered HTML Forms!", "sections": [{"id": 0, "title": "What Is an HTML Form?", "callback": false, "refSection": null, "chunks": [{"text": "An HTML <span class=\"highlight\">form</span> lets users enter data and send it to a server.", "check": {"question": "A form's main job is to...", "options": ["Collect and send user input", "Only display static text"], "correct": 0}}, {"text": "Forms are built using the <span class=\"code-inline\">&lt;form&gt;</span> tag as a container for input fields.", "check": {"question": "True or false: `<form>` acts as a container that wraps input fields.", "options": ["True", "False"], "correct": 0}}, {"text": "Every field inside it gets bundled together when the form is submitted.", "check": {"question": "When a form is submitted, its fields are...", "options": ["Sent together as one submission", "Sent one at a time automatically"], "correct": 0}}], "quiz": {"type": "mcq", "question": "What is the main purpose of an HTML `<form>` element?", "options": ["To collect input and send it to the server", "To style the page using colors and fonts", "To link one HTML page directly to another one", "To display images without needing a URL"], "correct": 0}, "lesson": "<div class=\"lesson-title\">Checkpoint: What Is an HTML Form?</div><div class=\"lesson-text\">Quick recap before the checkpoint: forms collect input and send it to the server.</div>"}, {"id": 1, "title": "Basic Form Elements", "callback": false, "refSection": null, "chunks": [{"text": "The <span class=\"code-inline\">&lt;input&gt;</span> tag creates a field where users type or select data.", "check": {"question": "`<input>` is used to...", "options": ["Create a field for user data", "Style the page layout"], "correct": 0}}, {"text": "A <span class=\"code-inline\">&lt;label&gt;</span> tag describes what an input is for, improving accessibility.", "check": {"question": "A `<label>` mainly helps...", "options": ["Explain what an input field is for", "Send the form to the server"], "correct": 0}}, {"text": "Connecting a label to its input uses the `for` attribute matching the input's `id`.", "check": {"question": "True or false: the `for` attribute links a label to an input by matching its `id`.", "options": ["True", "False"], "correct": 0}}], "quiz": {"type": "type", "question": "Type the tag name used to describe what an input field is for.", "acceptedAnswers": ["label", "<label>"]}, "lesson": "<div class=\"lesson-title\">Checkpoint: Basic Form Elements</div><div class=\"lesson-text\">Quick recap before the checkpoint: <input> creates fields, <label> describes them.</div>"}, {"id": 2, "title": "Form Attributes: action & method", "callback": false, "refSection": null, "chunks": [{"text": "The `action` attribute tells the form where to send data when submitted.", "check": {"question": "The `action` attribute defines...", "options": ["Where the form data is sent", "How data looks visually"], "correct": 0}}, {"text": "The `method` attribute controls how data is sent — commonly `GET` or `POST`.", "check": {"question": "True or false: `method` can be set to GET or POST.", "options": ["True", "False"], "correct": 0}}, {"text": "Together they answer: where does the data go, and how does it travel?", "check": {"question": "`action` and `method` together define...", "options": ["Destination and transport of form data", "The color scheme of the form"], "correct": 0}}], "quiz": {"type": "arrange", "question": "Arrange the tokens to build a form tag that submits to `save.php` using POST.", "tokens": ["method=\"POST\"", "<form", "action=\"save.php\"", ">"], "correctOrder": ["<form", "action=\"save.php\"", "method=\"POST\"", ">"]}, "lesson": "<div class=\"lesson-title\">Checkpoint: Form Attributes: action & method</div><div class=\"lesson-text\">Quick recap before the checkpoint: action says where, method says how.</div>"}, {"id": 3, "title": "Input Types", "callback": true, "refSection": 1, "chunks": [{"text": "The `type` attribute of `<input>` changes how the field behaves.", "check": {"question": "Changing `type` changes...", "options": ["How the input field behaves", "The page's background color"], "correct": 0}}, {"text": "Common types include `text`, `email`, `password`, `checkbox`, and `radio`.", "check": {"question": "True or false: `password` is a valid input type.", "options": ["True", "False"], "correct": 0}}, {"text": "Browsers can validate some types automatically, like rejecting a badly formatted email.", "check": {"question": "Automatic browser validation happens for types like...", "options": ["email", "div"], "correct": 0}}], "quiz": {"type": "mcq", "code": "<input type=\"email\" name=\"userEmail\">", "question": "What extra behavior does using `type=\"email\"` give this input, compared to `type=\"text\"`?", "options": ["The browser can check that the value looks valid", "The field autofills using the user's saved email", "The field turns read-only until JavaScript allows it", "The field hides typed text the way passwords do"], "correct": 0}, "lesson": "<div class=\"lesson-title\">Checkpoint: Input Types</div><div class=\"lesson-text\">Quick recap before the checkpoint: the type attribute changes an input's behavior.</div>"}, {"id": 4, "title": "Form Validation Attributes", "callback": false, "refSection": null, "chunks": [{"text": "The `required` attribute stops a form from submitting if the field is empty.", "check": {"question": "`required` prevents submission when...", "options": ["The field is left empty", "The page loads too slowly"], "correct": 0}}, {"text": "The `pattern` attribute checks input against a regular expression.", "check": {"question": "True or false: `pattern` uses a regular expression to validate input.", "options": ["True", "False"], "correct": 0}}, {"text": "These checks happen in the browser, before any data reaches the server.", "check": {"question": "Browser-side validation happens...", "options": ["Before data is sent to the server", "Only after the server responds"], "correct": 0}}], "quiz": {"type": "type", "question": "Type the attribute name that makes a field mandatory before the form can submit.", "acceptedAnswers": ["required"]}, "lesson": "<div class=\"lesson-title\">Checkpoint: Form Validation Attributes</div><div class=\"lesson-text\">Quick recap before the checkpoint: required and pattern validate in the browser.</div>"}, {"id": 5, "title": "Submitting Forms: GET vs POST", "callback": true, "refSection": 2, "chunks": [{"text": "`GET` appends form data to the URL as a query string — visible and bookmarkable.", "check": {"question": "GET puts form data...", "options": ["In the URL as a query string", "In a hidden server log only"], "correct": 0}}, {"text": "`POST` sends data in the request body — hidden from the URL, better for sensitive or large data.", "check": {"question": "True or false: POST data appears directly in the URL.", "options": ["True", "False"], "correct": 1}}, {"text": "Choosing the right method matters for security and how the server receives data.", "check": {"question": "Method choice affects...", "options": ["Security and how data is received", "Only the page's font size"], "correct": 0}}], "quiz": {"type": "arrange", "question": "Arrange the tokens to build a form tag that submits using GET to `search.php`.", "tokens": ["method=\"GET\"", "action=\"search.php\"", "<form", ">"], "correctOrder": ["<form", "action=\"search.php\"", "method=\"GET\"", ">"]}, "lesson": "<div class=\"lesson-title\">Checkpoint: Submitting Forms: GET vs POST</div><div class=\"lesson-text\">Quick recap before the checkpoint: GET shows data in the URL, POST hides it in the body.</div>"}], "objectives": ["Explain what an HTML form is and why it's used.", "Identify the core form elements: <input> and <label>.", "Configure a form's action and method attributes.", "Choose appropriate input types for different kinds of data.", "Apply validation attributes like required and pattern.", "Compare GET and POST when submitting form data."], "recap": ["Forms collect user input and send it to the server.", "<input> creates fields; <label> describes them for accessibility.", "action says where data goes; method says how it travels.", "The type attribute changes how an input behaves and validates.", "required and pattern validate input in the browser before submission.", "GET exposes data in the URL; POST hides it in the request body."]};
+const sections = TOPIC_DATA.sections;
+const TOPIC_TITLE = TOPIC_DATA.title;
+const CONGRATS_TEXT = TOPIC_DATA.congratsText;
+
+// Flatten sections into a screen list: one screen per chunk, then
+// one checkpoint screen per section — mirrors how the production
+// template renders one lesson+quiz pair per `currentSection`, just
+// generalized to more screens per logical section.
+let screens = [];
+screens.push({ kind: 'objectives', items: TOPIC_DATA.objectives || [] });
+sections.forEach((s, si) => {
+    s.chunks.forEach((c, ci) => screens.push({
+        kind: 'micro', sectionIdx: si, sectionTitle: s.title,
+        text: c.text, check: c.check, chunkNum: ci + 1, chunkTotal: s.chunks.length
+    }));
+    screens.push({
+        kind: 'checkpoint', sectionIdx: si, sectionTitle: s.title,
+        lesson: s.lesson, quiz: s.quiz, callback: s.callback, refSection: s.refSection
+    });
+});
+screens.push({ kind: 'recap', items: TOPIC_DATA.recap || [] });
+
+// ── State (same variable shapes as the production template) ────
+let currentScreen  = 0;
+let score          = 0;
+let streak         = 0;
+let bestStreak     = 0;
+let selectedOption = null;
+let answered       = false;
+let currentShuffledOptions = [];
+let currentCorrectIndex    = 0;
+let streakHighlight        = false;
+let builtTokens     = [];
+let usedTokenFlags  = [];
+
+// ── Fisher-Yates shuffle (identical to production) ──────────────
+function shuffleArray(array) {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+}
+
+function createShuffledOptions(options, correctIndex) {
+    const tagged   = options.map((text, i) => ({ text, originalIndex: i }));
+    const shuffled = shuffleArray(tagged);
+    return {
+        options:      shuffled.map(o => o.text),
+        correctIndex: shuffled.findIndex(o => o.originalIndex === correctIndex)
+    };
+}
+
+function escapeHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function normalize(str) {
+    return str.trim().toLowerCase().replace(/;+\s*$/,'').replace(/\s+/g,' ');
+}
+
+// ── Render ────────────────────────────────────────────────────
+function renderContent() {
+    const s = screens[currentScreen];
+    answered       = false;
+    selectedOption = null;
+    builtTokens    = [];
+
+    const feedback = document.getElementById('feedback');
+    feedback.className   = 'feedback';
+    feedback.textContent = '';
+
+    if (s.kind === 'objectives') {
+        answered = true; // no question to answer — just a Begin button
+        document.getElementById('lessonSection').innerHTML =
+            `<div class="lesson-title">${escapeHtml(TOPIC_TITLE)}</div>` +
+            `<div class="lesson-text">By the end of this lesson, you'll be able to:</div>` +
+            `<div class="lesson-text"><ul>${s.items.map(i => `<li>${escapeHtml(i)}</li>`).join('')}</ul></div>`;
+        document.getElementById('itemTag').innerHTML = `<span class="item-tag tag-micro">Objectives</span>`;
+        document.getElementById('questionText').innerHTML = '';
+        document.getElementById('answerArea').innerHTML = '';
+    }
+
+    else if (s.kind === 'recap') {
+        answered = true; // no question to answer — just a Finish button
+        document.getElementById('lessonSection').innerHTML =
+            `<div class="lesson-title">Recap: ${escapeHtml(TOPIC_TITLE)}</div>` +
+            `<div class="lesson-text">Here's what you covered:</div>` +
+            `<div class="lesson-text"><ul>${s.items.map(i => `<li>${escapeHtml(i)}</li>`).join('')}</ul></div>`;
+        document.getElementById('itemTag').innerHTML = `<span class="item-tag tag-micro">Recap</span>`;
+        document.getElementById('questionText').innerHTML = '';
+        document.getElementById('answerArea').innerHTML = '';
+    }
+
+    else if (s.kind === 'micro') {
+        document.getElementById('lessonSection').innerHTML =
+            `<div class="lesson-text">${s.text}</div>`;
+        document.getElementById('itemTag').innerHTML =
+            `<span class="item-tag tag-micro">${s.chunkNum} / ${s.chunkTotal} · ${escapeHtml(s.sectionTitle)}</span>`;
+        document.getElementById('questionText').innerHTML = `<p>${s.check.question}</p>`;
+
+        const shuffled = createShuffledOptions(s.check.options, s.check.correct);
+        currentShuffledOptions = shuffled.options;
+        currentCorrectIndex    = shuffled.correctIndex;
+        renderMcqOptions();
+    }
+
+    else {
+        document.getElementById('lessonSection').innerHTML = s.lesson;
+        const tagHtml = s.callback
+            ? `<span class="item-tag tag-callback">Callback → Section ${s.refSection}</span>`
+            : `<span class="item-tag tag-checkpoint">Checkpoint</span>`;
+        document.getElementById('itemTag').innerHTML = tagHtml;
+
+        let questionHTML = `<p>${s.quiz.question}</p>`;
+        if (s.quiz.code) questionHTML += `<div class="question-code">${escapeHtml(s.quiz.code)}</div>`;
+        document.getElementById('questionText').innerHTML = questionHTML;
+
+        if (s.quiz.type === 'mcq') {
+            const shuffled = createShuffledOptions(s.quiz.options, s.quiz.correct);
+            currentShuffledOptions = shuffled.options;
+            currentCorrectIndex    = shuffled.correctIndex;
+            renderMcqOptions();
+        } else if (s.quiz.type === 'arrange') {
+            renderArrangeOptions(s.quiz);
+        } else if (s.quiz.type === 'type') {
+            renderTypeInput(s.quiz);
+        }
+    }
+
+    updateUI();
+}
+
+function renderMcqOptions() {
+    const area = document.getElementById('answerArea');
+    area.innerHTML = '<div class="options" id="optionsContainer"></div>';
+    const container = document.getElementById('optionsContainer');
+    currentShuffledOptions.forEach((text, index) => {
+        const opt = document.createElement('div');
+        opt.className = 'option';
+        opt.textContent = text;
+        opt.dataset.index = index;
+        opt.onclick = () => selectOption(index);
+        container.appendChild(opt);
+    });
+}
+
+function selectOption(index) {
+    if (answered) return;
+    document.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
+    document.querySelector(`[data-index="${index}"]`).classList.add('selected');
+    selectedOption = index;
+}
+
+function renderArrangeOptions(quiz) {
+    usedTokenFlags = new Array(quiz.tokens.length).fill(false);
+    const area = document.getElementById('answerArea');
+    area.innerHTML = `
+        <div class="built-row" id="builtRow"></div>
+        <div class="token-pool" id="tokenPool"></div>
+        <div class="arrange-actions">
+            <button class="btn-clear-tokens" id="clearTokensBtn" type="button">Clear</button>
+        </div>
+    `;
+    const pool = document.getElementById('tokenPool');
+    quiz.tokens.forEach((tok, idx) => {
+        const chip = document.createElement('div');
+        chip.className = 'token-chip';
+        chip.textContent = tok;
+        chip.onclick = () => {
+            if (answered || usedTokenFlags[idx]) return;
+            usedTokenFlags[idx] = true;
+            chip.classList.add('used');
+            builtTokens.push(tok);
+            renderBuiltRow();
+        };
+        pool.appendChild(chip);
+    });
+    document.getElementById('clearTokensBtn').onclick = () => {
+        if (answered) return;
+        builtTokens = [];
+        usedTokenFlags.fill(false);
+        document.querySelectorAll('.token-chip').forEach(c => c.classList.remove('used'));
+        renderBuiltRow();
+    };
+    renderBuiltRow();
+}
+
+function renderBuiltRow() {
+    document.getElementById('builtRow').innerHTML =
+        builtTokens.map(t => `<span class="built-chip">${escapeHtml(t)}</span>`).join('');
+}
+
+function renderTypeInput(quiz) {
+    const area = document.getElementById('answerArea');
+    area.innerHTML = `<input type="text" class="type-input" id="typeInput" placeholder="Type your answer...">`;
+}
+
+// ── Submit / grade (mirrors production submitAnswer logic) ──────
+function submitAnswer() {
+    if (answered) { nextScreen(); return; }
+
+    const s = screens[currentScreen];
+
+    if (s.kind === 'objectives' || s.kind === 'recap') {
+        nextScreen();
+        return;
+    }
+
+    const feedback = document.getElementById('feedback');
+    let correct = false;
+    let correctAnswerText = '';
+
+    if (s.kind === 'micro' || s.quiz.type === 'mcq') {
+        if (selectedOption === null) { alert('Please select an option!'); return; }
+        correct = selectedOption === currentCorrectIndex;
+        document.querySelectorAll('.option').forEach(o => o.classList.add('disabled'));
+        if (correct) {
+            document.querySelector(`[data-index="${selectedOption}"]`).classList.add('correct');
+        } else {
+            document.querySelector(`[data-index="${selectedOption}"]`).classList.add('incorrect');
+            document.querySelector(`[data-index="${currentCorrectIndex}"]`).classList.add('correct');
+        }
+        correctAnswerText = currentShuffledOptions[currentCorrectIndex];
+    }
+
+    else if (s.quiz.type === 'arrange') {
+        if (builtTokens.length === 0) { alert('Arrange the tokens first!'); return; }
+        correct = JSON.stringify(builtTokens) === JSON.stringify(s.quiz.correctOrder);
+        document.querySelectorAll('.token-chip').forEach(c => c.style.pointerEvents = 'none');
+        correctAnswerText = s.quiz.correctOrder.join(' ');
+    }
+
+    else if (s.quiz.type === 'type') {
+        const val = document.getElementById('typeInput').value;
+        if (!val.trim()) { alert('Type your answer first!'); return; }
+        correct = s.quiz.acceptedAnswers.some(a => normalize(a) === normalize(val));
+        document.getElementById('typeInput').disabled = true;
+        correctAnswerText = s.quiz.acceptedAnswers[0];
+    }
+
+    answered = true;
+
+    if (correct) {
+        feedback.className   = 'feedback show correct';
+        feedback.textContent = '✓ Correct! +1 point';
+        score++;
+        streak++;
+        bestStreak = Math.max(bestStreak, streak);
+        if (streak > 0 && streak % 3 === 0) { streakHighlight = true; showStreakPopup(streak); }
+    } else {
+        feedback.className   = 'feedback show incorrect';
+        feedback.textContent = `✗ Incorrect. The correct answer is: ${correctAnswerText}`;
+        streak = 0;
+        streakHighlight = false;
+    }
+
+    updateUI();
+    document.getElementById('submitBtn').textContent =
+        (currentScreen === screens.length - 1) ? 'Finish' : 'Next →';
+}
+
+// ── Modals ────────────────────────────────────────────────────
+function showStreakPopup(count) {
+    const popup    = document.getElementById('streakPopup');
+    const backdrop = document.getElementById('backdrop');
+    document.getElementById('streakCount').textContent = count;
+    popup.classList.add('show');
+    backdrop.classList.add('show');
+    setTimeout(() => {
+        popup.classList.remove('show');
+        backdrop.classList.remove('show');
+    }, 1500);
+}
+
+function showCongratsModal() {
+    document.getElementById('finalScore').textContent = score;
+    document.getElementById('bestStreak').textContent = bestStreak;
+    document.getElementById('congratsText').textContent = CONGRATS_TEXT;
+    document.getElementById('congratsModal').classList.add('show');
+    document.getElementById('congratsBackdrop').classList.add('show');
+}
+
+// ── Navigation ────────────────────────────────────────────────
+function nextScreen() {
+    if (currentScreen < screens.length - 1) {
+        currentScreen++;
+        renderContent();
+    } else {
+        showCongratsModal();
+    }
+}
+
+function previousScreen() {
+    if (currentScreen > 0) { currentScreen--; renderContent(); }
+}
+
+function restartQuiz() {
+    currentScreen = score = streak = bestStreak = 0;
+    streakHighlight = false;
+    document.getElementById('congratsModal').classList.remove('show');
+    document.getElementById('congratsBackdrop').classList.remove('show');
+    renderContent();
+}
+
+function exitQuiz() {
+    alert('This is a standalone preview — exitQuiz() would normally redirect to the classwork list.');
+}
+
+// ── UI sync (mirrors production updateUI) ────────────────────
+function updateUI() {
+    document.getElementById('score').textContent = score;
+    const fill = document.getElementById('progressFill');
+    fill.style.width = `${((currentScreen + 1) / screens.length) * 100}%`;
+    fill.classList.toggle('streak-active', streakHighlight);
+
+    const backBtn = document.getElementById('backBtn');
+    backBtn.style.display = '';
+    backBtn.disabled = currentScreen === 0;
+
+    const s = screens[currentScreen];
+    if (s.kind === 'objectives') {
+        document.getElementById('submitBtn').textContent = "Let's Begin →";
+    } else {
+        document.getElementById('submitBtn').textContent = answered
+            ? (currentScreen === screens.length - 1 ? 'Finish' : 'Next →')
+            : 'Submit';
+    }
+}
+
+window.addEventListener('load', renderContent);
+</script>
+</body>
+</html>

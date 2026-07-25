@@ -87,6 +87,13 @@ class Widgets_model extends CI_Model
         // worksheet-style widgets.
         $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
             VALUES ('chapter_worksheet', 'Chapter Worksheet', 'widgets/chapter_worksheet', NULL)");
+        // Project Proposal: title/type/client/problem header fields + a
+        // repeatable features table where each planned feature is tagged
+        // with the CRUD operation it implements. Built for term-project
+        // proposals (a CRUD system in C or Web). Not auto-graded, same
+        // manual-score-entry pattern as Worksheet Form/Case Study Worksheet.
+        $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
+            VALUES ('project_proposal', 'Project Proposal', 'widgets/project_proposal', NULL)");
     }
 
     public function get_all()

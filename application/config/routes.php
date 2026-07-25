@@ -182,6 +182,7 @@ $route['output_upload'] = 'Main/output_upload';
 
 // Admin Routes
 $route['manage_assessments'] = 'AdminController/manage_assessments';
+$route['class_assessments'] = 'AdminController/class_assessments';
 $route['save_assessment'] = 'AdminController/save_assessment';
 $route['update_assessment_status'] = 'AdminController/update_assessment_status';
 $route['dashboard'] = 'AdminController/dashboard';

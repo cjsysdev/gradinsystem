@@ -981,19 +981,49 @@ class AdminController extends CI_Controller
             'is_groupings' => !empty($post['is_groupings']) ? 1 : 0,
         ];
 
-        // "Entire class" creates ONE shared master, assigned to every active
-        // section of that class this semester, instead of a full duplicate
+        // "Entire class" mode is shared by manage_assessments.php and
+        // class_assessments.php's Add modals — class_assessments.php posts
+        // this hidden field so the redirect lands back on the class it came
+        // from instead of the section-scoped manage_assessments page.
+        $class_return_url = !empty($post['return_class_id'])
+            ? 'class_assessments?class_id=' . (int) $post['return_class_id']
+            : 'manage_assessments';
+
+        // "Draft" anchors a master to a class with NO section assigned yet —
+        // the class_assessments page's way of authoring an assessment before
+        // deciding which section(s) get it. Unlike "class" mode below, this
+        // never touches assessment_section; the master persists indefinitely
+        // as an unassigned draft (see assessments::delete_section()'s
+        // class_id guard) until assigned via assign_master() or explicitly
+        // deleted.
+        if (!$section_id && $apply_mode === 'draft' && !empty($post['class_id'])) {
+            $master_fields['class_id'] = (int) $post['class_id'];
+            $this->assessments->create_master($master_fields);
+
+            $this->session->set_flashdata('success', 'Draft assessment created — not yet assigned to any section.');
+            redirect('class_assessments?class_id=' . (int) $post['class_id']);
+        }
+
+        // "Entire class" creates ONE shared master, assigned to every section
+        // of that class in the target semester, instead of a full duplicate
         // row per section. Only offered for brand-new assessments — an
         // existing assessment is already tied to a master. Group Submission
         // isn't offered in this mode since grouping sets are section-scoped
-        // (see manage_assessments.php JS).
+        // (see manage_assessments.php JS). class_assessments.php posts its
+        // own selected semester_id so this fans out to whichever semester the
+        // admin is viewing; manage_assessments.php doesn't post one, so this
+        // falls back to the truly active semester (unchanged behavior there).
         if (!$section_id && $apply_mode === 'class' && !empty($post['class_id'])) {
-            $schedules = $this->class_schedule->get_active_schedules_by_class((int) $post['class_id']);
+            $schedules = $this->class_schedule->get_active_schedules_by_class(
+                (int) $post['class_id'],
+                !empty($post['semester_id']) ? (int) $post['semester_id'] : null
+            );
             if (empty($schedules)) {
-                $this->session->set_flashdata('error', 'That class has no active sections this semester.');
-                redirect('manage_assessments');
+                $this->session->set_flashdata('error', 'That class has no sections in that semester.');
+                redirect($class_return_url);
             }
 
+            $master_fields['class_id'] = (int) $post['class_id'];
             $master_id = $this->assessments->create_master($master_fields);
 
             $created_count = 0;
@@ -1016,7 +1046,7 @@ class AdminController extends CI_Controller
                 $flash .= " Created $submissions_created blank submission(s) across those sections.";
             }
             $this->session->set_flashdata('success', $flash);
-            redirect('manage_assessments');
+            redirect($class_return_url);
         }
 
         if ($section_id) {
@@ -1025,6 +1055,13 @@ class AdminController extends CI_Controller
                 $this->session->set_flashdata('error', 'Assessment not found — please try again.');
                 redirect('manage_assessments');
                 return;
+            }
+            // Backfill class_id for masters created before save_assessment()
+            // started populating it (or via the old flow) — never overwrite
+            // an already-set class_id just because a section got re-pointed.
+            $existing_class_id = $this->db->select('class_id')->where('assessment_id', $master_id)->get('assessments')->row('class_id');
+            if (!$existing_class_id) {
+                $master_fields['class_id'] = $this->db->select('class_id')->where('schedule_id', $post['schedule_id'])->get('class_schedule')->row('class_id');
             }
             // Content edits propagate to every section sharing this master —
             // that's the point of sharing (see CLAUDE.md widget config rule).
@@ -1037,6 +1074,7 @@ class AdminController extends CI_Controller
             $this->assessments->update_section($section_id, $section_fields + ['schedule_id' => $post['schedule_id']]);
             $flash = 'Assessment updated successfully.';
         } else {
+            $master_fields['class_id'] = $this->db->select('class_id')->where('schedule_id', $post['schedule_id'])->get('class_schedule')->row('class_id');
             $master_id = $this->assessments->create_master($master_fields);
             $section_id = $this->assessments->assign_to_schedule($master_id, $post['schedule_id'], $section_fields);
             $flash = 'Assessment added successfully.';
@@ -1081,9 +1119,15 @@ class AdminController extends CI_Controller
         $master_id = !empty($post['master_id']) ? (int) $post['master_id'] : null;
         $schedule_id = !empty($post['schedule_id']) ? $post['schedule_id'] : null;
 
+        // class_assessments.php posts its own class_id so a save from there
+        // lands back on that class's page instead of manage_assessments.
+        $return_url = !empty($post['return_class_id'])
+            ? 'class_assessments?class_id=' . (int) $post['return_class_id']
+            : 'manage_assessments';
+
         if (!$master_id || !$schedule_id) {
             $this->session->set_flashdata('error', 'Pick both an assessment and a target section.');
-            redirect('manage_assessments');
+            redirect($return_url);
             return;
         }
 
@@ -1094,7 +1138,7 @@ class AdminController extends CI_Controller
             ->get('assessment_section')->row_array();
         if ($existing) {
             $this->session->set_flashdata('error', 'That section is already assigned to this assessment.');
-            redirect('manage_assessments');
+            redirect($return_url);
             return;
         }
 
@@ -1122,7 +1166,247 @@ class AdminController extends CI_Controller
         }
 
         $this->session->set_flashdata('success', $flash);
-        redirect('manage_assessments');
+        redirect($return_url);
+    }
+
+    // Read-only per-class assessment monitoring/management — every master
+    // belonging to a class, INCLUDING drafts with no section assigned yet
+    // (see assessments::get_for_class()). Complements manage_assessments()
+    // (which is per-section and only ever shows assigned assessments) with
+    // a per-class view that also surfaces unassigned drafts.
+    public function class_assessments()
+    {
+        $this->load->model('classes');
+
+        $class_id = $this->input->get('class_id') ?: null;
+
+        // Semester filter — defaults to whichever semester is currently
+        // active, but the admin can switch to a past one to see (and, via
+        // "One Section"/"Assign", still act on) that semester's assignments.
+        // Drafts (class_id set, no section yet) aren't tied to any semester
+        // and always show regardless of this filter — see get_for_class().
+        $data['semesters'] = $this->db->order_by('trans_no', 'DESC')->get('semester_master')->result_array();
+        $active_semester = $this->db->where('is_active', 1)->get('semester_master')->row_array();
+        $semester_id = $this->input->get('semester_id') ?: ($active_semester['trans_no'] ?? null);
+        $data['selected_semester_id'] = $semester_id;
+
+        $data['all_classes'] = $this->classes->as_array()->order_by('class_code')->get_all();
+        $data['class_id'] = $class_id;
+        $data['selected_class'] = null;
+        $data['assessments'] = [];
+        $data['sections'] = [];
+        $data['copyable_assessments'] = [];
+        $class_code = null;
+
+        if ($class_id && $semester_id) {
+            $data['selected_class'] = $this->classes->as_array()->get($class_id);
+            $data['assessments'] = $this->assessments->get_for_class($class_id, $semester_id);
+            // Full section labels (not just schedule_id, unlike
+            // get_active_schedules_by_class() — that method only feeds the
+            // "assign to every section" fan-out in save_assessment(), which
+            // doesn't need labels) for the Section/Assign dropdowns below,
+            // scoped to the selected semester (not always the active one).
+            $data['sections'] = $this->db->select('cs.schedule_id, cs.section, cs.type')
+                ->from('class_schedule cs')
+                ->where('cs.class_id', $class_id)
+                ->where('cs.semester_id', $semester_id)
+                ->order_by('cs.section')
+                ->get()->result_array();
+
+            // "Copy from" is scoped to this class only here (unlike
+            // manage_assessments, which filters dynamically by JS as the
+            // admin switches sections/classes in one shared modal) — this
+            // page never changes class without a full reload, so the filter
+            // can just happen once, server-side.
+            $class_code = $data['selected_class']['class_code'] ?? null;
+            $data['copyable_assessments'] = array_values(array_filter(
+                $this->assessments->get_copyable_for_active_semester(),
+                function ($ca) use ($class_code) {
+                    return $ca['class_code'] === $class_code;
+                }
+            ));
+        }
+
+        $data['io_types'] = $this->db->get('io_type')->result_array();
+
+        $this->load->model('Widgets_model');
+        $data['widgets'] = $this->Widgets_model->get_all();
+
+        $this->load->model('Grouping_model');
+        $data['grouping_sets'] = $this->Grouping_model->get_all_sets();
+
+        // Same topic-library scan as manage_assessments(), but pre-filtered
+        // to topics belonging to this class's class_code (plus legacy/unfiled
+        // topics, class_code '') — see the copyable_assessments filter above
+        // for why this can happen server-side here instead of via JS.
+        $data['iq_topics'] = [];
+        $data['iq_topic_question_counts'] = [];
+        $data['iq_topic_meta'] = [];
+        foreach ($this->_glob_json_topics() as $file) {
+            $meta = json_decode(file_get_contents($file), true);
+            if (!$meta || empty($meta['sections'])) {
+                continue;
+            }
+            $is_discussion_format = true;
+            foreach ($meta['sections'] as $s) {
+                if (isset($s['questions'])) {
+                    $is_discussion_format = false;
+                    break;
+                }
+            }
+            if (!$is_discussion_format) {
+                continue;
+            }
+            $topic_class = $this->_topic_class_code_from_path($file);
+            if ($topic_class !== '' && $topic_class !== $class_code) {
+                continue;
+            }
+            $slug = basename($file, '.json');
+            $title = $meta['title'] ?? ucwords(str_replace('_', ' ', $slug));
+            $data['iq_topics'][$slug] = $title;
+            $data['iq_topic_question_counts'][$slug] = $this->_count_iq_topic_questions($meta);
+            $data['iq_topic_meta'][$slug] = [
+                'title'       => $title,
+                'description' => $meta['description'] ?? '',
+            ];
+        }
+
+        $this->load->view('admin/class_assessments', $data);
+    }
+
+    // Edits a master's shared content ONLY (title/description/iotype/term/
+    // max_score/widget/given) — no due/status/is_groupings, since those are
+    // per-section and a master on class_assessments may have zero, one, or
+    // several sections with different values. Distinct from save_assessment()'s
+    // edit branch, which always requires and edits exactly one target
+    // section. Same widget/given validation as save_assessment() (duplicated
+    // rather than shared — the validation is short and the two callers'
+    // surrounding flow/redirects differ enough that extracting a helper
+    // would need its own parameter surface for little real reuse).
+    public function update_class_assessment_master()
+    {
+        $post = $this->input->post();
+        $master_id = !empty($post['master_id']) ? (int) $post['master_id'] : null;
+        $class_id = !empty($post['class_id']) ? (int) $post['class_id'] : null;
+
+        if (!$master_id) {
+            $this->session->set_flashdata('error', 'Assessment not found — please try again.');
+            redirect('class_assessments' . ($class_id ? '?class_id=' . $class_id : ''));
+            return;
+        }
+
+        $master_fields = [
+            'iotype_id'   => $post['iotype_id'],
+            'title'       => $post['title'],
+            'description' => $post['description'],
+            'max_score'   => $post['max_score'],
+            'term'        => $post['term'],
+            'widget_id'   => !empty($post['widget_id']) ? (int) $post['widget_id'] : null,
+            'given'       => !empty($post['widget_id']) ? ($post['given'] ?? null) : null,
+        ];
+
+        if ($master_fields['widget_id']) {
+            $this->load->model('Widgets_model');
+            $widget = $this->Widgets_model->get($master_fields['widget_id']);
+            if ($widget && $widget['widget_key'] === 'iq_discussion') {
+                $topic = json_decode($master_fields['given'] ?? '', true)['topic'] ?? '';
+                $topic_found = false;
+                if ($topic) {
+                    foreach ($this->_glob_json_topics() as $file) {
+                        if (basename($file, '.json') !== $topic) {
+                            continue;
+                        }
+                        $meta = json_decode(file_get_contents($file), true) ?: [];
+                        $master_fields['max_score'] = max(1, $this->_count_iq_topic_questions($meta));
+                        $topic_found = true;
+                        break;
+                    }
+                }
+                if (!$topic_found) {
+                    $this->session->set_flashdata('error', 'Interactive Discussion/Quiz needs a topic — pick one from the Topic dropdown (the selected topic file could not be found).');
+                    redirect('class_assessments' . ($class_id ? '?class_id=' . $class_id : ''));
+                    return;
+                }
+            } elseif ($widget) {
+                $given = trim((string) ($master_fields['given'] ?? ''));
+                $config = $given !== '' ? json_decode($given, true) : null;
+                if (!is_array($config) || empty($config)) {
+                    if ($given === '') {
+                        $reason = 'an empty config';
+                    } elseif (json_last_error() !== JSON_ERROR_NONE) {
+                        $reason = 'invalid JSON (' . json_last_error_msg() . ')';
+                    } else {
+                        $reason = 'JSON that is not an object';
+                    }
+                    $this->session->set_flashdata('error', 'Widget config not saved — "' . $widget['name'] . '" needs a JSON config, but the form contained ' . $reason . '.');
+                    redirect('class_assessments' . ($class_id ? '?class_id=' . $class_id : ''));
+                    return;
+                }
+                if (in_array($widget['widget_key'], ['quiz', 'secure_quiz'], true) && !isset($config['questions'])) {
+                    $master_fields['given'] = json_encode(['questions' => $this->Widgets_model->quiz_questions($config)]);
+                }
+            }
+        }
+
+        $this->assessments->update_master($master_id, $master_fields);
+
+        $this->session->set_flashdata('success', 'Assessment updated successfully.');
+        redirect('class_assessments' . ($class_id ? '?class_id=' . $class_id : ''));
+    }
+
+    // One-time/idempotent maintenance action: backfills class_id on masters
+    // created before save_assessment() started populating it on write (see
+    // assessments::backfill_class_id()). Safe to run repeatedly — only
+    // touches rows where class_id IS NULL.
+    public function backfill_assessment_class_id()
+    {
+        $count = $this->assessments->backfill_class_id();
+        $this->session->set_flashdata('success', "Backfilled class_id on $count assessment(s).");
+        redirect('class_assessments' . ($this->input->post('class_id') ? '?class_id=' . (int) $this->input->post('class_id') : ''));
+    }
+
+    // Full delete of a draft or assigned master and everything under it
+    // (sections, groupings, live state, and — if it has submissions —
+    // classworks rows too). Distinct from delete_assessment(), which only
+    // ever removes ONE section; this removes the whole assessment across
+    // every section it's on, for the class_assessments page's "Delete"
+    // action. Same two-step force-confirm pattern as delete_assessment().
+    public function delete_class_assessment($master_id)
+    {
+        header('Content-Type: application/json');
+
+        if ($this->input->method() !== 'post') {
+            echo json_encode(['success' => false, 'error' => 'Invalid request method.']);
+            return;
+        }
+
+        $master_id = (int) $master_id;
+        $master = $this->db->where('assessment_id', $master_id)->get('assessments')->row_array();
+        if (!$master) {
+            echo json_encode(['success' => false, 'error' => 'Assessment not found.']);
+            return;
+        }
+
+        $section_ids = array_column($this->assessments->sections_of_master($master_id), 'assessment_section_id');
+        $submission_count = $section_ids
+            ? (int) $this->db->where_in('assessment_id', $section_ids)->count_all_results('classworks')
+            : 0;
+
+        $force = $this->input->post('force') === '1';
+
+        if ($submission_count > 0 && !$force) {
+            echo json_encode(['success' => false, 'blocked' => true, 'submission_count' => $submission_count]);
+            return;
+        }
+
+        if ($submission_count > 0) {
+            $this->db->where_in('assessment_id', $section_ids)->delete('classworks');
+        }
+        // assessment_section rows (and their assessment_groupings/
+        // assessment_live_state) cascade via FK to the master.
+        $this->assessments->delete_master($master_id);
+
+        echo json_encode(['success' => true]);
     }
 
     // Renders a widget's own input_view against admin-authored "given" JSON so

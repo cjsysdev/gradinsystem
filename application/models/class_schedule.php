@@ -42,8 +42,20 @@ class class_schedule extends MY_Model
         return $this->db->query($sql)->result_array();
     }
 
-    public function get_active_schedules_by_class($class_id)
+    // $semester_id defaults to the active semester (unchanged behavior for
+    // manage_assessments.php's "Entire class" mode); class_assessments.php
+    // passes its own selected semester explicitly so "Entire class" fans out
+    // to whichever semester the admin is currently viewing, not necessarily
+    // the truly active one.
+    public function get_active_schedules_by_class($class_id, $semester_id = null)
     {
+        if ($semester_id) {
+            $sql = "SELECT cs.schedule_id
+                    FROM class_schedule cs
+                    WHERE cs.class_id = ? AND cs.semester_id = ?";
+            return $this->db->query($sql, [$class_id, $semester_id])->result_array();
+        }
+
         $sql = "SELECT cs.schedule_id
                 FROM class_schedule cs
                 JOIN semester_master sm ON cs.semester_id = sm.trans_no AND sm.is_active = 1

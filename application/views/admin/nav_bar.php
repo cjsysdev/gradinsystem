@@ -7,6 +7,9 @@
                         'manage_assessments'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Assessments"><i class="fa fa-tasks"></i></a>
         <a href="<?= base_url(
+                        'class_assessments'
+                    ) ?>" class="btn btn-outline-secondary col m-2" title="Class Assessments"><i class="fa fa-layer-group"></i></a>
+        <a href="<?= base_url(
                         'all_submissions/1'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Classwork"><i class="fa fa-folder-open"></i></a>
         <!-- <a href="<?= base_url(

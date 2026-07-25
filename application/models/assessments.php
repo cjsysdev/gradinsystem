@@ -399,8 +399,12 @@ class assessments extends MY_Model
 
     // Deletes one section assignment. FK CASCADE on assessment_section takes
     // its assessment_groupings/assessment_live_state rows with it. If that
-    // was the master's last section, the now-unreachable master is deleted
-    // too — nothing links to a master with zero section assignments.
+    // was the master's last section AND the master has no class_id (i.e. it
+    // isn't anchored to a class via the class_assessments module), the now-
+    // unreachable master is deleted too — nothing links to a master with
+    // zero section assignments AND no class. A master WITH class_id set is
+    // deliberately kept as an unassigned draft (see get_for_class()) instead
+    // of being silently destroyed.
     public function delete_section($section_id)
     {
         $master_id = $this->master_id_for_section($section_id);
@@ -409,8 +413,85 @@ class assessments extends MY_Model
         if ($master_id) {
             $remaining = $this->db->where('assessment_id', $master_id)->count_all_results('assessment_section');
             if ($remaining === 0) {
-                $this->db->where('assessment_id', $master_id)->delete('assessments');
+                $has_class = $this->db->select('class_id')->where('assessment_id', $master_id)->get('assessments')->row('class_id');
+                if (!$has_class) {
+                    $this->db->where('assessment_id', $master_id)->delete('assessments');
+                }
             }
         }
+    }
+
+    // Explicit full delete of a master and every section assigned to it
+    // (assessment_section rows cascade via FK, taking assessment_groupings/
+    // assessment_live_state with them) — the class_assessments page's
+    // "Delete assessment" action. Unlike delete_section(), this always
+    // removes the master regardless of class_id, since the admin is deleting
+    // the assessment itself, not just unassigning one section.
+    public function delete_master($master_id)
+    {
+        $this->db->where('assessment_id', $master_id)->delete('assessments');
+    }
+
+    // Every assessment belonging to a class, INCLUDING masters with zero
+    // assigned sections (unassigned drafts) — the class_assessments page's
+    // core read. Starts from the master table (not assessment_full, which
+    // requires a section join) so drafts aren't invisible. Aggregates roll
+    // up across only the master's sections IN $semester_id (a section from a
+    // different semester shouldn't count toward "assigned" for this view) —
+    // the semester filter lives in the JOIN's ON clause, not a WHERE, so a
+    // master whose ONLY sections are from a different semester still
+    // surfaces as effectively unassigned instead of disappearing from the
+    // page entirely (a WHERE filter would drop every one of its joined
+    // rows, leaving nothing for GROUP BY to keep). Same aggregate shape as
+    // get_all_for_admin().
+    public function get_for_class($class_id, $semester_id)
+    {
+        $sql = "
+            SELECT
+                m.assessment_id AS master_id,
+                m.class_id, m.iotype_id, m.term, m.title, m.description,
+                m.max_score, m.widget_id, m.given,
+                iot.type AS iotype,
+                w.name AS widget_name,
+                COUNT(DISTINCT s.assessment_section_id) AS section_count,
+                GROUP_CONCAT(DISTINCT CONCAT(s.assessment_section_id, ':', cs.section) ORDER BY cs.section SEPARATOR '|') AS sections_csv,
+                COUNT(cw.classwork_id) AS submission_count,
+                SUM(CASE WHEN cw.classwork_id IS NOT NULL AND cw.score IS NULL THEN 1 ELSE 0 END) AS unscored_count
+            FROM assessments m
+            LEFT JOIN assessment_section s
+                ON s.assessment_id = m.assessment_id
+                AND EXISTS (
+                    SELECT 1 FROM class_schedule cs_sem
+                    WHERE cs_sem.schedule_id = s.schedule_id AND cs_sem.semester_id = ?
+                )
+            LEFT JOIN class_schedule cs
+                ON cs.schedule_id = s.schedule_id
+            LEFT JOIN io_type iot ON iot.iotype_id = m.iotype_id
+            LEFT JOIN widgets w ON w.widget_id = m.widget_id
+            LEFT JOIN classworks cw ON cw.assessment_id = s.assessment_section_id
+            WHERE m.class_id = ?
+            GROUP BY m.assessment_id
+            ORDER BY m.created_at DESC
+        ";
+        $query = $this->db->query($sql, [$semester_id, $class_id]);
+        return $query ? $query->result_array() : [];
+    }
+
+    // One-time/idempotent backfill for masters created after the
+    // master/section normalization but before save_assessment() started
+    // populating class_id on write — sets class_id from any one of the
+    // master's own sections' class_schedule.class_id. Safe to re-run: only
+    // touches rows where class_id IS NULL, and does nothing to masters that
+    // still have zero sections (nothing to infer a class from).
+    public function backfill_class_id()
+    {
+        $this->db->query("
+            UPDATE assessments m
+            JOIN assessment_section s ON s.assessment_id = m.assessment_id
+            JOIN class_schedule cs ON cs.schedule_id = s.schedule_id
+            SET m.class_id = cs.class_id
+            WHERE m.class_id IS NULL
+        ");
+        return $this->db->affected_rows();
     }
 }
