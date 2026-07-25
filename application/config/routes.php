@@ -158,6 +158,8 @@ $route['interactive_quiz/load/(:any)/(:num)'] = 'InteractiveQuizController/load/
 $route['interactive_quiz/load/(:any)'] = 'InteractiveQuizController/load/$1';
 $route['interactive_quiz/discussion/(:any)/(:num)'] = 'InteractiveQuizController/discussion/$1/$2';
 $route['interactive_quiz/discussion/(:any)'] = 'InteractiveQuizController/discussion/$1';
+$route['interactive_quiz/micro/(:any)/(:num)'] = 'InteractiveQuizController/micro/$1/$2';
+$route['interactive_quiz/micro/(:any)'] = 'InteractiveQuizController/micro/$1';
 $route['interactive_quiz/discussion_results/(:any)'] = 'InteractiveQuizController/discussion_results/$1';
 $route['interactive_quiz/choice_stats/(:any)'] = 'InteractiveQuizController/get_choice_stats/$1';
 

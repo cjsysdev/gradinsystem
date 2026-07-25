@@ -1,0 +1,154 @@
+/* ══════════════════════════════════════════════════════════════
+   interactive-micro-style.css
+   CMC Microlearning Quiz template — EXTENSION stylesheet.
+
+   Load AFTER interactive-quiz-style.css:
+     <link rel="stylesheet" href="assets/interactive-quiz-style.css">
+     <link rel="stylesheet" href="assets/interactive-micro-style.css">
+
+   Adds only what the microlearning format needs on top of the base
+   discussion/quiz look: screen tags (micro/checkpoint/callback),
+   inline code spans, arrange-the-tokens, and type-the-answer.
+   Reuses the base file's CSS variables — nothing here overrides it.
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Inline code inside chunk text and questions ── */
+/* The base sheet has .code-block (multi-line) and .highlight (key term)
+   but no inline-code span; chunk text authored per the microlearning
+   schema uses .code-inline heavily, so it lives here. */
+.code-inline {
+    background: #eef1f5;
+    border: 1px solid #dde3ea;
+    border-radius: 4px;
+    padding: 0.1em 0.35em;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+    color: #2c3e50;
+    word-break: break-word;
+}
+
+/* ── Screen tag (replaces the base .quiz-label for this template) ── */
+.item-tag {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 0.2rem 0.6rem;
+    border-radius: 10px;
+    margin-bottom: 0.75rem;
+}
+
+.item-tag.tag-micro      { background: #eef1f5; color: #556677; }
+.item-tag.tag-checkpoint { background: #fff3cd; color: #7a5c00; }
+.item-tag.tag-callback   { background: #fde2c8; color: #8a4a0f; }
+
+/* ── Objectives / recap screens ── */
+.screen-list {
+    margin: 0 0 0 1.25rem;
+    padding: 0;
+}
+
+.screen-list li {
+    margin-bottom: 0.6rem;
+    line-height: 1.55;
+    color: #555;
+}
+
+/* ── Chunk text: a single idea, so it reads bigger than body copy ── */
+.chunk-text {
+    font-size: 1.15rem;
+    line-height: 1.65;
+    color: var(--dark);
+}
+
+/* ── Arrange-the-tokens ── */
+.token-pool {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.token-chip {
+    padding: 0.6rem 0.9rem;
+    background: #f4f4f4;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    word-break: break-word;
+}
+
+.token-chip:active:not(.used) { transform: scale(0.96); }
+.token-chip:hover:not(.used)  { border-color: var(--primary); background: #f0f4ff; }
+.token-chip.used              { opacity: 0.3; pointer-events: none; }
+
+.built-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    min-height: 48px;
+    padding: 0.75rem;
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.built-row.correct   { border-color: var(--success); background: #d4edda; }
+.built-row.incorrect { border-color: var(--danger);  background: #f8d7da; }
+
+.built-chip {
+    padding: 0.6rem 0.9rem;
+    background: #f0f4ff;
+    border: 1px solid var(--primary);
+    border-radius: 8px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    color: var(--primary);
+    cursor: pointer;
+    word-break: break-word;
+}
+
+.built-placeholder {
+    color: #aaa;
+    font-size: 0.85rem;
+    align-self: center;
+}
+
+.arrange-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.btn-clear-tokens {
+    padding: 0.6rem 1.1rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    min-width: unset;
+    background: #eceff3;
+    color: #444;
+}
+
+/* ── Type-the-answer ── */
+.type-input {
+    width: 100%;
+    padding: 0.85rem 1rem;
+    font-family: 'Courier New', monospace;
+    font-size: 0.95rem;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    box-sizing: border-box;
+}
+
+.type-input:focus            { outline: none; border-color: var(--primary); }
+.type-input.correct          { border-color: var(--success); background: #d4edda; }
+.type-input.incorrect        { border-color: var(--danger);  background: #f8d7da; }
+.type-input:disabled         { opacity: 1; } /* keep the graded colour readable */

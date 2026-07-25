@@ -386,9 +386,11 @@
                             <?php endforeach; ?>
                         </select>
                         <small class="form-text text-muted">
-                            Only lesson+quiz topics (uploaded under Interactive Quiz &rarr; Manage Topics) for the
-                            section/class selected above are listed here (plus any legacy unfiled topics). Students
-                            are redirected straight to this topic; their score is recorded on first completion only.
+                            Only topics (uploaded under Interactive Quiz &rarr; Manage Topics) matching the selected
+                            widget's format &mdash; lesson+quiz for Interactive Discussion/Quiz, chunks+micro-checks
+                            for Microlearning Quiz &mdash; and the section/class selected above are listed here
+                            (plus any legacy unfiled topics). Students are redirected straight to this topic; their
+                            score is recorded on first completion only.
                         </small>
                     </div>
                     <div class="form-group" id="modal_given_wrap" style="display:none">
@@ -548,6 +550,23 @@ const iqTopicQuestionCounts = <?= json_encode($iq_topic_question_counts) ?>;
 // class), used to filter the Topic dropdown to the section/class selected above.
 const iqTopicClasses = <?= json_encode($iq_topic_classes) ?>;
 
+// topic slug -> 'discussion' | 'micro'. The two topic-file widgets share one
+// Topic dropdown, so it's also filtered to the format the selected widget's
+// renderer can handle (save_assessment() rejects a mismatch server-side too).
+const iqTopicFormats = <?= json_encode($iq_topic_formats) ?>;
+const WIDGET_TOPIC_FORMATS = { iq_discussion: 'discussion', iq_micro: 'micro' };
+
+function selectedWidgetKey() {
+    const select = document.getElementById('modal_widget_id');
+    const opt = select.options[select.selectedIndex];
+    return opt ? (opt.dataset.key || '') : '';
+}
+
+// '' when the selected widget isn't one of the topic-file widgets.
+function selectedTopicFormat() {
+    return WIDGET_TOPIC_FORMATS[selectedWidgetKey()] || '';
+}
+
 // topic slug -> {title, description}, used to auto-fill the assessment's
 // Title/Description fields from the topic JSON when a topic is picked.
 const iqTopicMeta = <?= json_encode($iq_topic_meta) ?>;
@@ -622,12 +641,15 @@ function currentSelectedClassCode() {
 function refreshIqTopicOptions() {
     const select = document.getElementById('modal_iq_topic');
     const classCode = currentSelectedClassCode();
+    const wantFormat = selectedTopicFormat();
     let selectedStillVisible = !select.value;
 
     Array.from(select.options).forEach(opt => {
         if (!opt.value) return; // keep the placeholder
         const topicClass = iqTopicClasses[opt.value] || '';
-        const visible = !classCode || !topicClass || topicClass === classCode;
+        const topicFormat = iqTopicFormats[opt.value] || 'discussion';
+        const visible = (!classCode || !topicClass || topicClass === classCode)
+            && (!wantFormat || topicFormat === wantFormat);
         opt.hidden = !visible;
         if (opt.value === select.value && visible) selectedStillVisible = true;
     });
@@ -694,9 +716,10 @@ let lastAutoFilledExample = null;
 let lastAutoFilledTitle = null;
 let lastAutoFilledDescription = null;
 
-// Interactive Discussion/Quiz doesn't take free-form JSON — it's driven by
-// the topic <select> below, which writes {"topic": slug} into the (hidden)
-// given textarea so save_assessment/preview_widget don't need special-casing.
+// The topic-file widgets (Interactive Discussion/Quiz, Microlearning Quiz)
+// don't take free-form JSON — they're driven by the topic <select> below, which
+// writes {"topic": slug} into the (hidden) given textarea so
+// save_assessment/preview_widget don't need special-casing.
 function syncIqTopicToGiven() {
     const topic = document.getElementById('modal_iq_topic').value;
     document.getElementById('modal_given').value = topic ? JSON.stringify({ topic: topic }) : '';
@@ -724,17 +747,18 @@ function autofillIqTopicMeta(topic) {
     }
 }
 
-// Max Score isn't hand-entered for this widget — it's the topic's question
-// count (1 point per question, matching the +1-per-correct-answer scoring in
-// _interactive_quiz_template.php). Locked read-only here purely so the admin
-// isn't misled into typing a value that save_assessment() will overwrite
-// server-side anyway (see AdminController::save_assessment()).
-function applyIqMaxScoreLock(isIqDiscussion) {
+// Max Score isn't hand-entered for the topic-file widgets — it's the topic's
+// own item count (1 point per question for Interactive Discussion/Quiz, 1 per
+// micro-check + 1 per checkpoint for Microlearning Quiz, matching the
+// +1-per-correct-answer scoring in each template). Locked read-only here purely
+// so the admin isn't misled into typing a value that save_assessment() will
+// overwrite server-side anyway (see AdminController::save_assessment()).
+function applyIqMaxScoreLock(isTopicWidget) {
     const input = document.getElementById('modal_max_score');
     const hint = document.getElementById('modal_max_score_hint');
-    input.readOnly = isIqDiscussion;
-    hint.style.display = isIqDiscussion ? '' : 'none';
-    if (isIqDiscussion) {
+    input.readOnly = isTopicWidget;
+    hint.style.display = isTopicWidget ? '' : 'none';
+    if (isTopicWidget) {
         const topic = document.getElementById('modal_iq_topic').value;
         input.value = topic && iqTopicQuestionCounts[topic] !== undefined ? iqTopicQuestionCounts[topic] : '';
     }
@@ -742,17 +766,21 @@ function applyIqMaxScoreLock(isIqDiscussion) {
 
 function toggleGivenWrap() {
     const select = document.getElementById('modal_widget_id');
-    const key = select.options[select.selectedIndex] ? select.options[select.selectedIndex].dataset.key : null;
-    const isIqDiscussion = key === 'iq_discussion';
+    const isTopicWidget = !!selectedTopicFormat();
 
-    document.getElementById('modal_given_wrap').style.display = (select.value && !isIqDiscussion) ? '' : 'none';
-    document.getElementById('modal_iq_topic_wrap').style.display = isIqDiscussion ? '' : 'none';
-    applyIqMaxScoreLock(isIqDiscussion);
+    document.getElementById('modal_given_wrap').style.display = (select.value && !isTopicWidget) ? '' : 'none';
+    document.getElementById('modal_iq_topic_wrap').style.display = isTopicWidget ? '' : 'none';
+    // The two topic widgets read different topic formats, so re-filter the
+    // shared dropdown (and drop a now-invalid selection) on every switch.
+    refreshIqTopicOptions();
+    applyIqMaxScoreLock(isTopicWidget);
 
-    if (isIqDiscussion) {
+    if (isTopicWidget) {
         fetchWidgetPreview();
         return;
     }
+
+    const key = selectedWidgetKey();
 
     const info = key && widgetExamples[key] ? widgetExamples[key] : null;
     const textarea = document.getElementById('modal_given');
@@ -952,8 +980,9 @@ document.getElementById('modal_given_file').addEventListener('change', function 
 // submit up front so the typed config isn't lost to a server-side redirect.
 document.getElementById('assessmentForm').addEventListener('submit', function (e) {
     const select = document.getElementById('modal_widget_id');
-    const opt = select.options[select.selectedIndex];
-    if (!select.value || (opt && opt.dataset.key === 'iq_discussion')) return;
+    // Topic-file widgets have no hand-written config — syncIqTopicToGiven()
+    // writes {"topic": slug} for them.
+    if (!select.value || selectedTopicFormat()) return;
 
     const raw = document.getElementById('modal_given').value.trim();
     let problem = '';

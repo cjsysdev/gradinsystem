@@ -473,6 +473,44 @@ const allSections = <?= json_encode(array_map(function ($s) {
 
 const iqTopicQuestionCounts = <?= json_encode($iq_topic_question_counts) ?>;
 const iqTopicMeta = <?= json_encode($iq_topic_meta) ?>;
+
+// topic slug -> 'discussion' | 'micro'. The two topic-file widgets share one
+// Topic dropdown, so it's filtered to the format the selected widget's renderer
+// can handle (save_master_content() rejects a mismatch server-side too).
+const iqTopicFormats = <?= json_encode($iq_topic_formats) ?>;
+const WIDGET_TOPIC_FORMATS = { iq_discussion: 'discussion', iq_micro: 'micro' };
+
+function selectedWidgetKey() {
+    const select = document.getElementById('modal_widget_id');
+    const opt = select.options[select.selectedIndex];
+    return opt ? (opt.dataset.key || '') : '';
+}
+
+// '' when the selected widget isn't one of the topic-file widgets.
+function selectedTopicFormat() {
+    return WIDGET_TOPIC_FORMATS[selectedWidgetKey()] || '';
+}
+
+// Hides topics the selected widget can't render, and drops the current pick
+// when it becomes invalid. "hidden" rather than "disabled" so openEditModal()
+// can still assign a value before filtering settles.
+function refreshIqTopicOptions() {
+    const select = document.getElementById('modal_iq_topic');
+    const wantFormat = selectedTopicFormat();
+    let selectedStillVisible = !select.value;
+
+    Array.from(select.options).forEach(opt => {
+        if (!opt.value) return; // keep the placeholder
+        const visible = !wantFormat || (iqTopicFormats[opt.value] || 'discussion') === wantFormat;
+        opt.hidden = !visible;
+        if (opt.value === select.value && visible) selectedStillVisible = true;
+    });
+
+    if (!selectedStillVisible) {
+        select.value = '';
+        syncIqTopicToGiven();
+    }
+}
 const copyableAssessments = <?= json_encode(array_column($copyable_assessments, null, 'assessment_id')) ?>;
 
 // section code -> [{set_id, name}]
@@ -527,7 +565,7 @@ function toggleApplyMode() {
     document.getElementById('modal_auto_create_wrap').style.display = isDraft ? 'none' : '';
 }
 
-function applyIqMaxScoreLock(isIqDiscussion) {
+function applyIqMaxScoreLock(isIqDiscussion) { // true for either topic-file widget
     const input = document.getElementById('modal_max_score');
     const hint = document.getElementById('modal_max_score_hint');
     input.readOnly = isIqDiscussion;
@@ -567,14 +605,17 @@ function autofillIqTopicMeta(topic) {
 
 function toggleGivenWrap() {
     const select = document.getElementById('modal_widget_id');
-    const key = select.options[select.selectedIndex] ? select.options[select.selectedIndex].dataset.key : null;
-    const isIqDiscussion = key === 'iq_discussion';
+    const key = selectedWidgetKey();
+    const isTopicWidget = !!selectedTopicFormat();
 
-    document.getElementById('modal_given_wrap').style.display = (select.value && !isIqDiscussion) ? '' : 'none';
-    document.getElementById('modal_iq_topic_wrap').style.display = isIqDiscussion ? '' : 'none';
-    applyIqMaxScoreLock(isIqDiscussion);
+    document.getElementById('modal_given_wrap').style.display = (select.value && !isTopicWidget) ? '' : 'none';
+    document.getElementById('modal_iq_topic_wrap').style.display = isTopicWidget ? '' : 'none';
+    // The two topic widgets read different topic formats, so re-filter the
+    // shared dropdown (and drop a now-invalid selection) on every switch.
+    refreshIqTopicOptions();
+    applyIqMaxScoreLock(isTopicWidget);
 
-    if (isIqDiscussion) {
+    if (isTopicWidget) {
         fetchWidgetPreview();
         return;
     }
@@ -694,8 +735,9 @@ document.getElementById('modal_given_file').addEventListener('change', function 
 
 document.getElementById('assessmentForm').addEventListener('submit', function (e) {
     const select = document.getElementById('modal_widget_id');
-    const opt = select.options[select.selectedIndex];
-    if (select.value && !(opt && opt.dataset.key === 'iq_discussion')) {
+    // Topic-file widgets have no hand-written config — syncIqTopicToGiven()
+    // writes {"topic": slug} for them.
+    if (select.value && !selectedTopicFormat()) {
         const raw = document.getElementById('modal_given').value.trim();
         let problem = '';
         if (!raw) {

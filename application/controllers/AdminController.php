@@ -827,15 +827,21 @@ class AdminController extends CI_Controller
         $data['copyable_assessments']  = $this->assessments->get_copyable_for_active_semester();
         $data['assignable_masters']    = $this->assessments->get_assignable_masters();
 
-        // Topics available to the "Interactive Discussion/Quiz" widget — only
-        // the lesson+quiz format InteractiveQuizController::discussion() can
-        // render (sections[].quiz), not the multi-question sections[].questions
-        // format used by the older topics/analytics flow.
+        // Topics available to the topic-file widgets — the lesson+quiz format
+        // InteractiveQuizController::discussion() renders (sections[].quiz) and
+        // the microlearning format micro() renders (sections[].chunks), but not
+        // the multi-question sections[].questions format used by the older
+        // topics/analytics flow.
         $data['iq_topics'] = [];
-        // Question count per topic (one question per section.quiz) — the modal
-        // JS auto-fills Max Score from this when a topic is picked, and
-        // save_assessment() re-derives it server-side as the source of truth.
+        // Question count per topic — the modal JS auto-fills Max Score from
+        // this when a topic is picked, and save_assessment() re-derives it
+        // server-side as the source of truth.
         $data['iq_topic_question_counts'] = [];
+        // 'discussion' | 'micro' per topic — the modal JS uses it to offer only
+        // the topics the selected widget's renderer can actually handle (a
+        // micro topic's arrange/type checkpoints would fail the discussion
+        // template's validator, and vice versa).
+        $data['iq_topic_formats'] = [];
         // Class code per topic (its assets/json/{CLASS_CODE}/ folder, '' for
         // legacy/unfiled root files) — the modal JS filters the Topic dropdown
         // to the section/class selected above so admins can't pick a topic
@@ -860,8 +866,12 @@ class AdminController extends CI_Controller
             if ($is_discussion_format) {
                 $slug = basename($file, '.json');
                 $title = $meta['title'] ?? ucwords(str_replace('_', ' ', $slug));
+                $format = $this->_iq_topic_format($meta);
                 $data['iq_topics'][$slug] = $title;
-                $data['iq_topic_question_counts'][$slug] = $this->_count_iq_topic_questions($meta);
+                $data['iq_topic_formats'][$slug] = $format;
+                $data['iq_topic_question_counts'][$slug] = $format === 'micro'
+                    ? $this->_count_micro_topic_items($meta)
+                    : $this->_count_iq_topic_questions($meta);
                 $data['iq_topic_classes'][$slug] = $this->_topic_class_code_from_path($file);
                 $data['iq_topic_meta'][$slug] = [
                     'title'       => $title,
@@ -881,6 +891,38 @@ class AdminController extends CI_Controller
     {
         $count = 0;
         foreach (($topic_meta['sections'] ?? []) as $s) {
+            if (!empty($s['quiz'])) {
+                $count++;
+            }
+        }
+        return $count;
+    }
+
+    // Which renderer a topic-file belongs to. Any section carrying `chunks` is
+    // the microlearning format (discussions/_interactive_micro_template.php);
+    // everything else is the plain lesson+quiz format. Callers have already
+    // excluded the legacy sections[].questions format before reaching here.
+    private function _iq_topic_format(array $topic_meta)
+    {
+        foreach (($topic_meta['sections'] ?? []) as $s) {
+            if (!empty($s['chunks'])) {
+                return 'micro';
+            }
+        }
+        return 'discussion';
+    }
+
+    // Number of gradable items in a microlearning topic — 1 per chunk
+    // micro-check plus 1 per section checkpoint, matching the scoring in
+    // _interactive_micro_template.php exactly (objectives/recap screens are
+    // not graded). Same role as _count_iq_topic_questions() for the other
+    // format: shared by the modal's Max Score auto-fill and the authoritative
+    // server-side derivation in save_assessment().
+    private function _count_micro_topic_items(array $topic_meta)
+    {
+        $count = 0;
+        foreach (($topic_meta['sections'] ?? []) as $s) {
+            $count += count($s['chunks'] ?? []);
             if (!empty($s['quiz'])) {
                 $count++;
             }
@@ -925,22 +967,39 @@ class AdminController extends CI_Controller
         if ($master_fields['widget_id']) {
             $this->load->model('Widgets_model');
             $widget = $this->Widgets_model->get($master_fields['widget_id']);
-            if ($widget && $widget['widget_key'] === 'iq_discussion') {
+            if ($widget && in_array($widget['widget_key'], ['iq_discussion', 'iq_micro'], true)) {
+                $is_micro = $widget['widget_key'] === 'iq_micro';
                 $topic = json_decode($master_fields['given'] ?? '', true)['topic'] ?? '';
                 $topic_found = false;
+                $wrong_format = false;
                 if ($topic) {
                     foreach ($this->_glob_json_topics() as $file) {
                         if (basename($file, '.json') !== $topic) {
                             continue;
                         }
                         $meta = json_decode(file_get_contents($file), true) ?: [];
-                        $master_fields['max_score'] = max(1, $this->_count_iq_topic_questions($meta));
+                        // A topic authored for the other renderer would 422 the
+                        // moment a student opened it, so reject it at save time.
+                        if (($this->_iq_topic_format($meta) === 'micro') !== $is_micro) {
+                            $wrong_format = true;
+                            break;
+                        }
+                        $master_fields['max_score'] = max(1, $is_micro
+                            ? $this->_count_micro_topic_items($meta)
+                            : $this->_count_iq_topic_questions($meta));
                         $topic_found = true;
                         break;
                     }
                 }
+                if ($wrong_format) {
+                    $this->session->set_flashdata('error', $is_micro
+                        ? 'Microlearning Quiz needs a topic in the microlearning format (sections with "chunks") — the selected topic is a plain lesson+quiz topic, so use the Interactive Discussion/Quiz widget for it.'
+                        : 'Interactive Discussion/Quiz needs a plain lesson+quiz topic — the selected topic is in the microlearning format (sections with "chunks"), so use the Microlearning Quiz widget for it.');
+                    redirect('manage_assessments' . (!empty($post['schedule_id']) ? '?schedule_id=' . $post['schedule_id'] : ''));
+                    return;
+                }
                 if (!$topic_found) {
-                    $this->session->set_flashdata('error', 'Interactive Discussion/Quiz needs a topic — pick one from the Topic dropdown (the selected topic file could not be found).');
+                    $this->session->set_flashdata('error', $widget['name'] . ' needs a topic — pick one from the Topic dropdown (the selected topic file could not be found).');
                     redirect('manage_assessments' . (!empty($post['schedule_id']) ? '?schedule_id=' . $post['schedule_id'] : ''));
                     return;
                 }
@@ -1241,6 +1300,7 @@ class AdminController extends CI_Controller
         // for why this can happen server-side here instead of via JS.
         $data['iq_topics'] = [];
         $data['iq_topic_question_counts'] = [];
+        $data['iq_topic_formats'] = [];
         $data['iq_topic_meta'] = [];
         foreach ($this->_glob_json_topics() as $file) {
             $meta = json_decode(file_get_contents($file), true);
@@ -1263,8 +1323,12 @@ class AdminController extends CI_Controller
             }
             $slug = basename($file, '.json');
             $title = $meta['title'] ?? ucwords(str_replace('_', ' ', $slug));
+            $format = $this->_iq_topic_format($meta);
             $data['iq_topics'][$slug] = $title;
-            $data['iq_topic_question_counts'][$slug] = $this->_count_iq_topic_questions($meta);
+            $data['iq_topic_formats'][$slug] = $format;
+            $data['iq_topic_question_counts'][$slug] = $format === 'micro'
+                ? $this->_count_micro_topic_items($meta)
+                : $this->_count_iq_topic_questions($meta);
             $data['iq_topic_meta'][$slug] = [
                 'title'       => $title,
                 'description' => $meta['description'] ?? '',
@@ -1308,22 +1372,37 @@ class AdminController extends CI_Controller
         if ($master_fields['widget_id']) {
             $this->load->model('Widgets_model');
             $widget = $this->Widgets_model->get($master_fields['widget_id']);
-            if ($widget && $widget['widget_key'] === 'iq_discussion') {
+            if ($widget && in_array($widget['widget_key'], ['iq_discussion', 'iq_micro'], true)) {
+                $is_micro = $widget['widget_key'] === 'iq_micro';
                 $topic = json_decode($master_fields['given'] ?? '', true)['topic'] ?? '';
                 $topic_found = false;
+                $wrong_format = false;
                 if ($topic) {
                     foreach ($this->_glob_json_topics() as $file) {
                         if (basename($file, '.json') !== $topic) {
                             continue;
                         }
                         $meta = json_decode(file_get_contents($file), true) ?: [];
-                        $master_fields['max_score'] = max(1, $this->_count_iq_topic_questions($meta));
+                        if (($this->_iq_topic_format($meta) === 'micro') !== $is_micro) {
+                            $wrong_format = true;
+                            break;
+                        }
+                        $master_fields['max_score'] = max(1, $is_micro
+                            ? $this->_count_micro_topic_items($meta)
+                            : $this->_count_iq_topic_questions($meta));
                         $topic_found = true;
                         break;
                     }
                 }
+                if ($wrong_format) {
+                    $this->session->set_flashdata('error', $is_micro
+                        ? 'Microlearning Quiz needs a topic in the microlearning format (sections with "chunks") — the selected topic is a plain lesson+quiz topic, so use the Interactive Discussion/Quiz widget for it.'
+                        : 'Interactive Discussion/Quiz needs a plain lesson+quiz topic — the selected topic is in the microlearning format (sections with "chunks"), so use the Microlearning Quiz widget for it.');
+                    redirect('class_assessments' . ($class_id ? '?class_id=' . $class_id : ''));
+                    return;
+                }
                 if (!$topic_found) {
-                    $this->session->set_flashdata('error', 'Interactive Discussion/Quiz needs a topic — pick one from the Topic dropdown (the selected topic file could not be found).');
+                    $this->session->set_flashdata('error', $widget['name'] . ' needs a topic — pick one from the Topic dropdown (the selected topic file could not be found).');
                     redirect('class_assessments' . ($class_id ? '?class_id=' . $class_id : ''));
                     return;
                 }

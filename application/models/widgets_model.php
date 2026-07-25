@@ -57,6 +57,18 @@ class Widgets_model extends CI_Model
         // redirect in AssessmentController::assessment_view_code().
         $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
             VALUES ('iq_discussion', 'Interactive Discussion/Quiz', 'widgets/iq_discussion', NULL)");
+        // Microlearning Quiz: same "wrap an assets/json topic file" idea as
+        // iq_discussion, but for the denser Sololearn-style schema — each
+        // section is a run of 1-2 sentence chunks with a 2-option micro-check
+        // after every one, closed by a checkpoint that rotates between
+        // mcq/arrange/type, plus objectives and recap screens. Rendered by
+        // discussions/_interactive_micro_template.php via
+        // InteractiveQuizController::micro(); like iq_discussion it's not a
+        // per-student form — see the redirect in
+        // AssessmentController::assessment_view_code(). Scored 1 point per
+        // micro-check + 1 per checkpoint (max_score derived server-side).
+        $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
+            VALUES ('iq_micro', 'Microlearning Quiz', 'widgets/iq_micro', NULL)");
         // Case Study Worksheet: narrative "story" panel (stat cards) + a fixed
         // sequence of sections holding heterogeneous questions (text/list/
         // choice-with-rationale/toggle-grid) — for case-study-driven activities

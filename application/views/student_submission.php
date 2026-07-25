@@ -316,7 +316,7 @@
     </div>
     <div class="card-footer text-center">
       <?php
-      $noEditWidgets = ['quiz', 'secure_quiz', 'iq_discussion', 'brainstorm'];
+      $noEditWidgets = ['quiz', 'secure_quiz', 'iq_discussion', 'iq_micro', 'brainstorm'];
       $canEdit = $classwork['score'] === null
           && !empty($widget)
           && !in_array($widget['widget_key'], $noEditWidgets, true);

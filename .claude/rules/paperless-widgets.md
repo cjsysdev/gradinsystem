@@ -53,6 +53,32 @@ optional exit question. Not auto-graded — same manual-score-entry pattern
 as Worksheet Form/Card Sort. Renders inline via the standard
 `assessment_view_code.php` flow like Worksheet Form (no special-case
 redirect needed).
+**Microlearning Quiz** (`iq_micro` widget_key) is the second topic-file
+widget, sitting alongside `iq_discussion`: same `assessments.given` =
+`{"topic": slug}` config and the same full-page redirect out of
+`AssessmentController::assessment_view_code()`, but it wraps the denser
+Sololearn-style topic schema instead of lesson+quiz — each section is a run
+of 1-2 sentence `chunks`, every chunk followed by a 2-option micro-check,
+closed by a `quiz` checkpoint whose `type` rotates between `mcq`, `arrange`
+(tap tokens into order) and `type` (free-typed short answer), plus
+`objectives` and `recap` screens and `callback`/`refSection` tags on
+sections that re-test an earlier one. Rendered by
+`InteractiveQuizController::micro()` →
+`views/discussions/_interactive_micro_template.php`, styled by
+`assets/interactive-micro-style.css` layered on top of the shared
+`interactive-quiz-style.css`. Scored 1 point per micro-check + 1 per
+checkpoint, with `max_score` derived server-side by
+`AdminController::_count_micro_topic_items()` (the discussion widget's
+one-point-per-section-quiz counter doesn't apply). Unlike the sibling
+template the score is recomputed from a per-screen results map rather than
+incremented, so Back-nav can't double-count and the Back button is always
+available. Topic files for both widgets live in the same
+`assets/json/{CLASS}/` library and share one admin Topic dropdown, filtered
+by `AdminController::_iq_topic_format()` ('micro' when any section has
+`chunks`) so neither widget can be pointed at a topic its renderer would
+reject. No group-play mode yet (iq_discussion's `_render_group_iq()` path
+has no equivalent here) — it always plays solo. JSON topic files for this
+format are authored by the `interactive-quiz-microlearning` skill.
 A fourth widget, **Case Study Worksheet** (`case_study` widget_key, not in
 the original 6-widget plan — see plan doc §4 "Widget I"), covers narrative
 case-study activities (e.g. "Meet Maria the calamansi farmer," Session 1.2):
