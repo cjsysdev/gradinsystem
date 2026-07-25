@@ -11,7 +11,7 @@
 
     <style>
         body {
-            background: #f0f2f5;
+            /* background: #f0f2f5; */
         }
 
         #performance-sheet {

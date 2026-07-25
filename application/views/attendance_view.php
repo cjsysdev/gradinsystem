@@ -211,13 +211,13 @@
 
         <div class="row m-1">
             <div class="col alert alert-success mr-2">
-                <strong><?= $present ?> Present</strong>
+                <strong><?= $present ?> <small>Present</small> </strong>
             </div>
-            <div class="col alert alert-warning mr-2">
-                <strong><?= $late ?> Late</strong>
+            <div class="col alert alert-secondary mr-2">
+                <strong><?= $late ?> <small>Late</small> </strong>
             </div>
-            <div class="col alert alert-secondary">
-                <strong><?= $absences ?> Missed</strong>
+            <div class="col alert alert-danger">
+                <strong><?= $absences ?> <small>Missed</small> </strong>
             </div>
         </div>
         <?php if (!empty($absences_dates)): ?>
@@ -257,7 +257,7 @@
 
         <div class="form-group row">
             <div class="col">
-                <a class="btn btn-outline-secondary col" href="<?= base_url('PerformanceSheetController') ?>">Student Summary</a>
+                <a class="btn btn-outline-secondary col" href="<?= base_url('PerformanceSheetController') ?>">Summary</a>
             </div>
             <div class="col">
                 <a href="<?= base_url('requests') ?>" class="btn btn-outline-secondary col">Requests</a>

@@ -33,3 +33,6 @@ user_guide_src/cilexer/pycilexer.egg-info/*
 .tmp.driveupload/
 uploads
 /uploads
+
+# Claude/Anthropic API key — never commit
+application/config/anthropic.php

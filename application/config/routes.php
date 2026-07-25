@@ -212,6 +212,10 @@ $route['admin/check_username'] = 'AdminController/check_username';
 $route['admin/semesters'] = 'AdminController/semesters';
 $route['admin/save_semester'] = 'AdminController/save_semester';
 $route['admin/activate_semester/(:num)'] = 'AdminController/activate_semester/$1';
+$route['admin/worksheet_generator'] = 'AdminController/worksheet_generator';
+$route['admin/worksheet_generate'] = 'AdminController/worksheet_generate';
+$route['admin/worksheet_assessments_for_schedule'] = 'AdminController/worksheet_assessments_for_schedule';
+$route['admin/worksheet_source_from_assessment'] = 'AdminController/worksheet_source_from_assessment';
 
 // Poll Routes (Mentimeter-like module)
 $route['poll/install']                   = 'PollController/install';

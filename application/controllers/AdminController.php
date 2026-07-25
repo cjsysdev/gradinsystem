@@ -2110,4 +2110,465 @@ class AdminController extends CI_Controller
 
         echo json_encode($results);
     }
+
+    // ------------------------------------------------------------------
+    // Worksheet Generator — Claude-powered content generator. Produces
+    // widget/discussion config JSON for the instructor to review and copy
+    // into the existing, already-validated authoring flows (Widget textarea
+    // in manage_assessments.php / discussion paste-to-file). Never writes to
+    // assessments.given or assets/json itself — copy-to-clipboard only.
+    // ------------------------------------------------------------------
+
+    public function worksheet_generator()
+    {
+        $data['schedules'] = $this->class_schedule->get_all_active();
+        $this->load->view('admin/worksheet_generator', $data);
+    }
+
+    // Populates the assessment picker for a chosen course/section — used by
+    // the "From existing assessment" source mode on quiz_from_worksheet, so
+    // the instructor can ground a generated quiz in real classwork instead of
+    // hand-pasting JSON.
+    public function worksheet_assessments_for_schedule()
+    {
+        header('Content-Type: application/json');
+
+        $schedule_id = (int) $this->input->post('schedule_id');
+        if (!$schedule_id) {
+            echo json_encode(['ok' => false, 'error' => 'Missing schedule_id.']);
+            return;
+        }
+
+        $rows = $this->assessments->get_all_for_admin(['schedule_id' => $schedule_id]);
+        $out  = [];
+        foreach ($rows as $r) {
+            $out[] = [
+                'assessment_id'    => (int) $r['assessment_id'],
+                'title'            => $r['title'],
+                'iotype'           => $r['iotype'] ?? '',
+                'term'             => $r['term'] ?? '',
+                'submission_count' => (int) ($r['submission_count'] ?? 0),
+            ];
+        }
+
+        echo json_encode(['ok' => true, 'assessments' => $out]);
+    }
+
+    // Compiles a text "source" block from an existing assessment (title,
+    // description, widget config) and, optionally, an anonymized sample of
+    // student classwork submissions — so a generated quiz can be grounded in
+    // content students actually worked with. Never forwards student names or
+    // trans_no to the model; classworks::get_all_submissions() rows are
+    // stripped down to just submission content + score before use.
+    public function worksheet_source_from_assessment()
+    {
+        header('Content-Type: application/json');
+
+        $assessment_ids       = $this->input->post('assessment_ids');
+        $assessment_ids       = is_array($assessment_ids) ? array_values(array_unique(array_filter(array_map('intval', $assessment_ids)))) : [];
+        $include_submissions  = (bool) $this->input->post('include_submissions');
+
+        if (empty($assessment_ids)) {
+            echo json_encode(['ok' => false, 'error' => 'Select at least one assessment.']);
+            return;
+        }
+
+        $blocks = [];
+        $titles = [];
+
+        foreach ($assessment_ids as $assessment_id) {
+            $row = $this->db->select('a.assessment_id, a.title, a.description, a.given, a.term, cl.class_code, cl.class_name, cs.section, w.name AS widget_name')
+                ->from('assessment_full a')
+                ->join('class_schedule cs', 'cs.schedule_id = a.schedule_id')
+                ->join('classes cl', 'cl.class_id = cs.class_id')
+                ->join('widgets w', 'w.widget_id = a.widget_id', 'left')
+                ->where('a.assessment_id', $assessment_id)
+                ->get()->row_array();
+
+            if (!$row) {
+                continue;
+            }
+
+            $titles[] = $row['title'];
+
+            $lines   = [];
+            $lines[] = '=== Assessment: ' . $row['title'] . ' ===';
+            $lines[] = 'Course: ' . $row['class_code'] . ' - ' . $row['class_name'] . ', Section ' . $row['section'] . ' (' . $row['term'] . ')';
+            if (!empty($row['widget_name'])) {
+                $lines[] = 'Activity type: ' . $row['widget_name'];
+            }
+            if (!empty($row['description'])) {
+                $lines[] = "Description:\n" . $row['description'];
+            }
+            if (!empty($row['given'])) {
+                $given_decoded = json_decode($row['given'], true);
+                $given_pretty  = ($given_decoded !== null) ? json_encode($given_decoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : $row['given'];
+                $lines[]       = "Assessment content/config:\n" . $given_pretty;
+            }
+
+            if ($include_submissions) {
+                $subs   = $this->classworks->get_all_submissions($assessment_id);
+                $sample = array_slice($subs, 0, 15);
+                if (!empty($sample)) {
+                    $lines[] = "Sample student submissions (anonymized, for grounding only):";
+                    $n = 0;
+                    foreach ($sample as $s) {
+                        $content = trim((string) ($s['code'] ?? ''));
+                        if ($content === '') continue;
+                        $n++;
+                        $decoded_content = json_decode($content, true);
+                        $pretty_content  = ($decoded_content !== null) ? json_encode($decoded_content, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : $content;
+                        $pretty_content  = mb_substr($pretty_content, 0, 2000);
+                        $lines[]         = "--- Submission #{$n} ---\n" . $pretty_content;
+                    }
+                } else {
+                    $lines[] = "(No student submissions yet for this assessment.)";
+                }
+            }
+
+            $blocks[] = implode("\n\n", $lines);
+        }
+
+        if (empty($blocks)) {
+            echo json_encode(['ok' => false, 'error' => 'None of the selected assessments could be found.']);
+            return;
+        }
+
+        $combined_title = implode(' & ', $titles);
+        if (mb_strlen($combined_title) > 120) {
+            $combined_title = mb_substr($combined_title, 0, 117) . '…';
+        }
+
+        echo json_encode(['ok' => true, 'title' => $combined_title, 'source' => implode("\n\n\n", $blocks)]);
+    }
+
+    public function worksheet_generate()
+    {
+        header('Content-Type: application/json');
+
+        // Larger requests (e.g. a 60-question quiz) take Claude noticeably
+        // longer to generate than the default script/cURL timeouts allow for.
+        set_time_limit(240);
+
+        $this->load->library('anthropic_client');
+
+        $type   = $this->input->post('type');
+        $topic  = trim((string) $this->input->post('topic'));
+        $params = [
+            'course'      => trim((string) $this->input->post('course')),
+            'count'       => max(1, min(60, (int) $this->input->post('count'))) ?: 5,
+            'duration'    => trim((string) $this->input->post('duration')),
+        ];
+        $source       = trim((string) $this->input->post('source'));
+        $requirements = trim((string) $this->input->post('requirements'));
+
+        if ($topic === '' && $type !== 'quiz_from_worksheet') {
+            echo json_encode(['ok' => false, 'error' => 'Topic is required.']);
+            return;
+        }
+
+        switch ($type) {
+            case 'lab_worksheet':
+                list($system, $user) = $this->_wg_prompt_lab_worksheet($topic, $params);
+                break;
+            case 'worksheet_table':
+                list($system, $user) = $this->_wg_prompt_worksheet_table($topic, $params);
+                break;
+            case 'discussion':
+                list($system, $user) = $this->_wg_prompt_discussion($topic, $params);
+                break;
+            case 'quiz_from_worksheet':
+                if ($source === '') {
+                    echo json_encode(['ok' => false, 'error' => 'Provide source content: pick an existing assessment or paste worksheet JSON to generate a quiz from.']);
+                    return;
+                }
+                list($system, $user) = $this->_wg_prompt_quiz_from_worksheet($topic, $source, $params);
+                break;
+            default:
+                echo json_encode(['ok' => false, 'error' => 'Unknown output type.']);
+                return;
+        }
+
+        if ($requirements !== '') {
+            $user .= "\n\nAdditional requirements from the instructor (follow these carefully, but never deviate from the required JSON shape above):\n{$requirements}";
+        }
+
+        // Scale the output budget with how many items were requested — a flat
+        // 8000 truncates well before 60 quiz questions or 60 discussion
+        // sections finish generating. ~350 tokens/item covers even the more
+        // verbose types (lab_worksheet HTML instructions, discussion lesson
+        // HTML), floored at 6000 for small requests, capped at 32000 (Opus
+        // 4.8 supports up to 128K but this is a synchronous, non-streaming
+        // cURL call — keep it well under the 240s time limit above).
+        $max_tokens = min(32000, max(6000, $params['count'] * 350 + 2000));
+
+        $result = $this->anthropic_client->generate($system, $user, $max_tokens);
+
+        if (!$result['ok']) {
+            echo json_encode(['ok' => false, 'error' => $result['error']]);
+            return;
+        }
+
+        $json_text = $this->_wg_strip_fences($result['text']);
+        $data = json_decode($json_text, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            echo json_encode(['ok' => false, 'error' => 'Model did not return valid JSON: ' . json_last_error_msg(), 'raw' => $json_text]);
+            return;
+        }
+
+        $validation_error = null;
+        switch ($type) {
+            case 'lab_worksheet':
+                $validation_error = $this->_wg_validate_lab_worksheet($data);
+                break;
+            case 'worksheet_table':
+                $validation_error = $this->_wg_validate_worksheet_table($data);
+                break;
+            case 'discussion':
+                $validation_error = $this->_wg_validate_discussion($data);
+                break;
+            case 'quiz_from_worksheet':
+                $validation_error = $this->_wg_validate_quiz($data);
+                break;
+        }
+
+        if ($validation_error) {
+            echo json_encode(['ok' => false, 'error' => 'Generated JSON has an invalid shape: ' . $validation_error, 'raw' => $json_text]);
+            return;
+        }
+
+        $pretty = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        $preview_html = '';
+        if ($type === 'lab_worksheet') {
+            $preview_html = $this->load->view('widgets/lab_worksheet', ['config' => $data, 'readonly' => true, 'existing' => null], true);
+        } elseif ($type === 'worksheet_table') {
+            $config = $data;
+            $preview_html = $this->load->view('widgets/worksheet', ['config' => $config, 'readonly' => true, 'existing' => null], true);
+        } elseif ($type === 'discussion') {
+            $preview_html = $this->load->view('admin/_worksheet_preview', ['mode' => 'discussion', 'data' => $data], true);
+        } elseif ($type === 'quiz_from_worksheet') {
+            $preview_html = $this->load->view('admin/_worksheet_preview', ['mode' => 'quiz', 'data' => $data], true);
+        }
+
+        echo json_encode(['ok' => true, 'json' => $pretty, 'preview_html' => $preview_html]);
+    }
+
+    private function _wg_strip_fences($text)
+    {
+        $text = trim($text);
+        $text = preg_replace('/^```(?:json)?\s*/i', '', $text);
+        $text = preg_replace('/\s*```$/', '', $text);
+        return trim($text);
+    }
+
+    private function _wg_slug($topic)
+    {
+        $slug = strtolower(trim($topic));
+        $slug = preg_replace('/[^a-z0-9]+/', '_', $slug);
+        return trim($slug, '_') ?: 'topic';
+    }
+
+    private function _wg_prompt_lab_worksheet($topic, $params)
+    {
+        $count = $params['count'];
+        $system = <<<SYS
+You generate config JSON for the "lab_worksheet" classwork widget in a CodeIgniter LMS (Predict/Observe/Explain lab activities). Output ONLY raw JSON, no markdown fences, no commentary, matching EXACTLY this shape:
+
+{
+  "intro": "<p>optional HTML shown above the experiments (objectives, timeline, etc.)</p>",
+  "experiments": [
+    {
+      "title": "Experiment 1.1 — short descriptive title",
+      "instructions": "<p>...</p><pre><code>...</code></pre>",
+      "warning": false,
+      "prompts": [
+        {"tag": "predict", "label": "PREDICT", "text": "What do you think will happen?"},
+        {"tag": "observe", "label": "OBSERVE", "text": "What actually happened?"},
+        {"tag": "explain", "label": "EXPLAIN", "text": "Why did that happen?"}
+      ],
+      "note": "optional short note shown after the prompts"
+    }
+  ],
+  "exit_question": "optional single free-text question shown after all experiments"
+}
+
+Rules:
+- "instructions" is trusted HTML — use <p>, <pre><code>...</code></pre> for code snippets, <ul>/<li> as needed. Escape HTML entities inside <code> blocks (&lt; &gt; &amp;).
+- Allowed "tag" values: predict, observe, explain, bonus. Most experiments use predict+observe+explain; use "bonus" sparingly for an optional stretch prompt.
+- Set "warning": true only for an experiment that deliberately breaks something to illustrate a concept ("breaking it on purpose").
+- "note" and "exit_question" are optional — omit the key entirely if not needed, do not use null.
+- Order experiments so difficulty ramps up gradually.
+SYS;
+        $user = "Generate a lab worksheet (Predict/Observe/Explain, {$count} experiments) about: {$topic}."
+            . ($params['course'] !== '' ? " Course context: {$params['course']}." : '')
+            . ($params['duration'] !== '' ? " Target duration: {$params['duration']}." : '')
+            . " Output raw JSON only.";
+        return [$system, $user];
+    }
+
+    private function _wg_prompt_worksheet_table($topic, $params)
+    {
+        $count = $params['count'];
+        $system = <<<SYS
+You generate config JSON for the "worksheet" classwork widget in a CodeIgniter LMS — a repeatable-row table activity. Output ONLY raw JSON, no markdown fences, no commentary, matching EXACTLY this shape:
+
+{
+  "widget": "worksheet",
+  "columns": ["Column A", "Column B", "Column C"],
+  "min_rows": 5,
+  "allow_add_rows": true
+}
+
+Rules:
+- "columns" is a PLAIN ARRAY OF STRINGS (column headers) — NOT an array of objects with key/label/type.
+- "min_rows" is an integer — how many empty rows the student starts with.
+- "allow_add_rows" is a boolean — whether the student may add more rows beyond min_rows.
+- Choose columns that fit a table-style activity for the given topic (comparison, categorization, timeline, etc.).
+SYS;
+        $user = "Generate a worksheet table (around {$count} suggested min_rows, 3-6 columns) about: {$topic}."
+            . ($params['course'] !== '' ? " Course context: {$params['course']}." : '')
+            . " Output raw JSON only.";
+        return [$system, $user];
+    }
+
+    private function _wg_prompt_discussion($topic, $params)
+    {
+        $slug = $this->_wg_slug($topic);
+        $count = max(3, $params['count']) ?: 10;
+        $system = <<<SYS
+You generate interactive-discussion topic JSON for a CodeIgniter LMS. Output ONLY raw JSON, no markdown fences, no commentary, matching EXACTLY this shape:
+
+{
+  "topic": "snake_case_slug",
+  "title": "Human-readable title",
+  "description": "One sentence description.",
+  "congratsText": "Encouraging completion message.",
+  "sections": [
+    {
+      "id": 0,
+      "title": "Objectives",
+      "quiz": null,
+      "lesson": "<div class=\\"lesson-title\\">...</div><div class=\\"lesson-text\\">...</div>"
+    },
+    {
+      "id": 1,
+      "title": "Section title",
+      "quiz": {
+        "question": "A question about this section's content.",
+        "code": "optional code snippet, HTML-entity-encoded",
+        "options": ["Option A", "Option B", "Option C", "Option D"],
+        "correct": 0
+      },
+      "lesson": "<div class=\\"lesson-title\\">...</div><div class=\\"lesson-text\\">...</div>"
+    }
+  ]
+}
+
+Rules:
+- "id" is 0-based and increments by 1 per section.
+- Section 0 is always "Objectives" (3 bullet points in the lesson HTML) with "quiz": null.
+- The LAST section is always "Recap" with "quiz": null.
+- All other (middle) sections MUST have a "quiz" object — never null for them.
+- "correct" is a ZERO-BASED index into "options" for the correct choice.
+- "code" inside "quiz" is optional — omit the key entirely if there is no code snippet; when present, HTML-encode angle brackets and quotes (&lt; &gt; &amp; &quot;).
+- "lesson" is trusted HTML using ONLY these CSS classes where relevant: lesson-title, lesson-text, highlight, code-block, comparison, comparison-col, comparison-label.
+- Generate exactly {$count} sections total (including Objectives and Recap).
+SYS;
+        $user = "Generate an interactive discussion topic (slug: {$slug}, {$count} sections) about: {$topic}."
+            . ($params['course'] !== '' ? " Course context: {$params['course']}." : '')
+            . " Output raw JSON only.";
+        return [$system, $user];
+    }
+
+    private function _wg_prompt_quiz_from_worksheet($topic, $source, $params)
+    {
+        $slug = $this->_wg_slug($topic !== '' ? $topic : 'worksheet');
+        $count = max(5, $params['count']) ?: 15;
+        $system = <<<SYS
+You generate a Bloom's Taxonomy multiple-choice quiz JSON derived from source content, for a CodeIgniter LMS. The source content may be an instructor's worksheet/activity config JSON, a plain description of an assessment, and/or anonymized excerpts of real student submissions for that assessment. Output ONLY raw JSON, no markdown fences, no commentary, matching EXACTLY this shape:
+
+{
+  "topic": "snake_case_slug",
+  "title": "Quiz Title — Bloom's Taxonomy Quiz",
+  "questions": [
+    {
+      "id": 1,
+      "bloomLevel": "Remember",
+      "question": "Question text.",
+      "code": "optional code snippet",
+      "choices": ["Choice A", "Choice B", "Choice C", "Choice D"],
+      "answer": "Choice A",
+      "topic": "snake_case_slug",
+      "type": "multiple_choice"
+    }
+  ]
+}
+
+Rules:
+- "id" starts at 1 and increments by 1.
+- "bloomLevel" is one of: Remember, Understand, Apply, Analyze, Evaluate, Create. Distribute across levels, weighted toward Remember/Understand/Apply.
+- "answer" MUST be the EXACT STRING of the correct choice (not an index).
+- "code" is optional — omit the key entirely when not needed.
+- Every question's content must be grounded in the source content given below — do not introduce unrelated topics.
+- When the source includes "Sample student submissions", prefer questions that build on the concepts, patterns, or common mistakes actually visible in those submissions, so students recognize their own classwork in the quiz. Never reference or imply any specific student's identity — the submissions are anonymized and must stay that way in your output.
+- Generate exactly {$count} questions.
+SYS;
+        $user = "Source content (base the quiz on this):\n\n{$source}\n\n"
+            . "Generate a {$count}-question Bloom's Taxonomy quiz (slug: {$slug}) derived from the above."
+            . ($topic !== '' ? " Focus/title hint: {$topic}." : '')
+            . " Output raw JSON only.";
+        return [$system, $user];
+    }
+
+    private function _wg_validate_lab_worksheet($data)
+    {
+        if (!is_array($data)) return 'not a JSON object';
+        if (!isset($data['experiments']) || !is_array($data['experiments'])) return 'missing "experiments" array';
+        foreach ($data['experiments'] as $i => $exp) {
+            if (!is_array($exp)) return "experiments[{$i}] is not an object";
+            if (empty($exp['title'])) return "experiments[{$i}] missing \"title\"";
+            if (isset($exp['prompts']) && !is_array($exp['prompts'])) return "experiments[{$i}].prompts must be an array";
+        }
+        return null;
+    }
+
+    private function _wg_validate_worksheet_table($data)
+    {
+        if (!is_array($data)) return 'not a JSON object';
+        if (!isset($data['columns']) || !is_array($data['columns'])) return 'missing "columns" array';
+        foreach ($data['columns'] as $col) {
+            if (!is_string($col)) return '"columns" must be an array of plain strings';
+        }
+        return null;
+    }
+
+    private function _wg_validate_discussion($data)
+    {
+        if (!is_array($data)) return 'not a JSON object';
+        if (empty($data['topic']) || !is_string($data['topic'])) return 'missing "topic" slug';
+        if (!isset($data['sections']) || !is_array($data['sections']) || empty($data['sections'])) return 'missing "sections" array';
+        foreach ($data['sections'] as $i => $s) {
+            if (!is_array($s)) return "sections[{$i}] is not an object";
+            if (!array_key_exists('lesson', $s)) return "sections[{$i}] missing \"lesson\"";
+            if (!array_key_exists('quiz', $s)) return "sections[{$i}] missing \"quiz\" key (use null if none)";
+        }
+        return null;
+    }
+
+    private function _wg_validate_quiz($data)
+    {
+        if (!is_array($data)) return 'not a JSON object';
+        if (empty($data['topic']) || !is_string($data['topic'])) return 'missing "topic" slug';
+        if (!isset($data['questions']) || !is_array($data['questions']) || empty($data['questions'])) return 'missing "questions" array';
+        foreach ($data['questions'] as $i => $q) {
+            if (!is_array($q)) return "questions[{$i}] is not an object";
+            if (empty($q['question'])) return "questions[{$i}] missing \"question\"";
+            if (!isset($q['choices']) || !is_array($q['choices'])) return "questions[{$i}] missing \"choices\" array";
+            if (!array_key_exists('answer', $q)) return "questions[{$i}] missing \"answer\"";
+            if (!in_array($q['answer'], $q['choices'], true)) return "questions[{$i}].answer does not exactly match one of its choices";
+        }
+        return null;
+    }
 }
