@@ -83,7 +83,7 @@
  * Keys are "{sectionIndex}:{chunkIndex}" / "{sectionIndex}:q" — stable
  * regardless of the objectives/recap screens the client flattens
  * sections into, and reconstructible server-side by walking
- * topic_data.sections the same way (GroupWorkController::_grade_micro_blob()).
+ * topic_data.sections the same way (Iq_topic_model::grade_micro()).
  * ──────────────────────────────────────────────────────────────
  */
 
@@ -382,7 +382,7 @@ $group_member_js = array_map(function ($m) {
         // option order the answer was recorded against. Group mode keeps a
         // deterministic (unshuffled) order instead — every member must see the
         // same options, and answers are graded server-side against the
-        // original array index (GroupWorkController::_grade_micro_blob()).
+        // original array index (Iq_topic_model::grade_micro()).
         function optionsFor(screenIdx, options, correctIndex) {
             if (!shuffleCache[screenIdx]) {
                 if (GROUP_MODE) {

@@ -90,9 +90,19 @@ shape. Answers sync through the same whole-blob
 `assessment_live_state`/`save_draft()` path as `iq_discussion`, keyed
 `"{sectionIndex}:{chunkIndex}"` (micro-check) / `"{sectionIndex}:q"`
 (checkpoint) instead of by section index, and are graded server-side by
-`GroupWorkController::_grade_micro_blob()` (never the client) on finish via
-`submit_group_iq()`. JSON topic files for this format are authored by the
-`interactive-quiz-microlearning` skill.
+`Iq_topic_model::grade_micro()` (never the client) on finish via
+`GroupWorkController::submit_group_iq()`. That model (`grade_micro()` /
+`grade_discussion()` / `resolve_file()` / `load_topic()`) is the ONE place a
+topic-file blob turns into the `{question, chosen, correct_answer, is_correct,
+answered}` results list `classworks.code` stores — both the group submit and
+the admin group-submission page's live-draft panel go through it, so a scoring
+rule can't drift between what a submit records and what the instructor sees
+while the group is still working. The live blob shape
+(`{v, driver, answers:{...}}` / `{v, sections:{...}}`) is NOT that results
+list: `AdminController::group_submissions()` grades the draft before handing it
+to the widget view, which renders drafts and submissions identically apart from
+an `is_draft` wording flag. JSON topic files for this format are authored by
+the `interactive-quiz-microlearning` skill.
 A fourth widget, **Case Study Worksheet** (`case_study` widget_key, not in
 the original 6-widget plan — see plan doc §4 "Widget I"), covers narrative
 case-study activities (e.g. "Meet Maria the calamansi farmer," Session 1.2):

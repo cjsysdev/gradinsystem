@@ -6,21 +6,31 @@
 // AssessmentController::assessment_view_code() redirects there before this
 // view would ever render for a live student attempt. Mirrors widgets/brainstorm.php.
 $readonly      = $readonly ?? false;
+// Set by admin/group_submission.php when this is a group's live, unsubmitted
+// draft rather than a recorded submission — see widgets/iq_micro.php.
+$is_draft      = $is_draft ?? false;
 $config        = $config ?? [];
 $existing      = $existing ?? []; // classworks.code — array of {section_title, question, chosen, correct_answer, is_correct}, see save_result()
+// Always a plain list below: a caller handing over some other shape (e.g. a raw
+// live-state blob, which is keyed by string) must not reach the numbering.
+$existing      = is_array($existing) ? array_values(array_filter($existing, 'is_array')) : [];
 $topic         = $config['topic'] ?? '';
 $assessment_id = $assessment_id ?? null;
 $review_url    = ($assessment_id && $topic) ? base_url('interactive_quiz/discussion/' . $topic . '/' . $assessment_id) : null;
 $uid           = 'iq' . uniqid();
 $topic_title   = $topic ? ucwords(str_replace(['_', '-'], ' ', $topic)) : 'Interactive Quiz';
-$student_name  = trim(($this->session->lastname ?? '') . ' ' . ($this->session->firstname ?? ''));
+// Overridable so a group view can caption the panel with the group's name
+// instead of whoever's session is rendering it.
+$student_name  = $student_name ?? trim(($this->session->lastname ?? '') . ' ' . ($this->session->firstname ?? ''));
 ?>
 <div id="iq-discussion-widget-note">
     <p class="text-muted mb-0">
         <i class="fas fa-info-circle"></i>
         Interactive Discussion/Quiz &mdash; topic <code><?= htmlspecialchars($topic) ?></code>.
         <?php if ($readonly): ?>
-            <?php if (!empty($existing)): ?>
+            <?php if ($is_draft): ?>
+                Answers so far &mdash; still in progress.
+            <?php elseif (!empty($existing)): ?>
                 Student completed this topic.
             <?php else: ?>
                 No submission recorded for this student yet.
@@ -42,13 +52,18 @@ $student_name  = trim(($this->session->lastname ?? '') . ' ' . ($this->session->
             <?php foreach ($existing as $i => $item): ?>
                 <div class="mb-3 pb-2" style="border-bottom:1px solid #eee;">
                     <p class="mb-1"><strong>Q<?= $i + 1 ?>.</strong> <?= htmlspecialchars($item['question'] ?? '') ?></p>
+                    <?php $unanswered = $is_draft && empty($item['answered']); ?>
                     <p class="mb-1">
-                        Your answer:
-                        <span style="color: <?= !empty($item['is_correct']) ? 'green' : 'red' ?>; font-weight:600;">
-                            <?= htmlspecialchars($item['chosen'] ?? '') ?>
-                        </span>
+                        <?php if ($unanswered): ?>
+                            <span class="text-muted">Not answered yet.</span>
+                        <?php else: ?>
+                            Your answer:
+                            <span style="color: <?= !empty($item['is_correct']) ? 'green' : 'red' ?>; font-weight:600;">
+                                <?= htmlspecialchars($item['chosen'] ?? '') ?>
+                            </span>
+                        <?php endif; ?>
                     </p>
-                    <?php if (empty($item['is_correct'])): ?>
+                    <?php if (!$unanswered && empty($item['is_correct'])): ?>
                         <p class="mb-0">Correct answer: <span style="color:green; font-weight:600;"><?= htmlspecialchars($item['correct_answer'] ?? '') ?></span></p>
                     <?php endif; ?>
                 </div>

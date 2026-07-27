@@ -159,9 +159,13 @@
                             $progress     = ($sub && $widget && !empty($widget['widget_key']))
                                 ? $this->Widgets_model->submission_progress($widget['widget_key'], $widget_config, $decoded_code)
                                 : null;
-                            $draft_progress = (empty($sub) && !empty($g['live_draft']) && $widget && !empty($widget['widget_key']))
-                                ? $this->Widgets_model->submission_progress($widget['widget_key'], $widget_config, $g['live_draft'])
-                                : null;
+                            // Topic-file widgets (iq_*) have no submission_progress()
+                            // mirror — their draft is graded against the topic JSON in
+                            // the controller, which yields the same answered/total shape.
+                            $draft_progress = $g['live_progress'] ?? null;
+                            if ($draft_progress === null && empty($sub) && !empty($g['live_draft']) && $widget && !empty($widget['widget_key'])) {
+                                $draft_progress = $this->Widgets_model->submission_progress($widget['widget_key'], $widget_config, $g['live_draft']);
+                            }
                             ?>
                             <div class="card mb-3 shadow-sm group-card"
                                 data-has-score="<?= $has_score ? 'true' : 'false' ?>"
@@ -219,6 +223,9 @@
                                                 <?php $this->load->view($widget['input_view'], [
                                                     'config'   => $widget_config,
                                                     'readonly' => true,
+                                                    // Caption the panel with the group — the rendering
+                                                    // session here is the instructor's, not a student's.
+                                                    'student_name' => $g['group_name'],
                                                     'existing' => $decoded_code,
                                                 ]); ?>
                                             </template>
@@ -258,9 +265,14 @@
                                                 <?php $this->load->view($widget['input_view'], [
                                                     'config'   => $widget_config,
                                                     'readonly' => true,
+                                                    'is_draft' => true,
+                                                    'student_name' => $g['group_name'],
                                                     'existing' => $g['live_draft'],
                                                 ]); ?>
-                                                <p class="text-muted small mb-0 mt-2"><em>Live draft — not yet submitted or graded.</em></p>
+                                                <p class="text-muted small mb-0 mt-2">
+                                                    <em>Live draft — not yet submitted or graded.<?php if (isset($g['live_score'], $draft_progress['total'])): ?>
+                                                        Would score <?= (int) $g['live_score'] ?>/<?= (int) $draft_progress['total'] ?> as it stands.<?php endif; ?></em>
+                                                </p>
                                             </div>
                                         </details>
                                     <?php endif; ?>

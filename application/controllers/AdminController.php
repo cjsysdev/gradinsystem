@@ -240,6 +240,25 @@ class AdminController extends CI_Controller
                     $data['widget_config'] = json_decode($assessment['given'] ?? '', true) ?: [];
                 }
 
+                // The two topic-file widgets (iq_discussion, iq_micro) keep a
+                // shared live blob shaped nothing like the graded results list
+                // their readonly view renders — { v, sections: {...} } /
+                // { v, driver, answers: {"si:ci": ...} } vs a plain list of
+                // {question, chosen, correct_answer, is_correct}. Handing the
+                // raw blob to the widget view fataled on it, so translate the
+                // draft here through the same grader the group's own submit
+                // uses, and the widget renders it unchanged.
+                $iq_kind     = null;
+                $iq_sections = null;
+                if ($data['widget'] && in_array($data['widget']['widget_key'], ['iq_micro', 'iq_discussion'], true)) {
+                    $this->load->model('Iq_topic_model');
+                    $topic_data  = $this->Iq_topic_model->load_topic($data['widget_config']['topic'] ?? '');
+                    $iq_sections = $topic_data ? $topic_data['sections'] : null;
+                    // No resolvable topic file = nothing to grade a draft
+                    // against; the draft is then simply not shown.
+                    $iq_kind     = $iq_sections ? $data['widget']['widget_key'] : 'unrenderable';
+                }
+
                 // Index every fanned-out submission row by the member's trans_no.
                 $submissions = $this->classworks->get_all_submissions($assessment_id);
                 $by_student  = [];
@@ -282,16 +301,49 @@ class AdminController extends CI_Controller
                     // it's submitted. Snapshot at page load; ungraded and
                     // non-authoritative — surfaced only for groups still
                     // drafting (no submission yet) with something actually filled.
-                    $g['live_draft']    = null;
-                    $g['live_edited_by'] = null;
+                    $g['live_draft']      = null;
+                    $g['live_edited_by']  = null;
                     $g['live_updated_at'] = null;
+                    $g['live_progress']   = null;
+                    $g['live_score']      = null;
                     if ($shared === null) {
                         $live = $this->Live_state_model->get_state($assessment_id, $g['group_id']);
                         if ($live && trim((string) $live['content']) !== '') {
                             $decoded = json_decode($live['content'], true);
-                            $g['live_draft']      = ($decoded === null) ? null : $decoded;
-                            $g['live_edited_by']  = $live['last_edited_by'];
-                            $g['live_updated_at'] = $live['updated_at'];
+                            $decoded = is_array($decoded) ? $decoded : null;
+
+                            if ($iq_kind === null) {
+                                $g['live_draft'] = $decoded;
+                            } elseif ($decoded !== null && $iq_kind !== 'unrenderable') {
+                                $graded = ($iq_kind === 'iq_micro')
+                                    ? $this->Iq_topic_model->grade_micro($iq_sections, $decoded['answers'] ?? [])
+                                    : $this->Iq_topic_model->grade_discussion($iq_sections, $decoded['sections'] ?? []);
+
+                                $answered = 0;
+                                foreach ($graded['results'] as $r) {
+                                    if (!empty($r['answered'])) {
+                                        $answered++;
+                                    }
+                                }
+
+                                // A blob with nothing answered yet (the group
+                                // opened the quiz but hasn't tapped anything)
+                                // is not worth a draft panel.
+                                if ($answered > 0) {
+                                    $g['live_draft']    = $graded['results'];
+                                    $g['live_score']    = $graded['score'];
+                                    $g['live_progress'] = [
+                                        'answered' => $answered,
+                                        'total'    => $graded['total'],
+                                        'empty'    => $graded['total'] - $answered,
+                                    ];
+                                }
+                            }
+
+                            if ($g['live_draft'] !== null) {
+                                $g['live_edited_by']  = $live['last_edited_by'];
+                                $g['live_updated_at'] = $live['updated_at'];
+                            }
                         }
                     }
                 }
@@ -2746,15 +2798,17 @@ You generate config JSON for the "lab_worksheet" classwork widget in a CodeIgnit
       "title": "Experiment 1.1 — short descriptive title",
       "instructions": "<p>...</p><pre><code>...</code></pre>",
       "warning": false,
+      "hint": "optional nudge for the whole experiment",
       "prompts": [
-        {"tag": "predict", "label": "PREDICT", "text": "What do you think will happen?"},
+        {"tag": "predict", "label": "PREDICT", "text": "What do you think will happen?", "hint": "optional nudge for this prompt"},
         {"tag": "observe", "label": "OBSERVE", "text": "What actually happened?"},
         {"tag": "explain", "label": "EXPLAIN", "text": "Why did that happen?"}
       ],
       "note": "optional short note shown after the prompts"
     }
   ],
-  "exit_question": "optional single free-text question shown after all experiments"
+  "exit_question": "optional single free-text question shown after all experiments",
+  "exit_question_hint": "optional nudge for the exit question"
 }
 
 Rules:
@@ -2762,6 +2816,7 @@ Rules:
 - Allowed "tag" values: predict, observe, explain, bonus. Most experiments use predict+observe+explain; use "bonus" sparingly for an optional stretch prompt.
 - Set "warning": true only for an experiment that deliberately breaks something to illustrate a concept ("breaking it on purpose").
 - "note" and "exit_question" are optional — omit the key entirely if not needed, do not use null.
+- Every "hint" is optional and PLAIN TEXT (no HTML — it is escaped). It renders collapsed behind a small (?) the student taps, so it must nudge toward the reasoning, never state the answer. Add one only where a student can realistically get stuck; most prompts need none. Omit the key entirely otherwise.
 - Order experiments so difficulty ramps up gradually.
 SYS;
         $user = "Generate a lab worksheet (Predict/Observe/Explain, {$count} experiments) about: {$topic}."

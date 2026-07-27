@@ -12,13 +12,17 @@
 //       'title'        => 'Experiment 1.1 — Declare an array and print the first element',
 //       'instructions' => '<p>...</p><pre><code>...</code></pre>',  // trusted admin-authored HTML, like _interactive_quiz_template.php's section.lesson
 //       'warning'      => false,        // true = "breaking it on purpose" styling
-//       'prompts'      => [ ['tag' => 'predict', 'label' => 'PREDICT', 'text' => '...'], ... ],
+//       'hint'         => 'optional nudge, hidden behind a (?) next to the title',
+//       'prompts'      => [ ['tag' => 'predict', 'label' => 'PREDICT', 'text' => '...', 'hint' => 'optional'], ... ],
 //       'note'         => 'Fix it back: ...',  // optional, shown after the prompts
 //     ],
 //     ...
 //   ],
-//   'exit_question' => 'optional single free-text question shown after all experiments',
+//   'exit_question'      => 'optional single free-text question shown after all experiments',
+//   'exit_question_hint' => 'optional hint for it',
 // ]
+// Every 'hint' is optional and plain text (escaped, not HTML like 'instructions'):
+// a lab JSON without any renders exactly as it did before.
 // $readonly — bool
 // $existing — ['answers' => { '<experiment index>' => { '<prompt tag>' => '<text>' } }, 'exit_question' => '<text>'] or null
 
@@ -29,6 +33,28 @@ $experiments = $config['experiments'] ?? [];
 $exit_q      = $config['exit_question'] ?? '';
 $answers     = $existing['answers'] ?? [];
 $exit_answer = $existing['exit_question'] ?? '';
+$exit_q_hint = $config['exit_question_hint'] ?? '';
+
+// Collapsed (?) next to a title/prompt. A closure, not a named function: this
+// view is rendered many times on one page (one card per group in
+// admin/group_submission.php), and a top-level function would fatal on the
+// second render.
+//
+// The toggle is an inline onclick rather than a delegated listener because the
+// grading modal injects this markup with innerHTML
+// (admin/group_submission.php's loadSubmission()), which never executes a
+// <script> that came with it — an attribute handler survives that path, a
+// wired-up listener does not.
+$hint = function ($text) {
+    if (empty($text)) return '';
+    return '<span class="lw-hint">'
+        . '<button type="button" class="lw-hint-btn" aria-expanded="false" aria-label="Show hint" title="Show hint"'
+        . ' onclick="var o=this.getAttribute(\'aria-expanded\')===\'true\';'
+        . 'this.setAttribute(\'aria-expanded\',o?\'false\':\'true\');'
+        . 'this.nextElementSibling.hidden=o;">?</button>'
+        . '<span class="lw-hint-body" hidden>' . htmlspecialchars($text, ENT_QUOTES, 'UTF-8') . '</span>'
+        . '</span>';
+};
 
 $tag_colors = [
     'predict' => ['bg' => '#e4ecfb', 'ink' => '#1d4e9e'],
@@ -51,6 +77,13 @@ $tag_colors = [
     #lab-worksheet-widget .lw-prompt { margin-bottom: 10px; }
     #lab-worksheet-widget .lw-note { font-style: italic; color: #6c757d; font-size: 13px; margin: 10px 0 0; }
     #lab-worksheet-widget .lw-answer { white-space: pre-wrap; background: #f6f5f1; border: 1px solid #e3e1da; border-radius: 4px; padding: 8px 10px; min-height: 20px; }
+    #lab-worksheet-widget .lw-hint-btn { width: 18px; height: 18px; border-radius: 50%; border: 1px solid #d9a441; background: #fff6e6; color: #8a5a00; font: bold 11px Verdana, Arial, sans-serif; cursor: pointer; line-height: 1; padding: 0; margin-left: 6px; vertical-align: middle; }
+    #lab-worksheet-widget .lw-hint-btn:hover { background: #f6e3bf; }
+    #lab-worksheet-widget .lw-hint-btn[aria-expanded="true"] { background: #d9a441; color: #fff; }
+    #lab-worksheet-widget .lw-hint-body { display: block; background: #fff6e6; border: 1px solid #d9a441; border-radius: 6px; padding: 7px 11px; margin: 6px 0 0; font: 12.5px/1.6 Verdana, Arial, sans-serif; color: #1f2937; }
+    /* Must out-specify the rule above, or the [hidden] attribute stops working. */
+    #lab-worksheet-widget .lw-hint-body[hidden] { display: none; }
+    #lab-worksheet-widget .lw-hint-body::before { content: "HINT \2014 "; font-weight: bold; color: #8a5a00; }
 </style>
 <div id="lab-worksheet-widget">
     <?php if ($intro): ?>
@@ -73,7 +106,7 @@ $tag_colors = [
         ?>
         <div class="lw-exp<?= $is_warn ? ' lw-warn' : '' ?>" data-idx="<?= $i ?>">
             <?php if ($is_warn): ?><p class="lw-flag">&#9888; Breaking it on purpose</p><?php endif; ?>
-            <h4><?= htmlspecialchars($title) ?></h4>
+            <h4><?= htmlspecialchars($title) ?><?= $hint($exp['hint'] ?? null) ?></h4>
             <?php if (!empty($exp['instructions'])): ?>
                 <div class="lw-instructions"><?= $exp['instructions'] ?></div>
             <?php endif; ?>
@@ -87,7 +120,7 @@ $tag_colors = [
                 ?>
                 <div class="lw-prompt">
                     <span class="lw-tag" style="background:<?= $color['bg'] ?>; color:<?= $color['ink'] ?>;"><?= htmlspecialchars($label) ?></span>
-                    <p class="mb-1"><?= htmlspecialchars($p['text'] ?? '') ?></p>
+                    <p class="mb-1"><?= htmlspecialchars($p['text'] ?? '') ?><?= $hint($p['hint'] ?? null) ?></p>
                     <?php if ($readonly): ?>
                         <div class="lw-answer"><?= $value !== '' ? nl2br(htmlspecialchars($value)) : '<span class="text-muted">No answer.</span>' ?></div>
                     <?php else: ?>
@@ -104,7 +137,7 @@ $tag_colors = [
 
     <?php if ($exit_q): ?>
         <div class="lw-exp" data-exit="1">
-            <h4>Exit Question</h4>
+            <h4>Exit Question<?= $hint($exit_q_hint) ?></h4>
             <p class="mb-1"><?= htmlspecialchars($exit_q) ?></p>
             <?php if ($readonly): ?>
                 <div class="lw-answer"><?= $exit_answer !== '' ? nl2br(htmlspecialchars($exit_answer)) : '<span class="text-muted">No answer.</span>' ?></div>

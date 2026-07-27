@@ -9,7 +9,7 @@ class GroupWorkController extends CI_Controller
         if (!isset($_SESSION['online'])) {
             redirect('login');
         }
-        $this->load->model(['Grouping_model', 'Group_member_model', 'Live_state_model', 'Widgets_model']);
+        $this->load->model(['Grouping_model', 'Group_member_model', 'Live_state_model', 'Widgets_model', 'Iq_topic_model']);
     }
 
     // Resolves the assessment + grouping set + the current student's group
@@ -740,46 +740,14 @@ class GroupWorkController extends CI_Controller
             // answers: { "{si}:{ci}": {sel}, "{si}:q": {sel}|{built}|{text} } }
             // — keyed so it survives the objectives/recap screens the client
             // flattens sections into (see _interactive_micro_template.php).
-            $answers = $blob['answers'] ?? [];
-            $graded  = $this->_grade_micro_blob($sections, $answers);
-            $score   = $graded['score'];
-            $total   = $graded['total'];
-            $results = $graded['results'];
+            $graded = $this->Iq_topic_model->grade_micro($sections, $blob['answers'] ?? []);
         } else {
             // iq_discussion blob shape: { v, sections: { i: {selected} } }
-            $picked = $blob['sections'] ?? [];
-
-            $score   = 0;
-            $total   = 0;
-            $results = [];
-
-            foreach ($sections as $i => $section) {
-                $quiz = $section['quiz'] ?? null;
-                if (!is_array($quiz) || empty($quiz['question']) || empty($quiz['options'])) {
-                    continue; // lesson-only section — not graded
-                }
-                $total++;
-
-                $sel            = isset($picked[$i]['selected']) ? (int) $picked[$i]['selected'] : -1;
-                $correct_idx    = (int) ($quiz['correct'] ?? -1);
-                $chosen         = ($sel >= 0 && isset($quiz['options'][$sel])) ? $quiz['options'][$sel] : '';
-                $correct_answer = isset($quiz['options'][$correct_idx]) ? $quiz['options'][$correct_idx] : '';
-                $is_correct     = ($sel >= 0 && $sel === $correct_idx);
-
-                if ($is_correct) {
-                    $score++;
-                }
-
-                $results[] = [
-                    'section'        => $i,
-                    'section_title'  => $section['title'] ?? '',
-                    'question'       => $quiz['question'],
-                    'chosen'         => $chosen,
-                    'correct_answer' => $correct_answer,
-                    'is_correct'     => $is_correct,
-                ];
-            }
+            $graded = $this->Iq_topic_model->grade_discussion($sections, $blob['sections'] ?? []);
         }
+        $score   = $graded['score'];
+        $total   = $graded['total'];
+        $results = $graded['results'];
 
         // First-completion-only: if this student already has a row, the group
         // already submitted — report the recorded score, don't overwrite.
@@ -847,113 +815,6 @@ class GroupWorkController extends CI_Controller
             'score'    => $score,
             'total'    => $total,
         ]);
-    }
-
-    // Grades an iq_micro shared answers blob against the topic JSON — mirrors
-    // the client-side gradeAnswer()/recomputeStats() logic in
-    // _interactive_micro_template.php, but never trusts the client's score.
-    // $answers is keyed "{sectionIndex}:{chunkIndex}" for micro-checks and
-    // "{sectionIndex}:q" for checkpoints, matching the flattened screen order
-    // the template walks (objectives -> chunks+checkpoint per section -> recap
-    // are not graded and carry no key here).
-    private function _grade_micro_blob(array $sections, array $answers)
-    {
-        $score   = 0;
-        $total   = 0;
-        $results = [];
-
-        $normalize = function ($str) {
-            $str = strtolower(trim((string) $str));
-            $str = preg_replace('/;+\s*$/', '', $str);
-            $str = preg_replace('/\s+/', ' ', $str);
-            return $str;
-        };
-
-        foreach ($sections as $si => $section) {
-            foreach ($section['chunks'] ?? [] as $ci => $chunk) {
-                $check = $chunk['check'] ?? null;
-                if (!is_array($check) || empty($check['question']) || empty($check['options'])) {
-                    continue;
-                }
-                $total++;
-
-                $entry          = $answers[$si . ':' . $ci] ?? [];
-                $sel            = isset($entry['sel']) ? (int) $entry['sel'] : -1;
-                $correct_idx    = (int) ($check['correct'] ?? -1);
-                $chosen         = ($sel >= 0 && isset($check['options'][$sel])) ? $check['options'][$sel] : '';
-                $correct_answer = isset($check['options'][$correct_idx]) ? $check['options'][$correct_idx] : '';
-                $is_correct     = ($sel >= 0 && $sel === $correct_idx);
-
-                if ($is_correct) {
-                    $score++;
-                }
-
-                $results[] = [
-                    'kind'           => 'micro',
-                    'section'        => $si,
-                    'section_title'  => $section['title'] ?? '',
-                    'question'       => $check['question'],
-                    'chosen'         => $chosen,
-                    'correct_answer' => $correct_answer,
-                    'is_correct'     => $is_correct,
-                ];
-            }
-
-            $quiz = $section['quiz'] ?? null;
-            if (!is_array($quiz) || empty($quiz['question'])) {
-                continue; // no checkpoint on this section
-            }
-            $total++;
-
-            $type  = $quiz['type'] ?? 'mcq';
-            $entry = $answers[$si . ':q'] ?? [];
-
-            if ($type === 'arrange') {
-                $tokens = $quiz['tokens'] ?? [];
-                $built  = array_map(function ($idx) use ($tokens) {
-                    return isset($tokens[(int) $idx]) ? $tokens[(int) $idx] : '';
-                }, $entry['built'] ?? []);
-                $expected       = $quiz['correctOrder'] ?? [];
-                $is_correct     = !empty($built) && $built === $expected;
-                $chosen         = implode(' ', $built);
-                $correct_answer = implode(' ', $expected);
-            } elseif ($type === 'type') {
-                $raw            = (string) ($entry['text'] ?? '');
-                $accepted       = $quiz['acceptedAnswers'] ?? [];
-                $is_correct     = false;
-                foreach ($accepted as $a) {
-                    if ($normalize($a) === $normalize($raw)) {
-                        $is_correct = true;
-                        break;
-                    }
-                }
-                $chosen         = trim($raw);
-                $correct_answer = $accepted[0] ?? '';
-            } else { // mcq
-                $options        = $quiz['options'] ?? [];
-                $sel            = isset($entry['sel']) ? (int) $entry['sel'] : -1;
-                $correct_idx    = (int) ($quiz['correct'] ?? -1);
-                $chosen         = ($sel >= 0 && isset($options[$sel])) ? $options[$sel] : '';
-                $correct_answer = isset($options[$correct_idx]) ? $options[$correct_idx] : '';
-                $is_correct     = ($sel >= 0 && $sel === $correct_idx);
-            }
-
-            if ($is_correct) {
-                $score++;
-            }
-
-            $results[] = [
-                'kind'           => 'checkpoint',
-                'section'        => $si,
-                'section_title'  => $section['title'] ?? '',
-                'question'       => $quiz['question'],
-                'chosen'         => $chosen,
-                'correct_answer' => $correct_answer,
-                'is_correct'     => $is_correct,
-            ];
-        }
-
-        return ['score' => $score, 'total' => $total, 'results' => $results];
     }
 
     // Topic JSON files live in assets/json/ or one class-code folder down —

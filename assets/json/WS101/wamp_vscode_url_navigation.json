@@ -1,0 +1,511 @@
+{
+  "topic": "wamp_vscode_url_navigation",
+  "title": "Finding Your Project — Folders, VS Code, and the Address Bar",
+  "description": "Where a CodeIgniter project has to sit on disk, how to open it properly in VS Code, and how that folder path turns into a working web address.",
+  "congratsText": "You can now find, open, and load your project without guessing!",
+  "objectives": [
+    "Locate the single folder WAMP serves and place a project inside it",
+    "Build the correct disk path to a CodeIgniter project",
+    "Identify what application/, system/, and index.php are each for",
+    "Choose the right folder inside application/ for a new file",
+    "Open a project in VS Code as a folder, not as a lone file",
+    "Apply VS Code shortcuts to move between project files quickly",
+    "Translate a folder path into the address that loads it",
+    "Diagnose a failed address from what the browser shows"
+  ],
+  "recap": [
+    "WAMP serves only C:\\wamp64\\www\\ — anything outside it is invisible to the browser.",
+    "Each project gets its own folder inside www, and that folder name becomes part of the address.",
+    "application/ is your code, system/ is CodeIgniter's engine, index.php is the single entry point.",
+    "Controllers, models, views, and config all sit inside application/.",
+    "File → Open Folder on the project folder gives you the sidebar; opening one file does not.",
+    "Ctrl+Shift+E, Ctrl+P, and Ctrl+` cover most of the moving around you will do.",
+    "C:\\wamp64\\www\\ becomes localhost, so a project folder is reached at localhost/foldername.",
+    "Apache's Not Found, a bare file listing, and CI3's styled 404 each point at a different mistake."
+  ],
+  "sections": [
+    {
+      "id": 0,
+      "title": "The One Folder WAMP Serves",
+      "callback": false,
+      "refSection": null,
+      "chunks": [
+        {
+          "text": "WAMP serves one folder and one folder only: <span class=\"code-inline\">C:\\wamp64\\www\\</span>. Anything outside it is invisible to the browser.",
+          "check": {
+            "question": "The folder WAMP serves is:",
+            "options": [
+              "C:\\wamp64\\www\\",
+              "C:\\www\\wamp64\\"
+            ],
+            "correct": 0
+          }
+        },
+        {
+          "text": "The order matters. <strong>wamp64</strong> comes first, and <strong>www</strong> sits inside it — not the other way around.",
+          "check": {
+            "question": "Which folder holds which?",
+            "options": [
+              "www holds wamp64",
+              "wamp64 holds www"
+            ],
+            "correct": 1
+          }
+        },
+        {
+          "text": "Put your project on the Desktop and the browser cannot reach it, even with the WAMP icon showing green.",
+          "check": {
+            "question": "A project sitting on the Desktop is:",
+            "options": [
+              "reachable while WAMP is green",
+              "invisible to the browser"
+            ],
+            "correct": 1
+          }
+        }
+      ],
+      "quiz": {
+        "type": "mcq",
+        "question": "WAMP is installed on drive C. Which folder must your project sit inside before the browser can load it?",
+        "options": [
+          "C:\\wamp64\\www\\",
+          "C:\\www\\wamp64\\",
+          "C:\\wamp64\\apps\\",
+          "C:\\Users\\Desktop\\"
+        ],
+        "correct": 0
+      }
+    },
+    {
+      "id": 1,
+      "title": "Your Own Folder Inside www",
+      "callback": false,
+      "refSection": null,
+      "chunks": [
+        {
+          "text": "Inside <span class=\"code-inline\">www</span> you make one folder per project — say <span class=\"code-inline\">karinderya</span>. That name will also show up in your web address later.",
+          "check": {
+            "question": "The project folder name shows up:",
+            "options": [
+              "in the web address too",
+              "only on your own disk"
+            ],
+            "correct": 0
+          }
+        },
+        {
+          "text": "Unzip CodeIgniter so its contents land directly in that folder — not inside a second folder with the same name.",
+          "check": {
+            "question": "After unzipping, application/ should be:",
+            "options": [
+              "one folder deeper",
+              "at the top level"
+            ],
+            "correct": 1
+          }
+        },
+        {
+          "text": "Keep the folder name lowercase with no spaces. <span class=\"code-inline\">My Project</span> turns ugly the moment it becomes an address.",
+          "check": {
+            "question": "Better folder name:",
+            "options": [
+              "My Project",
+              "karinderya"
+            ],
+            "correct": 1
+          }
+        }
+      ],
+      "quiz": {
+        "type": "arrange",
+        "question": "Arrange the tokens into the full path of a project folder named karinderya.",
+        "tokens": [
+          "www",
+          "karinderya",
+          "C:",
+          "wamp64"
+        ],
+        "correctOrder": [
+          "C:",
+          "wamp64",
+          "www",
+          "karinderya"
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "title": "What You See Inside the Project",
+      "callback": false,
+      "refSection": null,
+      "chunks": [
+        {
+          "text": "Open the project folder and three things matter: <span class=\"code-inline\">application/</span>, <span class=\"code-inline\">system/</span>, and <span class=\"code-inline\">index.php</span>.",
+          "check": {
+            "question": "index.php is:",
+            "options": [
+              "a folder",
+              "a file"
+            ],
+            "correct": 1
+          }
+        },
+        {
+          "text": "<span class=\"highlight\">application/</span> is yours. Everything you write this term goes somewhere inside it.",
+          "check": {
+            "question": "Your own code belongs in:",
+            "options": [
+              "application/",
+              "system/"
+            ],
+            "correct": 0
+          }
+        },
+        {
+          "text": "<span class=\"highlight\">system/</span> is CodeIgniter's engine. You may read it; you do not edit it.",
+          "check": {
+            "question": "Editing files in system/ is:",
+            "options": [
+              "normal practice",
+              "something to avoid"
+            ],
+            "correct": 1
+          }
+        }
+      ],
+      "quiz": {
+        "type": "type",
+        "question": "Type the name of the folder that holds your own controllers, models, and views.",
+        "acceptedAnswers": [
+          "application",
+          "application/",
+          "/application",
+          "application\\"
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "title": "The Folders You Will Open All Term",
+      "callback": false,
+      "refSection": null,
+      "chunks": [
+        {
+          "text": "Inside application/ you will live in four folders: <span class=\"code-inline\">controllers/</span>, <span class=\"code-inline\">models/</span>, <span class=\"code-inline\">views/</span>, and <span class=\"code-inline\">config/</span>.",
+          "check": {
+            "question": "Those four sit inside:",
+            "options": [
+              "application/",
+              "system/"
+            ],
+            "correct": 0
+          }
+        },
+        {
+          "text": "A controller file starts with a capital letter — <span class=\"code-inline\">Pivot.php</span>, never <span class=\"code-inline\">pivot.php</span>.",
+          "check": {
+            "question": "Correct controller filename:",
+            "options": [
+              "Pivot.php",
+              "pivot.php"
+            ],
+            "correct": 0
+          }
+        },
+        {
+          "text": "<span class=\"code-inline\">routes.php</span> and <span class=\"code-inline\">database.php</span> both live in the config folder.",
+          "check": {
+            "question": "routes.php is found in:",
+            "options": [
+              "application/core/",
+              "application/config/"
+            ],
+            "correct": 1
+          }
+        }
+      ],
+      "quiz": {
+        "type": "mcq",
+        "question": "You are told to create the PHP class that will handle a new page. Which folder do you create it in?",
+        "options": [
+          "application/views/ and its subfolders",
+          "application/config/ beside routes.php",
+          "application/controllers/",
+          "system/core/ inside CodeIgniter"
+        ],
+        "correct": 2
+      }
+    },
+    {
+      "id": 4,
+      "title": "Opening It Properly in VS Code",
+      "callback": true,
+      "refSection": 1,
+      "chunks": [
+        {
+          "text": "Use <strong>File → Open Folder</strong> and pick your project. Opening a single file gives you no sidebar to move around in.",
+          "check": {
+            "question": "Which one gives you the file tree?",
+            "options": [
+              "Open File",
+              "Open Folder"
+            ],
+            "correct": 1
+          }
+        },
+        {
+          "text": "Pick the project folder itself, not <span class=\"code-inline\">www</span> — otherwise you scroll past every other project on the machine.",
+          "check": {
+            "question": "You should open:",
+            "options": [
+              "the www folder",
+              "your project folder"
+            ],
+            "correct": 1
+          }
+        },
+        {
+          "text": "Faster route: right-click the project folder in File Explorer and choose <strong>Open with Code</strong>.",
+          "check": {
+            "question": "That right-click option opens:",
+            "options": [
+              "the whole folder",
+              "one file only"
+            ],
+            "correct": 0
+          }
+        }
+      ],
+      "quiz": {
+        "type": "arrange",
+        "question": "Arrange the steps to open your project in VS Code the right way.",
+        "tokens": [
+          "choose Open with Code",
+          "check application/ appears in the sidebar",
+          "browse to C:\\wamp64\\www\\",
+          "right-click your project folder"
+        ],
+        "correctOrder": [
+          "browse to C:\\wamp64\\www\\",
+          "right-click your project folder",
+          "choose Open with Code",
+          "check application/ appears in the sidebar"
+        ]
+      }
+    },
+    {
+      "id": 5,
+      "title": "Moving Around Without Clicking",
+      "callback": false,
+      "refSection": null,
+      "chunks": [
+        {
+          "text": "The Explorer sidebar (<span class=\"code-inline\">Ctrl+Shift+E</span>) is your folder tree. Expand application/ once and leave it expanded.",
+          "check": {
+            "question": "The Explorer sidebar shows:",
+            "options": [
+              "the folder tree",
+              "the browser output"
+            ],
+            "correct": 0
+          }
+        },
+        {
+          "text": "<span class=\"code-inline\">Ctrl+P</span>, then a few letters of a filename, jumps straight there — no folder clicking at all.",
+          "check": {
+            "question": "Ctrl+P is used for:",
+            "options": [
+              "running the site",
+              "jumping to a file"
+            ],
+            "correct": 1
+          }
+        },
+        {
+          "text": "<span class=\"code-inline\">Ctrl+`</span> opens a terminal that already starts inside your project folder.",
+          "check": {
+            "question": "That terminal opens in:",
+            "options": [
+              "your project folder",
+              "the Windows root"
+            ],
+            "correct": 0
+          }
+        }
+      ],
+      "quiz": {
+        "type": "type",
+        "question": "Type the VS Code shortcut that jumps straight to a file by typing part of its name.",
+        "acceptedAnswers": [
+          "Ctrl+P",
+          "ctrl+p",
+          "CTRL+P",
+          "ctrl p",
+          "Ctrl P",
+          "control+p"
+        ]
+      }
+    },
+    {
+      "id": 6,
+      "title": "From Folder Path to Web Address",
+      "callback": false,
+      "refSection": null,
+      "chunks": [
+        {
+          "text": "The browser never types out <span class=\"code-inline\">C:\\wamp64\\www\\</span>. That whole part becomes one word: <span class=\"highlight\">localhost</span>.",
+          "check": {
+            "question": "localhost stands for:",
+            "options": [
+              "C:\\wamp64\\www\\",
+              "your project folder"
+            ],
+            "correct": 0
+          }
+        },
+        {
+          "text": "So the folder <span class=\"code-inline\">C:\\wamp64\\www\\karinderya</span> is loaded at <span class=\"code-inline\">localhost/karinderya</span>.",
+          "check": {
+            "question": "The matching address is:",
+            "options": [
+              "localhost/karinderya",
+              "localhost/www/karinderya"
+            ],
+            "correct": 0
+          }
+        },
+        {
+          "text": "The slashes flip, too. Disk paths lean one way, addresses lean the other.",
+          "check": {
+            "question": "An address bar uses:",
+            "options": [
+              "backslashes, as on disk",
+              "forward slashes"
+            ],
+            "correct": 1
+          }
+        }
+      ],
+      "quiz": {
+        "type": "mcq",
+        "question": "Your project sits at C:\\wamp64\\www\\clinic. What do you type in the address bar to load it?",
+        "options": [
+          "localhost/www/clinic",
+          "C:/wamp64/www/clinic",
+          "localhost/clinic",
+          "localhost/wamp64/clinic"
+        ],
+        "correct": 2
+      }
+    },
+    {
+      "id": 7,
+      "title": "When the Address Doesn't Load",
+      "callback": true,
+      "refSection": 2,
+      "chunks": [
+        {
+          "text": "Apache's plain <strong>Not Found</strong> page means the folder name you typed does not match a folder inside www.",
+          "check": {
+            "question": "Apache's Not Found points at:",
+            "options": [
+              "a typo in the folder name",
+              "a missing controller file"
+            ],
+            "correct": 0
+          }
+        },
+        {
+          "text": "A bare list of file names means WAMP found the folder but no <span class=\"code-inline\">index.php</span> inside it.",
+          "check": {
+            "question": "A file listing on screen means:",
+            "options": [
+              "index.php is missing there",
+              "the site loaded correctly"
+            ],
+            "correct": 0
+          }
+        },
+        {
+          "text": "CI3's own styled 404 page is different news entirely: WAMP and CodeIgniter both ran, and only the controller is missing.",
+          "check": {
+            "question": "CI3's styled 404 means CI3:",
+            "options": [
+              "never started at all",
+              "ran and found no controller"
+            ],
+            "correct": 1
+          }
+        }
+      ],
+      "quiz": {
+        "type": "arrange",
+        "question": "You typed an address and got a bare list of file names. Arrange the checks in the order you should do them.",
+        "tokens": [
+          "open that folder in File Explorer",
+          "confirm the folder name in the address",
+          "point the address one folder deeper",
+          "look for index.php beside application/"
+        ],
+        "correctOrder": [
+          "confirm the folder name in the address",
+          "open that folder in File Explorer",
+          "look for index.php beside application/",
+          "point the address one folder deeper"
+        ]
+      }
+    },
+    {
+      "id": 8,
+      "title": "One Project, Three Windows",
+      "callback": true,
+      "refSection": "0, 4 & 6",
+      "chunks": [
+        {
+          "text": "The same project shows up three ways: a path in File Explorer, a folder open in VS Code, and an address in the browser.",
+          "check": {
+            "question": "Those three are:",
+            "options": [
+              "three separate copies",
+              "one project, three views"
+            ],
+            "correct": 1
+          }
+        },
+        {
+          "text": "Rename the folder and all three shift at once — the old address stops working immediately.",
+          "check": {
+            "question": "Renaming the folder breaks:",
+            "options": [
+              "the old address",
+              "nothing at all"
+            ],
+            "correct": 0
+          }
+        },
+        {
+          "text": "Keep all three open side by side. Most \"it doesn't work\" moments are simply one of them pointing elsewhere.",
+          "check": {
+            "question": "Most such moments come from:",
+            "options": [
+              "a broken WAMP install",
+              "three views out of sync"
+            ],
+            "correct": 1
+          }
+        }
+      ],
+      "quiz": {
+        "type": "mcq",
+        "question": "You rename your project folder from clinic to barangay_clinic. What has to be updated as a result?",
+        "options": [
+          "Only the address bar; VS Code re-points by itself",
+          "The address bar, and the folder open in VS Code",
+          "The system/ folder and the application/ folder",
+          "Nothing — WAMP keeps serving the old name"
+        ],
+        "correct": 1
+      }
+    }
+  ]
+}
