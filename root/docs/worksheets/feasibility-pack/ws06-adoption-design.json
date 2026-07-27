@@ -1,0 +1,73 @@
+{
+    "meta": {
+        "eyebrow": "WORKSHEET 6 · 45 MINUTES · PRODUCES DOSSIER CHAPTER 6",
+        "title": "Adoption Design",
+        "sub": "You leave this session with: Chapter 6 — who adopts first, what actually blocks them, and what you'd do about it"
+    },
+    "timeline": {
+        "label": "How this session runs",
+        "moves": [
+            { "time": "0–5", "move": "Read the model", "detail": "Read Ch. 6. Note that its real barrier is not the one vendors said out loud." },
+            { "time": "5–15", "move": "Segments", "detail": "Name your adopters. Real roles, real people — not ‘the community’." },
+            { "time": "15–30", "move": "Stated vs real", "detail": "Separate what people SAY blocks them from what actually does." },
+            { "time": "30–38", "move": "Strategy", "detail": "One move per segment. Structural, not motivational." },
+            { "time": "38–43", "move": "Peer check", "detail": "Partner tests whether your ‘real barrier’ is just the stated one reworded." },
+            { "time": "43–45", "move": "File it", "detail": "Date, initial, file." }
+        ]
+    },
+    "model": {
+        "label": "THE MODEL — how the Carmen Market study did it",
+        "html": "<p><strong>✎ THE SPINE OF THE WHOLE COURSE.</strong> Everything up to now was diagnosis. This is the chapter the entire course has been aiming at, because it is where the thesis gets tested: innovation = invention + adoption. You already know the technology works. This is where you prove you know whether anyone will use it.</p><p>Stated barriers: fees and signal reliability. Real barrier: fear that a digital transaction record becomes a tax record.</p><p>And then the move that makes it a real chapter: “This study does not propose to solve that fear with a feature; it proposes to solve it with an explicit written assurance from the treasurer's office, secured before the pilot begins.”</p><p>Notice they did not target the laggards at all. Ten stalls, early adopters only, cash kept permanently for everyone else.</p>"
+    },
+    "steps": [
+        {
+            "type": "grid",
+            "label": "STEP 1 — Your adopter segments",
+            "instruction": "Name roles you could actually walk up to and talk to. If you write ‘the youth’ or ‘the community’, you have not done this step.",
+            "columns": [
+                { "name": "Who they actually are", "type": "textarea" },
+                { "name": "What you would do about them", "type": "textarea" }
+            ],
+            "rows": [
+                { "label": "Early adopters" },
+                { "label": "Majority" },
+                { "label": "Late / resistant" }
+            ]
+        },
+        {
+            "type": "text",
+            "label": "STEP 2 — Stated barrier",
+            "instruction": "These are almost never the same thing as the real barrier. The gap between them is where your chapter earns its marks.",
+            "prefix": "What people SAY blocks them:",
+            "rows": 3
+        },
+        {
+            "type": "text",
+            "label": "STEP 2 (cont.) — Real barrier",
+            "instruction": "Point to the evidence, not just a hunch.",
+            "prefix": "What we think ACTUALLY blocks them — and what evidence points there:",
+            "rows": 3
+        },
+        {
+            "type": "text",
+            "label": "STEP 3 — The move",
+            "instruction": "Structural, not motivational. ‘We will raise awareness’ is not a move. ‘We will get X in writing from Y before Z happens’ is.",
+            "prefix": "To address the real barrier, someone specific must do something specific before the pilot begins. Who, what, and when:",
+            "rows": 4
+        }
+    ],
+    "trap": {
+        "label": "THE TRAP",
+        "html": "<p>Two traps. First: your ‘real barrier’ turns out to be the stated barrier in different words — ‘they said fees, and the real problem is… the cost.’ That is not analysis. Second, and worse: solving a structural barrier with a motivational fix. If people do not trust the system, a seminar will not fix it, a poster will not fix it, and an awareness campaign will not fix it. LAAG Bohol did not fail from insufficient enthusiasm.</p>"
+    },
+    "peer_check": {
+        "label": "PEER CHECK",
+        "instruction": "Swap with another team. Their job is not to be nice — it is to find the specific weakness named below.",
+        "task": "Read their stated barrier, then their real barrier. Are they genuinely different, or the same thing reworded? Then read their move: is it structural, or is it ‘we will encourage people’? Write your verdict plainly.",
+        "rows": 3
+    },
+    "file_it": {
+        "label": "FILE IT",
+        "instruction": "Date it, initial it, and add it to your team's dossier folder. A chapter that is not filed does not exist."
+    }
+}

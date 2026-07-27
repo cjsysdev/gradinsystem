@@ -13,13 +13,34 @@ class Groupings extends CI_Controller
         $this->load->model('Group_member_model');
         $this->load->model('attendance');
         $this->load->model('class_student');
+        $this->load->library('schema_guard');
     }
 
     // One-time (idempotent) schema setup/upgrade — run once as admin.
+    //
+    // Guarded since the 2026-07-23 incident where this exact route silently
+    // wiped every group membership (see Schema_guard's docblock). Three rails:
+    // it can't be triggered by a bare GET, the tables are dumped first, and a
+    // failed statement is reported instead of being swallowed.
     public function install()
     {
-        $this->Grouping_model->install();
-        $this->session->set_flashdata('success', 'Grouping tables ready.');
+        $tables = ['grouping_sets', 'groupings', 'group_members', 'assessment_groupings'];
+
+        if (!$this->schema_guard->confirmed('Grouping tables setup', 'Groupings/install', $tables)) {
+            return;
+        }
+
+        $backup = $this->schema_guard->backup($tables, 'groupings');
+        $failures = $this->Grouping_model->install();
+
+        if (!empty($failures)) {
+            $this->session->set_flashdata('error',
+                'Grouping schema finished with ' . count($failures) . ' failed statement(s) — see application/logs/. '
+                . 'Backup: ' . ($backup ?: 'NOT WRITTEN'));
+        } else {
+            $this->session->set_flashdata('success',
+                'Grouping tables ready.' . ($backup ? ' Backup written to ' . basename($backup) . '.' : ''));
+        }
         redirect('Groupings');
     }
 

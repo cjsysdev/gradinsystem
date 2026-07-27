@@ -1,0 +1,466 @@
+{
+  "topic": "pivot1_get_vs_post_micro",
+  "title": "Pivot 1 — Where Did Submit Go? (GET vs POST)",
+  "description": "How a submitted form travels through CodeIgniter 3: controllers, URL segments, GET vs POST, and what a 404 actually proves.",
+  "congratsText": "You mastered Pivot 1 — GET vs POST!",
+  "objectives": [
+    "Identify the form attribute that decides where submitted data is sent",
+    "Explain which jobs belong to the client and which belong to the server",
+    "Write a controller class CI3 will recognize and run",
+    "Read a CI3 URL and name its controller and method segments",
+    "Compare GET and POST by where the submitted data travels",
+    "Choose the safe method for a form that carries a password",
+    "Explain what a CI3 404 error proves about the request",
+    "Apply $this->input->post() to read submitted fields inside a controller"
+  ],
+  "recap": [
+    "The action attribute names the destination a submitted form travels to.",
+    "The browser can only display; the server is the side that runs PHP and saves data.",
+    "A CI3 controller is a PHP class that extends CI_Controller, saved in application/controllers/.",
+    "A URL's first segment names the controller class, the second names the method.",
+    "GET attaches the fields to the URL; POST carries them inside the request body.",
+    "Passwords go by POST, because a GET URL is visible on screen and in browser history.",
+    "A 404 proves CI3 received the request and found no matching controller or method.",
+    "$this->input->post() reads submitted fields, keyed by each input's name attribute."
+  ],
+  "sections": [
+    {
+      "id": 0,
+      "title": "Click Submit — Where Does It Go?",
+      "callback": false,
+      "refSection": null,
+      "chunks": [
+        {
+          "text": "You fill out a form and click <strong>Submit</strong>. The browser packs up what you typed and sends it somewhere.",
+          "check": {
+            "question": "Who packs up the typed values on Submit?",
+            "options": ["The browser you typed into", "The database on the server"],
+            "correct": 0
+          }
+        },
+        {
+          "text": "That \"somewhere\" is set by the form's <span class=\"highlight\">action</span> attribute — point it at a destination that isn't ready, and the trip goes nowhere.",
+          "check": {
+            "question": "Which attribute names the destination?",
+            "options": ["method", "action"],
+            "correct": 1
+          }
+        },
+        {
+          "text": "A plain HTML page cannot read what you typed. Something sitting on the server has to catch the data.",
+          "check": {
+            "question": "Can a plain HTML page read submitted data?",
+            "options": ["Yes, with the right tag", "No, it needs a server"],
+            "correct": 1
+          }
+        }
+      ],
+      "quiz": {
+        "type": "mcq",
+        "code": "&lt;form action=\"pivot/login\" method=\"post\"&gt;",
+        "question": "In this form tag, which attribute decides where the submitted data travels?",
+        "options": [
+          "action — it sets the destination",
+          "method — it sets how data is sent to the server",
+          "name — it labels each individual input",
+          "id — it identifies the form in the page"
+        ],
+        "correct": 0
+      }
+    },
+    {
+      "id": 1,
+      "title": "Client vs Server — Two Computers, Two Jobs",
+      "callback": false,
+      "refSection": null,
+      "chunks": [
+        {
+          "text": "Two computers are always involved. The <span class=\"highlight\">client</span> is the browser on your screen.",
+          "check": {
+            "question": "The client is:",
+            "options": ["the machine storing the files", "the browser you are using"],
+            "correct": 1
+          }
+        },
+        {
+          "text": "The <span class=\"highlight\">server</span> is the computer that stores the site's files and runs its code.",
+          "check": {
+            "question": "Which side actually runs PHP?",
+            "options": ["The server", "The client"],
+            "correct": 0
+          }
+        },
+        {
+          "text": "Think of a restaurant: you place the order, the kitchen cooks it. A browser can show a page, but it cannot check a password.",
+          "check": {
+            "question": "In that picture, the kitchen stands for:",
+            "options": ["the client", "the server"],
+            "correct": 1
+          }
+        }
+      ],
+      "quiz": {
+        "type": "arrange",
+        "question": "Arrange the tokens to show the order of one request round trip.",
+        "tokens": [
+          "server sends a response",
+          "browser sends the request",
+          "browser displays the page",
+          "server runs the code"
+        ],
+        "correctOrder": [
+          "browser sends the request",
+          "server runs the code",
+          "server sends a response",
+          "browser displays the page"
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "title": "A Framework Needs a Controller",
+      "callback": false,
+      "refSection": null,
+      "chunks": [
+        {
+          "text": "In plain PHP, any .php file can run on its own. CI3 works differently — every request has to land on a <span class=\"highlight\">controller</span> method.",
+          "check": {
+            "question": "In CI3, a request must land on:",
+            "options": ["any file opened directly", "a controller method"],
+            "correct": 1
+          }
+        },
+        {
+          "text": "A controller is a PHP class that <span class=\"code-inline\">extends CI_Controller</span>, and each public method inside it is something a URL can call.",
+          "check": {
+            "question": "A CI3 controller is a:",
+            "options": ["PHP class", "HTML file"],
+            "correct": 0
+          }
+        },
+        {
+          "text": "Save it as <span class=\"code-inline\">Pivot.php</span> inside <span class=\"code-inline\">application/controllers/</span> and CI3 can run it.",
+          "check": {
+            "question": "Where does that file belong?",
+            "options": ["application/views/", "application/controllers/"],
+            "correct": 1
+          }
+        }
+      ],
+      "quiz": {
+        "type": "type",
+        "code": "class Pivot extends ______ {\n    public function hello() {\n        echo \"Hello from CI3\";\n    }\n}",
+        "question": "Type the exact class name a CI3 controller must extend.",
+        "acceptedAnswers": ["CI_Controller", "ci_controller", "CI_controller"]
+      }
+    },
+    {
+      "id": 3,
+      "title": "Segments in the URL — Controller and Method",
+      "callback": false,
+      "refSection": null,
+      "chunks": [
+        {
+          "text": "Visit <span class=\"code-inline\">index.php/pivot/hello</span> and CI3 reads the address in pieces called <span class=\"highlight\">segments</span>.",
+          "check": {
+            "question": "Segments are separated by:",
+            "options": ["slashes", "commas"],
+            "correct": 0
+          }
+        },
+        {
+          "text": "The first segment, <strong>pivot</strong>, names the controller class CI3 should load.",
+          "check": {
+            "question": "In pivot/hello, the word pivot names the:",
+            "options": ["method", "controller"],
+            "correct": 1
+          }
+        },
+        {
+          "text": "The second segment, <strong>hello</strong>, names the method to run inside that class.",
+          "check": {
+            "question": "So hello is:",
+            "options": ["a folder in the project", "a method in the class"],
+            "correct": 1
+          }
+        }
+      ],
+      "quiz": {
+        "type": "mcq",
+        "code": "index.php/orders/view",
+        "question": "A visitor opens this address. What does CI3 go looking for first?",
+        "options": [
+          "A view file named orders.php",
+          "An Orders model class",
+          "An Orders controller class",
+          "A View controller class"
+        ],
+        "correct": 2
+      }
+    },
+    {
+      "id": 4,
+      "title": "The GET Method — Data Rides in the URL",
+      "callback": false,
+      "refSection": null,
+      "chunks": [
+        {
+          "text": "Set a form's <span class=\"highlight\">method</span> to <span class=\"code-inline\">get</span>, and the browser tacks every field onto the end of the web address.",
+          "check": {
+            "question": "With GET, the typed data ends up:",
+            "options": ["in the URL", "in the body"],
+            "correct": 0
+          }
+        },
+        {
+          "text": "Submit a login form with GET and the address bar reads <span class=\"code-inline\">index.php/pivot/login?username=criscel&amp;password=1234</span>.",
+          "check": {
+            "question": "In that address, the ? marks:",
+            "options": ["the end of the file name", "the start of the sent data"],
+            "correct": 1
+          }
+        },
+        {
+          "text": "Anyone looking at your screen, or scrolling your browser history, can read those values.",
+          "check": {
+            "question": "Is GET data private?",
+            "options": ["Yes — the URL is scrambled", "No — the URL is in plain view"],
+            "correct": 1
+          }
+        }
+      ],
+      "quiz": {
+        "type": "arrange",
+        "question": "Arrange the tokens to build a form tag that sends its data in the URL.",
+        "tokens": [
+          "method=\"get\"",
+          "&gt;",
+          "&lt;form",
+          "action=\"index.php/pivot/login\""
+        ],
+        "correctOrder": [
+          "&lt;form",
+          "action=\"index.php/pivot/login\"",
+          "method=\"get\"",
+          "&gt;"
+        ]
+      }
+    },
+    {
+      "id": 5,
+      "title": "Seeing GET's Danger — A Password in Plain Sight",
+      "callback": true,
+      "refSection": 1,
+      "chunks": [
+        {
+          "text": "Take the login form from the earlier lab, switch one attribute to GET, and submit it.",
+          "check": {
+            "question": "Which attribute are you switching?",
+            "options": ["action", "method"],
+            "correct": 1
+          }
+        },
+        {
+          "text": "The password now sits in the address bar for anyone nearby to read, and it gets saved into the browser's history.",
+          "check": {
+            "question": "Where is the password now visible?",
+            "options": ["In the address bar", "In the page source only"],
+            "correct": 0
+          }
+        },
+        {
+          "text": "This is why <span class=\"highlight\">GET is never used for passwords</span>, or for anything that should stay private — framework or no framework.",
+          "check": {
+            "question": "Is GET ever acceptable for a password?",
+            "options": ["Yes, on a local test server", "No, not in any case"],
+            "correct": 1
+          }
+        }
+      ],
+      "quiz": {
+        "type": "mcq",
+        "question": "A login form is submitted. Which machine is able to compare the typed password against the stored one?",
+        "options": [
+          "The browser, before the request leaves",
+          "Both, as long as JavaScript is enabled",
+          "The server, once the request lands",
+          "Neither — the address bar handles it"
+        ],
+        "correct": 2
+      }
+    },
+    {
+      "id": 6,
+      "title": "The POST Method — Data Hides in the Request",
+      "callback": false,
+      "refSection": null,
+      "chunks": [
+        {
+          "text": "Set the method to <span class=\"code-inline\">post</span> instead, and the same fields travel inside the request body.",
+          "check": {
+            "question": "POST carries the fields:",
+            "options": ["inside the request body", "on the end of the URL"],
+            "correct": 0
+          }
+        },
+        {
+          "text": "Submit that form and the address bar stays clean — just <span class=\"code-inline\">index.php/pivot/login</span>, no visible password.",
+          "check": {
+            "question": "After a POST submit, the URL shows:",
+            "options": ["the typed values", "no typed values"],
+            "correct": 1
+          }
+        },
+        {
+          "text": "GET suits a public search box you'd happily share as a link. POST suits passwords and anything private.",
+          "check": {
+            "question": "A public search box is a fair use for:",
+            "options": ["GET", "POST"],
+            "correct": 0
+          }
+        }
+      ],
+      "quiz": {
+        "type": "type",
+        "code": "&lt;form action=\"index.php/pivot/login\" method=\"______\"&gt;",
+        "question": "Type the method value that keeps the typed data out of the URL.",
+        "acceptedAnswers": ["post", "POST", "\"post\"", "method=\"post\""]
+      }
+    },
+    {
+      "id": 7,
+      "title": "CI3's 404 — Proof the Controller Wasn't There",
+      "callback": true,
+      "refSection": 0,
+      "chunks": [
+        {
+          "text": "Point a form's action at a method that doesn't exist yet, like <span class=\"code-inline\">pivot/store</span>, and submit it.",
+          "check": {
+            "question": "At this point, store() is:",
+            "options": ["not written yet", "written in the last lab"],
+            "correct": 0
+          }
+        },
+        {
+          "text": "CI3 answers with its own <span class=\"highlight\">404 error</span> page — and that error is good news.",
+          "check": {
+            "question": "Who produced that 404 page?",
+            "options": ["CI3 on the server", "The browser offline"],
+            "correct": 0
+          }
+        },
+        {
+          "text": "A 404 means \"I looked, and found nothing to run.\" The trip worked; the destination just isn't built yet.",
+          "check": {
+            "question": "A 404 tells you the request:",
+            "options": ["never reached the server", "reached CI3 and found nothing"],
+            "correct": 1
+          }
+        }
+      ],
+      "quiz": {
+        "type": "mcq",
+        "code": "&lt;form action=\"index.php/orders/save\" method=\"post\"&gt;",
+        "question": "This form is submitted and CI3 answers with a 404. Which part of the tag points at the missing destination?",
+        "options": [
+          "The method value — it names how to send",
+          "The action value — it names where to send",
+          "The form tag itself — it blocks submission",
+          "The submit button — it picks the controller"
+        ],
+        "correct": 1
+      }
+    },
+    {
+      "id": 8,
+      "title": "Reading Segments Wrong — Controller vs Method Typos",
+      "callback": false,
+      "refSection": null,
+      "chunks": [
+        {
+          "text": "Misspell the <strong>method</strong> segment, like <span class=\"code-inline\">pivot/helo</span>, and CI3 still finds the Pivot controller.",
+          "check": {
+            "question": "In that typo, what is still found?",
+            "options": ["The controller", "The method"],
+            "correct": 0
+          }
+        },
+        {
+          "text": "Misspell the <strong>controller</strong> segment instead, like <span class=\"code-inline\">pivott/store</span>, and CI3 never finds a matching class.",
+          "check": {
+            "question": "With pivott/store, CI3 finds:",
+            "options": ["the class, but no methods", "no matching class at all"],
+            "correct": 1
+          }
+        },
+        {
+          "text": "Both mistakes end on the same 404 page — one is a missing method, the other a missing class.",
+          "check": {
+            "question": "On screen, the two errors look:",
+            "options": ["clearly different", "the same"],
+            "correct": 1
+          }
+        }
+      ],
+      "quiz": {
+        "type": "arrange",
+        "question": "Arrange the tokens in the order CI3 uses them to find your code.",
+        "tokens": [
+          "read the second segment",
+          "load the matching controller class",
+          "call the matching method",
+          "read the first segment"
+        ],
+        "correctOrder": [
+          "read the first segment",
+          "load the matching controller class",
+          "read the second segment",
+          "call the matching method"
+        ]
+      }
+    },
+    {
+      "id": 9,
+      "title": "Catching the Request for Real",
+      "callback": true,
+      "refSection": "4 & 6",
+      "chunks": [
+        {
+          "text": "Build <span class=\"code-inline\">store()</span> inside Pivot.php for real, with one line: <span class=\"code-inline\">print_r($this-&gt;input-&gt;post());</span>",
+          "check": {
+            "question": "That one line will:",
+            "options": ["print the submitted fields", "save them to the database"],
+            "correct": 0
+          }
+        },
+        {
+          "text": "Submit the form now and the page prints every field you typed, labeled by its <span class=\"highlight\">name</span> attribute.",
+          "check": {
+            "question": "The array keys come from each input's:",
+            "options": ["id attribute", "name attribute"],
+            "correct": 1
+          }
+        },
+        {
+          "text": "<span class=\"code-inline\">$this-&gt;input-&gt;post()</span> is CI3's own way of reading $_POST — no name attribute, no entry in the array.",
+          "check": {
+            "question": "An input with no name attribute is:",
+            "options": ["still sent as usual", "left out of the array"],
+            "correct": 1
+          }
+        }
+      ],
+      "quiz": {
+        "type": "mcq",
+        "question": "A form sends a username and password to store(). Afterwards the address bar reads index.php/pivot/store, with nothing after it. Which method did the form use, and why?",
+        "options": [
+          "get — the browser clears the address bar",
+          "post — CI3 hides the URL after a submit",
+          "post — the fields ride in the body",
+          "get — the fields are stripped out by CI3"
+        ],
+        "correct": 2
+      }
+    }
+  ]
+}

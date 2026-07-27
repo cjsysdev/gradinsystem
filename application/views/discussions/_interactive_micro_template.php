@@ -55,6 +55,35 @@
  * from a per-screen results map rather than incremented in place, so
  * Back-navigation can't double-count — the Back button is therefore
  * always available, not just on retakes.
+ *
+ * GROUP MODE
+ * ──────────────────────────────────────────────────────────────
+ * Set by GroupWorkController::_render_group_iq() for a grouping
+ * assessment. Unlike the sibling discussion template (where every
+ * member answers independently and races are tolerated), this format
+ * has a stricter rule: only ONE member — the "driver" — may answer or
+ * navigate at any time. Everyone else watches read-only. The group
+ * picks who starts (a picker modal at load), and the driver can hand
+ * control to a teammate at any point via "Pass to...". This sidesteps
+ * syncing a free-typed `type` answer keystroke-by-keystroke — the
+ * driver simply types, and the answer syncs once on Submit, same as
+ * every other answer shape here.
+ *
+ * Shared blob (assessment_live_state.content, whole-blob save_draft path):
+ *   {
+ *     "v": 12, "by": "<student_id>", "driver": "<student_id>|null",
+ *     "currentScreen": 7, "finished": false,
+ *     "answers": {
+ *       "0:0": { "sel": 1 },              // section 0, chunk 0 (micro-check)
+ *       "0:q": { "sel": 0 },              // section 0 checkpoint (mcq)
+ *       "1:q": { "built": [1,3,0,2] },    // section 1 checkpoint (arrange) — token indices
+ *       "2:q": { "text": "CI_Controller" } // section 2 checkpoint (type)
+ *     }
+ *   }
+ * Keys are "{sectionIndex}:{chunkIndex}" / "{sectionIndex}:q" — stable
+ * regardless of the objectives/recap screens the client flattens
+ * sections into, and reconstructible server-side by walking
+ * topic_data.sections the same way (GroupWorkController::_grade_micro_blob()).
  * ──────────────────────────────────────────────────────────────
  */
 
@@ -76,6 +105,22 @@ $previous_answers  = $previous_answers ?? [];
 $sections_json   = json_encode($topic_data['sections']   ?? [], JSON_HEX_TAG | JSON_HEX_AMP);
 $objectives_json = json_encode($topic_data['objectives'] ?? [], JSON_HEX_TAG | JSON_HEX_AMP);
 $recap_json      = json_encode($topic_data['recap']      ?? [], JSON_HEX_TAG | JSON_HEX_AMP);
+
+// ── Group (shared/synced, single-driver) mode ────────────────────
+// Set by GroupWorkController::_render_group_iq(). See docblock above.
+$group_mode       = !empty($group_mode);
+$group            = $group ?? null;
+$group_members    = $group_members ?? [];
+$state_content    = $state_content ?? '';
+$state_updated_at = $state_updated_at ?? '';
+$my_student_id = isset($student_id) ? (string) $student_id : '';
+$group_name    = $group['group_name'] ?? '';
+$group_member_js = array_map(function ($m) {
+    return [
+        'id'   => (string) $m['student_id'],
+        'name' => trim(($m['firstname'] ?? '') . ' ' . ($m['lastname'] ?? '')),
+    ];
+}, $group_members);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -85,6 +130,26 @@ $recap_json      = json_encode($topic_data['recap']      ?? [], JSON_HEX_TAG | J
     <title><?= $title ?> - Interactive Learning</title>
     <link rel="stylesheet" href="<?= base_url('assets/interactive-quiz-style.css') ?>">
     <link rel="stylesheet" href="<?= base_url('assets/interactive-micro-style.css') ?>">
+    <?php if ($group_mode): ?>
+    <style>
+        .group-bar { display:flex; flex-wrap:wrap; gap:6px; align-items:center; justify-content:center;
+            padding:6px 10px; background:rgba(53,122,189,0.10); border-bottom:1px solid rgba(53,122,189,0.2); }
+        .group-bar .group-label { font-size:12px; font-weight:700; color:#357abd; margin-right:4px; }
+        .group-bar .group-chip { font-size:12px; background:#357abd; color:#fff; border-radius:12px; padding:2px 10px; }
+        .group-bar .group-chip-driver { background:#e08a00; }
+        .iq-spectator .options .option,
+        .iq-spectator .token-pool .token-chip,
+        .iq-spectator .built-row .built-chip,
+        .iq-spectator .type-input,
+        .iq-spectator .arrange-actions .btn-clear-tokens {
+            pointer-events: none;
+            opacity: 0.55;
+        }
+        .driver-list { display:flex; flex-direction:column; gap:6px; margin-top:1rem; }
+        .driver-list .congrats-button { width:100%; }
+        #passBtn, #takeoverBtn { background:transparent; border:2px solid #357abd; color:#357abd; }
+    </style>
+    <?php endif; ?>
 </head>
 <body>
     <div class="container">
@@ -102,6 +167,10 @@ $recap_json      = json_encode($topic_data['recap']      ?? [], JSON_HEX_TAG | J
                 </div>
             </div>
         </div>
+
+        <?php if ($group_mode): ?>
+            <div class="group-bar" id="groupBar"></div>
+        <?php endif; ?>
 
         <?php if ($already_submitted): ?>
             <div class="already-submitted-banner">
@@ -129,6 +198,10 @@ $recap_json      = json_encode($topic_data['recap']      ?? [], JSON_HEX_TAG | J
         <!-- Button Section -->
         <div class="button-section">
             <button class="btn-back" id="backBtn" onclick="previousScreen()">&#x2190; Back</button>
+            <?php if ($group_mode): ?>
+            <button class="btn-back" id="passBtn" onclick="openDriverPicker(false)" style="display:none;">Pass to&hellip;</button>
+            <button class="btn-back" id="takeoverBtn" onclick="claimTakeover()" style="display:none;">Take over</button>
+            <?php endif; ?>
             <button class="btn-submit" id="submitBtn" onclick="submitAnswer()">Submit</button>
         </div>
     </div>
@@ -162,6 +235,15 @@ $recap_json      = json_encode($topic_data['recap']      ?? [], JSON_HEX_TAG | J
         <button class="congrats-button" style="background:transparent; border:2px solid #357abd; color:#357abd; margin-top:0.75rem;" onclick="exportMicroImage()">Save as Image</button>
     </div>
 
+    <?php if ($group_mode): ?>
+    <div class="modal-backdrop" id="driverBackdrop"></div>
+    <div class="congrats-modal" id="driverModal">
+        <div class="congrats-title">Who answers first?</div>
+        <div class="congrats-text">Pick one teammate to control this quiz. Control can be passed to someone else at any time.</div>
+        <div class="driver-list" id="driverList"></div>
+    </div>
+    <?php endif; ?>
+
     <script src="<?= base_url('assets/html2canvas.min.js') ?>"></script>
 
     <script>
@@ -176,6 +258,13 @@ $recap_json      = json_encode($topic_data['recap']      ?? [], JSON_HEX_TAG | J
         const PREVIOUS_SCORE    = <?= json_encode($previous_score) ?>;
         const ALREADY_SUBMITTED = <?= $already_submitted ? 'true' : 'false' ?>;
         const TOPICS_URL        = <?= json_encode(base_url('classwork')) ?>;
+
+        // ── Group mode (shared/synced, single-driver play) ───────────
+        const GROUP_MODE    = <?= $group_mode ? 'true' : 'false' ?>;
+        const GROUP_NAME    = <?= json_encode($group_name) ?>;
+        const MY_STUDENT_ID = <?= json_encode($my_student_id) ?>;
+        const GROUP_MEMBERS = <?= json_encode($group_member_js) ?>;
+        const GROUP_STATE_INIT = <?= ($group_mode && $state_content !== '' && json_decode($state_content) !== null) ? $state_content : 'null' ?>;
 
         // ── Flatten sections into a linear screen list ──────────────
         // objectives -> [chunk, chunk, ... , checkpoint] per section -> recap.
@@ -200,6 +289,21 @@ $recap_json      = json_encode($topic_data['recap']      ?? [], JSON_HEX_TAG | J
         });
         screens.push({ kind: 'recap', graded: false, items: RECAP });
 
+        // Reverse lookup: shared-blob answer key -> screen index. Built once —
+        // objectives/recap screens have no key (ungraded, never in `answers`).
+        const screenIndexByKey = {};
+        screens.forEach((s, i) => {
+            if (s.kind === 'micro') screenIndexByKey[s.si + ':' + (s.chunkNum - 1)] = i;
+            else if (s.kind === 'checkpoint') screenIndexByKey[s.si + ':q'] = i;
+        });
+        function answerKeyFor(screenIdx) {
+            const s = screens[screenIdx];
+            return s.kind === 'micro' ? (s.si + ':' + (s.chunkNum - 1)) : (s.si + ':q');
+        }
+        function screenIndexForKey(key) {
+            return screenIndexByKey.hasOwnProperty(key) ? screenIndexByKey[key] : -1;
+        }
+
         // ── State ───────────────────────────────────────────────────
         // results[screenIndex] is the single source of truth for the score —
         // it is never mutated once written, and score/streak are recomputed
@@ -218,6 +322,29 @@ $recap_json      = json_encode($topic_data['recap']      ?? [], JSON_HEX_TAG | J
         let usedTokenFlags = [];
 
         const recordedScreens = new Set(); // record_attempt de-dupe
+
+        // ── Group sync state ────────────────────────────────────────
+        let groupState = {
+            v: 0, driver: null, currentScreen: 0, finished: false, by: MY_STUDENT_ID, answers: {}
+        };
+        let lastRemoteV      = 0;
+        let applyingRemote   = false;
+        let groupPollTimer   = null;
+        let lastVersion      = <?= json_encode((string) $state_updated_at) ?>;
+        let groupPollCount   = 0;
+        let pushInFlight     = false;
+        let pushDirty        = false;
+        let pushRetryDelay   = 2000;
+        let lastStateChangeAt = Date.now();
+
+        function isDriver() {
+            return GROUP_MODE && !!groupState.driver && groupState.driver === MY_STUDENT_ID;
+        }
+
+        // Only the driver may answer or navigate; everyone else watches.
+        function canAnswer() {
+            return !GROUP_MODE || isDriver();
+        }
 
         // ── Helpers ─────────────────────────────────────────────────
         function escapeHtml(str) {
@@ -252,15 +379,22 @@ $recap_json      = json_encode($topic_data['recap']      ?? [], JSON_HEX_TAG | J
         }
 
         // Shuffled once per screen and cached — going Back must show the same
-        // option order the answer was recorded against.
+        // option order the answer was recorded against. Group mode keeps a
+        // deterministic (unshuffled) order instead — every member must see the
+        // same options, and answers are graded server-side against the
+        // original array index (GroupWorkController::_grade_micro_blob()).
         function optionsFor(screenIdx, options, correctIndex) {
             if (!shuffleCache[screenIdx]) {
-                const tagged   = options.map((text, i) => ({ text, originalIndex: i }));
-                const shuffled = shuffleArray(tagged);
-                shuffleCache[screenIdx] = {
-                    options:      shuffled.map(o => o.text),
-                    correctIndex: shuffled.findIndex(o => o.originalIndex === correctIndex)
-                };
+                if (GROUP_MODE) {
+                    shuffleCache[screenIdx] = { options: [...options], correctIndex };
+                } else {
+                    const tagged   = options.map((text, i) => ({ text, originalIndex: i }));
+                    const shuffled = shuffleArray(tagged);
+                    shuffleCache[screenIdx] = {
+                        options:      shuffled.map(o => o.text),
+                        correctIndex: shuffled.findIndex(o => o.originalIndex === correctIndex)
+                    };
+                }
             }
             return shuffleCache[screenIdx];
         }
@@ -381,7 +515,7 @@ $recap_json      = json_encode($topic_data['recap']      ?? [], JSON_HEX_TAG | J
                 chip.textContent = tok;
                 chip.dataset.idx = idx;
                 chip.onclick     = () => {
-                    if (results[currentScreen] || usedTokenFlags[idx]) return;
+                    if (results[currentScreen] || usedTokenFlags[idx] || !canAnswer()) return;
                     enterFullscreen();
                     usedTokenFlags[idx] = true;
                     chip.classList.add('used');
@@ -392,7 +526,7 @@ $recap_json      = json_encode($topic_data['recap']      ?? [], JSON_HEX_TAG | J
             });
 
             document.getElementById('clearTokensBtn').onclick = () => {
-                if (results[currentScreen]) return;
+                if (results[currentScreen] || !canAnswer()) return;
                 builtTokens = [];
                 usedTokenFlags.fill(false);
                 document.querySelectorAll('.token-chip').forEach(c => c.classList.remove('used'));
@@ -417,7 +551,7 @@ $recap_json      = json_encode($topic_data['recap']      ?? [], JSON_HEX_TAG | J
                 chip.className   = 'built-chip';
                 chip.textContent = t.text;
                 chip.onclick     = () => {
-                    if (results[currentScreen]) return;
+                    if (results[currentScreen] || !canAnswer()) return;
                     builtTokens.splice(pos, 1);
                     usedTokenFlags[t.idx] = false;
                     const poolChip = document.querySelector(`.token-chip[data-idx="${t.idx}"]`);
@@ -430,7 +564,7 @@ $recap_json      = json_encode($topic_data['recap']      ?? [], JSON_HEX_TAG | J
 
         function renderTypeInput() {
             document.getElementById('answerArea').innerHTML =
-                `<input type="text" class="type-input" id="typeInput" placeholder="Type your answer..." autocomplete="off">`;
+                `<input type="text" class="type-input" id="typeInput" placeholder="Type your answer..." autocomplete="off"${canAnswer() ? '' : ' readonly'}>`;
             const input = document.getElementById('typeInput');
             input.addEventListener('focus', enterFullscreen);
             input.addEventListener('keydown', e => {
@@ -440,7 +574,7 @@ $recap_json      = json_encode($topic_data['recap']      ?? [], JSON_HEX_TAG | J
 
         // ── Interaction ─────────────────────────────────────────────
         function selectOption(index) {
-            if (results[currentScreen]) return;
+            if (results[currentScreen] || !canAnswer()) return;
             enterFullscreen();
             document.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
             const el = document.querySelector(`.option[data-index="${index}"]`);
@@ -448,39 +582,57 @@ $recap_json      = json_encode($topic_data['recap']      ?? [], JSON_HEX_TAG | J
             selectedOption = index;
         }
 
-        function submitAnswer() {
-            const s = screens[currentScreen];
+        // Builds the raw answer record from whatever the current screen's live
+        // input is — shape depends on the checkpoint/micro-check type. Also
+        // what gets stored in groupState.answers[key] for group-mode sync.
+        function buildRawAnswer(type) {
+            if (type === 'arrange') {
+                return { built: builtTokens.map(t => t.idx) };
+            }
+            if (type === 'type') {
+                return { text: document.getElementById('typeInput').value };
+            }
+            return { sel: selectedOption };
+        }
 
-            // Ungraded screens and already-answered screens are just "Next".
-            if (!s.graded || results[currentScreen]) { nextScreen(); return; }
-
+        // Grades a raw answer (local or synced from a group teammate) against
+        // the topic JSON — single implementation shared by the driver's own
+        // submit and by rebuilding results{} from a synced groupState.answers
+        // entry, so local and remote answers are scored identically.
+        function gradeAnswer(screenIdx, raw) {
+            const s    = screens[screenIdx];
             const type = itemTypeOf(s);
-            let correct, chosen, correctAnswer;
+            const q    = currentQuestion(s);
+            let correct, chosen, correctAnswer, selected = null, built = [];
 
             if (type === 'arrange') {
-                if (!builtTokens.length) { alert('Arrange the tokens first!'); return; }
-                const built   = builtTokens.map(t => t.text);
-                const expected = s.quiz.correctOrder || [];
-                correct       = JSON.stringify(built) === JSON.stringify(expected);
-                chosen        = built.join(' ');
+                const tokens    = q.tokens || [];
+                built           = raw.built || [];
+                const builtText = built.map(i => tokens[i]);
+                const expected  = q.correctOrder || [];
+                correct       = builtText.length > 0 && JSON.stringify(builtText) === JSON.stringify(expected);
+                chosen        = builtText.join(' ');
                 correctAnswer = expected.join(' ');
             } else if (type === 'type') {
-                const val = document.getElementById('typeInput').value;
-                if (!val.trim()) { alert('Type your answer first!'); return; }
-                const accepted = s.quiz.acceptedAnswers || [];
+                const val      = raw.text || '';
+                const accepted = q.acceptedAnswers || [];
                 correct       = accepted.some(a => normalize(a) === normalize(val));
                 chosen        = val.trim();
                 correctAnswer = accepted[0] || '';
             } else {
-                if (selectedOption === null) { alert('Please select an option!'); return; }
-                const cache   = shuffleCache[currentScreen];
-                correct       = selectedOption === cache.correctIndex;
-                chosen        = cache.options[selectedOption];
-                correctAnswer = cache.options[cache.correctIndex];
+                // GROUP_MODE never shuffles (see optionsFor()), so grading can
+                // always use the raw authored array + index — no dependency on
+                // shuffleCache existing for a screen the viewer hasn't rendered.
+                const options    = GROUP_MODE ? (q.options || []) : optionsFor(screenIdx, q.options, q.correct).options;
+                const correctIdx = GROUP_MODE ? q.correct : optionsFor(screenIdx, q.options, q.correct).correctIndex;
+                selected      = typeof raw.sel === 'number' ? raw.sel : -1;
+                correct       = selected >= 0 && selected === correctIdx;
+                chosen        = (selected >= 0 && options[selected] !== undefined) ? options[selected] : '';
+                correctAnswer = options[correctIdx];
+                selected      = selected >= 0 ? selected : null;
             }
 
-            const q = currentQuestion(s);
-            results[currentScreen] = {
+            return {
                 kind:           s.kind,
                 section:        s.si,
                 section_title:  s.sectionTitle,
@@ -488,19 +640,48 @@ $recap_json      = json_encode($topic_data['recap']      ?? [], JSON_HEX_TAG | J
                 chosen:         chosen,
                 correct_answer: correctAnswer,
                 is_correct:     correct,
-                selected:       selectedOption,
-                built:          builtTokens.map(t => t.idx)
+                selected:       selected,
+                built:          built
             };
+        }
 
+        function submitAnswer() {
+            const s = screens[currentScreen];
+
+            // Ungraded screens and already-answered screens are just "Next".
+            if (!s.graded || results[currentScreen]) { nextScreen(); return; }
+            if (!canAnswer()) return; // spectators can't answer in group mode
+
+            const type = itemTypeOf(s);
+
+            if (type === 'arrange' && !builtTokens.length) { alert('Arrange the tokens first!'); return; }
+            if (type === 'type' && !document.getElementById('typeInput').value.trim()) { alert('Type your answer first!'); return; }
+            if (type !== 'arrange' && type !== 'type' && selectedOption === null) { alert('Please select an option!'); return; }
+
+            const raw = buildRawAnswer(type);
+            recordResult(currentScreen, raw);
+
+            if (GROUP_MODE) {
+                groupState.answers[answerKeyFor(currentScreen)] = raw;
+                pushGroupState();
+            }
+        }
+
+        // Applies a graded answer to results{}/score/streak/UI — used both by
+        // the driver's own submit and (without the group push) implicitly via
+        // applyGroupState()'s results-rebuild loop.
+        function recordResult(screenIdx, raw) {
+            results[screenIdx] = gradeAnswer(screenIdx, raw);
             recomputeStats();
-            applyRecordedResult(currentScreen);
-            recordAttempt(currentScreen);
+            applyRecordedResult(screenIdx);
+            recordAttempt(screenIdx);
             updateUI();
 
-            if (correct && currentStreak() > 0 && currentStreak() % 3 === 0) {
+            const r = results[screenIdx];
+            if (r.is_correct && currentStreak() > 0 && currentStreak() % 3 === 0) {
                 streakHighlight = true;
                 showStreakPopup(currentStreak());
-            } else if (!correct) {
+            } else if (!r.is_correct) {
                 streakHighlight = false;
             }
         }
@@ -591,8 +772,13 @@ $recap_json      = json_encode($topic_data['recap']      ?? [], JSON_HEX_TAG | J
         // Only 4-option checkpoint MCQs are reported: the analytics/
         // discussion_results views chart a per-section choice distribution
         // against section.quiz.options, which arrange/type items don't have,
-        // and micro-checks are formative rather than assessed.
+        // and micro-checks are formative rather than assessed. Skipped
+        // entirely in group mode — only the driver ever answers, so unlike
+        // the sibling template there's no multi-member duplicate-firing
+        // problem, but a shared group attempt still isn't a meaningful
+        // per-student analytics row.
         function recordAttempt(idx) {
+            if (GROUP_MODE) return;
             const s = screens[idx];
             const r = results[idx];
             if (!TOPIC_SLUG || recordedScreens.has(idx)) return;
@@ -627,6 +813,9 @@ $recap_json      = json_encode($topic_data['recap']      ?? [], JSON_HEX_TAG | J
             }, 1500);
         }
 
+        // fromRemote finishes (a teammate's finish synced to us) show the modal
+        // without re-submitting — isDriver() is false for a spectator here, so
+        // the group-mode branch below never double-submits.
         function showCongratsModal() {
             congratsShown = true;
             document.getElementById('finalScore').textContent = score;
@@ -634,13 +823,26 @@ $recap_json      = json_encode($topic_data['recap']      ?? [], JSON_HEX_TAG | J
             document.getElementById('congratsModal').classList.add('show');
             document.getElementById('congratsBackdrop').classList.add('show');
 
-            // save_result() records the FIRST completion only — a retake posts
-            // but is refused server-side, so this needs no client-side guard.
+            if (GROUP_MODE) {
+                if (isDriver()) {
+                    // Persist the finished state and grade it in ONE request —
+                    // mirrors the sibling template's same-request save+grade,
+                    // so an in-flight autosave can't race the submit.
+                    groupState.finished = true;
+                    gsSyncFromLive();
+                    groupState.v = Math.max(groupState.v, lastRemoteV) + 1;
+                    lastRemoteV  = groupState.v;
+                    submitGroupIq(0);
+                }
+                return;
+            }
+
+            // Save classwork score if this discussion is linked to an assessment
             if (ASSESSMENT_ID) {
                 fetch(BASE_URL + 'interactive_quiz/save_result', {
                     method: 'POST',
                     headers: {
-                        'Content-Type':     'application/x-www-form-urlencoded',
+                        'Content-Type': 'application/x-www-form-urlencoded',
                         'X-Requested-With': 'XMLHttpRequest'
                     },
                     body: new URLSearchParams({
@@ -657,20 +859,29 @@ $recap_json      = json_encode($topic_data['recap']      ?? [], JSON_HEX_TAG | J
         }
 
         // ── Navigation ──────────────────────────────────────────────
+        // Only the driver may advance/rewind the shared screen in group mode.
         function nextScreen() {
+            if (GROUP_MODE && !isDriver()) return;
             if (currentScreen < screens.length - 1) {
                 currentScreen++;
                 renderScreen();
+                if (GROUP_MODE) pushGroupState();
             } else {
                 showCongratsModal();
             }
         }
 
         function previousScreen() {
-            if (currentScreen > 0) { currentScreen--; renderScreen(); }
+            if (GROUP_MODE && !isDriver()) return;
+            if (currentScreen > 0) {
+                currentScreen--;
+                renderScreen();
+                if (GROUP_MODE) pushGroupState();
+            }
         }
 
         function restartQuiz() {
+            if (GROUP_MODE && !isDriver()) return;
             currentScreen   = 0;
             results         = {};
             shuffleCache    = {};
@@ -681,6 +892,11 @@ $recap_json      = json_encode($topic_data['recap']      ?? [], JSON_HEX_TAG | J
             recordedScreens.clear();
             document.getElementById('congratsModal').classList.remove('show');
             document.getElementById('congratsBackdrop').classList.remove('show');
+            if (GROUP_MODE) {
+                groupState.answers  = {};
+                groupState.finished = false;
+                pushGroupState();
+            }
             renderScreen();
         }
 
@@ -692,19 +908,36 @@ $recap_json      = json_encode($topic_data['recap']      ?? [], JSON_HEX_TAG | J
             fill.style.width = `${((currentScreen + 1) / screens.length) * 100}%`;
             fill.classList.toggle('streak-active', streakHighlight);
 
-            document.getElementById('backBtn').disabled = currentScreen === 0;
-
             const s      = screens[currentScreen];
             const isLast = currentScreen === screens.length - 1;
             const btn    = document.getElementById('submitBtn');
+            const backBtn = document.getElementById('backBtn');
 
-            if (s.kind === 'objectives') {
-                btn.textContent = "Let's Begin →";
-            } else if (!s.graded || results[currentScreen]) {
-                btn.textContent = isLast ? 'Finish' : 'Next →';
+            const spectating = GROUP_MODE && !isDriver();
+            document.getElementById('contentWrapper').classList.toggle('iq-spectator', spectating);
+            backBtn.disabled = currentScreen === 0 || spectating;
+
+            if (GROUP_MODE && !groupState.driver) {
+                // Nobody's picked a driver yet — the picker modal is the only
+                // way forward, so the button underneath must not act as a
+                // bypass around it.
+                btn.disabled    = true;
+                btn.textContent = 'Choose who answers first…';
+            } else if (spectating) {
+                btn.disabled    = true;
+                btn.textContent = 'Waiting for ' + driverDisplayName() + '…';
             } else {
-                btn.textContent = 'Submit';
+                btn.disabled = false;
+                if (s.kind === 'objectives') {
+                    btn.textContent = "Let's Begin →";
+                } else if (!s.graded || results[currentScreen]) {
+                    btn.textContent = isLast ? 'Finish' : 'Next →';
+                } else {
+                    btn.textContent = 'Submit';
+                }
             }
+
+            if (GROUP_MODE) updateDriverControlsUI();
         }
 
         // ── Fullscreen / exit ───────────────────────────────────────
@@ -782,7 +1015,226 @@ $recap_json      = json_encode($topic_data['recap']      ?? [], JSON_HEX_TAG | J
             });
         }
 
-        window.addEventListener('load', renderScreen);
+        // ── Group sync (single-driver shared state) ──────────────────
+        function gsSyncFromLive() {
+            groupState.currentScreen = currentScreen;
+            groupState.by            = MY_STUDENT_ID;
+        }
+
+        // force=true bypasses the isDriver() gate — needed for claiming/passing
+        // control itself, which by definition happens before (or instead of)
+        // the caller being the current driver.
+        function pushGroupState(force) {
+            if (!GROUP_MODE || applyingRemote) return;
+            if (!force && !isDriver()) return;
+            gsSyncFromLive();
+            groupState.v = Math.max(groupState.v, lastRemoteV) + 1;
+            lastRemoteV  = groupState.v;
+            sendGroupState();
+        }
+
+        // One push in flight at a time; a failed push retries with backoff
+        // instead of silently losing the answer on a flaky WLAN.
+        function sendGroupState() {
+            if (pushInFlight) { pushDirty = true; return; }
+            pushInFlight = true;
+            fetch(BASE_URL + 'GroupWorkController/save_draft/' + ASSESSMENT_ID, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'content=' + encodeURIComponent(JSON.stringify(groupState))
+            })
+            .then(r => r.json())
+            .then(d => {
+                pushInFlight = false;
+                if (!d || !d.ok) throw new Error('save failed');
+                pushRetryDelay = 2000;
+                if (d.updated_at) lastVersion = d.updated_at;
+                if (pushDirty) { pushDirty = false; sendGroupState(); }
+            })
+            .catch(() => {
+                pushInFlight = false;
+                pushDirty    = false; // the retry resends the latest state anyway
+                setTimeout(sendGroupState, pushRetryDelay);
+                pushRetryDelay = Math.min(pushRetryDelay * 2, 8000);
+            });
+        }
+
+        // Records the group's score — retried up to 3 times because this is
+        // the one request that must not fail silently.
+        function submitGroupIq(attempt) {
+            fetch(BASE_URL + 'GroupWorkController/submit_group_iq/' + ASSESSMENT_ID, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: 'content=' + encodeURIComponent(JSON.stringify(groupState))
+            })
+            .then(r => r.json())
+            .then(d => {
+                if (!d || !d.success) throw new Error('submit failed');
+                if (typeof d.score !== 'undefined') {
+                    document.getElementById('finalScore').textContent = d.score;
+                }
+            })
+            .catch(() => {
+                if (attempt < 3) {
+                    setTimeout(() => submitGroupIq(attempt + 1), 2000 * Math.pow(2, attempt));
+                } else {
+                    alert('Could not record the group score — check your connection and tell your teacher before closing this page.');
+                }
+            });
+        }
+
+        function pollGroupState() {
+            if (!GROUP_MODE) return;
+            groupPollCount++;
+            let url = BASE_URL + 'GroupWorkController/state/' + ASSESSMENT_ID + '?bare=1';
+            if (groupPollCount % 8 !== 0) {
+                url += '&since=' + encodeURIComponent(lastVersion);
+            }
+            fetch(url)
+                .then(r => r.json())
+                .then(d => {
+                    if (!d || !d.ok) return;
+                    if (d.updated_at) lastVersion = d.updated_at;
+                    if (d.content_changed === false || !d.content) return;
+                    let remote;
+                    try { remote = JSON.parse(d.content); } catch (e) { return; }
+                    if (!remote || typeof remote.v !== 'number') return;
+                    if (remote.v > groupState.v) applyGroupState(remote);
+                })
+                .catch(() => {});
+        }
+
+        function applyGroupState(remote) {
+            applyingRemote    = true;
+            lastRemoteV       = remote.v;
+            lastStateChangeAt = Date.now();
+            groupState        = remote;
+            if (!groupState.answers) groupState.answers = {};
+
+            // Rebuild results{} from every recorded answer so recomputeStats()
+            // and applyRecordedResult() work identically for the driver and
+            // spectators — one grading implementation, applied to both the
+            // local live submit and every synced remote answer.
+            Object.keys(groupState.answers).forEach(key => {
+                const idx = screenIndexForKey(key);
+                if (idx !== -1 && !results[idx]) {
+                    results[idx] = gradeAnswer(idx, groupState.answers[key]);
+                }
+            });
+            recomputeStats();
+
+            if (groupState.driver) hideDriverPicker();
+
+            if (groupState.currentScreen !== currentScreen) {
+                currentScreen = groupState.currentScreen;
+                renderScreen();
+            } else {
+                if (results[currentScreen]) applyRecordedResult(currentScreen);
+                updateUI();
+            }
+
+            renderGroupBar();
+
+            if (groupState.finished && !congratsShown) {
+                showCongratsModal();
+            }
+            applyingRemote = false;
+        }
+
+        function renderGroupBar() {
+            const bar = document.getElementById('groupBar');
+            if (!bar) return;
+            const chips = GROUP_MEMBERS.map(m => {
+                const isD = groupState.driver === m.id;
+                return `<span class="group-chip${isD ? ' group-chip-driver' : ''}">${String(m.name || '').replace(/[<>&]/g, '')}${isD ? ' &#9998;' : ''}</span>`;
+            }).join('');
+            bar.innerHTML = `<span class="group-label">&#128101; ${String(GROUP_NAME).replace(/[<>&]/g, '')}</span>` + chips;
+        }
+
+        function driverDisplayName() {
+            const m = GROUP_MEMBERS.find(x => x.id === groupState.driver);
+            return m ? m.name : 'your teammate';
+        }
+
+        // isInitial=true: the group hasn't picked a driver yet (no Cancel —
+        // someone must pick). isInitial=false: the current driver is passing
+        // control on ("Pass to..." — Cancel returns without changing anything).
+        function openDriverPicker(isInitial) {
+            const list = document.getElementById('driverList');
+            list.innerHTML = '';
+            GROUP_MEMBERS.forEach(m => {
+                const btn = document.createElement('button');
+                btn.className   = 'congrats-button';
+                btn.textContent = m.name + (m.id === MY_STUDENT_ID ? ' (you)' : '');
+                btn.onclick = () => claimDriver(m.id);
+                list.appendChild(btn);
+            });
+            if (!isInitial) {
+                const cancel = document.createElement('button');
+                cancel.className   = 'congrats-button';
+                cancel.style.cssText = 'background:transparent; border:2px solid #357abd; color:#357abd;';
+                cancel.textContent  = 'Cancel';
+                cancel.onclick = hideDriverPicker;
+                list.appendChild(cancel);
+            }
+            document.getElementById('driverModal').classList.add('show');
+            document.getElementById('driverBackdrop').classList.add('show');
+        }
+
+        function hideDriverPicker() {
+            document.getElementById('driverModal').classList.remove('show');
+            document.getElementById('driverBackdrop').classList.remove('show');
+        }
+
+        function claimDriver(studentId) {
+            groupState.driver = studentId;
+            pushGroupState(true);
+            hideDriverPicker();
+            renderGroupBar();
+            updateUI();
+        }
+
+        // Safety valve for a disconnected/absent driver: any teammate can take
+        // over once the shared state has sat unchanged for 45s.
+        function claimTakeover() {
+            groupState.driver = MY_STUDENT_ID;
+            pushGroupState(true);
+            renderGroupBar();
+            updateUI();
+        }
+
+        function updateDriverControlsUI() {
+            const passBtn     = document.getElementById('passBtn');
+            const takeoverBtn = document.getElementById('takeoverBtn');
+            if (!passBtn || !takeoverBtn) return;
+
+            passBtn.style.display = isDriver() ? '' : 'none';
+
+            const stale = groupState.driver && !isDriver()
+                && (Date.now() - lastStateChangeAt) > 45000;
+            takeoverBtn.style.display = stale ? '' : 'none';
+        }
+
+        window.addEventListener('load', function () {
+            renderScreen();
+
+            if (GROUP_MODE) {
+                renderGroupBar();
+                // Sync to the group's progress so far (a late joiner lands here).
+                if (GROUP_STATE_INIT && typeof GROUP_STATE_INIT.v === 'number') {
+                    applyGroupState(GROUP_STATE_INIT);
+                }
+                if (!groupState.driver) {
+                    openDriverPicker(true);
+                }
+                updateUI();
+                groupPollTimer = setInterval(pollGroupState, 1500);
+                setInterval(updateDriverControlsUI, 5000);
+            }
+        });
     </script>
 </body>
 </html>

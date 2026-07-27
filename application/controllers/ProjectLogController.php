@@ -152,14 +152,26 @@ class ProjectLogController extends CI_Controller
     }
 
     // One-time (idempotent) schema setup — run once as admin.
+    // Confirmation + pre-flight backup: see Schema_guard.
     public function install()
     {
         if ($this->session->userdata('role') !== 'admin') {
             redirect('login');
             return;
         }
+
+        $this->load->library('schema_guard');
+        $tables = ['project_logs', 'project_log_groupings'];
+
+        if (!$this->schema_guard->confirmed('Project log tables setup', 'ProjectLogController/install', $tables)) {
+            return;
+        }
+
+        $backup = $this->schema_guard->backup($tables, 'project_log');
         $this->Project_log_model->install();
-        $this->session->set_flashdata('success', 'Project log table ready.');
+
+        $this->session->set_flashdata('success',
+            'Project log table ready.' . ($backup ? ' Backup written to ' . basename($backup) . '.' : ''));
         redirect('project_log');
     }
 

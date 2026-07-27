@@ -73,15 +73,23 @@ class AssessmentController extends CI_Controller
         }
 
         // Microlearning Quiz — same hand-off as iq_discussion, to the denser
-        // chunk/micro-check/checkpoint player. No group mode: unlike
-        // iq_discussion there's no shared-state path for this format yet, so
-        // it always plays solo even on a grouping assessment.
+        // chunk/micro-check/checkpoint player. Same grouping exception as
+        // iq_discussion: a grouping assessment falls through to the
+        // is_groupings block below so the group plays one driver-controlled
+        // shared copy via GroupWorkController::workspace() instead of solo.
         if ($widget && $widget['widget_key'] === 'iq_micro') {
-            $config = json_decode($classwork['given'] ?? '', true) ?: [];
-            $topic  = $config['topic'] ?? '';
-            if ($topic) {
-                redirect('interactive_quiz/micro/' . $topic . '/' . $classwork_id);
-                return;
+            $is_group_iq = false;
+            if (!empty($classwork['is_groupings'])) {
+                $this->load->model('Grouping_model');
+                $is_group_iq = (bool) $this->Grouping_model->get_set_for_assessment($classwork_id);
+            }
+            if (!$is_group_iq) {
+                $config = json_decode($classwork['given'] ?? '', true) ?: [];
+                $topic  = $config['topic'] ?? '';
+                if ($topic) {
+                    redirect('interactive_quiz/micro/' . $topic . '/' . $classwork_id);
+                    return;
+                }
             }
         }
 

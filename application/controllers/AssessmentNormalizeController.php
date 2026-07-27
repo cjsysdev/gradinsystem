@@ -36,6 +36,17 @@ class AssessmentNormalizeController extends CI_Controller
     // immediately after this completes). Take a mysqldump before running.
     public function install()
     {
+        // The single most destructive route in the app — it renames and drops
+        // real tables. It must never be reachable by a bare GET (bookmark,
+        // history entry, prefetch). See Schema_guard.
+        $this->load->library('schema_guard');
+        if (!$this->schema_guard->confirmed(
+                'ASSESSMENTS SCHEMA NORMALIZATION (renames and drops tables — take a mysqldump first)',
+                'AssessmentNormalizeController/install',
+                ['assessments', 'assessment_section', 'assessment_groupings', 'assessment_live_state', 'classworks'])) {
+            return;
+        }
+
         try {
             $log = $this->Assessment_normalize_model->install();
             $this->_render($log, true);

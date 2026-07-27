@@ -13,13 +13,25 @@ class PollController extends CI_Controller
 
     // ── Install ──────────────────────────────────────────────────────────────
 
+    // Confirmation + pre-flight backup: see Schema_guard.
     public function install()
     {
         if ($this->session->role != 'admin') {
             redirect('login');
         }
+
+        $this->load->library('schema_guard');
+        $tables = ['polls', 'poll_questions', 'poll_options', 'poll_responses'];
+
+        if (!$this->schema_guard->confirmed('Poll tables setup', 'PollController/install', $tables)) {
+            return;
+        }
+
+        $backup = $this->schema_guard->backup($tables, 'polls');
         $this->Polls->install();
-        $this->session->set_flashdata('success', 'Poll tables ready.');
+
+        $this->session->set_flashdata('success',
+            'Poll tables ready.' . ($backup ? ' Backup written to ' . basename($backup) . '.' : ''));
         redirect('poll/dashboard');
     }
 

@@ -76,9 +76,23 @@ available. Topic files for both widgets live in the same
 `assets/json/{CLASS}/` library and share one admin Topic dropdown, filtered
 by `AdminController::_iq_topic_format()` ('micro' when any section has
 `chunks`) so neither widget can be pointed at a topic its renderer would
-reject. No group-play mode yet (iq_discussion's `_render_group_iq()` path
-has no equivalent here) — it always plays solo. JSON topic files for this
-format are authored by the `interactive-quiz-microlearning` skill.
+reject. Group play is supported on a grouping assessment (same
+`AssessmentController::assessment_view_code()` fall-through to
+`GroupWorkController::workspace()` as `iq_discussion`, and
+`GroupWorkController::_render_group_iq()` picks this template by
+`widget_key`), but with a deliberately different sync model than
+`iq_discussion`'s free-for-all: only one member (the "driver", chosen via
+an in-template picker modal, transferable anytime via "Pass to...") may
+answer or navigate — everyone else watches read-only. This sidesteps
+syncing the `type` checkpoint's free-typed input keystroke-by-keystroke;
+the driver just types, and it syncs once on Submit like every other answer
+shape. Answers sync through the same whole-blob
+`assessment_live_state`/`save_draft()` path as `iq_discussion`, keyed
+`"{sectionIndex}:{chunkIndex}"` (micro-check) / `"{sectionIndex}:q"`
+(checkpoint) instead of by section index, and are graded server-side by
+`GroupWorkController::_grade_micro_blob()` (never the client) on finish via
+`submit_group_iq()`. JSON topic files for this format are authored by the
+`interactive-quiz-microlearning` skill.
 A fourth widget, **Case Study Worksheet** (`case_study` widget_key, not in
 the original 6-widget plan — see plan doc §4 "Widget I"), covers narrative
 case-study activities (e.g. "Meet Maria the calamansi farmer," Session 1.2):

@@ -1,0 +1,78 @@
+{
+    "meta": {
+        "eyebrow": "WORKSHEET 4 · 45 MINUTES · PRODUCES DOSSIER CHAPTER 4",
+        "title": "Existing Solution Scan",
+        "sub": "You leave this session with: Chapter 4 — proof of what already exists, and whether you still have a project"
+    },
+    "timeline": {
+        "label": "How this session runs",
+        "moves": [
+            { "time": "0–5", "move": "Read the model", "detail": "Read Ch. 4 of the Carmen Market study. Its finding: nothing needed inventing." },
+            { "time": "5–10", "move": "The rule", "detail": "Restate the Non-Invention Rule. Understand what it forbids." },
+            { "time": "10–32", "move": "Hunt", "detail": "Find THREE real existing solutions. Real names. Real sources." },
+            { "time": "32–40", "move": "The verdict", "detail": "Does one of them already solve your problem? Answer honestly." },
+            { "time": "40–43", "move": "Peer check", "detail": "Partner tests whether you searched or just guessed." },
+            { "time": "43–45", "move": "File it", "detail": "Date, initial, file." }
+        ]
+    },
+    "model": {
+        "label": "THE MODEL — how the Carmen Market study did it",
+        "html": "<p><strong>✎ THIS IS THE MOST IMPORTANT WORKSHEET IN THE PACK.</strong> Everything before this was analysis of your own problem. This is the session where you find out whether the world already solved it. Some teams will discover their project is unnecessary. That is not a disaster — that is the single most useful thing this course can teach you, and there is a fully-credited path forward for it in Step 3.</p><p>They found four: GCash/Maya merchant QR, LAAG Bohol, DICT eGovPH, and a hypothetical custom app.</p><p>Their finding: “nothing needs to be invented” — and they wrote it plainly instead of hiding it.</p><p>Note what they did with LAAG Bohol: an app that works and that nobody uses. They did not adopt it. They studied it as a warning, and it became the spine of their Chapter 6.</p>"
+    },
+    "steps": [
+        {
+            "type": "grid",
+            "label": "STEP 1 — The hunt",
+            "instruction": "Three real solutions. ‘Something like Grab probably exists’ is not a row. A name, a place it runs, and a source is a row.",
+            "columns": [
+                { "name": "Name of the real solution", "type": "text" },
+                { "name": "Where it runs", "type": "text" },
+                { "name": "What you found (and your source)", "type": "textarea" }
+            ],
+            "rows": [
+                { "label": "Solution 1" },
+                { "label": "Solution 2" },
+                { "label": "Solution 3" }
+            ],
+            "note": "CORE: three rows, each with a real, named solution and a checkable source. BONUS: one of your three is a Philippine example, and one is a documented failure you can learn from."
+        },
+        {
+            "type": "choice",
+            "label": "STEP 2 — The uncomfortable question",
+            "instruction": "Answer it truthfully. Your grade improves if you do.",
+            "options": [
+                { "text": "YES", "note": "It's already solved. Do not panic and do not invent something to stay busy — go to Step 3 and rewrite your project around the adoption gap instead." },
+                { "text": "NO", "note": "Be honest with yourself here — a team that finds nothing usually did not search hard enough; they guessed. Your instructor will search too, and an obvious existing solution you missed is the fastest way to lose marks on this dossier." },
+                { "text": "PARTLY", "note": "Name exactly which slice of your problem is covered and which isn't — 'partly' is only a real answer if you can draw the line precisely." }
+            ]
+        },
+        {
+            "type": "text",
+            "label": "STEP 2 (cont.) — What it does or does not cover",
+            "instruction": "Be exact, not vague.",
+            "prefix": "…and exactly what it does or does not cover:",
+            "rows": 3
+        },
+        {
+            "type": "text",
+            "label": "STEP 3 — If you answered YES (skip this box if you answered NO)",
+            "instruction": "Do not panic and do not invent something to stay busy. If it is already solved but nobody here uses it, you now have a BETTER project than you started with — the adoption gap. That is exactly what happened with LAAG Bohol, and it is a stronger study than most teams manage. Your question becomes: ‘this works and it exists — why is nobody here using it, and what would change that?’",
+            "prefix": "Our revised project question is:",
+            "rows": 3
+        }
+    ],
+    "trap": {
+        "label": "THE TRAP",
+        "html": "<p>The trap is searching lazily on purpose. If you do not look hard, you get to keep your original idea and build something new — which feels like more fun and is worth fewer marks. A team that finds nothing usually did not search; they guessed. Your instructor will search too, and finding an obvious existing solution you missed is the fastest way to lose marks on this dossier.</p>"
+    },
+    "peer_check": {
+        "label": "PEER CHECK",
+        "instruction": "Swap with another team. Their job is not to be nice — it is to find the specific weakness named below.",
+        "task": "Take their problem. Spend two minutes searching for an existing solution they did NOT list. Did you find one? Write its name here. If you found something in two minutes that they missed in twenty, their scan failed.",
+        "rows": 3
+    },
+    "file_it": {
+        "label": "FILE IT",
+        "instruction": "Date it, initial it, and add it to your team's dossier folder. A chapter that is not filed does not exist."
+    }
+}

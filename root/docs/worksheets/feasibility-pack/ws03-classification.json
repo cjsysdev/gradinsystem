@@ -1,0 +1,96 @@
+{
+    "meta": {
+        "eyebrow": "WORKSHEET 3 · 45 MINUTES · PRODUCES DOSSIER CHAPTER 3",
+        "title": "Classification — Source × Type × Pattern",
+        "sub": "You leave this session with: Chapter 3 — what KIND of innovation this is, and what that implies"
+    },
+    "timeline": {
+        "label": "How this session runs",
+        "moves": [
+            { "time": "0–5", "move": "Read the model", "detail": "Read Ch. 3 of the Carmen Market study — and its last line especially." },
+            { "time": "5–8", "move": "Recall", "detail": "Three frameworks, three lines, no notes." },
+            { "time": "8–18", "move": "Source", "detail": "Tech-push or market-pull? Use the deciding question." },
+            { "time": "18–28", "move": "Type", "detail": "Incremental or disruptive? Use the anchor test." },
+            { "time": "28–36", "move": "Pattern", "detail": "Improvement, application, or recombination?" },
+            { "time": "36–43", "move": "So what?", "detail": "Write the consequence line. Peer check." },
+            { "time": "43–45", "move": "File it", "detail": "Date, initial, file." }
+        ]
+    },
+    "model": {
+        "label": "THE MODEL — how the Carmen Market study did it",
+        "html": "<p><strong>Source:</strong> Market-Pull with a tech-push assist · <strong>Type:</strong> Incremental · <strong>Pattern:</strong> Application</p><p>And then the line that actually matters: “Because it is Incremental + Application, the realistic budget and timeline are small, and the main risk is adoption failure, not technical failure.”</p><p>Classification is not a labelling exercise. It tells you what your Chapter 7 budget and Chapter 8 risks should look like before you write them.</p>"
+    },
+    "steps": [
+        {
+            "type": "choice",
+            "label": "STEP 1 — Source",
+            "instruction": "The deciding question, from Week 2: what problem existed BEFORE this technology was built?",
+            "options": [
+                { "text": "Tech-push", "note": "Careful — tech-push means the technology existed first and someone went looking for a problem to apply it to. Make sure your problem sentence (Chapter 1) really did come after the tech, not before it." },
+                { "text": "Market-pull", "note": "The problem existed first and people were already looking for a fix — this is the more common, and usually more defensible, answer for a course problem you diagnosed yourself." },
+                { "text": "Hybrid", "note": "Only choose this if you can name both halves separately: the pre-existing problem AND the pre-existing technology that got pointed at it. 'Hybrid' used as a way to avoid deciding is a trap, not an analysis." }
+            ]
+        },
+        {
+            "type": "text",
+            "label": "STEP 1 (cont.) — Source, the reason",
+            "instruction": "State it plainly — this is what your circled answer above has to be defensible against.",
+            "prefix": "The problem that existed first was:",
+            "rows": 3
+        },
+        {
+            "type": "choice",
+            "label": "STEP 2 — Type",
+            "instruction": "The anchor test, from Week 3: does this make an ENTIRE old category obsolete, or does it just improve one thing?",
+            "options": [
+                { "text": "Incremental", "note": "The old way still exists and still works for some people — you're improving one thing, not ending a category. This is the far more common, and far more honest, answer." },
+                { "text": "Disruptive", "note": "Careful — this is a description, not a compliment. Apply the anchor test: does an ENTIRE old category go obsolete because of this? If you can't name what specifically becomes obsolete, claiming 'disruptive' will make your Ch. 7 budget nonsense." }
+            ]
+        },
+        {
+            "type": "text",
+            "label": "STEP 2 (cont.) — Type, the reason",
+            "instruction": "Name the specific old category, or state plainly that nothing goes obsolete.",
+            "prefix": "What becomes obsolete — or what does not:",
+            "rows": 3
+        },
+        {
+            "type": "choice",
+            "label": "STEP 3 — Pattern",
+            "instruction": "Improvement = same tool, same place, done better. Application = existing tool, moved somewhere new. Recombination = two or more existing things fused.",
+            "options": [
+                { "text": "Improvement", "note": "Same tool, same place, just done better. Check this is really true — if you moved the tool somewhere it wasn't used before, that's Application, not Improvement." },
+                { "text": "Application", "note": "An existing tool, moved somewhere new. This is the Carmen Market study's own answer — check whether your case fits the same shape: nothing new invented, just redeployed." },
+                { "text": "Recombination", "note": "Two or more existing things fused into one. Make sure you can name both existing pieces separately — if you can't, you may be describing Application instead." }
+            ]
+        },
+        {
+            "type": "text",
+            "label": "STEP 3 (cont.) — Pattern, the reason",
+            "instruction": "Justify the pattern you circled.",
+            "prefix": "…because:",
+            "rows": 3
+        },
+        {
+            "type": "text",
+            "label": "STEP 4 — The consequence line",
+            "instruction": "This is the whole point of the chapter. Complete the sentence honestly.",
+            "prefix": "Because we classified this as ______________ + ______________, our budget should be roughly ______________ and our biggest risk is ______________ failure — not ______________ failure.",
+            "rows": 3
+        }
+    ],
+    "trap": {
+        "label": "THE TRAP",
+        "html": "<p>Two traps here. First: ‘disruptive’ sounds like a compliment, so teams reach for it — it is not a grade, it is a description, and claiming it wrongly will make your Chapter 7 budget nonsense. Second: teams treat this chapter as three labels to tick and move on. If your classification does not change what you write in Chapters 7 and 8, you have not actually done Chapter 3.</p>"
+    },
+    "peer_check": {
+        "label": "PEER CHECK",
+        "instruction": "Swap with another team. Their job is not to be nice — it is to find the specific weakness named below.",
+        "task": "Read their consequence line. Then ask: ‘if you had classified this the OPPOSITE way, what number in your budget would change?’ If they cannot answer, their classification is decoration, not reasoning.",
+        "rows": 3
+    },
+    "file_it": {
+        "label": "FILE IT",
+        "instruction": "Date it, initial it, and add it to your team's dossier folder. A chapter that is not filed does not exist."
+    }
+}

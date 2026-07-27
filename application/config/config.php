@@ -237,7 +237,13 @@ $config['allow_get_array'] = TRUE;
 | your log files will fill up very fast.
 |
 */
-$config['log_threshold'] = 0;
+// 1 = error messages only. Was 0 (logging completely off), which is half the
+// reason the 2026-07-23 group_members wipe went unnoticed: `db_debug` is FALSE
+// in config/database.php so DB failures are never shown, and with logging off
+// they weren't recorded either. A refused DROP TABLE and a failed CREATE both
+// returned silently. Level 1 is low-volume (errors only) and user-invisible;
+// leave it on so schema/DB failures land in application/logs/.
+$config['log_threshold'] = 1;
 
 /*
 |--------------------------------------------------------------------------

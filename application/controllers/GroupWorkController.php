@@ -89,7 +89,7 @@ class GroupWorkController extends CI_Controller
             $widget = $this->Widgets_model->get($resolved['assessment']['widget_id']);
         }
 
-        $is_iq = $widget && $widget['widget_key'] === 'iq_discussion';
+        $is_iq = $widget && in_array($widget['widget_key'], ['iq_discussion', 'iq_micro'], true);
 
         // Any member's "Submit for Group" fans a classworks row out to every
         // member, so once one submits the whole group is done — but only
@@ -111,7 +111,7 @@ class GroupWorkController extends CI_Controller
         // shared/synced copy of the full-screen quiz (lockstep via the same
         // Live_state_model blob), not the generic shared-draft workspace.
         if ($is_iq) {
-            $this->_render_group_iq($resolved['assessment'], $group, $state, $members);
+            $this->_render_group_iq($resolved['assessment'], $group, $state, $members, $widget['widget_key']);
             return;
         }
 
@@ -605,7 +605,9 @@ class GroupWorkController extends CI_Controller
     // Renders the interactive quiz template in group mode. Group forming,
     // membership and the live-state row are already resolved by workspace();
     // this just loads the topic JSON and hands the template the sync context.
-    private function _render_group_iq($assessment, $group, $state, $members)
+    // $widget_key picks which sibling template plays the group: iq_discussion's
+    // one-quiz-per-section format, or iq_micro's chunks/checkpoints format.
+    private function _render_group_iq($assessment, $group, $state, $members, $widget_key)
     {
         $config = json_decode($assessment['given'] ?? '', true) ?: [];
         $topic  = $config['topic'] ?? '';
@@ -617,8 +619,32 @@ class GroupWorkController extends CI_Controller
         }
 
         $topic_data = json_decode(file_get_contents($file), true);
-        if (!$topic_data || !isset($topic_data['sections'])) {
+        if (!$topic_data || !isset($topic_data['sections']) || !is_array($topic_data['sections'])) {
             show_error('Invalid or malformed topic data.', 500);
+            return;
+        }
+
+        $is_micro = ($widget_key === 'iq_micro');
+
+        // Lighter check than InteractiveQuizController's solo-path validators
+        // (_validate_discussion_structure/_validate_micro_structure) — those
+        // are private to that controller, so this just confirms the topic's
+        // format actually matches the widget it's wired to, which is the one
+        // mismatch that would otherwise hand the wrong renderer a shape it
+        // can't read.
+        $has_chunks = false;
+        foreach ($topic_data['sections'] as $section) {
+            if (!empty($section['chunks'])) {
+                $has_chunks = true;
+                break;
+            }
+        }
+        if ($is_micro && !$has_chunks) {
+            show_error('This topic is not in the microlearning (chunks) format.', 422);
+            return;
+        }
+        if (!$is_micro && $has_chunks) {
+            show_error('This topic is in the microlearning format; use the Microlearning Quiz widget.', 422);
             return;
         }
 
@@ -640,7 +666,9 @@ class GroupWorkController extends CI_Controller
             $previous_answers  = json_decode($existing->code ?? '', true) ?: [];
         }
 
-        $this->load->view('discussions/_interactive_quiz_template', [
+        $view = $is_micro ? 'discussions/_interactive_micro_template' : 'discussions/_interactive_quiz_template';
+
+        $this->load->view($view, [
             'topic_data'        => $topic_data,
             'assessment_id'     => (int) $assessment['assessment_id'],
             'already_submitted' => $already_submitted,
@@ -682,6 +710,9 @@ class GroupWorkController extends CI_Controller
         $topic_data = json_decode(file_get_contents($file), true);
         $sections   = $topic_data['sections'] ?? [];
 
+        $widget   = !empty($assessment['widget_id']) ? $this->Widgets_model->get($assessment['widget_id']) : null;
+        $is_micro = $widget && $widget['widget_key'] === 'iq_micro';
+
         // The finisher POSTs the exact blob their screen finished on — persist
         // it, then grade THAT, so the submit is a single request and an
         // in-flight autosave can't race it and drop the final answers (the
@@ -704,37 +735,50 @@ class GroupWorkController extends CI_Controller
         } else {
             $blob = $stored;
         }
-        $picked = $blob['sections'] ?? [];
+        if ($is_micro) {
+            // Micro blob shape: { v, driver, currentScreen, finished,
+            // answers: { "{si}:{ci}": {sel}, "{si}:q": {sel}|{built}|{text} } }
+            // — keyed so it survives the objectives/recap screens the client
+            // flattens sections into (see _interactive_micro_template.php).
+            $answers = $blob['answers'] ?? [];
+            $graded  = $this->_grade_micro_blob($sections, $answers);
+            $score   = $graded['score'];
+            $total   = $graded['total'];
+            $results = $graded['results'];
+        } else {
+            // iq_discussion blob shape: { v, sections: { i: {selected} } }
+            $picked = $blob['sections'] ?? [];
 
-        $score   = 0;
-        $total   = 0;
-        $results = [];
+            $score   = 0;
+            $total   = 0;
+            $results = [];
 
-        foreach ($sections as $i => $section) {
-            $quiz = $section['quiz'] ?? null;
-            if (!is_array($quiz) || empty($quiz['question']) || empty($quiz['options'])) {
-                continue; // lesson-only section — not graded
+            foreach ($sections as $i => $section) {
+                $quiz = $section['quiz'] ?? null;
+                if (!is_array($quiz) || empty($quiz['question']) || empty($quiz['options'])) {
+                    continue; // lesson-only section — not graded
+                }
+                $total++;
+
+                $sel            = isset($picked[$i]['selected']) ? (int) $picked[$i]['selected'] : -1;
+                $correct_idx    = (int) ($quiz['correct'] ?? -1);
+                $chosen         = ($sel >= 0 && isset($quiz['options'][$sel])) ? $quiz['options'][$sel] : '';
+                $correct_answer = isset($quiz['options'][$correct_idx]) ? $quiz['options'][$correct_idx] : '';
+                $is_correct     = ($sel >= 0 && $sel === $correct_idx);
+
+                if ($is_correct) {
+                    $score++;
+                }
+
+                $results[] = [
+                    'section'        => $i,
+                    'section_title'  => $section['title'] ?? '',
+                    'question'       => $quiz['question'],
+                    'chosen'         => $chosen,
+                    'correct_answer' => $correct_answer,
+                    'is_correct'     => $is_correct,
+                ];
             }
-            $total++;
-
-            $sel            = isset($picked[$i]['selected']) ? (int) $picked[$i]['selected'] : -1;
-            $correct_idx    = (int) ($quiz['correct'] ?? -1);
-            $chosen         = ($sel >= 0 && isset($quiz['options'][$sel])) ? $quiz['options'][$sel] : '';
-            $correct_answer = isset($quiz['options'][$correct_idx]) ? $quiz['options'][$correct_idx] : '';
-            $is_correct     = ($sel >= 0 && $sel === $correct_idx);
-
-            if ($is_correct) {
-                $score++;
-            }
-
-            $results[] = [
-                'section'        => $i,
-                'section_title'  => $section['title'] ?? '',
-                'question'       => $quiz['question'],
-                'chosen'         => $chosen,
-                'correct_answer' => $correct_answer,
-                'is_correct'     => $is_correct,
-            ];
         }
 
         // First-completion-only: if this student already has a row, the group
@@ -803,6 +847,113 @@ class GroupWorkController extends CI_Controller
             'score'    => $score,
             'total'    => $total,
         ]);
+    }
+
+    // Grades an iq_micro shared answers blob against the topic JSON — mirrors
+    // the client-side gradeAnswer()/recomputeStats() logic in
+    // _interactive_micro_template.php, but never trusts the client's score.
+    // $answers is keyed "{sectionIndex}:{chunkIndex}" for micro-checks and
+    // "{sectionIndex}:q" for checkpoints, matching the flattened screen order
+    // the template walks (objectives -> chunks+checkpoint per section -> recap
+    // are not graded and carry no key here).
+    private function _grade_micro_blob(array $sections, array $answers)
+    {
+        $score   = 0;
+        $total   = 0;
+        $results = [];
+
+        $normalize = function ($str) {
+            $str = strtolower(trim((string) $str));
+            $str = preg_replace('/;+\s*$/', '', $str);
+            $str = preg_replace('/\s+/', ' ', $str);
+            return $str;
+        };
+
+        foreach ($sections as $si => $section) {
+            foreach ($section['chunks'] ?? [] as $ci => $chunk) {
+                $check = $chunk['check'] ?? null;
+                if (!is_array($check) || empty($check['question']) || empty($check['options'])) {
+                    continue;
+                }
+                $total++;
+
+                $entry          = $answers[$si . ':' . $ci] ?? [];
+                $sel            = isset($entry['sel']) ? (int) $entry['sel'] : -1;
+                $correct_idx    = (int) ($check['correct'] ?? -1);
+                $chosen         = ($sel >= 0 && isset($check['options'][$sel])) ? $check['options'][$sel] : '';
+                $correct_answer = isset($check['options'][$correct_idx]) ? $check['options'][$correct_idx] : '';
+                $is_correct     = ($sel >= 0 && $sel === $correct_idx);
+
+                if ($is_correct) {
+                    $score++;
+                }
+
+                $results[] = [
+                    'kind'           => 'micro',
+                    'section'        => $si,
+                    'section_title'  => $section['title'] ?? '',
+                    'question'       => $check['question'],
+                    'chosen'         => $chosen,
+                    'correct_answer' => $correct_answer,
+                    'is_correct'     => $is_correct,
+                ];
+            }
+
+            $quiz = $section['quiz'] ?? null;
+            if (!is_array($quiz) || empty($quiz['question'])) {
+                continue; // no checkpoint on this section
+            }
+            $total++;
+
+            $type  = $quiz['type'] ?? 'mcq';
+            $entry = $answers[$si . ':q'] ?? [];
+
+            if ($type === 'arrange') {
+                $tokens = $quiz['tokens'] ?? [];
+                $built  = array_map(function ($idx) use ($tokens) {
+                    return isset($tokens[(int) $idx]) ? $tokens[(int) $idx] : '';
+                }, $entry['built'] ?? []);
+                $expected       = $quiz['correctOrder'] ?? [];
+                $is_correct     = !empty($built) && $built === $expected;
+                $chosen         = implode(' ', $built);
+                $correct_answer = implode(' ', $expected);
+            } elseif ($type === 'type') {
+                $raw            = (string) ($entry['text'] ?? '');
+                $accepted       = $quiz['acceptedAnswers'] ?? [];
+                $is_correct     = false;
+                foreach ($accepted as $a) {
+                    if ($normalize($a) === $normalize($raw)) {
+                        $is_correct = true;
+                        break;
+                    }
+                }
+                $chosen         = trim($raw);
+                $correct_answer = $accepted[0] ?? '';
+            } else { // mcq
+                $options        = $quiz['options'] ?? [];
+                $sel            = isset($entry['sel']) ? (int) $entry['sel'] : -1;
+                $correct_idx    = (int) ($quiz['correct'] ?? -1);
+                $chosen         = ($sel >= 0 && isset($options[$sel])) ? $options[$sel] : '';
+                $correct_answer = isset($options[$correct_idx]) ? $options[$correct_idx] : '';
+                $is_correct     = ($sel >= 0 && $sel === $correct_idx);
+            }
+
+            if ($is_correct) {
+                $score++;
+            }
+
+            $results[] = [
+                'kind'           => 'checkpoint',
+                'section'        => $si,
+                'section_title'  => $section['title'] ?? '',
+                'question'       => $quiz['question'],
+                'chosen'         => $chosen,
+                'correct_answer' => $correct_answer,
+                'is_correct'     => $is_correct,
+            ];
+        }
+
+        return ['score' => $score, 'total' => $total, 'results' => $results];
     }
 
     // Topic JSON files live in assets/json/ or one class-code folder down —

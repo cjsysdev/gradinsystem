@@ -1,0 +1,85 @@
+{
+    "meta": {
+        "eyebrow": "WORKSHEET 5 · 45 MINUTES · PRODUCES DOSSIER CHAPTER 5 · COMPLETES PT1",
+        "title": "Technology Selection Matrix",
+        "sub": "You leave this session with: Chapter 5 — what you chose, what you rejected, and why — completing PT1"
+    },
+    "timeline": {
+        "label": "How this session runs",
+        "moves": [
+            { "time": "0–5", "move": "Read the model", "detail": "Read Ch. 5 of the Carmen Market study. Count the rejections." },
+            { "time": "5–12", "move": "List candidates", "detail": "Every option — including the four from Weeks 4–7." },
+            { "time": "12–32", "move": "Decide each", "detail": "ADOPT / REJECT / N-A, with a reason on every single row." },
+            { "time": "32–40", "move": "Rejection quality", "detail": "Every N/A needs a ‘because’. Fix the lazy ones." },
+            { "time": "40–43", "move": "Peer check", "detail": "Partner hunts for a technology you forced in." },
+            { "time": "43–45", "move": "File it", "detail": "PT1 is now complete. File the whole dossier." }
+        ]
+    },
+    "model": {
+        "label": "THE MODEL — how the Carmen Market study did it",
+        "html": "<p>Their matrix has six rows and only ONE adoption. Four rejections and one retained fallback.</p><p>The row that matters most: “IoT / robotics / AR-VR — N/A, justified rejection. None of these apply to a payments-adoption problem. Listed here only to show the discipline was applied, not skipped.”</p><p>They also kept cash as a permanent fallback — not a transition phase. Rejecting your own course's flashiest technologies, in writing, is the mark of a serious study.</p>"
+    },
+    "steps": [
+        {
+            "type": "grid",
+            "label": "STEP 1 — Your matrix",
+            "instruction": "Fill every row. The Weeks 4–7 rows are compulsory — you must state whether each applies, and ‘N/A, because…’ is worth full marks.",
+            "columns": [
+                { "name": "ADOPT / REJECT / N-A", "type": "select", "options": ["ADOPT", "REJECT", "N-A"] },
+                { "name": "Reason — must include a 'because'", "type": "textarea" }
+            ],
+            "rows": [
+                { "label": "Your main candidate" },
+                { "label": "Alternative 1" },
+                { "label": "Alternative 2" },
+                { "label": "IoT / sensors (Wk 4)" },
+                { "label": "Robotics (Wk 5)" },
+                { "label": "5G / Edge (Wk 6)" },
+                { "label": "AR / VR / MR (Wk 7)" }
+            ]
+        },
+        {
+            "type": "choice",
+            "label": "STEP 2 — The status quo row",
+            "instruction": "What happens to the current way of doing things? The Carmen Market study kept cash permanently, on purpose.",
+            "options": [
+                { "text": "replaced", "note": "Make sure this is really warranted — if there's any user segment that can't or won't switch, a full replacement is a risk you haven't priced yet." },
+                { "text": "kept as fallback", "note": "A transition-period safety net. Say plainly when the fallback is expected to end, or why it won't." },
+                { "text": "kept permanently", "note": "The Carmen Market study's own choice — cash, forever, for whoever needs it. Not a failure of ambition; a recognition that some adopters never come along." }
+            ]
+        },
+        {
+            "type": "text",
+            "label": "STEP 2 (cont.) — The reason",
+            "instruction": "State the current method and justify your choice.",
+            "prefix": "The current method (paper, cash, word of mouth…) will be replaced / kept as fallback / kept permanently — because:",
+            "rows": 3
+        },
+        {
+            "type": "checklist",
+            "label": "STEP 3 — PT1 assembly check",
+            "instruction": "Tick only what is genuinely filed. An unticked box now is a warning; an untrue tick is a problem.",
+            "items": [
+                "Ch. 1 The Problem",
+                "Ch. 2 Innovation Triangle",
+                "Ch. 3 Classification",
+                "Ch. 4 Existing Solution Scan",
+                "Ch. 5 Selection Matrix"
+            ]
+        }
+    ],
+    "trap": {
+        "label": "THE TRAP",
+        "html": "<p>The trap is the opposite of what you expect: it is not rejecting too much, it is forcing technologies IN. Teams add IoT sensors to a paperwork problem because they think using more of the course content earns more marks. It earns fewer. The AI-blockchain-drone project is a real and recognisable failure, and this matrix exists specifically to stop it. A justified rejection is worth exactly as much as an adoption.</p>"
+    },
+    "peer_check": {
+        "label": "PEER CHECK",
+        "instruction": "Swap with another team. Their job is not to be nice — it is to find the specific weakness named below.",
+        "task": "Look for a technology they ADOPTED that their Chapter 1 problem does not actually need. Name it here, and ask them which sentence of Chapter 1 requires it. If they cannot point to one, it is decoration.",
+        "rows": 3
+    },
+    "file_it": {
+        "label": "FILE IT",
+        "instruction": "Date it, initial it, and add it to your team's dossier folder. A chapter that is not filed does not exist."
+    }
+}
