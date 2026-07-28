@@ -1021,6 +1021,20 @@ class AdminController extends CI_Controller
             $widget = $this->Widgets_model->get($master_fields['widget_id']);
             if ($widget && in_array($widget['widget_key'], ['iq_discussion', 'iq_micro'], true)) {
                 $is_micro = $widget['widget_key'] === 'iq_micro';
+
+                // "Paste new JSON": write the file first so the lookup below
+                // finds it and derives max_score the same way it would for any
+                // other topic. A validation/collision failure here has already
+                // flashed its own error.
+                $pasted = $this->_resolve_iq_paste($post, $widget);
+                if ($pasted === false) {
+                    redirect('manage_assessments' . (!empty($post['schedule_id']) ? '?schedule_id=' . $post['schedule_id'] : ''));
+                    return;
+                }
+                if ($pasted) {
+                    $master_fields['given'] = json_encode(['topic' => $pasted]);
+                }
+
                 $topic = json_decode($master_fields['given'] ?? '', true)['topic'] ?? '';
                 $topic_found = false;
                 $wrong_format = false;
@@ -1426,6 +1440,16 @@ class AdminController extends CI_Controller
             $widget = $this->Widgets_model->get($master_fields['widget_id']);
             if ($widget && in_array($widget['widget_key'], ['iq_discussion', 'iq_micro'], true)) {
                 $is_micro = $widget['widget_key'] === 'iq_micro';
+
+                $pasted = $this->_resolve_iq_paste($post, $widget);
+                if ($pasted === false) {
+                    redirect('class_assessments' . ($class_id ? '?class_id=' . $class_id : ''));
+                    return;
+                }
+                if ($pasted) {
+                    $master_fields['given'] = json_encode(['topic' => $pasted]);
+                }
+
                 $topic = json_decode($master_fields['given'] ?? '', true)['topic'] ?? '';
                 $topic_found = false;
                 $wrong_format = false;
@@ -2381,11 +2405,56 @@ class AdminController extends CI_Controller
         return ($parent === $json_path) ? '' : basename($parent);
     }
 
-    // Validates a pasted interactive-discussion JSON template and writes it to
+    // Destination class for a pasted topic file (see _resolve_iq_paste()).
+    // Both save_assessment() (which posts schedule_id in "section" apply_mode,
+    // or class_id in "class"/"draft" mode) and update_class_assessment_master()
+    // (which only ever posts class_id, no apply_mode/schedule_id) route through
+    // here so the class-folder logic isn't duplicated a third time.
+    private function _class_id_from_post($post)
+    {
+        $mode = $post['apply_mode'] ?? 'section';
+        if ($mode !== 'class' && $mode !== 'draft' && !empty($post['schedule_id'])) {
+            $class_id = $this->db->select('class_id')->where('schedule_id', $post['schedule_id'])
+                ->get('class_schedule')->row('class_id');
+            if ($class_id) {
+                return (int) $class_id;
+            }
+        }
+        return (int) ($post['class_id'] ?? $post['return_class_id'] ?? 0);
+    }
+
+    // Runs the assessment modal's "Paste new JSON" flow for a topic widget.
+    // Returns null when the admin instead chose "Reuse existing topic" (the
+    // caller's normal _glob_json_topics() lookup handles that case unchanged),
+    // false on validation/collision failure (flashdata already set by
+    // _save_pasted_topic_json()), or the newly-saved slug on success — callers
+    // fold that slug into $master_fields['given'] before their existing
+    // topic-lookup loop runs, so max_score derivation doesn't need to change.
+    private function _resolve_iq_paste($post, $widget)
+    {
+        if (($post['iq_source'] ?? 'existing') !== 'new') {
+            return null;
+        }
+        return $this->_save_pasted_topic_json(
+            $this->_class_id_from_post($post),
+            trim($post['iq_new_slug'] ?? ''),
+            $post['iq_new_json'] ?? '',
+            $widget['widget_key'] === 'iq_micro' ? 'micro' : 'discussion',
+            false
+        );
+    }
+
+    // Validates a pasted topic JSON template and writes it to
     // assets/json/{CLASS_CODE}/{slug}.json (falls back to assets/json/{slug}.json
     // if the class can't be resolved). Returns the slug on success, or false
     // (with a flashdata error already set) on failure.
-    private function _save_pasted_topic_json($class_id, $slug, $json_text)
+    // $format: 'discussion' (default, manage_discussions' only caller today) or
+    // 'micro' (the assessment-modal "Paste new JSON" flow — see _resolve_iq_paste()).
+    // $allow_overwrite: manage_discussions has always silently overwritten an
+    // existing slug; the assessment-modal flow passes false because a topic
+    // file is shared by every assessment pointing at it, so clobbering one
+    // could change an already-graded quiz out from under another section.
+    private function _save_pasted_topic_json($class_id, $slug, $json_text, $format = 'discussion', $allow_overwrite = true)
     {
         $slug = preg_replace('/[^a-z0-9_]/', '', strtolower($slug));
         if (!preg_match('/^[a-z0-9_]{1,100}$/', $slug)) {
@@ -2394,12 +2463,13 @@ class AdminController extends CI_Controller
         }
 
         $data = json_decode(trim($json_text), true);
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            $this->session->set_flashdata('error', 'Invalid JSON: ' . json_last_error_msg());
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
+            $this->session->set_flashdata('error', 'Invalid JSON: ' . ($data === null ? json_last_error_msg() : 'must decode to an object.'));
             return false;
         }
 
-        $validation_error = $this->_validate_discussion_json($data);
+        $this->load->model('Iq_topic_model');
+        $validation_error = $this->Iq_topic_model->validate_structure($data, $format);
         if ($validation_error) {
             $this->session->set_flashdata('error', $validation_error);
             return false;
@@ -2409,6 +2479,18 @@ class AdminController extends CI_Controller
         if (!is_writable($json_path)) {
             $this->session->set_flashdata('error', 'assets/json/ is not writable. Contact your administrator.');
             return false;
+        }
+
+        if (!$allow_overwrite) {
+            foreach ($this->_glob_json_topics() as $existing) {
+                if (basename($existing, '.json') === $slug) {
+                    $where = $this->_topic_class_code_from_path($existing);
+                    $this->session->set_flashdata('error', 'Topic slug "' . $slug . '" already exists'
+                        . ($where ? " (class {$where})" : ' (unfiled)')
+                        . ' — pick another slug, or select that topic from the dropdown.');
+                    return false;
+                }
+            }
         }
 
         $dest_dir = $json_path;
@@ -2437,47 +2519,6 @@ class AdminController extends CI_Controller
             ? "Topic file \"{$slug}.json\" overwritten."
             : "Topic file \"{$slug}.json\" created.");
         return $slug;
-    }
-
-    // Same schema InteractiveQuizController::discussion() renders:
-    // sections[].quiz = { question, options[], correct (index), code? }
-    private function _validate_discussion_json($data)
-    {
-        if (!is_array($data)) {
-            return 'JSON must decode to an object.';
-        }
-        if (empty($data['title']) || !is_string($data['title'])) {
-            return 'JSON must have a non-empty "title" string field.';
-        }
-        if (empty($data['sections']) || !is_array($data['sections'])) {
-            return 'JSON must have a non-empty "sections" array.';
-        }
-        foreach ($data['sections'] as $i => $section) {
-            $n = $i + 1;
-            if (empty($section['title'])) {
-                return "Section {$n} is missing a \"title\" field.";
-            }
-            if (!isset($section['lesson'])) {
-                return "Section {$n} is missing a \"lesson\" field.";
-            }
-            if (!isset($section['quiz']) || $section['quiz'] === null) {
-                continue;
-            }
-            if (!is_array($section['quiz']) || empty($section['quiz'])) {
-                return "Section {$n} has an invalid \"quiz\" value; use null or omit it when there is no quiz.";
-            }
-            $q = $section['quiz'];
-            if (empty($q['question'])) {
-                return "Section {$n} quiz is missing a \"question\" field.";
-            }
-            if (empty($q['options']) || !is_array($q['options']) || count($q['options']) < 2) {
-                return "Section {$n} quiz must have at least 2 \"options\".";
-            }
-            if (!isset($q['correct']) || !is_int($q['correct']) || $q['correct'] < 0 || $q['correct'] >= count($q['options'])) {
-                return "Section {$n} quiz \"correct\" must be a valid option index.";
-            }
-        }
-        return '';
     }
 
     public function delete_discussion($id)

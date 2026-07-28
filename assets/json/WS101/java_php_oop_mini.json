@@ -1,0 +1,285 @@
+{
+    "topic": "java_php_oop_mini",
+    "title": "OOP Powering CI3: Controllers & Models Are Just PHP Classes",
+    "description": "See how CI3's Controllers and Models are built entirely from ordinary PHP OOP — the same class, constructor, encapsulation, and inheritance rules Java uses too.",
+    "congratsText": "Nothing about CI3 is magic — it's the OOP you already know, applied to Controllers and Models!",
+    "objectives": [
+        "Explain why `class Menu extends CI_Controller` is ordinary PHP inheritance, not CI3-specific syntax.",
+        "Explain what parent::__construct() sets up in a CI3 controller's constructor chain.",
+        "Apply private-property encapsulation to a CI3 model's table or connection details.",
+        "Diagnose a broken controller caused by a missing parent::__construct() call.",
+        "Trace a multi-level extends chain from CI_Controller through a custom base controller to a page controller."
+    ],
+    "recap": [
+        "class Menu extends CI_Controller uses PHP's ordinary extends keyword — CI3 didn't invent special controller syntax.",
+        "A controller's parent::__construct() call runs CI_Controller's own setup, including what makes $this->load and sessions work.",
+        "CI3 models apply the same private-property, public-method encapsulation as any well-built PHP class, just for database access.",
+        "Skipping parent::__construct() breaks CI3's setup even when the class declaration and extends line are both correct.",
+        "CI3 projects commonly layer inheritance — Menu extends MY_Controller extends CI_Controller — using the same multi-level extends chain PHP and Java both support."
+    ],
+    "sections": [
+        {
+            "id": 0,
+            "title": "A Controller Is Just a PHP Class",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "When you write <span class=\"code-inline\">class Menu extends CI_Controller</span>, you're not writing framework-specific syntax — it's the same <span class=\"highlight\">class X extends Y</span> pattern from ordinary PHP OOP.",
+                    "check": {
+                        "question": "Is `extends CI_Controller` special CI3-only syntax?",
+                        "options": [
+                            "No, it's standard PHP class inheritance",
+                            "Yes, CI3 invented its own keyword"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "<span class=\"code-inline\">CI_Controller</span> itself is nothing mysterious — it's a plain PHP class sitting in CodeIgniter's system folder, with its own properties and methods like any other class.",
+                    "check": {
+                        "question": "Is CI_Controller a special non-class construct?",
+                        "options": [
+                            "No, it's an ordinary PHP class",
+                            "Yes, it's compiled framework magic"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "That means everything you already know about a PHP class — properties, methods, visibility — applies to every controller you write.",
+                    "check": {
+                        "question": "Do normal PHP class rules apply inside a controller?",
+                        "options": [
+                            "Yes, fully",
+                            "No, controllers follow separate rules"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "question": "Which statement is true about `class Menu extends CI_Controller`?",
+                "options": [
+                    "It's ordinary PHP inheritance, same as any subclass",
+                    "CI3 replaces PHP's extends keyword with its own syntax",
+                    "extends only works for controllers, not other PHP classes",
+                    "CI_Controller is a PHP interface, not an actual class"
+                ],
+                "correct": 0
+            }
+        },
+        {
+            "id": 1,
+            "title": "The Constructor Chain: parent::__construct()",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "A controller's constructor almost always opens with one line: <span class=\"code-inline\">parent::__construct();</span> — calling CI_Controller's own constructor before anything else runs.",
+                    "check": {
+                        "question": "Does a controller's constructor usually call the parent's constructor first?",
+                        "options": [
+                            "Yes, as its first line",
+                            "No, CI3 calls it automatically"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "That line is the same <span class=\"code-inline\">parent::</span> pattern from plain PHP inheritance — CI3 didn't invent a special startup hook, it's just OOP.",
+                    "check": {
+                        "question": "Is parent::__construct() unique CI3 syntax?",
+                        "options": [
+                            "No, it's standard PHP inheritance syntax",
+                            "Yes, only CI3 controllers use it"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Skip that call, and everything CI_Controller's constructor was supposed to set up — like <span class=\"code-inline\">$this->load</span> — never gets initialized.",
+                    "check": {
+                        "question": "What happens if that parent call is skipped?",
+                        "options": [
+                            "CI_Controller's setup never runs",
+                            "Nothing changes, it's optional"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "arrange",
+                "question": "Arrange the tokens to build the first two lines of a correct CI3 controller constructor.",
+                "tokens": [
+                    "{",
+                    "parent::__construct();",
+                    "public function __construct()"
+                ],
+                "correctOrder": [
+                    "public function __construct()",
+                    "{",
+                    "parent::__construct();"
+                ]
+            }
+        },
+        {
+            "id": 2,
+            "title": "Models Encapsulate Data Access",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "A CI3 model follows the same encapsulation habit as any well-built PHP class: keep the table name or connection details <span class=\"highlight\">private</span>, and expose behavior through public methods.",
+                    "check": {
+                        "question": "Should a model's raw table name usually be private?",
+                        "options": [
+                            "Yes, exposed only through methods",
+                            "No, it should always be public"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "A typical model constructor sets a private property like <span class=\"code-inline\">$table</span> and still opens with <span class=\"code-inline\">parent::__construct();</span> — the same chain from the last section, now protecting data instead of a view.",
+                    "check": {
+                        "question": "Does a model's constructor use the same parent:: pattern as a controller?",
+                        "options": [
+                            "Yes, the identical pattern",
+                            "No, models skip parent::"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "None of this is CI3-specific — it's the exact private-property, public-method encapsulation habit from plain PHP OOP, just applied to database access.",
+                    "check": {
+                        "question": "Is model encapsulation a CI3-only concept?",
+                        "options": [
+                            "No, it's standard PHP encapsulation",
+                            "Yes, it's unique to models"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "type",
+                "question": "Type the access modifier a well-encapsulated CI3 model would use for a property like $table, so outside code can't touch it directly.",
+                "acceptedAnswers": [
+                    "private"
+                ]
+            }
+        },
+        {
+            "id": 3,
+            "title": "When the Chain Breaks",
+            "callback": true,
+            "refSection": "0 & 1",
+            "chunks": [
+                {
+                    "text": "Picture a controller that extends CI_Controller correctly but whose constructor never calls <span class=\"code-inline\">parent::__construct();</span> — the class declaration is fine, but the chain is broken.",
+                    "check": {
+                        "question": "Is the class declaration itself the problem here?",
+                        "options": [
+                            "No, the missing parent call is",
+                            "Yes, extends is written wrong"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "<span class=\"code-inline\">$this->load</span>, sessions, and other CI3 setup all depend on that call — without it, <span class=\"code-inline\">$this->load->view()</span> throws an error, even though the controller \"extends\" correctly.",
+                    "check": {
+                        "question": "Can $this->load work without that parent call?",
+                        "options": [
+                            "No, it depends on that call",
+                            "Yes, extends alone is enough"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "This is the same failure a Java subclass would hit skipping <span class=\"code-inline\">super()</span> when the parent constructor sets up something the subclass needs — the language differs, the bug doesn't.",
+                    "check": {
+                        "question": "Would a similar bug happen in Java skipping super()?",
+                        "options": [
+                            "Yes, the same kind of failure",
+                            "No, Java doesn't have this issue"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "code": "class Report extends CI_Controller {\n    public function __construct() {\n        // parent::__construct(); <- commented out\n        $this->load->model('Report_model');\n    }\n}",
+                "question": "This controller extends CI_Controller correctly. What's actually broken?",
+                "options": [
+                    "A missing parent::__construct() call",
+                    "extends CI_Controller is the wrong keyword here",
+                    "load->model() is not a real CI3 method at all",
+                    "PHP refuses to parse a class with a commented line"
+                ],
+                "correct": 0
+            }
+        },
+        {
+            "id": 4,
+            "title": "One Base Class, Layered Twice",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "Real CI3 projects often add one more layer: a <span class=\"code-inline\">MY_Controller</span> that extends <span class=\"code-inline\">CI_Controller</span>, and then every page controller extends <span class=\"code-inline\">MY_Controller</span> instead.",
+                    "check": {
+                        "question": "Does adding MY_Controller remove the extends chain to CI_Controller?",
+                        "options": [
+                            "No, MY_Controller still extends CI_Controller",
+                            "Yes, it replaces CI_Controller entirely"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "That's ordinary multi-level inheritance — <span class=\"code-inline\">Menu extends MY_Controller</span>, <span class=\"code-inline\">MY_Controller extends CI_Controller</span> — the same layering Java supports with any chain of subclasses.",
+                    "check": {
+                        "question": "Can PHP chain more than one level of inheritance like this?",
+                        "options": [
+                            "Yes, multi-level inheritance is normal",
+                            "No, PHP allows only one level"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Each constructor in that chain still calls its own <span class=\"code-inline\">parent::__construct();</span>, so the setup passes all the way down from CI_Controller to your final page controller.",
+                    "check": {
+                        "question": "Does each layer still need its own parent:: call?",
+                        "options": [
+                            "Yes, every layer in the chain",
+                            "No, only the top layer needs it"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "arrange",
+                "question": "Arrange the tokens to show the correct extends chain, from the framework's base class down to a page controller.",
+                "tokens": [
+                    "Menu extends MY_Controller",
+                    "CI_Controller (framework base)",
+                    "MY_Controller extends CI_Controller"
+                ],
+                "correctOrder": [
+                    "CI_Controller (framework base)",
+                    "MY_Controller extends CI_Controller",
+                    "Menu extends MY_Controller"
+                ]
+            }
+        }
+    ]
+}

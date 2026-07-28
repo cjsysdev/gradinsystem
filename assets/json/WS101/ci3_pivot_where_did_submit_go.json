@@ -1,0 +1,368 @@
+{
+  "topic": "ci3_pivot_where_did_submit_go",
+  "title": "The Pivot: Where Did Submit Go?",
+  "description": "Trace a form submit from URL to controller to view to $this->input->post(), and see exactly where GET and POST send your data.",
+  "congratsText": "You mastered the pivot — you can trace a submit end to end through CI3!",
+  "objectives": [
+    "Explain how a CI3 controller catches an incoming request",
+    "Load a view from a controller method without opening it directly",
+    "Match a URL's segments to the correct controller and method",
+    "Identify how GET exposes submitted data in the address bar",
+    "Apply controller/method matching rules to the default index() method",
+    "Contrast POST's request-body delivery with GET's URL delivery",
+    "Read CI3's 404 page to identify what failed to match",
+    "Use $this->input->method() to confirm which HTTP method sent a request",
+    "Retrieve submitted form data with $this->input->post()",
+    "Explain why the name attribute controls what post() can read",
+    "Trace a full submit end to end and pinpoint which link broke"
+  ],
+  "recap": [
+    "A CI3 controller is a PHP class that catches a request before anything else runs",
+    "Views hold only HTML and are shown only when a controller method loads them",
+    "A URL reads as controller/method, and mismatches produce a 404 instead of a guess",
+    "GET puts every field's value into the visible query string after the ?",
+    "The default index() method still follows the same controller/method matching rules",
+    "POST sends the same fields through the request body, invisible in the URL",
+    "CI3's 404 page is real HTML that usually names the exact thing it couldn't find",
+    "$this->input->method() reports whether the current request was sent as GET or POST",
+    "$this->input->post() returns an array of submitted fields keyed by their name attributes",
+    "A missing or duplicated name attribute is a common reason post() data goes missing",
+    "Tracing a submit end to end — URL, controller, view, and post() — pinpoints exactly which link broke"
+  ],
+  "sections": [
+    {
+      "id": 0,
+      "title": "Controllers Catch Requests",
+      "callback": false,
+      "refSection": null,
+      "chunks": [
+        {
+          "text": "A CI3 <span class=\"highlight\">controller</span> is a PHP class that catches a web request before anything else runs.",
+          "check": { "question": "Is a controller the first thing that catches an incoming URL request?", "options": ["Yes", "No"], "correct": 0 }
+        },
+        {
+          "text": "Each method inside a controller matches one job — visiting a URL runs exactly one matching method.",
+          "check": { "question": "Does one controller method run for a single visited URL?", "options": ["Yes, exactly one", "No, all methods run"], "correct": 0 }
+        },
+        {
+          "text": "The file name and class name must match and both start with a capital letter, like <span class=\"code-inline\">Pivot.php</span> holding <span class=\"code-inline\">class Pivot</span>.",
+          "check": { "question": "Should the file stay named pivot.php (lowercase) if the class is Pivot?", "options": ["No, it should be Pivot.php", "Yes, lowercase works fine"], "correct": 0 }
+        }
+      ],
+      "quiz": {
+        "type": "mcq",
+        "question": "Which class declaration correctly matches a file named Pivot.php in CI3?",
+        "options": [
+          "class Pivot extends CI_Controller {}",
+          "class pivot extends CI_Controller {}",
+          "class Pivot extends CI_Controller_Core {}",
+          "function Pivot() {}"
+        ],
+        "correct": 0
+      }
+    },
+    {
+      "id": 1,
+      "title": "Views Hold the HTML",
+      "callback": false,
+      "refSection": null,
+      "chunks": [
+        {
+          "text": "A <span class=\"highlight\">view</span> is a separate file that holds only the HTML shown to the user — never business logic.",
+          "check": { "question": "Does a view file usually hold only HTML/display markup?", "options": ["Yes", "No, mostly PHP logic"], "correct": 0 }
+        },
+        {
+          "text": "A controller method loads a view with <span class=\"code-inline\">$this->load->view('view_name')</span>, leaving off the .php ending.",
+          "check": { "question": "Do you include .php when calling load->view()?", "options": ["No, leave it off", "Yes, always include it"], "correct": 0 }
+        },
+        {
+          "text": "A view file is never opened by double-clicking it — a controller method has to load it first.",
+          "check": { "question": "Can a student double-click login_view.php and see it work correctly on its own?", "options": ["No, a controller must load it", "Yes, that works fine"], "correct": 0 }
+        }
+      ],
+      "quiz": {
+        "type": "arrange",
+        "question": "Arrange the steps in the order they happen when a student visits the login form's URL.",
+        "tokens": [
+          "Controller method runs",
+          "Browser displays the form",
+          "Visit the URL for login_form",
+          "load->view('login_view') runs"
+        ],
+        "correctOrder": [
+          "Visit the URL for login_form",
+          "Controller method runs",
+          "load->view('login_view') runs",
+          "Browser displays the form"
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "title": "One URL, One Method",
+      "callback": false,
+      "refSection": null,
+      "chunks": [
+        {
+          "text": "A CI3 URL reads as <span class=\"highlight\">controller / method</span> — the first segment picks the class, the second picks the function inside it.",
+          "check": { "question": "In /pivot/hello, does 'pivot' name the controller?", "options": ["Yes", "No, it names the method"], "correct": 0 }
+        },
+        {
+          "text": "If the method name in the URL doesn't exist in the controller, CI3 shows a 404 page instead of guessing.",
+          "check": { "question": "Does CI3 guess the closest matching method name if you misspell it?", "options": ["No, it shows 404", "Yes, it guesses the name"], "correct": 0 }
+        },
+        {
+          "text": "The controller name in the URL is lowercase, but the class definition itself is capitalized.",
+          "check": { "question": "Do /pivot/hello and class Pivot use different capitalization on purpose?", "options": ["Yes, URL lowercase, class capitalized", "No, they must match exactly"], "correct": 0 }
+        }
+      ],
+      "quiz": {
+        "type": "mcq",
+        "question": "A controller file Order.php has a method named submit(). Which URL runs it?",
+        "options": [
+          "index.php/order/submit",
+          "index.php/Order/Submit",
+          "index.php/submit/order",
+          "index.php/order/submit/confirm"
+        ],
+        "correct": 0
+      }
+    },
+    {
+      "id": 3,
+      "title": "GET Puts Data in the URL",
+      "callback": false,
+      "refSection": null,
+      "chunks": [
+        {
+          "text": "When a form uses <span class=\"code-inline\">method=\"get\"</span>, the browser tacks every field's value onto the end of the URL after a question mark.",
+          "check": { "question": "Does GET add form data to the address bar?", "options": ["Yes", "No, it hides it"], "correct": 0 }
+        },
+        {
+          "text": "That means anything typed into a GET form — even a password — sits in plain sight in the address bar and browser history.",
+          "check": { "question": "Is a password typed into a GET form safe from being seen in the URL?", "options": ["No, it's exposed", "Yes, it's hidden"], "correct": 0 }
+        },
+        {
+          "text": "The <span class=\"highlight\">query string</span> is the part of the URL after the ?, made of name=value pairs joined by &.",
+          "check": { "question": "Does the query string start right after the ? character?", "options": ["Yes", "No, right after the domain"], "correct": 0 }
+        }
+      ],
+      "quiz": {
+        "type": "type",
+        "question": "A GET login form submits username and password. Type the single character that starts the query string in the resulting URL.",
+        "acceptedAnswers": ["?"]
+      }
+    },
+    {
+      "id": 4,
+      "title": "The Default index() Method",
+      "callback": true,
+      "refSection": "0 & 2",
+      "chunks": [
+        {
+          "text": "If you visit a controller URL with no method segment, like /pivot, CI3 tries to run a method named <span class=\"code-inline\">index()</span> by default.",
+          "check": { "question": "Does CI3 look for a method called index() when no method is given in the URL?", "options": ["Yes", "No, it errors immediately"], "correct": 0 }
+        },
+        {
+          "text": "This default only saves typing — the index() method still needs to exist in the controller like any other method.",
+          "check": { "question": "Does index() still need to be written into the controller like any other method?", "options": ["Yes", "No, it's automatic"], "correct": 0 }
+        },
+        {
+          "text": "Everything you learned about matching URL segments to controller and method names still applies to index() too.",
+          "check": { "question": "Does the same controller/method naming rule apply to index()?", "options": ["Yes", "No, it's a special case"], "correct": 0 }
+        }
+      ],
+      "quiz": {
+        "type": "mcq",
+        "question": "A controller Cart.php has methods index() and checkout(). Which URL runs checkout(), not index()?",
+        "options": [
+          "index.php/cart/checkout",
+          "index.php/cart",
+          "index.php/checkout/cart/confirm",
+          "index.php/Cart/Checkout"
+        ],
+        "correct": 0
+      }
+    },
+    {
+      "id": 5,
+      "title": "POST Hides the Data",
+      "callback": false,
+      "refSection": null,
+      "chunks": [
+        {
+          "text": "Switching a form to <span class=\"code-inline\">method=\"post\"</span> sends the same fields, but they travel in the request body instead of the URL.",
+          "check": { "question": "With POST, does form data still travel visibly in the URL?", "options": ["No, it stays in the request body", "Yes, same as GET"], "correct": 0 }
+        },
+        {
+          "text": "Because POST data isn't in the URL, refreshing a POST result page can trigger a 'resubmit form' warning from the browser.",
+          "check": { "question": "Can refreshing after a POST submit sometimes ask you to resubmit?", "options": ["Yes", "No, GET does that instead"], "correct": 0 }
+        },
+        {
+          "text": "Changing <span class=\"code-inline\">method=\"get\"</span> to <span class=\"code-inline\">method=\"post\"</span> is the only change needed — the form's action and fields stay the same.",
+          "check": { "question": "Do the field names need to change when switching GET to POST?", "options": ["No, only the method changes", "Yes, all fields must be renamed"], "correct": 0 }
+        }
+      ],
+      "quiz": {
+        "type": "arrange",
+        "question": "Arrange the steps in the order they happen when a POST login form is submitted.",
+        "tokens": [
+          "$this->input->post() reads the values",
+          "Browser sends the fields in the request body",
+          "Form is submitted",
+          "CI3 controller method runs"
+        ],
+        "correctOrder": [
+          "Form is submitted",
+          "Browser sends the fields in the request body",
+          "CI3 controller method runs",
+          "$this->input->post() reads the values"
+        ]
+      }
+    },
+    {
+      "id": 6,
+      "title": "CI3's 404 Page",
+      "callback": false,
+      "refSection": null,
+      "chunks": [
+        {
+          "text": "When CI3 can't match a URL to any real controller or method, it shows its own error page instead of a blank screen.",
+          "check": { "question": "Does CI3 show a blank white screen when nothing matches?", "options": ["No, it shows an error page", "Yes, blank screen"], "correct": 0 }
+        },
+        {
+          "text": "That error page is real HTML built by CI3 itself, visible if you right-click and View Page Source.",
+          "check": { "question": "Is CI3's 404 page actual HTML generated by the framework?", "options": ["Yes", "No, it's a browser-only message"], "correct": 0 }
+        },
+        {
+          "text": "The 404 page's message usually names the exact controller or method CI3 went looking for, which helps you spot typos fast.",
+          "check": { "question": "Does the 404 message name the specific thing CI3 couldn't find?", "options": ["Yes", "No, it's a generic message"], "correct": 0 }
+        }
+      ],
+      "quiz": {
+        "type": "mcq",
+        "question": "A student visits index.php/pivott/store (typo in the controller name). What does CI3 do?",
+        "options": [
+          "Shows a 404 page naming the missing controller",
+          "Silently loads the pivot controller anyway, with no warning",
+          "Redirects to the site homepage",
+          "Shows a blank white screen"
+        ],
+        "correct": 0
+      }
+    },
+    {
+      "id": 7,
+      "title": "Confirming the Method",
+      "callback": true,
+      "refSection": "3 & 5",
+      "chunks": [
+        {
+          "text": "CI3 gives you a shortcut to check which HTTP method sent the current request: <span class=\"code-inline\">$this->input->method()</span>.",
+          "check": { "question": "Does $this->input->method() tell you GET or POST was used?", "options": ["Yes", "No, it always says GET"], "correct": 0 }
+        },
+        {
+          "text": "This is handy for debugging when a form's behavior doesn't match what you expected from its method attribute.",
+          "check": { "question": "Is checking the method a useful debugging step when POST data seems missing?", "options": ["Yes", "No, it never helps"], "correct": 0 }
+        },
+        {
+          "text": "Calling <span class=\"code-inline\">$this->input->get()</span> on a POST-submitted form returns nothing, because GET and POST are separate buckets.",
+          "check": { "question": "Does $this->input->get() see data sent by a POST form?", "options": ["No, it's empty", "Yes, they share the data"], "correct": 0 }
+        }
+      ],
+      "quiz": {
+        "type": "type",
+        "question": "A form uses method=\"post\" and a controller runs echo $this->input->method();. Type the exact word that prints.",
+        "acceptedAnswers": ["post", "POST"]
+      }
+    },
+    {
+      "id": 8,
+      "title": "Reading POST Data",
+      "callback": false,
+      "refSection": null,
+      "chunks": [
+        {
+          "text": "<span class=\"code-inline\">$this->input->post()</span> returns an array of every field the form sent, keyed by each input's name attribute.",
+          "check": { "question": "Is the array from $this->input->post() keyed by the name attribute?", "options": ["Yes", "No, by the input's id"], "correct": 0 }
+        },
+        {
+          "text": "<span class=\"code-inline\">print_r()</span> is a quick way to dump that whole array on screen so you can see every key and value at once.",
+          "check": { "question": "Does print_r() show the array's keys and values together?", "options": ["Yes", "No, only values"], "correct": 0 }
+        },
+        {
+          "text": "Passing a specific key, like <span class=\"code-inline\">$this->input->post('username')</span>, returns just that one field's value instead of the whole array.",
+          "check": { "question": "Does $this->input->post('username') return only the username value?", "options": ["Yes", "No, the whole array"], "correct": 0 }
+        }
+      ],
+      "quiz": {
+        "type": "mcq",
+        "question": "A form input has no name attribute. What happens to its value in $this->input->post()?",
+        "options": [
+          "It's missing from the array entirely",
+          "It appears under the key 'undefined'",
+          "It appears under the input's id instead",
+          "It causes a fatal PHP error"
+        ],
+        "correct": 0
+      }
+    },
+    {
+      "id": 9,
+      "title": "The name Attribute Matters",
+      "callback": false,
+      "refSection": null,
+      "chunks": [
+        {
+          "text": "The <span class=\"code-inline\">name</span> attribute is what CI3 uses to label each piece of submitted data — not the id, not the placeholder.",
+          "check": { "question": "Does CI3 use the name attribute, not the id, to label submitted data?", "options": ["Yes", "No, it uses the id"], "correct": 0 }
+        },
+        {
+          "text": "Two inputs that accidentally share the same name will overwrite each other, so only the last one's value survives.",
+          "check": { "question": "If two inputs share one name, do both values get saved?", "options": ["No, only the last one survives", "Yes, both are kept"], "correct": 0 }
+        },
+        {
+          "text": "Checking every input has a unique, correct name attribute is one of the first things to verify when post() looks wrong.",
+          "check": { "question": "Is checking name attributes a good first debugging step for missing post() data?", "options": ["Yes", "No, check the id first"], "correct": 0 }
+        }
+      ],
+      "quiz": {
+        "type": "arrange",
+        "question": "Arrange the tokens to build a text input named email.",
+        "tokens": ["name=\"email\">", "<input", "type=\"text\""],
+        "correctOrder": ["<input", "type=\"text\"", "name=\"email\">"]
+      }
+    },
+    {
+      "id": 10,
+      "title": "Tracing the Full Submit",
+      "callback": true,
+      "refSection": "6, 8 & 9",
+      "chunks": [
+        {
+          "text": "Tracing a submit end to end: the URL segment picks the controller and method, the view holds the form, and post() reads what was typed.",
+          "check": { "question": "Does the full trace start at the URL and end at reading the posted data?", "options": ["Yes", "No, it starts at the database"], "correct": 0 }
+        },
+        {
+          "text": "A missing route, a misspelled method, a missing view, or a missing name attribute each break a different link in that same chain.",
+          "check": { "question": "Can different mistakes break different links in the same chain?", "options": ["Yes", "No, only one mistake is possible"], "correct": 0 }
+        },
+        {
+          "text": "Reading the exact wording of CI3's error message is usually the fastest way to tell which link in the chain broke.",
+          "check": { "question": "Is reading the error message text a fast way to find which step failed?", "options": ["Yes", "No, error text is unhelpful"], "correct": 0 }
+        }
+      ],
+      "quiz": {
+        "type": "mcq",
+        "question": "A POST form submits with no CI3 error page, but print_r($this->input->post()) shows an empty array. What's the most likely cause?",
+        "options": [
+          "An input field is missing its name attribute",
+          "The controller Pivot.php doesn't exist anywhere",
+          "The method name in the URL is misspelled",
+          "The view file was never created for this form"
+        ],
+        "correct": 0
+      }
+    }
+  ]
+}

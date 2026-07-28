@@ -379,19 +379,49 @@
                     </div>
                     <div class="form-group" id="modal_iq_topic_wrap" style="display:none">
                         <label>Topic</label>
-                        <select id="modal_iq_topic" class="form-control">
-                            <option value="">Select a topic...</option>
-                            <?php foreach ($iq_topics as $slug => $topic_title): ?>
-                                <option value="<?= htmlspecialchars($slug) ?>" data-class-code="<?= htmlspecialchars($iq_topic_classes[$slug] ?? '') ?>"><?= htmlspecialchars($topic_title) ?> (<?= htmlspecialchars($slug) ?>)</option>
-                            <?php endforeach; ?>
-                        </select>
-                        <small class="form-text text-muted">
-                            Only topics (uploaded under Interactive Quiz &rarr; Manage Topics) matching the selected
-                            widget's format &mdash; lesson+quiz for Interactive Discussion/Quiz, chunks+micro-checks
-                            for Microlearning Quiz &mdash; and the section/class selected above are listed here
-                            (plus any legacy unfiled topics). Students are redirected straight to this topic; their
-                            score is recorded on first completion only.
-                        </small>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="iq_source" id="modal_iq_source_existing" value="existing" checked>
+                            <label class="form-check-label" for="modal_iq_source_existing">Reuse existing topic</label>
+                        </div>
+                        <div class="form-check form-check-inline mb-2">
+                            <input class="form-check-input" type="radio" name="iq_source" id="modal_iq_source_new" value="new">
+                            <label class="form-check-label" for="modal_iq_source_new">Paste new JSON</label>
+                        </div>
+
+                        <div id="modal_iq_existing_wrap">
+                            <select id="modal_iq_topic" class="form-control">
+                                <option value="">Select a topic...</option>
+                                <?php foreach ($iq_topics as $slug => $topic_title): ?>
+                                    <option value="<?= htmlspecialchars($slug) ?>" data-class-code="<?= htmlspecialchars($iq_topic_classes[$slug] ?? '') ?>"><?= htmlspecialchars($topic_title) ?> (<?= htmlspecialchars($slug) ?>)</option>
+                                <?php endforeach; ?>
+                            </select>
+                            <small class="form-text text-muted">
+                                Only topics (uploaded under Interactive Quiz &rarr; Manage Topics) matching the selected
+                                widget's format &mdash; lesson+quiz for Interactive Discussion/Quiz, chunks+micro-checks
+                                for Microlearning Quiz &mdash; and the section/class selected above are listed here
+                                (plus any legacy unfiled topics). Students are redirected straight to this topic; their
+                                score is recorded on first completion only.
+                            </small>
+                        </div>
+
+                        <div id="modal_iq_new_wrap" style="display:none">
+                            <input type="text" name="iq_new_slug" id="modal_iq_new_slug" class="form-control mb-2" maxlength="100"
+                                   pattern="[a-z0-9_]+" placeholder="new_topic_slug (lowercase letters, digits, underscores)">
+                            <button type="button" class="btn btn-sm btn-outline-secondary mb-1"
+                                    onclick="document.getElementById('modal_iq_new_json_file').click()">
+                                <i class="fas fa-file-import"></i> Load from .json file
+                            </button>
+                            <input type="file" id="modal_iq_new_json_file" accept=".json,application/json" class="d-none">
+                            <textarea name="iq_new_json" id="modal_iq_new_json" class="form-control" rows="10"
+                                      placeholder='{"title": "...", "sections": [...]}'></textarea>
+                            <small class="form-text text-muted">
+                                Saved as a new file under <code>assets/json/{class code}/{slug}.json</code> so it
+                                becomes a reusable topic like any other &mdash; the slug must not already exist
+                                anywhere in the topic library. Use the microlearning format (sections with
+                                <code>chunks</code>) for Microlearning Quiz, or plain lesson+quiz sections for
+                                Interactive Discussion/Quiz.
+                            </small>
+                        </div>
                     </div>
                     <div class="form-group" id="modal_given_wrap" style="display:none">
                         <label>Widget Config</label>
@@ -715,17 +745,90 @@ let lastAutoFilledExample = null;
 // for the Title/Description fields auto-filled from the topic JSON below.
 let lastAutoFilledTitle = null;
 let lastAutoFilledDescription = null;
+let lastAutoFilledSlug = null;
+
+// Turns a pasted topic's "title" into a slug candidate matching the server's
+// ^[a-z0-9_]{1,100}$ requirement (_save_pasted_topic_json()).
+function slugifyTopicTitle(title) {
+    return (title || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '')
+        .substring(0, 100);
+}
 
 // The topic-file widgets (Interactive Discussion/Quiz, Microlearning Quiz)
-// don't take free-form JSON — they're driven by the topic <select> below, which
-// writes {"topic": slug} into the (hidden) given textarea so
-// save_assessment/preview_widget don't need special-casing.
+// don't take free-form JSON — they're driven either by the topic <select>
+// below (writes {"topic": slug} into the hidden given textarea, as always)
+// or, when "Paste new JSON" is picked, by iq_new_slug/iq_new_json — the
+// server writes the file and derives "given" itself on save
+// (AdminController::_resolve_iq_paste()), so there's nothing to post here yet.
 function syncIqTopicToGiven() {
+    if (document.getElementById('modal_iq_source_new').checked) {
+        document.getElementById('modal_given').value = '';
+        applyIqMaxScoreLock(true);
+        fetchWidgetPreview();
+        return;
+    }
     const topic = document.getElementById('modal_iq_topic').value;
     document.getElementById('modal_given').value = topic ? JSON.stringify({ topic: topic }) : '';
     applyIqMaxScoreLock(true);
     autofillIqTopicMeta(topic);
     fetchWidgetPreview();
+}
+
+// Shows the matching Reuse/Paste sub-wrap and re-derives given/Max Score for
+// the newly-active source. Called on radio change and from toggleGivenWrap().
+function toggleIqSource() {
+    const isNew = document.getElementById('modal_iq_source_new').checked;
+    document.getElementById('modal_iq_existing_wrap').style.display = isNew ? 'none' : '';
+    document.getElementById('modal_iq_new_wrap').style.display = isNew ? '' : 'none';
+    syncIqTopicToGiven();
+}
+
+// Client-side mirror of AdminController::_count_iq_topic_questions() /
+// _count_micro_topic_items() — only used to keep the (locked) Max Score field
+// non-blank for a not-yet-saved pasted topic; save_assessment() recomputes
+// the real value server-side once the file exists.
+function countIqItemsFromJson(text, format) {
+    let data;
+    try { data = JSON.parse(text); } catch (e) { return 1; }
+    const sections = (data && Array.isArray(data.sections)) ? data.sections : [];
+    let count = 0;
+    sections.forEach(s => {
+        if (format === 'micro') {
+            count += Array.isArray(s.chunks) ? s.chunks.length : 0;
+            if (s.quiz) count++;
+        } else if (s.quiz) {
+            count++;
+        }
+    });
+    return count > 0 ? count : 1;
+}
+
+// Same "don't clobber typed content" autofill as autofillIqTopicMeta(), but
+// reading the pasted JSON's own title/description directly instead of the
+// topic-library lookup (the file doesn't exist server-side yet to look up).
+// Also proposes a slug from the title — still just a starting point, the
+// admin can freely overwrite it before saving.
+function autofillIqMetaFromJson(text) {
+    let data;
+    try { data = JSON.parse(text); } catch (e) { data = null; }
+    const titleInput = document.getElementById('modal_title');
+    const descInput = document.getElementById('modal_description');
+    const slugInput = document.getElementById('modal_iq_new_slug');
+    if (!titleInput.value.trim() || titleInput.value === lastAutoFilledTitle) {
+        titleInput.value = (data && data.title) ? data.title : '';
+        lastAutoFilledTitle = titleInput.value;
+    }
+    if (!descInput.value.trim() || descInput.value === lastAutoFilledDescription) {
+        descInput.value = (data && data.description) ? data.description : '';
+        lastAutoFilledDescription = descInput.value;
+    }
+    if (!slugInput.value.trim() || slugInput.value === lastAutoFilledSlug) {
+        slugInput.value = (data && data.title) ? slugifyTopicTitle(data.title) : '';
+        lastAutoFilledSlug = slugInput.value;
+    }
 }
 
 // Auto-fills Title/Description from the topic JSON's own "title"/"description"
@@ -758,10 +861,14 @@ function applyIqMaxScoreLock(isTopicWidget) {
     const hint = document.getElementById('modal_max_score_hint');
     input.readOnly = isTopicWidget;
     hint.style.display = isTopicWidget ? '' : 'none';
-    if (isTopicWidget) {
-        const topic = document.getElementById('modal_iq_topic').value;
-        input.value = topic && iqTopicQuestionCounts[topic] !== undefined ? iqTopicQuestionCounts[topic] : '';
+    if (!isTopicWidget) return;
+
+    if (document.getElementById('modal_iq_source_new').checked) {
+        input.value = countIqItemsFromJson(document.getElementById('modal_iq_new_json').value, selectedTopicFormat());
+        return;
     }
+    const topic = document.getElementById('modal_iq_topic').value;
+    input.value = topic && iqTopicQuestionCounts[topic] !== undefined ? iqTopicQuestionCounts[topic] : '';
 }
 
 function toggleGivenWrap() {
@@ -773,12 +880,14 @@ function toggleGivenWrap() {
     // The two topic widgets read different topic formats, so re-filter the
     // shared dropdown (and drop a now-invalid selection) on every switch.
     refreshIqTopicOptions();
-    applyIqMaxScoreLock(isTopicWidget);
 
     if (isTopicWidget) {
-        fetchWidgetPreview();
+        // Shows the right Reuse/Paste sub-wrap and derives given + Max Score
+        // + preview for whichever source is active.
+        toggleIqSource();
         return;
     }
+    applyIqMaxScoreLock(false);
 
     const key = selectedWidgetKey();
 
@@ -830,11 +939,16 @@ function applyCopyFrom() {
     lastAutoFilledExample = null;
     lastAutoFilledTitle = null;
     lastAutoFilledDescription = null;
+    lastAutoFilledSlug = null;
 
     let givenTopic = '';
     if (src.given) {
         try { givenTopic = JSON.parse(src.given).topic || ''; } catch (e) {}
     }
+    // The copied-from assessment already points at a saved topic file — reuse it.
+    document.getElementById('modal_iq_source_existing').checked = true;
+    document.getElementById('modal_iq_new_slug').value = '';
+    document.getElementById('modal_iq_new_json').value = '';
     refreshIqTopicOptions();
     document.getElementById('modal_iq_topic').value = givenTopic;
     toggleGivenWrap();
@@ -857,6 +971,14 @@ function fetchWidgetPreview() {
     const box = document.getElementById('modal_widget_preview');
 
     if (!widgetId) {
+        wrap.style.display = 'none';
+        box.innerHTML = '';
+        return;
+    }
+
+    // Nothing to preview for a not-yet-saved pasted topic — the given JSON
+    // the preview endpoint needs is only derived once the file exists on save.
+    if (selectedTopicFormat() && document.getElementById('modal_iq_source_new').checked) {
         wrap.style.display = 'none';
         box.innerHTML = '';
         return;
@@ -976,13 +1098,70 @@ document.getElementById('modal_given_file').addEventListener('change', function 
     reader.readAsText(file);
 });
 
+// Same "load a local file into the textarea" helper, for the "Paste new
+// JSON" topic-widget sub-wrap.
+document.getElementById('modal_iq_new_json_file').addEventListener('change', function () {
+    const file = this.files[0];
+    this.value = '';
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+        let parsed;
+        try {
+            parsed = JSON.parse(reader.result);
+        } catch (e) {
+            alert('That file is not valid JSON: ' + e.message);
+            return;
+        }
+        const textarea = document.getElementById('modal_iq_new_json');
+        textarea.value = JSON.stringify(parsed, null, 2);
+        applyIqMaxScoreLock(true);
+        autofillIqMetaFromJson(textarea.value);
+    };
+    reader.readAsText(file);
+});
+
+document.getElementById('modal_iq_new_json').addEventListener('input', function () {
+    applyIqMaxScoreLock(true);
+    autofillIqMetaFromJson(this.value);
+});
+
 // Client-side twin of save_assessment()'s given-JSON check — blocks the
 // submit up front so the typed config isn't lost to a server-side redirect.
 document.getElementById('assessmentForm').addEventListener('submit', function (e) {
     const select = document.getElementById('modal_widget_id');
-    // Topic-file widgets have no hand-written config — syncIqTopicToGiven()
-    // writes {"topic": slug} for them.
-    if (!select.value || selectedTopicFormat()) return;
+    if (!select.value) return;
+
+    const topicFormat = selectedTopicFormat();
+    if (topicFormat) {
+        // Reusing an existing topic has no hand-written config to check —
+        // syncIqTopicToGiven() already wrote {"topic": slug} for it.
+        if (!document.getElementById('modal_iq_source_new').checked) return;
+
+        const slug = document.getElementById('modal_iq_new_slug').value.trim();
+        const raw = document.getElementById('modal_iq_new_json').value.trim();
+        let problem = '';
+        if (!/^[a-z0-9_]{1,100}$/.test(slug)) {
+            problem = 'the slug is required and may only contain lowercase letters, digits, and underscores';
+        } else if (!raw) {
+            problem = 'the pasted JSON is empty';
+        } else {
+            try {
+                const parsed = JSON.parse(raw);
+                if (typeof parsed !== 'object' || parsed === null || !Array.isArray(parsed.sections) || !parsed.sections.length) {
+                    problem = 'the pasted JSON must be an object with a non-empty "sections" array';
+                }
+            } catch (err) {
+                problem = 'the pasted JSON is not valid JSON — ' + err.message;
+            }
+        }
+        if (problem) {
+            e.preventDefault();
+            alert('New topic not saved: ' + problem + '.');
+        }
+        return;
+    }
 
     const raw = document.getElementById('modal_given').value.trim();
     let problem = '';
@@ -1008,6 +1187,8 @@ document.getElementById('modal_is_groupings').addEventListener('change', toggleG
 document.getElementById('modal_widget_id').addEventListener('change', toggleGivenWrap);
 document.getElementById('modal_given').addEventListener('input', refreshWidgetPreviewDebounced);
 document.getElementById('modal_iq_topic').addEventListener('change', syncIqTopicToGiven);
+document.getElementById('modal_iq_source_existing').addEventListener('change', toggleIqSource);
+document.getElementById('modal_iq_source_new').addEventListener('change', toggleIqSource);
 document.getElementById('modal_apply_mode_section').addEventListener('change', toggleApplyMode);
 document.getElementById('modal_apply_mode_class').addEventListener('change', toggleApplyMode);
 document.getElementById('modal_copy_from').addEventListener('change', applyCopyFrom);
@@ -1035,9 +1216,13 @@ function openAddModal() {
     document.getElementById('modal_widget_id').value = '';
     document.getElementById('modal_given').value = '';
     document.getElementById('modal_iq_topic').value = '';
+    document.getElementById('modal_iq_source_existing').checked = true;
+    document.getElementById('modal_iq_new_slug').value = '';
+    document.getElementById('modal_iq_new_json').value = '';
     lastAutoFilledExample = null;
     lastAutoFilledTitle = null;
     lastAutoFilledDescription = null;
+    lastAutoFilledSlug = null;
     toggleGivenWrap();
     document.getElementById('modal_auto_create_submissions').checked = false;
     document.getElementById('modal_submit_btn').textContent = 'Add Assessment';
@@ -1071,10 +1256,15 @@ function openEditModal(a) {
     lastAutoFilledExample = null;
     lastAutoFilledTitle = null;
     lastAutoFilledDescription = null;
+    lastAutoFilledSlug = null;
     let givenTopic = '';
     if (a.given) {
         try { givenTopic = JSON.parse(a.given).topic || ''; } catch (e) {}
     }
+    // An assessment being edited already points at a saved topic file — reuse it.
+    document.getElementById('modal_iq_source_existing').checked = true;
+    document.getElementById('modal_iq_new_slug').value = '';
+    document.getElementById('modal_iq_new_json').value = '';
     refreshIqTopicOptions();
     document.getElementById('modal_iq_topic').value = givenTopic;
     toggleGivenWrap();

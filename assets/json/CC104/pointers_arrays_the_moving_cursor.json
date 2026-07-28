@@ -1,0 +1,281 @@
+{
+    "topic": "pointers_arrays_the_moving_cursor",
+    "title": "Pointers & Arrays: The Moving Cursor",
+    "description": "Five ideas that turn a pointer into a cursor you can slide along an array.",
+    "congratsText": "You can now aim a cursor at an array, slide it, write through it, and say exactly where a lone pointer falls short.",
+    "objectives": [
+        "Explain what a pointer stores and how * differs from the pointer itself",
+        "Identify an array's name as the address of its first item",
+        "Predict how a write through a pointer changes the array behind it",
+        "Calculate where cursor + n lands in an array of ints",
+        "Contrast what sizeof, assignment, and bounds mean for an array versus a pointer"
+    ],
+    "recap": [
+        "A pointer holds an address; &amp; gets one and * reads the value back",
+        "An array's name is already the address of its first item, so no &amp; is needed to aim at it",
+        "*cursor and prices[1] are two labels on one box, so a write through either is seen by both",
+        "cursor + 1 jumps one whole int, which is what makes *(cursor + i) match prices[i]",
+        "sizeof sees a whole array but only one address of a pointer, and C never checks bounds for you"
+    ],
+    "sections": [
+        {
+            "id": 0,
+            "title": "A Pointer Holds an Address",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "Every variable sits somewhere in memory, and that spot has a numeric <span class=\"highlight\">address</span>. The <span class=\"code-inline\">&amp;</span> operator hands you that address.",
+                    "check": {
+                        "question": "What does &amp;total give you?",
+                        "options": [
+                            "The address where total sits",
+                            "The number stored in total"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "A <span class=\"highlight\">pointer</span> is a variable built to hold an address. <span class=\"code-inline\">int *cursor = &amp;total;</span> stores where total lives, not what it holds.",
+                    "check": {
+                        "question": "Is int *cursor = total; a valid way to aim a cursor?",
+                        "options": [
+                            "No, cursor needs an address",
+                            "Yes, cursor copies the value"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "<span class=\"code-inline\">*cursor</span> means go to that address and look inside, so it gives a value. Plain <span class=\"code-inline\">cursor</span> gives the location, printed with <span class=\"code-inline\">%p</span>.",
+                    "check": {
+                        "question": "Which one prints a value?",
+                        "options": [
+                            "*cursor",
+                            "cursor"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "code": "int total = 175;\nint *cursor = &total;\nprintf(\"%p\", cursor);",
+                "question": "What does this print?",
+                "options": [
+                    "The address where total sits",
+                    "175, the value inside total",
+                    "The address of cursor itself",
+                    "Nothing, cursor was never given a value"
+                ],
+                "correct": 0
+            }
+        },
+        {
+            "id": 1,
+            "title": "The Array Name Is Already an Address",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "An array's name is the address of its first item, which is why <span class=\"code-inline\">prices</span> and <span class=\"code-inline\">&amp;prices[0]</span> print the same address.",
+                    "check": {
+                        "question": "prices and &amp;prices[0] are what?",
+                        "options": [
+                            "The same address",
+                            "Two different spots"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "So a pointer is aimed at an array with no <span class=\"code-inline\">&amp;</span> at all. <span class=\"code-inline\">cursor = prices;</span> is enough, because the name is already an address.",
+                    "check": {
+                        "question": "Do you need &amp; when writing cursor = prices;?",
+                        "options": [
+                            "No",
+                            "Yes"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Once aimed, <span class=\"code-inline\">*cursor</span> and <span class=\"code-inline\">prices[0]</span> are two labels on one box, so reading either gives the same number.",
+                    "check": {
+                        "question": "*cursor and prices[0] read from what?",
+                        "options": [
+                            "The very same box",
+                            "Two separate copies"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "type",
+                "code": "int prices[5] = {25, 40, 15, 60, 35};\nint *cursor = prices;\nprintf(\"%d\", *cursor);",
+                "question": "Type the number this prints.",
+                "acceptedAnswers": [
+                    "25"
+                ]
+            }
+        },
+        {
+            "id": 2,
+            "title": "Two Labels, One Box",
+            "callback": true,
+            "refSection": "0",
+            "chunks": [
+                {
+                    "text": "The star works on the left of <span class=\"code-inline\">=</span> too. <span class=\"code-inline\">*cursor = 99;</span> drops 99 into the box the cursor is parked on, and that box belongs to the array.",
+                    "check": {
+                        "question": "*cursor = 99; changes what?",
+                        "options": [
+                            "The value at that address",
+                            "Where the cursor points"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "You never wrote <span class=\"code-inline\">prices[1]</span> by name, yet it changed. A write through either label is seen by the other, because there is only one box.",
+                    "check": {
+                        "question": "Can prices[1] change without being named?",
+                        "options": [
+                            "Yes",
+                            "No"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Drop the star and the meaning flips. <span class=\"code-inline\">cursor = 99;</span> re-aims the cursor at address 99 instead of storing 99 anywhere.",
+                    "check": {
+                        "question": "cursor = 99; stores 99 in the box the cursor was on.",
+                        "options": [
+                            "False",
+                            "True"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "arrange",
+                "question": "Arrange these lines so the last one prints 20.",
+                "tokens": [
+                    "printf(\"%d\", *p);",
+                    "int *p = &age;",
+                    "int age = 20;"
+                ],
+                "correctOrder": [
+                    "int age = 20;",
+                    "int *p = &age;",
+                    "printf(\"%d\", *p);"
+                ]
+            }
+        },
+        {
+            "id": 3,
+            "title": "Sliding the Cursor",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "<span class=\"code-inline\">cursor + 1</span> does not add one byte. It moves forward by one whole item, which is 4 bytes for an <span class=\"code-inline\">int</span>.",
+                    "check": {
+                        "question": "cursor + 1 moves forward by what?",
+                        "options": [
+                            "One whole int",
+                            "Exactly one byte"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "That is why <span class=\"code-inline\">*(cursor + i)</span> lands on the same item as <span class=\"code-inline\">prices[i]</span>. The compiler rewrites brackets as pointer math anyway.",
+                    "check": {
+                        "question": "Brackets are shorthand for pointer math.",
+                        "options": [
+                            "True",
+                            "False"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "<span class=\"code-inline\">cursor++</span> makes the same jump but leaves the cursor there. Read, then slide, and a loop walks the whole shelf with no index at all.",
+                    "check": {
+                        "question": "After cursor++, the earlier match with prices[i] still lines up.",
+                        "options": [
+                            "No, it shifts",
+                            "Yes, it holds"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "code": "int scores[5] = {90, 85, 78, 92, 88};\nint *p = scores;\np++;\nprintf(\"%d %d\", scores[2], *(p + 2));",
+                "question": "What does this print?",
+                "options": [
+                    "78 92",
+                    "78 78",
+                    "85 92",
+                    "92 78"
+                ],
+                "correct": 0
+            }
+        },
+        {
+            "id": 4,
+            "title": "What Only the Array Knows",
+            "callback": true,
+            "refSection": "1 & 3",
+            "chunks": [
+                {
+                    "text": "<span class=\"code-inline\">sizeof(prices)</span> reports the whole shelf, 5 ints at 4 bytes each. <span class=\"code-inline\">sizeof(cursor)</span> reports one address, usually 8 bytes.",
+                    "check": {
+                        "question": "sizeof on a pointer measures the whole array.",
+                        "options": [
+                            "False",
+                            "True"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "A pointer can be re-aimed any time, but an array name cannot be reassigned. <span class=\"code-inline\">prices = cursor;</span> is refused outright.",
+                    "check": {
+                        "question": "prices = cursor; gives you what?",
+                        "options": [
+                            "An error",
+                            "A warning"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "C never checks bounds. Slide past slot 4 and the read still succeeds, printing whatever byte happened to be sitting there.",
+                    "check": {
+                        "question": "Who has to stop the walk in time?",
+                        "options": [
+                            "You do",
+                            "The compiler"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "type",
+                "code": "int marks[4] = {12, 7, 9, 20};\nint *p = marks;\np++;\nprintf(\"%d\", *(p + 1));",
+                "question": "Type the number this prints.",
+                "acceptedAnswers": [
+                    "9"
+                ]
+            }
+        }
+    ]
+}

@@ -1,0 +1,501 @@
+{
+    "topic": "java_php_oop",
+    "title": "OOP Face-Off: Java vs PHP in CodeIgniter",
+    "description": "Compare how Java and PHP handle core OOP concepts, then see how PHP's OOP powers CodeIgniter 3.",
+    "congratsText": "You can now read PHP OOP through a Java lens — and see exactly how CI3 builds on it!",
+    "objectives": [
+        "Identify how Java and PHP declare classes and create objects.",
+        "Compare constructor syntax between Java and PHP.",
+        "Explain how access modifiers control visibility in both languages.",
+        "Compare inheritance syntax and keywords in Java and PHP.",
+        "Apply constructor and encapsulation rules to a CI3 model scenario.",
+        "Identify interface syntax differences between Java and PHP.",
+        "Explain how static members work in Java versus PHP.",
+        "Apply inheritance rules to CI3's CI_Controller pattern.",
+        "Explain how CI3 controllers and models use PHP OOP in practice."
+    ],
+    "recap": [
+        "Java and PHP both declare classes with the class keyword, but PHP marks properties with $ instead of a type, and objects are built with new in both languages.",
+        "Java constructors share the class name; PHP constructors are always named __construct(), no matter what the class is called.",
+        "Both languages share public, private, and protected, but PHP quietly defaults an unmarked property to public.",
+        "Both use extends for inheritance; Java calls the parent with super(), PHP calls it with parent::__construct().",
+        "A CI3 model is a plain PHP class — it can have a private property and a __construct() that calls parent::__construct(), exactly like any other PHP subclass.",
+        "Java interfaces require full method signatures with types; PHP interfaces use the same implements keyword but let type declarations stay optional.",
+        "Static members belong to the class itself in both languages, but PHP reaches them with :: instead of Java's dot.",
+        "A CI3 controller's class Menu extends CI_Controller line and its parent::__construct() call are the exact same PHP inheritance pattern taught earlier — not framework magic.",
+        "CodeIgniter 3's controllers and models are ordinary PHP classes — everything covered here (classes, constructors, access modifiers, inheritance) is literally how CI3 is built."
+    ],
+    "sections": [
+        {
+            "id": 0,
+            "title": "Classes & Objects",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "Both Java and PHP define a blueprint with the <span class=\"highlight\">class</span> keyword — but PHP properties are marked with <span class=\"code-inline\">$</span> while Java uses a type declaration instead.",
+                    "check": {
+                        "question": "Which language requires a type before each property, like `String name;`?",
+                        "options": [
+                            "Java",
+                            "PHP"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Creating an object uses <span class=\"code-inline\">new ClassName()</span> in both languages — the surface syntax looks almost identical.",
+                    "check": {
+                        "question": "Does PHP also use the `new` keyword to create objects?",
+                        "options": [
+                            "Yes, just like Java",
+                            "No, PHP uses create()"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "The visible difference shows up inside methods: PHP writes <span class=\"code-inline\">$this->name</span> everywhere, while Java just writes <span class=\"code-inline\">name</span> or <span class=\"code-inline\">this.name</span>.",
+                    "check": {
+                        "question": "In PHP, how do you refer to an object's own property inside a method?",
+                        "options": [
+                            "$this->property",
+                            "this.property"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "question": "Which line correctly declares a class property in PHP?",
+                "options": [
+                    "public $price;",
+                    "public double price;",
+                    "private double price = 0;",
+                    "int price;"
+                ],
+                "correct": 0
+            }
+        },
+        {
+            "id": 1,
+            "title": "Constructors",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "Java constructors are named exactly like their class — a <span class=\"code-inline\">Menu</span> class has a <span class=\"code-inline\">Menu()</span> constructor. PHP breaks that pattern entirely.",
+                    "check": {
+                        "question": "Does a PHP constructor share the class's own name?",
+                        "options": [
+                            "No, it's always __construct()",
+                            "Yes, same as Java"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "PHP always names its constructor <span class=\"code-inline\">__construct()</span>, no matter what the class itself is called.",
+                    "check": {
+                        "question": "What is the PHP constructor method always named?",
+                        "options": [
+                            "__construct()",
+                            "ClassName()"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Both constructors still run automatically the moment an object is created with <span class=\"highlight\">new</span> — that part hasn't changed.",
+                    "check": {
+                        "question": "Does the constructor run automatically when `new` is used?",
+                        "options": [
+                            "Yes, in both languages",
+                            "Only in Java"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "arrange",
+                "question": "Arrange the tokens to build a correct PHP constructor declaration.",
+                "tokens": [
+                    "(",
+                    "public",
+                    ")",
+                    "__construct",
+                    "function"
+                ],
+                "correctOrder": [
+                    "public",
+                    "function",
+                    "__construct",
+                    "(",
+                    ")"
+                ]
+            }
+        },
+        {
+            "id": 2,
+            "title": "Encapsulation & Access Modifiers",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "Java and PHP share the same three visibility words: <span class=\"highlight\">public</span>, <span class=\"highlight\">private</span>, and <span class=\"highlight\">protected</span>.",
+                    "check": {
+                        "question": "Do PHP and Java use the same three access modifier keywords?",
+                        "options": [
+                            "Yes",
+                            "No, PHP has different names"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Leave a Java field unmarked and it becomes package-private. Leave a PHP property unmarked and PHP quietly makes it <span class=\"highlight\">public</span>.",
+                    "check": {
+                        "question": "What does PHP default an unmarked property to?",
+                        "options": [
+                            "public",
+                            "private"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Getters and setters are just a convention in both languages — PHP doesn't force them, but hiding raw properties behind methods is still the safer habit.",
+                    "check": {
+                        "question": "Does PHP force you to write getters and setters?",
+                        "options": [
+                            "No, it's just a convention",
+                            "Yes, PHP requires them"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "type",
+                "question": "Type the access modifier that means 'only this class and its subclasses can use this' — the same word in both Java and PHP.",
+                "acceptedAnswers": [
+                    "protected"
+                ]
+            }
+        },
+        {
+            "id": 3,
+            "title": "Inheritance",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "Both languages use <span class=\"highlight\">extends</span> to build a subclass from a parent class — one keyword, two languages.",
+                    "check": {
+                        "question": "Which keyword builds a subclass in both Java and PHP?",
+                        "options": [
+                            "extends",
+                            "inherits"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "To call the parent's constructor, Java uses <span class=\"code-inline\">super()</span> while PHP uses <span class=\"code-inline\">parent::__construct()</span>.",
+                    "check": {
+                        "question": "What does PHP call instead of Java's `super()`?",
+                        "options": [
+                            "parent::__construct()",
+                            "base()"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "PHP only lets a class extend <span class=\"highlight\">one</span> parent class, just like Java — no multiple class inheritance in either.",
+                    "check": {
+                        "question": "Can a PHP class extend more than one class at once?",
+                        "options": [
+                            "No, only one parent",
+                            "Yes, multiple parents allowed"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "question": "Which line correctly calls a parent constructor from inside a PHP subclass?",
+                "options": [
+                    "parent::__construct();",
+                    "super::__construct();",
+                    "parent->__construct();",
+                    "self::parent__construct();"
+                ],
+                "correct": 0
+            }
+        },
+        {
+            "id": 4,
+            "title": "Constructors Meet a Real CI3 Model",
+            "callback": true,
+            "refSection": "2 & 3",
+            "chunks": [
+                {
+                    "text": "A CI3 model class is just a normal PHP class — it can have its own constructor and private properties, same rules as any other PHP class.",
+                    "check": {
+                        "question": "Can a CI3 model define a private property?",
+                        "options": [
+                            "Yes, same PHP rules apply",
+                            "No, models must be all public"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Picture a <span class=\"code-inline\">Menu_model</span> with a private <span class=\"code-inline\">$table</span> property set inside its constructor — that constructor still has to be named one exact way.",
+                    "check": {
+                        "question": "What must that model's constructor be named?",
+                        "options": [
+                            "__construct()",
+                            "Menu_model()"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Because <span class=\"code-inline\">$table</span> is private, code outside the class can't touch it directly — it has to go through a method, exactly like encapsulation demands.",
+                    "check": {
+                        "question": "Can outside code read a private $table property directly?",
+                        "options": [
+                            "No, only through a method",
+                            "Yes, private just means read-only"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "arrange",
+                "question": "Arrange the tokens to correctly declare and initialize a private $table property inside a CI3 model's constructor.",
+                "tokens": [
+                    "parent::__construct();",
+                    "$this->table",
+                    "public function __construct()",
+                    "= 'menu_items';",
+                    "{"
+                ],
+                "correctOrder": [
+                    "public function __construct()",
+                    "{",
+                    "parent::__construct();",
+                    "$this->table",
+                    "= 'menu_items';"
+                ]
+            }
+        },
+        {
+            "id": 5,
+            "title": "Interfaces",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "An <span class=\"highlight\">interface</span> lists method signatures with no bodies — a contract classes promise to follow, in both Java and PHP.",
+                    "check": {
+                        "question": "Does an interface contain full method bodies?",
+                        "options": [
+                            "No, just signatures",
+                            "Yes, full implementations"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "A class agrees to that contract with <span class=\"code-inline\">implements</span> — the same keyword in both languages.",
+                    "check": {
+                        "question": "Which keyword connects a class to an interface?",
+                        "options": [
+                            "implements",
+                            "extends"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Java forces you to declare parameter and return types in the interface. PHP lets you skip types entirely unless you choose to add them.",
+                    "check": {
+                        "question": "Does PHP require type declarations in an interface method?",
+                        "options": [
+                            "No, they're optional",
+                            "Yes, always required"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "type",
+                "question": "Type the keyword a PHP class uses to promise it follows an interface's contract.",
+                "acceptedAnswers": [
+                    "implements"
+                ]
+            }
+        },
+        {
+            "id": 6,
+            "title": "Static Members",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "A <span class=\"highlight\">static</span> member belongs to the class itself, not to any one object — true in Java and PHP alike.",
+                    "check": {
+                        "question": "Does a static member belong to one specific object?",
+                        "options": [
+                            "No, it belongs to the class",
+                            "Yes, each object gets its own copy"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Java reaches a static member with a dot, like <span class=\"code-inline\">MathUtil.PI</span>. PHP reaches for the <span class=\"code-inline\">::</span> operator instead.",
+                    "check": {
+                        "question": "Which operator does PHP use to access a static member?",
+                        "options": [
+                            "::",
+                            "."
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Calling a static method needs no <span class=\"code-inline\">new</span> at all — you call it straight off the class name in both languages.",
+                    "check": {
+                        "question": "Do you need to create an object to call a static method?",
+                        "options": [
+                            "No",
+                            "Yes, always"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "question": "Which line correctly calls a static method connect() on a PHP class named Database?",
+                "options": [
+                    "Database::connect();",
+                    "Database.connect();",
+                    "new Database->connect();",
+                    "Database->connect();"
+                ],
+                "correct": 0
+            }
+        },
+        {
+            "id": 7,
+            "title": "Inheritance Meets CI_Controller",
+            "callback": true,
+            "refSection": "4",
+            "chunks": [
+                {
+                    "text": "Every CI3 controller starts the same way: <span class=\"code-inline\">class Menu extends CI_Controller</span> — that's inheritance in action, on day one of the framework.",
+                    "check": {
+                        "question": "Does a CI3 controller use the same extends keyword taught earlier?",
+                        "options": [
+                            "Yes, exactly the same keyword",
+                            "No, CI3 has its own inheritance syntax"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Inside that controller's constructor, the first line is usually <span class=\"code-inline\">parent::__construct();</span> — calling the parent class, same pattern as any PHP subclass.",
+                    "check": {
+                        "question": "What does that first line call?",
+                        "options": [
+                            "The parent class's constructor",
+                            "A brand-new CI3-only function"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Skip that parent call and CI3's core features, like <span class=\"code-inline\">$this->load</span>, silently stop working — the parent constructor never ran to set them up.",
+                    "check": {
+                        "question": "What breaks if you skip calling the parent constructor?",
+                        "options": [
+                            "Core CI3 features like $this->load",
+                            "Nothing, it's optional"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "code": "class Menu extends CI_Controller {\n    public function __construct() {\n        // missing parent::__construct();\n    }\n}",
+                "question": "This controller extends CI_Controller but never calls parent::__construct(). What's the most likely result?",
+                "options": [
+                    "Core CI3 features like $this->load break",
+                    "The page loads but every model call fails instead",
+                    "PHP throws a fatal syntax error on that line",
+                    "The controller quietly falls back to a default view"
+                ],
+                "correct": 0
+            }
+        },
+        {
+            "id": 8,
+            "title": "OOP in CI3 Controllers & Models",
+            "callback": true,
+            "refSection": "1, 4, 6 & 7",
+            "chunks": [
+                {
+                    "text": "Strip away the framework labels and a CI3 <span class=\"highlight\">Controller</span> or <span class=\"highlight\">Model</span> is just an ordinary PHP class — the same class/object rules from earlier apply.",
+                    "check": {
+                        "question": "Is a CI3 model just a regular PHP class underneath?",
+                        "options": [
+                            "Yes",
+                            "No, it's a special non-class structure"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "CI3's own base classes, like <span class=\"code-inline\">CI_Model</span>, use the exact same static, private, and interface rules PHP already had — CodeIgniter didn't invent new OOP syntax.",
+                    "check": {
+                        "question": "Did CodeIgniter invent new OOP keywords for its base classes?",
+                        "options": [
+                            "No, it reuses standard PHP OOP",
+                            "Yes, CI3 has its own keyword set"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "That's the payoff: once you know PHP OOP, you already know how CI3 is built — <span class=\"highlight\">CI_Model</span>, <span class=\"highlight\">CI_Controller</span>, and every library are just classes and objects.",
+                    "check": {
+                        "question": "Does understanding PHP OOP help you understand CI3's internals?",
+                        "options": [
+                            "Yes, directly",
+                            "No, CI3 is unrelated to OOP"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "type",
+                "question": "Type the single PHP keyword that both a CI3 controller (extends CI_Controller) and a CI3 model (extends CI_Model) rely on to inherit their parent class's features.",
+                "acceptedAnswers": [
+                    "extends"
+                ]
+            }
+        }
+    ]
+}

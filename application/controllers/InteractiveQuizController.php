@@ -8,7 +8,7 @@ class InteractiveQuizController extends CI_Controller
     public function __construct()
     {
         parent::__construct();
-        $this->load->model(['classworks', 'assessments', 'Iq_attempts', 'discussions', 'class_student']);
+        $this->load->model(['classworks', 'assessments', 'Iq_attempts', 'discussions', 'class_student', 'Iq_topic_model']);
         $this->load->helper(['url']);
         $this->load->library(['session']);
         $this->json_path = FCPATH . 'assets/json/';
@@ -859,135 +859,16 @@ class InteractiveQuizController extends CI_Controller
         return $topics;
     }
 
+    // Delegates to Iq_topic_model — the one place a topic document's shape is
+    // defined, shared with AdminController's paste-JSON path.
     private function _validate_discussion_structure(array $data): string
     {
-        if (empty($data['title']) || !is_string($data['title'])) {
-            return 'JSON must have a non-empty "title" string field.';
-        }
-        if (empty($data['sections']) || !is_array($data['sections'])) {
-            return 'JSON must have a non-empty "sections" array.';
-        }
-        foreach ($data['sections'] as $i => $section) {
-            $n = $i + 1;
-            if (empty($section['title'])) {
-                return "Section {$n} is missing a \"title\" field.";
-            }
-            if (!isset($section['lesson'])) {
-                return "Section {$n} is missing a \"lesson\" field.";
-            }
-            if (!isset($section['quiz']) || $section['quiz'] === null) {
-                continue;
-            }
-            if (!is_array($section['quiz']) || empty($section['quiz'])) {
-                return "Section {$n} has an invalid \"quiz\" value; use null or omit it when there is no quiz.";
-            }
-            $q = $section['quiz'];
-            if (empty($q['question'])) {
-                return "Section {$n} quiz is missing a \"question\" field.";
-            }
-            if (empty($q['options']) || !is_array($q['options']) || count($q['options']) < 2) {
-                return "Section {$n} quiz must have at least 2 \"options\".";
-            }
-            if (!isset($q['correct']) || !is_int($q['correct']) || $q['correct'] < 0 || $q['correct'] >= count($q['options'])) {
-                return "Section {$n} quiz \"correct\" must be a valid option index.";
-            }
-        }
-        return '';
+        return $this->Iq_topic_model->validate_discussion($data);
     }
 
-    // Microlearning format. Deliberately stricter than the discussion
-    // validator in the places the renderer actually depends on (a checkpoint's
-    // shape must match its declared type) and looser where the format allows
-    // it: `lesson` is optional (a checkpoint can be pure question) and a
-    // section may be chunks-only with no checkpoint at all.
     private function _validate_micro_structure(array $data): string
     {
-        if (empty($data['title']) || !is_string($data['title'])) {
-            return 'JSON must have a non-empty "title" string field.';
-        }
-        if (empty($data['sections']) || !is_array($data['sections'])) {
-            return 'JSON must have a non-empty "sections" array.';
-        }
-
-        $has_chunks = false;
-
-        foreach ($data['sections'] as $i => $section) {
-            $n = $i + 1;
-            if (empty($section['title'])) {
-                return "Section {$n} is missing a \"title\" field.";
-            }
-
-            foreach ($section['chunks'] ?? [] as $ci => $chunk) {
-                $has_chunks = true;
-                $cn = $ci + 1;
-                if (empty($chunk['text'])) {
-                    return "Section {$n}, chunk {$cn} is missing a \"text\" field.";
-                }
-                $check = $chunk['check'] ?? null;
-                if (!is_array($check) || empty($check['question'])) {
-                    return "Section {$n}, chunk {$cn} is missing a \"check.question\" field.";
-                }
-                if (empty($check['options']) || !is_array($check['options']) || count($check['options']) < 2) {
-                    return "Section {$n}, chunk {$cn} check must have at least 2 \"options\".";
-                }
-                if (!isset($check['correct']) || !is_int($check['correct'])
-                    || $check['correct'] < 0 || $check['correct'] >= count($check['options'])) {
-                    return "Section {$n}, chunk {$cn} check \"correct\" must be a valid option index.";
-                }
-            }
-
-            if (empty($section['quiz'])) {
-                continue;
-            }
-            if (!is_array($section['quiz'])) {
-                return "Section {$n} has an invalid \"quiz\" value; use null or omit it when there is no checkpoint.";
-            }
-
-            $q    = $section['quiz'];
-            $type = $q['type'] ?? 'mcq';
-
-            if (empty($q['question'])) {
-                return "Section {$n} checkpoint is missing a \"question\" field.";
-            }
-
-            if ($type === 'mcq') {
-                if (empty($q['options']) || !is_array($q['options']) || count($q['options']) < 2) {
-                    return "Section {$n} checkpoint (mcq) must have at least 2 \"options\".";
-                }
-                if (!isset($q['correct']) || !is_int($q['correct'])
-                    || $q['correct'] < 0 || $q['correct'] >= count($q['options'])) {
-                    return "Section {$n} checkpoint (mcq) \"correct\" must be a valid option index.";
-                }
-            } elseif ($type === 'arrange') {
-                if (empty($q['tokens']) || !is_array($q['tokens'])) {
-                    return "Section {$n} checkpoint (arrange) must have a non-empty \"tokens\" array.";
-                }
-                if (empty($q['correctOrder']) || !is_array($q['correctOrder'])) {
-                    return "Section {$n} checkpoint (arrange) must have a non-empty \"correctOrder\" array.";
-                }
-                // The renderer builds the answer by tapping tokens, so an order
-                // that isn't a permutation of the pool is unanswerable.
-                $tokens = $q['tokens'];
-                $order  = $q['correctOrder'];
-                sort($tokens);
-                sort($order);
-                if ($tokens !== $order) {
-                    return "Section {$n} checkpoint (arrange): \"correctOrder\" must be a rearrangement of \"tokens\" (same items, no extras or omissions).";
-                }
-            } elseif ($type === 'type') {
-                if (empty($q['acceptedAnswers']) || !is_array($q['acceptedAnswers'])) {
-                    return "Section {$n} checkpoint (type) must have a non-empty \"acceptedAnswers\" array.";
-                }
-            } else {
-                return "Section {$n} checkpoint has unknown \"type\" \"{$type}\"; use mcq, arrange, or type.";
-            }
-        }
-
-        if (!$has_chunks) {
-            return 'No section has a "chunks" array — this topic is in the plain lesson+quiz format, so use the Interactive Discussion/Quiz widget instead of Microlearning Quiz.';
-        }
-
-        return '';
+        return $this->Iq_topic_model->validate_micro($data);
     }
 
     private function _validate_topic_structure(array $data): string
