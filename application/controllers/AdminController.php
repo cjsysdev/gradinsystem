@@ -1663,16 +1663,11 @@ class AdminController extends CI_Controller
             ->where('assessment_id', $assessment_id)
             ->count_all_results('classworks');
 
-        $force = $this->input->post('force') === '1';
-
-        if ($submission_count > 0 && !$force) {
+        if ($submission_count > 0) {
             echo json_encode(['success' => false, 'blocked' => true, 'submission_count' => $submission_count]);
             return;
         }
 
-        if ($submission_count > 0) {
-            $this->db->where('assessment_id', $assessment_id)->delete('classworks');
-        }
         // assessment_groupings/assessment_live_state cascade-delete via their
         // FK to assessment_section — delete_section() handles both that and
         // deleting the now-orphaned master if this was its last section.

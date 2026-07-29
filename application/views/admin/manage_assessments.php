@@ -1307,22 +1307,16 @@ function bulkUpdateStatus(status) {
 // checks for existing student submissions itself (see
 // AdminController::delete_assessment()) rather than trusting the
 // submission_count already rendered in this row, which can be stale by the
-// time the admin clicks. If submissions are found, a second confirm shows
-// the fresh count and re-sends the request with force=1 to cascade-delete
-// them along with the assessment.
+// time the admin clicks. If submissions are found, deletion is refused
+// outright — submitted classwork must be removed/reassigned first, there is
+// no force/cascade option.
 function deleteAssessment(id, title) {
     if (!confirm(`Delete assessment "${title}"? This cannot be undone.`)) return;
-    sendDeleteAssessment(id, false);
-}
-
-function sendDeleteAssessment(id, force) {
-    const body = new URLSearchParams();
-    if (force) body.append('force', '1');
 
     fetch('<?= base_url('AdminController/delete_assessment/') ?>' + id, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: body.toString()
+        body: ''
     })
     .then(r => r.json())
     .then(data => {
@@ -1330,9 +1324,7 @@ function sendDeleteAssessment(id, force) {
             location.reload();
         } else if (data.blocked) {
             const n = data.submission_count;
-            if (confirm(`This assessment already has ${n} student submission(s). Deleting it will permanently remove those submissions and their scores too. This cannot be undone. Delete anyway?`)) {
-                sendDeleteAssessment(id, true);
-            }
+            alert(`Cannot delete "${title}": ${n} student submission(s) already exist for this assessment. Remove the submissions first if you need to delete it.`);
         } else {
             alert(data.error || 'Failed to delete assessment.');
         }
