@@ -935,122 +935,40 @@ class AdminController extends CI_Controller
         $this->load->view('admin/manage_assessments', $data);
     }
 
-    // Number of gradable questions in a discussion-format topic — one per
-    // section that actually has a quiz (sections can be lesson-only). Shared
-    // by manage_assessments() (for the JS auto-fill) and save_assessment()
-    // (server-side max_score derivation, the authoritative source).
+    // ---- Shared helper seams -------------------------------------------
+    // The logic behind these lives in application/libraries/ (Iq_topic_helper,
+    // Widget_meta) because the assessment screens and the discussion manager
+    // both need it. These wrappers keep the call sites in this controller
+    // short and give the two libraries a single load point.
+
     private function _count_iq_topic_questions(array $topic_meta)
     {
-        $count = 0;
-        foreach (($topic_meta['sections'] ?? []) as $s) {
-            if (!empty($s['quiz'])) {
-                $count++;
-            }
-        }
-        return $count;
+        $this->load->library('iq_topic_helper');
+        return $this->iq_topic_helper->count_questions($topic_meta);
     }
 
-    // Which renderer a topic-file belongs to. Any section carrying `chunks` is
-    // the microlearning format (discussions/_interactive_micro_template.php);
-    // everything else is the plain lesson+quiz format. Callers have already
-    // excluded the legacy sections[].questions format before reaching here.
     private function _iq_topic_format(array $topic_meta)
     {
-        foreach (($topic_meta['sections'] ?? []) as $s) {
-            if (!empty($s['chunks'])) {
-                return 'micro';
-            }
-        }
-        return 'discussion';
+        $this->load->library('iq_topic_helper');
+        return $this->iq_topic_helper->format($topic_meta);
     }
 
-    // Number of gradable items in a microlearning topic — 1 per chunk
-    // micro-check plus 1 per section checkpoint, matching the scoring in
-    // _interactive_micro_template.php exactly (objectives/recap screens are
-    // not graded). Same role as _count_iq_topic_questions() for the other
-    // format: shared by the modal's Max Score auto-fill and the authoritative
-    // server-side derivation in save_assessment().
     private function _count_micro_topic_items(array $topic_meta)
     {
-        $count = 0;
-        foreach (($topic_meta['sections'] ?? []) as $s) {
-            $count += count($s['chunks'] ?? []);
-            if (!empty($s['quiz'])) {
-                $count++;
-            }
-        }
-        return $count;
+        $this->load->library('iq_topic_helper');
+        return $this->iq_topic_helper->count_micro_items($topic_meta);
     }
 
-    // A config/topic JSON authored outside the modal (the generator skills, a
-    // pasted worksheet or quiz file) almost always names itself, so there's no
-    // reason to make the admin retype that into the form. Pulls whichever of
-    // title/description/max_score the JSON actually carries, from the key
-    // paths the existing configs use — top level for most widgets and every
-    // topic file, 'meta' for chapter_worksheet/case_dossier, 'story' for
-    // case_study. Returns ONLY the keys it found; the caller fills blank form
-    // fields with them via _fill_blank_fields() and never overwrites anything
-    // the admin typed. Mirrored client-side by
-    // autofillMetaFromWidgetConfig() in manage_assessments.php /
-    // class_assessments.php, which fills the same fields live as the config is
-    // pasted; this server-side pass is the backstop for configs that never
-    // went through that modal.
     private function _widget_config_meta(array $config)
     {
-        $pick = function (array $paths) use ($config) {
-            foreach ($paths as $path) {
-                $value = $config;
-                foreach (explode('.', $path) as $key) {
-                    if (!is_array($value) || !isset($value[$key])) {
-                        continue 2;
-                    }
-                    $value = $value[$key];
-                }
-                if (!is_string($value) && !is_numeric($value)) {
-                    continue;
-                }
-                // 'intro'-style values may hold admin-authored HTML; the form
-                // fields are plain text, so flatten before using them.
-                $text = trim(preg_replace('/\s+/', ' ', strip_tags((string) $value)));
-                if ($text !== '') {
-                    return $text;
-                }
-            }
-            return null;
-        };
-
-        $meta = [];
-
-        $title = $pick(['title', 'meta.title', 'story.title']);
-        if ($title !== null) {
-            // Matches the modal's maxlength="64" on the Title field.
-            $meta['title'] = mb_substr($title, 0, 64);
-        }
-
-        $description = $pick(['description', 'subtitle', 'meta.sub', 'prompt']);
-        if ($description !== null) {
-            $meta['description'] = $description;
-        }
-
-        $max_score = $pick(['max_score', 'total_points', 'points']);
-        if ($max_score !== null && (int) $max_score > 0) {
-            $meta['max_score'] = (int) $max_score;
-        }
-
-        return $meta;
+        $this->load->library('widget_meta');
+        return $this->widget_meta->from_config($config);
     }
 
-    // Fills only the fields the admin left blank (a 0/negative Max Score counts
-    // as blank — it's never a valid score). Used with _widget_config_meta().
     private function _fill_blank_fields(array &$fields, array $meta)
     {
-        foreach ($meta as $field => $value) {
-            $current = trim((string) ($fields[$field] ?? ''));
-            $is_blank = $current === '' || ($field === 'max_score' && (int) $current <= 0);
-            if ($is_blank) {
-                $fields[$field] = $value;
-            }
-        }
+        $this->load->library('widget_meta');
+        $this->widget_meta->fill_blank_fields($fields, $meta);
     }
 
     // $assessment_id posted here is always a SECTION id (assessment_section_id)
@@ -2471,143 +2389,36 @@ class AdminController extends CI_Controller
         redirect('AdminController/manage_discussions');
     }
 
-    // JSON topic files live either directly in assets/json/ (legacy/unfiled)
-    // or one level down in a class-code folder (assets/json/{CLASS_CODE}/) —
-    // see _save_pasted_topic_json(). Topic slugs stay globally unique and
-    // unaware of the folder, so callers just need every *.json under either.
+    // More Iq_topic_helper seams — see the block above manage_assessments().
+
     private function _glob_json_topics()
     {
-        $json_path = FCPATH . 'assets/json/';
-        $root      = glob($json_path . '*.json') ?: [];
-        $nested    = glob($json_path . '*/*.json') ?: [];
-        return array_merge($root, $nested);
+        $this->load->library('iq_topic_helper');
+        return $this->iq_topic_helper->glob_topics();
     }
 
-    // Class code a topic file belongs to, derived from its parent folder
-    // under assets/json/ (see _save_pasted_topic_json(), which writes new
-    // topics to assets/json/{CLASS_CODE}/). Returns '' for legacy/unfiled
-    // files sitting directly in assets/json/, meaning "available to every class".
     private function _topic_class_code_from_path($file)
     {
-        $json_path = rtrim(FCPATH . 'assets/json', '/\\');
-        $parent    = rtrim(dirname($file), '/\\');
-        return ($parent === $json_path) ? '' : basename($parent);
+        $this->load->library('iq_topic_helper');
+        return $this->iq_topic_helper->class_code_from_path($file);
     }
 
-    // Destination class for a pasted topic file (see _resolve_iq_paste()).
-    // Both save_assessment() (which posts schedule_id in "section" apply_mode,
-    // or class_id in "class"/"draft" mode) and update_class_assessment_master()
-    // (which only ever posts class_id, no apply_mode/schedule_id) route through
-    // here so the class-folder logic isn't duplicated a third time.
     private function _class_id_from_post($post)
     {
-        $mode = $post['apply_mode'] ?? 'section';
-        if ($mode !== 'class' && $mode !== 'draft' && !empty($post['schedule_id'])) {
-            $class_id = $this->db->select('class_id')->where('schedule_id', $post['schedule_id'])
-                ->get('class_schedule')->row('class_id');
-            if ($class_id) {
-                return (int) $class_id;
-            }
-        }
-        return (int) ($post['class_id'] ?? $post['return_class_id'] ?? 0);
+        $this->load->library('iq_topic_helper');
+        return $this->iq_topic_helper->class_id_from_post($post);
     }
 
-    // Runs the assessment modal's "Paste new JSON" flow for a topic widget.
-    // Returns null when the admin instead chose "Reuse existing topic" (the
-    // caller's normal _glob_json_topics() lookup handles that case unchanged),
-    // false on validation/collision failure (flashdata already set by
-    // _save_pasted_topic_json()), or the newly-saved slug on success — callers
-    // fold that slug into $master_fields['given'] before their existing
-    // topic-lookup loop runs, so max_score derivation doesn't need to change.
     private function _resolve_iq_paste($post, $widget)
     {
-        if (($post['iq_source'] ?? 'existing') !== 'new') {
-            return null;
-        }
-        return $this->_save_pasted_topic_json(
-            $this->_class_id_from_post($post),
-            trim($post['iq_new_slug'] ?? ''),
-            $post['iq_new_json'] ?? '',
-            $widget['widget_key'] === 'iq_micro' ? 'micro' : 'discussion',
-            false
-        );
+        $this->load->library('iq_topic_helper');
+        return $this->iq_topic_helper->resolve_paste($post, $widget);
     }
 
-    // Validates a pasted topic JSON template and writes it to
-    // assets/json/{CLASS_CODE}/{slug}.json (falls back to assets/json/{slug}.json
-    // if the class can't be resolved). Returns the slug on success, or false
-    // (with a flashdata error already set) on failure.
-    // $format: 'discussion' (default, manage_discussions' only caller today) or
-    // 'micro' (the assessment-modal "Paste new JSON" flow — see _resolve_iq_paste()).
-    // $allow_overwrite: manage_discussions has always silently overwritten an
-    // existing slug; the assessment-modal flow passes false because a topic
-    // file is shared by every assessment pointing at it, so clobbering one
-    // could change an already-graded quiz out from under another section.
     private function _save_pasted_topic_json($class_id, $slug, $json_text, $format = 'discussion', $allow_overwrite = true)
     {
-        $slug = preg_replace('/[^a-z0-9_]/', '', strtolower($slug));
-        if (!preg_match('/^[a-z0-9_]{1,100}$/', $slug)) {
-            $this->session->set_flashdata('error', 'Slug is required and may only contain lowercase letters, digits, and underscores.');
-            return false;
-        }
-
-        $data = json_decode(trim($json_text), true);
-        if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
-            $this->session->set_flashdata('error', 'Invalid JSON: ' . ($data === null ? json_last_error_msg() : 'must decode to an object.'));
-            return false;
-        }
-
-        $this->load->model('Iq_topic_model');
-        $validation_error = $this->Iq_topic_model->validate_structure($data, $format);
-        if ($validation_error) {
-            $this->session->set_flashdata('error', $validation_error);
-            return false;
-        }
-
-        $json_path = FCPATH . 'assets/json/';
-        if (!is_writable($json_path)) {
-            $this->session->set_flashdata('error', 'assets/json/ is not writable. Contact your administrator.');
-            return false;
-        }
-
-        if (!$allow_overwrite) {
-            foreach ($this->_glob_json_topics() as $existing) {
-                if (basename($existing, '.json') === $slug) {
-                    $where = $this->_topic_class_code_from_path($existing);
-                    $this->session->set_flashdata('error', 'Topic slug "' . $slug . '" already exists'
-                        . ($where ? " (class {$where})" : ' (unfiled)')
-                        . ' — pick another slug, or select that topic from the dropdown.');
-                    return false;
-                }
-            }
-        }
-
-        $dest_dir = $json_path;
-        if ($class_id) {
-            $class = $this->db->select('class_code')->where('class_id', $class_id)->get('classes')->row_array();
-            if (!empty($class['class_code'])) {
-                $folder = preg_replace('/[^A-Za-z0-9_-]/', '_', $class['class_code']);
-                $candidate = $json_path . $folder . '/';
-                if (is_dir($candidate) || @mkdir($candidate, 0775, true)) {
-                    $dest_dir = $candidate;
-                }
-            }
-        }
-
-        $data['topic'] = $slug;
-        $pretty = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-
-        $dest = $dest_dir . $slug . '.json';
-        $overwrite = file_exists($dest);
-        if (file_put_contents($dest, $pretty) === false) {
-            $this->session->set_flashdata('error', 'Failed to save JSON file. Check directory permissions.');
-            return false;
-        }
-
-        $this->session->set_flashdata('success', $overwrite
-            ? "Topic file \"{$slug}.json\" overwritten."
-            : "Topic file \"{$slug}.json\" created.");
-        return $slug;
+        $this->load->library('iq_topic_helper');
+        return $this->iq_topic_helper->save_pasted_topic_json($class_id, $slug, $json_text, $format, $allow_overwrite);
     }
 
     public function delete_discussion($id)
@@ -2795,7 +2606,7 @@ class AdminController extends CI_Controller
         // longer to generate than the default script/cURL timeouts allow for.
         set_time_limit(240);
 
-        $this->load->library('anthropic_client');
+        $this->load->library(['anthropic_client', 'worksheet_generator']);
 
         $type   = $this->input->post('type');
         $topic  = trim((string) $this->input->post('topic'));
@@ -2812,27 +2623,17 @@ class AdminController extends CI_Controller
             return;
         }
 
-        switch ($type) {
-            case 'lab_worksheet':
-                list($system, $user) = $this->_wg_prompt_lab_worksheet($topic, $params);
-                break;
-            case 'worksheet_table':
-                list($system, $user) = $this->_wg_prompt_worksheet_table($topic, $params);
-                break;
-            case 'discussion':
-                list($system, $user) = $this->_wg_prompt_discussion($topic, $params);
-                break;
-            case 'quiz_from_worksheet':
-                if ($source === '') {
-                    echo json_encode(['ok' => false, 'error' => 'Provide source content: pick an existing assessment or paste worksheet JSON to generate a quiz from.']);
-                    return;
-                }
-                list($system, $user) = $this->_wg_prompt_quiz_from_worksheet($topic, $source, $params);
-                break;
-            default:
-                echo json_encode(['ok' => false, 'error' => 'Unknown output type.']);
-                return;
+        if ($type === 'quiz_from_worksheet' && $source === '') {
+            echo json_encode(['ok' => false, 'error' => 'Provide source content: pick an existing assessment or paste worksheet JSON to generate a quiz from.']);
+            return;
         }
+
+        $prompt = $this->worksheet_generator->prompt($type, $topic, $params, $source);
+        if ($prompt === null) {
+            echo json_encode(['ok' => false, 'error' => 'Unknown output type.']);
+            return;
+        }
+        list($system, $user) = $prompt;
 
         if ($requirements !== '') {
             $user .= "\n\nAdditional requirements from the instructor (follow these carefully, but never deviate from the required JSON shape above):\n{$requirements}";
@@ -2854,7 +2655,7 @@ class AdminController extends CI_Controller
             return;
         }
 
-        $json_text = $this->_wg_strip_fences($result['text']);
+        $json_text = $this->worksheet_generator->strip_fences($result['text']);
         $data = json_decode($json_text, true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
@@ -2862,21 +2663,7 @@ class AdminController extends CI_Controller
             return;
         }
 
-        $validation_error = null;
-        switch ($type) {
-            case 'lab_worksheet':
-                $validation_error = $this->_wg_validate_lab_worksheet($data);
-                break;
-            case 'worksheet_table':
-                $validation_error = $this->_wg_validate_worksheet_table($data);
-                break;
-            case 'discussion':
-                $validation_error = $this->_wg_validate_discussion($data);
-                break;
-            case 'quiz_from_worksheet':
-                $validation_error = $this->_wg_validate_quiz($data);
-                break;
-        }
+        $validation_error = $this->worksheet_generator->validate($type, $data);
 
         if ($validation_error) {
             echo json_encode(['ok' => false, 'error' => 'Generated JSON has an invalid shape: ' . $validation_error, 'raw' => $json_text]);
@@ -2898,225 +2685,5 @@ class AdminController extends CI_Controller
         }
 
         echo json_encode(['ok' => true, 'json' => $pretty, 'preview_html' => $preview_html]);
-    }
-
-    private function _wg_strip_fences($text)
-    {
-        $text = trim($text);
-        $text = preg_replace('/^```(?:json)?\s*/i', '', $text);
-        $text = preg_replace('/\s*```$/', '', $text);
-        return trim($text);
-    }
-
-    private function _wg_slug($topic)
-    {
-        $slug = strtolower(trim($topic));
-        $slug = preg_replace('/[^a-z0-9]+/', '_', $slug);
-        return trim($slug, '_') ?: 'topic';
-    }
-
-    private function _wg_prompt_lab_worksheet($topic, $params)
-    {
-        $count = $params['count'];
-        $system = <<<SYS
-You generate config JSON for the "lab_worksheet" classwork widget in a CodeIgniter LMS (Predict/Observe/Explain lab activities). Output ONLY raw JSON, no markdown fences, no commentary, matching EXACTLY this shape:
-
-{
-  "intro": "<p>optional HTML shown above the experiments (objectives, timeline, etc.)</p>",
-  "experiments": [
-    {
-      "title": "Experiment 1.1 — short descriptive title",
-      "instructions": "<p>...</p><pre><code>...</code></pre>",
-      "warning": false,
-      "hint": "optional nudge for the whole experiment",
-      "prompts": [
-        {"tag": "predict", "label": "PREDICT", "text": "What do you think will happen?", "hint": "optional nudge for this prompt"},
-        {"tag": "observe", "label": "OBSERVE", "text": "What actually happened?"},
-        {"tag": "explain", "label": "EXPLAIN", "text": "Why did that happen?"}
-      ],
-      "note": "optional short note shown after the prompts"
-    }
-  ],
-  "exit_question": "optional single free-text question shown after all experiments",
-  "exit_question_hint": "optional nudge for the exit question"
-}
-
-Rules:
-- "instructions" is trusted HTML — use <p>, <pre><code>...</code></pre> for code snippets, <ul>/<li> as needed. Escape HTML entities inside <code> blocks (&lt; &gt; &amp;).
-- Allowed "tag" values: predict, observe, explain, bonus. Most experiments use predict+observe+explain; use "bonus" sparingly for an optional stretch prompt.
-- Set "warning": true only for an experiment that deliberately breaks something to illustrate a concept ("breaking it on purpose").
-- "note" and "exit_question" are optional — omit the key entirely if not needed, do not use null.
-- Every "hint" is optional and PLAIN TEXT (no HTML — it is escaped). It renders collapsed behind a small (?) the student taps, so it must nudge toward the reasoning, never state the answer. Add one only where a student can realistically get stuck; most prompts need none. Omit the key entirely otherwise.
-- Order experiments so difficulty ramps up gradually.
-SYS;
-        $user = "Generate a lab worksheet (Predict/Observe/Explain, {$count} experiments) about: {$topic}."
-            . ($params['course'] !== '' ? " Course context: {$params['course']}." : '')
-            . ($params['duration'] !== '' ? " Target duration: {$params['duration']}." : '')
-            . " Output raw JSON only.";
-        return [$system, $user];
-    }
-
-    private function _wg_prompt_worksheet_table($topic, $params)
-    {
-        $count = $params['count'];
-        $system = <<<SYS
-You generate config JSON for the "worksheet" classwork widget in a CodeIgniter LMS — a repeatable-row table activity. Output ONLY raw JSON, no markdown fences, no commentary, matching EXACTLY this shape:
-
-{
-  "widget": "worksheet",
-  "columns": ["Column A", "Column B", "Column C"],
-  "min_rows": 5,
-  "allow_add_rows": true
-}
-
-Rules:
-- "columns" is a PLAIN ARRAY OF STRINGS (column headers) — NOT an array of objects with key/label/type.
-- "min_rows" is an integer — how many empty rows the student starts with.
-- "allow_add_rows" is a boolean — whether the student may add more rows beyond min_rows.
-- Choose columns that fit a table-style activity for the given topic (comparison, categorization, timeline, etc.).
-SYS;
-        $user = "Generate a worksheet table (around {$count} suggested min_rows, 3-6 columns) about: {$topic}."
-            . ($params['course'] !== '' ? " Course context: {$params['course']}." : '')
-            . " Output raw JSON only.";
-        return [$system, $user];
-    }
-
-    private function _wg_prompt_discussion($topic, $params)
-    {
-        $slug = $this->_wg_slug($topic);
-        $count = max(3, $params['count']) ?: 10;
-        $system = <<<SYS
-You generate interactive-discussion topic JSON for a CodeIgniter LMS. Output ONLY raw JSON, no markdown fences, no commentary, matching EXACTLY this shape:
-
-{
-  "topic": "snake_case_slug",
-  "title": "Human-readable title",
-  "description": "One sentence description.",
-  "congratsText": "Encouraging completion message.",
-  "sections": [
-    {
-      "id": 0,
-      "title": "Objectives",
-      "quiz": null,
-      "lesson": "<div class=\\"lesson-title\\">...</div><div class=\\"lesson-text\\">...</div>"
-    },
-    {
-      "id": 1,
-      "title": "Section title",
-      "quiz": {
-        "question": "A question about this section's content.",
-        "code": "optional code snippet, HTML-entity-encoded",
-        "options": ["Option A", "Option B", "Option C", "Option D"],
-        "correct": 0
-      },
-      "lesson": "<div class=\\"lesson-title\\">...</div><div class=\\"lesson-text\\">...</div>"
-    }
-  ]
-}
-
-Rules:
-- "id" is 0-based and increments by 1 per section.
-- Section 0 is always "Objectives" (3 bullet points in the lesson HTML) with "quiz": null.
-- The LAST section is always "Recap" with "quiz": null.
-- All other (middle) sections MUST have a "quiz" object — never null for them.
-- "correct" is a ZERO-BASED index into "options" for the correct choice.
-- "code" inside "quiz" is optional — omit the key entirely if there is no code snippet; when present, HTML-encode angle brackets and quotes (&lt; &gt; &amp; &quot;).
-- "lesson" is trusted HTML using ONLY these CSS classes where relevant: lesson-title, lesson-text, highlight, code-block, comparison, comparison-col, comparison-label.
-- Generate exactly {$count} sections total (including Objectives and Recap).
-SYS;
-        $user = "Generate an interactive discussion topic (slug: {$slug}, {$count} sections) about: {$topic}."
-            . ($params['course'] !== '' ? " Course context: {$params['course']}." : '')
-            . " Output raw JSON only.";
-        return [$system, $user];
-    }
-
-    private function _wg_prompt_quiz_from_worksheet($topic, $source, $params)
-    {
-        $slug = $this->_wg_slug($topic !== '' ? $topic : 'worksheet');
-        $count = max(5, $params['count']) ?: 15;
-        $system = <<<SYS
-You generate a Bloom's Taxonomy multiple-choice quiz JSON derived from source content, for a CodeIgniter LMS. The source content may be an instructor's worksheet/activity config JSON, a plain description of an assessment, and/or anonymized excerpts of real student submissions for that assessment. Output ONLY raw JSON, no markdown fences, no commentary, matching EXACTLY this shape:
-
-{
-  "topic": "snake_case_slug",
-  "title": "Quiz Title — Bloom's Taxonomy Quiz",
-  "questions": [
-    {
-      "id": 1,
-      "bloomLevel": "Remember",
-      "question": "Question text.",
-      "code": "optional code snippet",
-      "choices": ["Choice A", "Choice B", "Choice C", "Choice D"],
-      "answer": "Choice A",
-      "topic": "snake_case_slug",
-      "type": "multiple_choice"
-    }
-  ]
-}
-
-Rules:
-- "id" starts at 1 and increments by 1.
-- "bloomLevel" is one of: Remember, Understand, Apply, Analyze, Evaluate, Create. Distribute across levels, weighted toward Remember/Understand/Apply.
-- "answer" MUST be the EXACT STRING of the correct choice (not an index).
-- "code" is optional — omit the key entirely when not needed.
-- Every question's content must be grounded in the source content given below — do not introduce unrelated topics.
-- When the source includes "Sample student submissions", prefer questions that build on the concepts, patterns, or common mistakes actually visible in those submissions, so students recognize their own classwork in the quiz. Never reference or imply any specific student's identity — the submissions are anonymized and must stay that way in your output.
-- Generate exactly {$count} questions.
-SYS;
-        $user = "Source content (base the quiz on this):\n\n{$source}\n\n"
-            . "Generate a {$count}-question Bloom's Taxonomy quiz (slug: {$slug}) derived from the above."
-            . ($topic !== '' ? " Focus/title hint: {$topic}." : '')
-            . " Output raw JSON only.";
-        return [$system, $user];
-    }
-
-    private function _wg_validate_lab_worksheet($data)
-    {
-        if (!is_array($data)) return 'not a JSON object';
-        if (!isset($data['experiments']) || !is_array($data['experiments'])) return 'missing "experiments" array';
-        foreach ($data['experiments'] as $i => $exp) {
-            if (!is_array($exp)) return "experiments[{$i}] is not an object";
-            if (empty($exp['title'])) return "experiments[{$i}] missing \"title\"";
-            if (isset($exp['prompts']) && !is_array($exp['prompts'])) return "experiments[{$i}].prompts must be an array";
-        }
-        return null;
-    }
-
-    private function _wg_validate_worksheet_table($data)
-    {
-        if (!is_array($data)) return 'not a JSON object';
-        if (!isset($data['columns']) || !is_array($data['columns'])) return 'missing "columns" array';
-        foreach ($data['columns'] as $col) {
-            if (!is_string($col)) return '"columns" must be an array of plain strings';
-        }
-        return null;
-    }
-
-    private function _wg_validate_discussion($data)
-    {
-        if (!is_array($data)) return 'not a JSON object';
-        if (empty($data['topic']) || !is_string($data['topic'])) return 'missing "topic" slug';
-        if (!isset($data['sections']) || !is_array($data['sections']) || empty($data['sections'])) return 'missing "sections" array';
-        foreach ($data['sections'] as $i => $s) {
-            if (!is_array($s)) return "sections[{$i}] is not an object";
-            if (!array_key_exists('lesson', $s)) return "sections[{$i}] missing \"lesson\"";
-            if (!array_key_exists('quiz', $s)) return "sections[{$i}] missing \"quiz\" key (use null if none)";
-        }
-        return null;
-    }
-
-    private function _wg_validate_quiz($data)
-    {
-        if (!is_array($data)) return 'not a JSON object';
-        if (empty($data['topic']) || !is_string($data['topic'])) return 'missing "topic" slug';
-        if (!isset($data['questions']) || !is_array($data['questions']) || empty($data['questions'])) return 'missing "questions" array';
-        foreach ($data['questions'] as $i => $q) {
-            if (!is_array($q)) return "questions[{$i}] is not an object";
-            if (empty($q['question'])) return "questions[{$i}] missing \"question\"";
-            if (!isset($q['choices']) || !is_array($q['choices'])) return "questions[{$i}] missing \"choices\" array";
-            if (!array_key_exists('answer', $q)) return "questions[{$i}] missing \"answer\"";
-            if (!in_array($q['answer'], $q['choices'], true)) return "questions[{$i}].answer does not exactly match one of its choices";
-        }
-        return null;
     }
 }
