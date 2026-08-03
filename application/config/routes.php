@@ -201,6 +201,11 @@ $route['admin/export_emergency_contacts'] = 'AdminController/export_emergency_co
 $route['admin/student_violations'] = 'AdminController/student_violations';
 $route['admin/score_integrity'] = 'AdminController/score_integrity';
 $route['admin/fix_score/(:num)'] = 'AdminController/fix_score/$1';
+// Per-item quiz statistics (quiz / secure_quiz widgets). The 2-arg form carries
+// the pooling scope ('section' | 'all'); listed first so it wins over the
+// 1-arg form.
+$route['admin/quiz_stats/(:num)/(:any)'] = 'AdminController/quiz_stats/$1/$2';
+$route['admin/quiz_stats/(:num)'] = 'AdminController/quiz_stats/$1';
 $route['admin/add_violation'] = 'AdminController/add_violation';
 $route['admin/update_violation_status'] = 'AdminController/update_violation_status';
 $route['admin/search_students'] = 'AdminController/search_students';

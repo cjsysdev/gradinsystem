@@ -219,6 +219,12 @@
                             <button type="submit" class="btn btn-success btn-block" id="submitBtn" style="display: none;">Submit</button>
                         </div>
                     </div>
+
+                    <?php // Tab-switch tally, bumped by the blur handler below and read by
+                    // SecureQuizController::submit() into classworks.switch_count. Declared
+                    // once here rather than appended on every blur, which used to leave the
+                    // form carrying one duplicate `blur_count` input per switch. ?>
+                    <input type="hidden" name="blur_count" id="blurCountInput" value="0">
                 </form>
                 <div class="warning-overlay" id="warningOverlay">
                     <h2>Warning!</h2>
@@ -229,7 +235,11 @@
     </div>
 </div>
 
-<script src="<?= base_url('./assets/crypto-js.min.js ?>') ?> "></script>
+<?php // The stray "?>" inside the path used to make this 404, so CryptoJS was
+// undefined and the submit handler threw at the encrypt call — before its own
+// e.preventDefault(), so the form just posted natively and the student's local
+// backup copy was never produced. ?>
+<script src="<?= base_url('assets/crypto-js.min.js') ?>"></script>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -241,6 +251,7 @@
         const warningOverlay = document.getElementById('warningOverlay');
         const timerElement = document.getElementById('time');
         const scrollToBottomBtn = document.getElementById('scrollToBottomBtn');
+        const blurCountInput = document.getElementById('blurCountInput');
         let currentGroup = 0;
         let blurCount = 0;
         let quizStarted = false;
@@ -411,13 +422,8 @@
             if (quizStarted) {
                 blurCount++;
                 warningOverlay.style.display = 'block';
-                // console.log('Window blurred. Blur count:', blurCount);
-                // Log to hidden input for server-side tracking
-                let blurInput = document.createElement('input');
-                blurInput.type = 'hidden';
-                blurInput.name = 'blur_count';
-                blurInput.value = blurCount;
-                form.appendChild(blurInput);
+                // Recorded server-side into classworks.switch_count at submit.
+                blurCountInput.value = blurCount;
             }
         });
 
@@ -435,8 +441,40 @@
         document.addEventListener('copy', e => e.preventDefault());
         document.addEventListener('paste', e => e.preventDefault());
 
-        // Form submission
+        // Form submission.
+        //
+        // Two things happen here, in this order and deliberately decoupled:
+        //   1. the student gets an encrypted local copy of their answers, so a
+        //      network failure between here and the server doesn't lose their
+        //      work; then
+        //   2. the form actually posts, 3s later, giving the download time to
+        //      start.
+        // Step 1 must never be able to prevent step 2 — the backup is a safety
+        // net, and a safety net that can eat the submission is worse than none.
+        // Hence the try/catch: if CryptoJS is missing or Blob/download is
+        // blocked, we log it and post anyway.
+        let submitting = false;
+        let timedOut = false;
+
         form.addEventListener('submit', function(e) {
+            // Always take over the submit; we re-post manually below.
+            e.preventDefault();
+
+            // Offline check first. This used to sit *after* the delayed submit
+            // was already scheduled, so an offline student got the warning and
+            // the form posted into the void 3 seconds later regardless.
+            // Skipped when the timer expired: at that point refusing to submit
+            // would just strand the student on a dead quiz, and they have their
+            // backup file either way.
+            if (!navigator.onLine && !timedOut) {
+                alert('You are not connected to the internet. Please check your local connection and try again.\n\nYour answers are saved in this browser — do not close this tab.');
+                return;
+            }
+
+            // Guard against a second click landing inside the 3s window.
+            if (submitting) return;
+            submitting = true;
+
             // Prepare the results array in the same format as QuizController::submit
             const questions = <?= json_encode($questions); ?>;
             const answers = {};
@@ -451,19 +489,16 @@
                 answers[input.name.replace('answers[', '').replace(']', '')] = input.value;
             });
 
+            // NOTE: is_correct here is the *client's* view, for the student's own
+            // copy only. The authoritative grade is computed server-side by
+            // Widgets_model::grade_quiz() from the session-held question set —
+            // this file is a receipt, not a score.
             const results = questions.map((question, index) => {
                 const userAnswer = answers[index] !== undefined ? answers[index] : 'No answer';
                 // Case-insensitive comparison with whitespace trimming for text inputs
                 const userAnswerNormalized = userAnswer.toLowerCase().trim();
-                const correctAnswerNormalized = question.answer.toLowerCase().trim();
+                const correctAnswerNormalized = String(question.answer ?? '').toLowerCase().trim();
                 const isCorrect = userAnswerNormalized === correctAnswerNormalized;
-
-                // Debug logging - remove after testing
-                if (userAnswer !== 'No answer') {
-                    console.log(`Q${index}: User="${userAnswer}" vs Correct="${question.answer}"`);
-                    console.log(`Normalized: User="${userAnswerNormalized}" vs Correct="${correctAnswerNormalized}"`);
-                    console.log(`Match: ${isCorrect}`);
-                }
 
                 return {
                     question: question.question,
@@ -474,36 +509,33 @@
                 };
             });
 
-            // Create and trigger download
-            const encrypted = CryptoJS.AES.encrypt(JSON.stringify(results), 'teacherSecret').toString();
-            const blob = new Blob([encrypted], {
-                type: "application/json"
-            });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = "quiz_submission_<?= $this->session->student_id ?? 'student' ?>.json";
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            // Local backup copy — encrypted so the file isn't an answer key in
+            // the student's downloads folder. Best-effort by design.
+            try {
+                const encrypted = CryptoJS.AES.encrypt(JSON.stringify(results), 'teacherSecret').toString();
+                const blob = new Blob([encrypted], {
+                    type: "application/json"
+                });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = "quiz_submission_<?= $this->session->student_id ?? 'student' ?>.json";
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch (err) {
+                // Never block the real submission over a failed backup.
+                console.error('Local backup copy could not be created:', err);
+            }
 
-            // Prevent immediate form submission
-            e.preventDefault();
-
-            // Submit the form after a short delay (enough for download to start)
+            // Submit the form after a short delay (enough for download to start).
+            // form.submit() does not re-fire this listener, so there's no loop.
             setTimeout(function() {
+                localStorage.removeItem('quiz_answers');
+                localStorage.removeItem('remainingTime');
                 form.submit();
             }, 3000);
-
-            if (!navigator.onLine) {
-                e.preventDefault();
-                alert('You are not connected to the internet. Please check your local connection and try again.');
-                return;
-            }
-            if (navigator.onLine) {
-                localStorage.removeItem('quiz_answers');
-            }
         });
 
         // Timer
@@ -523,7 +555,16 @@
 
                 if (--timer < 0) {
                     clearInterval(interval);
-                    form.submit(); // Auto-submit the form when time is up
+                    timedOut = true;
+                    // requestSubmit(), not submit(): submit() bypasses the submit
+                    // listener, so a student who ran out of time used to be the
+                    // one student who got no local backup copy — exactly the case
+                    // where a lost POST hurts most. Fall back for old browsers.
+                    if (typeof form.requestSubmit === 'function') {
+                        form.requestSubmit();
+                    } else {
+                        form.submit();
+                    }
                 }
 
                 // Save the remaining time to localStorage

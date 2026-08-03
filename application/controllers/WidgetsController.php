@@ -17,7 +17,11 @@ class WidgetsController extends CI_Controller
     // Confirmation + pre-flight backup: see Schema_guard.
     public function install()
     {
-        $tables = ['widgets', 'assessments'];
+        // classworks is in the list because Widgets_model::install() now adds
+        // switch_count to it — anything install() touches must be dumped first,
+        // which is the whole point of Schema_guard. It is the biggest table
+        // here, so expect the backup to take a moment.
+        $tables = ['widgets', 'assessments', 'classworks'];
 
         if (!$this->schema_guard->confirmed('Widget tables setup', 'WidgetsController/install', $tables)) {
             return;
