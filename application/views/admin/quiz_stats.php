@@ -1,6 +1,6 @@
 <?php
 // Admin — class-wide item analysis for the `quiz` and `secure_quiz` widgets.
-// Fed by AdminController::quiz_stats() / Widgets_model::quiz_item_stats().
+// Fed by AdminSubmissionController::quiz_stats() / Widgets_model::quiz_item_stats().
 // Styling deliberately mirrors interactive_quiz_analytics_view.php, which is the
 // same report for the iq_discussion widget, so the two read as one feature.
 $stats  = $stats ?? null;
