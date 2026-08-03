@@ -101,6 +101,10 @@ class SecureQuizController extends CI_Controller
         $data['total'] = count($questions);
         $data['results'] = $graded['results'];
         $data['assessment_id'] = $assessment_id;
+        // quiz_result.php then renders the missed items only — never the full
+        // question/answer list (same rule as the readonly widget review in
+        // widgets/secure_quiz.php).
+        $data['show_review'] = true;
         $this->load->view('quiz_result', $data);
     }
 
@@ -152,6 +156,7 @@ class SecureQuizController extends CI_Controller
         $data['results'] = $graded['results'];
         $data['assessment_id'] = null;
         $data['test_mode'] = true;
+        $data['show_review'] = true;
         $this->load->view('quiz_result', $data);
     }
 }

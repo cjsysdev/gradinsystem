@@ -9,6 +9,12 @@
 // fullscreen/timer/tab-switch-lockdown UI instead of an inline card form.
 $readonly = $readonly ?? false;
 $existing = $existing ?? null;
+// Student-facing review (student_submission.php) passes wrong_only = true: the
+// score line stays, but only the items the student MISSED are listed, so
+// reopening a finished attempt can't be used to copy out the whole answer key
+// for sections that haven't taken the quiz yet. Admin review paths
+// (all_submission.php, the config preview) leave it unset and see every item.
+$wrong_only = $wrong_only ?? false;
 // Accept either {"questions":[...]} or a bare list [ {...}, {...} ] of questions
 // (mirrors Widgets_model::quiz_questions(); inlined so this view has no model dep).
 $questions = (is_array($config ?? null) && array_key_exists('questions', $config))
@@ -60,11 +66,29 @@ $results = $readonly ? ($existing ?: []) : [];
         <?php if (empty($results)): ?>
             <p class="text-muted text-center">No submission.</p>
         <?php else: ?>
-            <?php $correct_count = count(array_filter($results, function ($r) { return !empty($r['is_correct']); })); ?>
+            <?php
+            $correct_count = count(array_filter($results, function ($r) { return !empty($r['is_correct']); }));
+            // array_filter keeps the original keys, so item numbering below
+            // still matches the position in the attempt.
+            $shown = $wrong_only
+                ? array_filter($results, function ($r) { return empty($r['is_correct']); })
+                : $results;
+            ?>
             <p class="font-weight-bold mb-3">
                 Score: <?= $correct_count ?> / <?= count($results) ?>
             </p>
-            <?php foreach ($results as $i => $r): ?>
+            <?php if ($wrong_only): ?>
+                <?php if (empty($shown)): ?>
+                    <p class="text-success mb-0">
+                        <i class="fas fa-check"></i> Perfect score &mdash; nothing to review.
+                    </p>
+                <?php else: ?>
+                    <p class="text-muted small mb-3">
+                        Review of the <?= count($shown) ?> item(s) you missed. Items you answered correctly are not shown.
+                    </p>
+                <?php endif; ?>
+            <?php endif; ?>
+            <?php foreach ($shown as $i => $r): ?>
                 <div class="card mb-2 <?= !empty($r['is_correct']) ? 'border-success' : 'border-danger' ?>">
                     <div class="card-body py-2">
                         <p class="mb-1"><strong>#<?= $i + 1 ?>:</strong> <?= htmlspecialchars($r['question'] ?? '') ?></p>
