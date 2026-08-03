@@ -201,6 +201,11 @@ $route['active_participation/(:num)'] = 'AdminSubmissionController/active_partic
 $route['admin/check_new_submissions_by_assessment/(:num)'] = 'AdminSubmissionController/check_new_submissions_by_assessment/$1';
 $route['admin/score_integrity'] = 'AdminSubmissionController/score_integrity';
 $route['admin/fix_score/(:num)'] = 'AdminSubmissionController/fix_score/$1';
+// Per-item quiz statistics (quiz / secure_quiz widgets). The 2-arg form carries
+// the pooling scope ('section' | 'all'); listed first so it wins over the
+// 1-arg form.
+$route['admin/quiz_stats/(:num)/(:any)'] = 'AdminSubmissionController/quiz_stats/$1/$2';
+$route['admin/quiz_stats/(:num)'] = 'AdminSubmissionController/quiz_stats/$1';
 
 $route['admin/emergency_contacts'] = 'AdminStudentController/emergency_contacts';
 $route['admin/export_emergency_contacts'] = 'AdminStudentController/export_emergency_contacts';
@@ -243,7 +248,7 @@ $legacy_admin_routes = [
     'AdminSubmissionController' => 'all_submissions|group_submissions|add_group_score'
         . '|view_student_submissions|student_submissions|active_participation'
         . '|check_new_submissions_by_assessment|increment_randomized_count|add_score'
-        . '|add_rand_score_incremental|score_integrity|fix_score',
+        . '|add_rand_score_incremental|score_integrity|fix_score|quiz_stats',
     'AdminAssessmentController' => 'manage_assessments|save_assessment|assign_master'
         . '|class_assessments|update_class_assessment_master|backfill_assessment_class_id'
         . '|delete_class_assessment|preview_widget|update_assessment_status'

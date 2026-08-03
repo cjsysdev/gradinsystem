@@ -26,10 +26,27 @@ class classworks extends MY_Model
         parent::__construct();
     }
 
+    // Whether classworks.switch_count exists yet. The column is added by
+    // Widgets_model::install() (run via WidgetsController/install), so on any
+    // database where that hasn't been run since the tab-switch tracking landed
+    // it is simply absent — and selecting or inserting a missing column would
+    // take down submission saving and every submissions page with it. Every
+    // read and write of switch_count is gated on this. CI3 caches field data
+    // per table per request, so repeat calls are free.
+    public function has_switch_count()
+    {
+        return $this->db->field_exists('switch_count', 'classworks');
+    }
+
     public function get_all_submissions($assessment_id)
     {
+        // Aliased to NULL when the column is missing so callers get the same
+        // result shape either way (NULL already means "not recorded").
+        $switch_count = $this->has_switch_count() ? 'c.switch_count' : 'NULL AS switch_count';
+
         $sql = "SELECT c.classwork_id, s.trans_no, c.score, s.firstname,
-        s.lastname, c.code, c.file_upload, c.created_at, a.max_score, a.iotype_id
+        s.lastname, c.code, c.file_upload, c.created_at, a.max_score, a.iotype_id,
+        $switch_count
                 FROM classworks c
                 JOIN student_master s ON s.trans_no = c.student_id
                 JOIN assessment_full a ON a.assessment_id = c.assessment_id

@@ -89,12 +89,25 @@ class SecureQuizController extends CI_Controller
         if (!$value) {
             // Defensive: grade_quiz() bounds the score by question count, but
             // clamp anyway in case an admin edited max_score to be smaller.
-            $this->classworks->insert([
+            $row = [
                 'student_id' => $this->session->student_id,
                 'assessment_id' => $assessment_id,
                 'score' => $this->classworks->clamp_score_for_assessment($assessment_id, $graded['score']),
                 'code' => json_encode($graded['results'], JSON_PRETTY_PRINT)
-            ]);
+            ];
+
+            // Tab-switch count. secure_quiz_view.php counts window blurs during
+            // the attempt and posts the tally as `blur_count`; until now nothing
+            // read it. It is a client-reported number and trivially forgeable, so
+            // it is a soft proctoring signal for the instructor to eyeball, never
+            // an input to the score. Clamped into the SMALLINT UNSIGNED column;
+            // skipped entirely if an admin hasn't run WidgetsController/install
+            // yet, so a missing column can never cost a student their submission.
+            if ($this->classworks->has_switch_count()) {
+                $row['switch_count'] = min(65535, max(0, (int) $this->input->post('blur_count')));
+            }
+
+            $this->classworks->insert($row);
         }
 
         $data['score'] = $graded['score'];
