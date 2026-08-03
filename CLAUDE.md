@@ -73,6 +73,24 @@ Rules that are easy to break:
 (guardrails, transactional + rolled back), `student/{id}` (spot-check).
 **Run `selftest` and `diff` after any change to grading.**
 
+## Admin controllers
+The old 3,100-line `AdminController` was split into five controllers, all
+extending `Admin_Controller` (`application/core/MY_Controller.php`, which holds
+the admin session gate and the shared topic/widget helper seams):
+`AdminController` (dashboard, attendance, project logs), `AdminSubmissionController`
+(submissions + every score write), `AdminAssessmentController`,
+`AdminStudentController`, `AdminContentController` (discussions, `assets/json/`
+topic files, Worksheet Generator). Shared logic lives in three libraries:
+`Worksheet_generator` (generator prompts + response validation),
+`Iq_topic_helper` (topic-file discovery/format/counting/saving), `Widget_meta`
+(title/description/max_score autofill from a pasted config).
+
+**Most admin URLs have no route entry** — they resolve through CI's default
+`Controller/method` routing and the views hardcode them (`base_url('AdminController/preview_widget')`).
+The `$legacy_admin_routes` block at the end of `application/config/routes.php`
+maps every moved method back from `AdminController/*`. **Moving a method between
+admin controllers means updating that block, or its old URL silently 404s.**
+
 ## Active Initiative: Paperless Midterm Integration
 Full plan: **`root/docs/paperless-midterm-plan.md`** — read this before working
 on anything related to classwork widgets, the IS Innovations course, or new
