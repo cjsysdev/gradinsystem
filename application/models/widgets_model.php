@@ -29,6 +29,18 @@ class Widgets_model extends CI_Model
         $this->_add_column_if_missing('assessments', 'given', 'LONGTEXT DEFAULT NULL');
         $this->_add_column_if_missing('assessments', 'widget_id', 'INT UNSIGNED DEFAULT NULL');
 
+        // Tab-switch count for the Timed/Secure Quiz widget. secure_quiz_view.php
+        // has always counted window blurs and posted them as `blur_count`, but no
+        // controller read it, so the number was discarded at submit — this column
+        // is where SecureQuizController::submit() now parks it.
+        // Nullable with no default on purpose: NULL means "not recorded" (every
+        // pre-existing row, and every non-secure-quiz widget), which is a
+        // different fact from 0 = "recorded, never left the tab". Adding a
+        // nullable column touches no existing row's data; readers must still
+        // tolerate the column being absent until an admin runs
+        // WidgetsController/install (see classworks::has_switch_count()).
+        $this->_add_column_if_missing('classworks', 'switch_count', 'SMALLINT UNSIGNED DEFAULT NULL');
+
         // widget_key rows get added when their input_view actually exists, so
         // the admin dropdown never offers a widget with no view behind it.
         $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
@@ -372,6 +384,160 @@ class Widgets_model extends CI_Model
         return ['score' => $score, 'results' => $results];
     }
 
+    // Class-wide item analysis over a set of quiz submissions — "which questions
+    // is everyone getting wrong, and what are they picking instead". Lives here
+    // next to grade_quiz() because this is the model that owns the quiz result
+    // shape; keeping the reader beside the writer is what stops the two drifting.
+    // Serves both quiz widgets (`quiz` and `secure_quiz`) — grade_quiz() is the
+    // single writer for both, so the stored blobs are byte-identical in shape.
+    //
+    // $result_lists: array of decoded classworks.code blobs, each a grade_quiz()
+    //                results array [{question,user_answer,correct_answer,is_correct}].
+    // $config:       decoded assessments.given, used only to order items by their
+    //                position in the current bank and to spot bank drift.
+    //
+    // Aggregation is keyed on the TRIMMED QUESTION TEXT, which looks crude but is
+    // the only stable identifier available: the config carries no question ids,
+    // and SecureQuizController::index() shuffles the bank and slices it to
+    // max_score per student, then destroys the drawn set at submit. Array
+    // position therefore means nothing across two submissions, and an item's
+    // denominator is "how many submissions contained it", never "how many
+    // students sat the quiz".
+    //
+    // The stored is_correct is trusted as-is and never recomputed against the
+    // current config: it was graded server-side at submit time, and re-deriving
+    // it would silently rewrite history whenever an instructor edits the bank
+    // afterwards, as well as disagree with the already-recorded classworks.score.
+    //
+    // Note this is descriptive statistics over booleans, not grading — no
+    // transmutation, no weighting, no score is produced or written. Grade
+    // arithmetic stays in Grade_calculator (see CLAUDE.md).
+    public function quiz_item_stats(array $result_lists, $config = [])
+    {
+        $bank = $this->quiz_questions($config);
+
+        // Bank order, so items an instructor recognises stay findable, and so
+        // questions never drawn can be reported separately.
+        $bank_index = [];
+        foreach ($bank as $i => $q) {
+            $key = trim((string) ($q['question'] ?? ''));
+            // Two bank entries with identical text collapse into one row; first
+            // occurrence wins the index.
+            if ($key !== '' && !isset($bank_index[$key])) $bank_index[$key] = $i;
+        }
+
+        $items       = [];
+        $submissions = 0;
+        $score_dist  = [];
+
+        foreach ($result_lists as $results) {
+            if (!is_array($results)) continue; // null / malformed code column
+            $submissions++;
+            $student_correct = 0;
+
+            foreach ($results as $r) {
+                if (!is_array($r)) continue;
+                $key = trim((string) ($r['question'] ?? ''));
+                if ($key === '') continue;
+
+                if (!isset($items[$key])) {
+                    $items[$key] = [
+                        'question'       => $key,
+                        'correct_answer' => (string) ($r['correct_answer'] ?? ''),
+                        'bank_index'     => $bank_index[$key] ?? null,
+                        'shown'          => 0,
+                        'correct'        => 0,
+                        'wrong'          => 0,
+                        'no_answer'      => 0,
+                        'answers'        => [],
+                    ];
+                }
+
+                $answer     = (string) ($r['user_answer'] ?? '');
+                $is_correct = !empty($r['is_correct']);
+                // 'No answer' is the literal sentinel grade_quiz() writes for an
+                // item the student never touched. On a timed quiz "ran out of
+                // time" and "picked the wrong option" are different diagnoses,
+                // so it counts as a miss but is kept out of the wrong/distractor
+                // tallies.
+                $skipped = ($answer === 'No answer');
+
+                $items[$key]['shown']++;
+                if ($is_correct)      $items[$key]['correct']++;
+                elseif ($skipped)     $items[$key]['no_answer']++;
+                else                  $items[$key]['wrong']++;
+
+                if (!$skipped) {
+                    if (!isset($items[$key]['answers'][$answer])) {
+                        $items[$key]['answers'][$answer] = ['answer' => $answer, 'count' => 0, 'is_correct' => $is_correct];
+                    }
+                    $items[$key]['answers'][$answer]['count']++;
+                }
+
+                if ($is_correct) $student_correct++;
+            }
+
+            $score_dist[$student_correct] = ($score_dist[$student_correct] ?? 0) + 1;
+        }
+
+        $total_answers = 0;
+        $total_correct = 0;
+
+        foreach ($items as $key => $item) {
+            $shown = $item['shown'];
+            $items[$key]['miss_rate'] = $shown > 0
+                ? round((($shown - $item['correct']) / $shown) * 100, 1)
+                : 0.0;
+
+            // Distractors, most-picked first — this is the "what are they
+            // choosing instead" readout.
+            $answers = array_values($item['answers']);
+            usort($answers, function ($a, $b) { return $b['count'] <=> $a['count']; });
+            foreach ($answers as $i => $a) {
+                $answers[$i]['pct'] = $shown > 0 ? round(($a['count'] / $shown) * 100, 1) : 0.0;
+            }
+            $items[$key]['answers'] = $answers;
+
+            $total_answers += $shown;
+            $total_correct += $item['correct'];
+        }
+
+        // Worst first — the whole point of the page.
+        $items = array_values($items);
+        usort($items, function ($a, $b) {
+            if ($a['miss_rate'] === $b['miss_rate']) return $b['shown'] <=> $a['shown'];
+            return $b['miss_rate'] <=> $a['miss_rate'];
+        });
+
+        // Bank questions that no submission ever contained. Expected and normal
+        // when the bank is bigger than max_score, since each student is served a
+        // random slice — but worth showing, because an item with no data is not
+        // the same as an item everybody got right.
+        $seen        = array_column($items, 'question');
+        $never_shown = [];
+        foreach ($bank as $i => $q) {
+            $key = trim((string) ($q['question'] ?? ''));
+            if ($key !== '' && !in_array($key, $seen, true)) {
+                $never_shown[] = ['bank_index' => $i, 'question' => $key];
+            }
+        }
+
+        ksort($score_dist);
+
+        return [
+            'submission_count' => $submissions,
+            'bank_count'       => count($bank),
+            'items'            => $items,
+            'never_shown'      => $never_shown,
+            'score_dist'       => $score_dist,
+            'totals'           => [
+                'answers'  => $total_answers,
+                'correct'  => $total_correct,
+                'accuracy' => $total_answers > 0 ? round(($total_correct / $total_answers) * 100, 1) : 0.0,
+            ],
+        ];
+    }
+
     private function _add_column_if_missing($table, $column, $definition)
     {
         $exists = $this->db->query(
@@ -380,8 +546,28 @@ class Widgets_model extends CI_Model
             [$table, $column]
         )->num_rows() > 0;
 
-        if (!$exists) {
-            $this->db->query("ALTER TABLE `$table` ADD COLUMN `$column` $definition");
+        if ($exists) {
+            return true;
         }
+
+        // db_debug is FALSE, so a failed ALTER returns quietly and install()
+        // would still report success — the exact failure mode that lost 464
+        // group memberships and led to Schema_guard (see that library's header).
+        // Log it loudly instead.
+        $result = $this->db->query("ALTER TABLE `$table` ADD COLUMN `$column` $definition");
+        $error  = $this->db->error();
+
+        if ($result === false || !empty($error['code'])) {
+            log_message('error', sprintf(
+                'Widgets_model::install() could not add `%s`.`%s` [%s] %s',
+                $table,
+                $column,
+                isset($error['code']) ? $error['code'] : '?',
+                isset($error['message']) ? $error['message'] : 'unknown error'
+            ));
+            return false;
+        }
+
+        return true;
     }
 }

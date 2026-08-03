@@ -197,6 +197,98 @@ class AdminController extends CI_Controller
         $this->load->view('admin/all_submission', $data);
     }
 
+    // Class-wide item analysis for the two quiz widgets — "which questions did
+    // students get wrong most often, and what did they answer instead". The
+    // per-question data has always been there (Widgets_model::grade_quiz() writes
+    // {question,user_answer,correct_answer,is_correct} per item into
+    // classworks.code); this just reads across every submission instead of one.
+    //
+    // $assessment_id is an assessment_section_id, same as every other method here.
+    // $scope: 'section' = just this section, 'all' = every section sharing the
+    // same master assessment. Pooling matters because SecureQuizController serves
+    // each student a random slice of the bank, so a single section can leave an
+    // individual item with only a handful of data points.
+    public function quiz_stats($assessment_id = null, $scope = 'section')
+    {
+        $this->load->model('Widgets_model');
+
+        $data = [
+            'assessment'    => null,
+            'assessment_id' => $assessment_id,
+            'scope'         => $scope === 'all' ? 'all' : 'section',
+            'widget'        => null,
+            'section_count' => 1,
+            'stats'         => null,
+            'error'         => null,
+        ];
+
+        if (!$assessment_id) {
+            $data['error'] = 'No assessment selected.';
+            $this->load->view('admin/quiz_stats', $data);
+            return;
+        }
+
+        // Deliberately NOT using class_schedule->class_today() the way
+        // all_submissions() does — that returns null outside class hours and
+        // warns on ['schedule_id']. Everything needed is on the assessment.
+        $assessment = $this->assessments->as_array()->get($assessment_id);
+        if (!$assessment) {
+            $data['error'] = 'Assessment not found.';
+            $this->load->view('admin/quiz_stats', $data);
+            return;
+        }
+        $data['assessment'] = $assessment;
+
+        if (!empty($assessment['widget_id'])) {
+            $data['widget'] = $this->Widgets_model->get($assessment['widget_id']);
+        }
+
+        // Both quiz widgets are graded by the same grade_quiz(), so their stored
+        // blobs are identical in shape and one page serves both.
+        if (!$data['widget'] || !in_array($data['widget']['widget_key'], ['quiz', 'secure_quiz'], true)) {
+            $data['error'] = 'Item statistics are only available for the Multiple Choice Quiz and Timed/Secure Quiz widgets. '
+                . 'This assessment uses ' . ($data['widget']['name'] ?? 'no widget') . '.';
+            $this->load->view('admin/quiz_stats', $data);
+            return;
+        }
+
+        // Which section(s) to pool.
+        $master_id   = $this->assessments->master_id_for_section($assessment_id);
+        $all_section_ids = $master_id
+            ? array_column($this->assessments->sections_of_master($master_id), 'assessment_section_id')
+            : [$assessment_id];
+        $data['section_count'] = count($all_section_ids);
+
+        $section_ids = $data['scope'] === 'all' ? $all_section_ids : [$assessment_id];
+
+        // Reuses the existing per-section query rather than adding a second one;
+        // a master has a handful of sections at most.
+        $result_lists = [];
+        $switch_counts = [];
+        foreach ($section_ids as $sid) {
+            foreach ($this->classworks->get_all_submissions($sid) as $row) {
+                $decoded = json_decode($row['code'] ?? '', true);
+                if (is_array($decoded)) $result_lists[] = $decoded;
+                if (isset($row['switch_count']) && $row['switch_count'] !== null) {
+                    $switch_counts[] = (int) $row['switch_count'];
+                }
+            }
+        }
+
+        $config = json_decode($assessment['given'] ?? '', true) ?: [];
+        $data['stats'] = $this->Widgets_model->quiz_item_stats($result_lists, $config);
+
+        // Soft proctoring readout — client-reported tab switches, recorded by
+        // SecureQuizController::submit(). Never an input to any score.
+        $data['switch'] = [
+            'tracked'  => count($switch_counts),
+            'flagged'  => count(array_filter($switch_counts, function ($n) { return $n > 0; })),
+            'max'      => $switch_counts ? max($switch_counts) : 0,
+        ];
+
+        $this->load->view('admin/quiz_stats', $data);
+    }
+
     // Group-aware sibling of all_submissions(): shows one card per group with
     // the group's single shared submission, instead of the flat per-student
     // list (where a group submission appears N identical times). Group

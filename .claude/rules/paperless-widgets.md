@@ -103,6 +103,33 @@ list: `AdminController::group_submissions()` grades the draft before handing it
 to the widget view, which renders drafts and submissions identically apart from
 an `is_draft` wording flag. JSON topic files for this format are authored by
 the `interactive-quiz-microlearning` skill.
+**Timed/Secure Quiz** (`secure_quiz` widget_key) is the `quiz` widget's
+lockdown sibling: same `{question, choices, answer}` config in
+`assessments.given`, same server-side `Widgets_model::grade_quiz()`, same
+`{question, user_answer, correct_answer, is_correct}` results array in
+`classworks.code` — but taken in a dedicated fullscreen/timer/tab-switch page
+(`SecureQuizController` → `views/secure_quiz_view.php`) rather than an inline
+card form, so `AssessmentController::assessment_view_code()` redirects there
+and `widgets/secure_quiz.php` only ever renders the readonly/preview modes.
+**`SecureQuizController::index()` shuffles the bank, slices it to `max_score`,
+shuffles each question's choices, and destroys the drawn set at submit** — so
+every student sees a different subset in a different order, and an array index
+into `classworks.code` means nothing across two submissions. Anything
+aggregating across submissions must key on the **trimmed question text**; the
+config has no question ids. `classworks.switch_count` holds the client-reported
+tab-switch tally (NULL = not recorded, which is not the same as 0); it is a soft
+proctoring hint shown as a badge in `admin/all_submission.php`, never an input
+to a score. Class-wide item analysis for BOTH quiz widgets lives in
+`Widgets_model::quiz_item_stats()` (beside `grade_quiz()`, so reader and writer
+of the result shape can't drift) → `AdminController::quiz_stats()` →
+`views/admin/quiz_stats.php`, reachable from the submissions page or
+`admin/quiz_stats/{section_id}[/section|/all]` — `all` pools every section of
+the master, which matters because the per-student sampling leaves individual
+items thin in a single section. That model **trusts the stored `is_correct` and
+never re-grades against the current config** (the bank may have been edited
+since, and re-deriving would contradict the recorded `classworks.score`); it
+produces descriptive statistics only, never a grade, so `Grade_calculator` stays
+uninvolved.
 A fourth widget, **Case Study Worksheet** (`case_study` widget_key, not in
 the original 6-widget plan — see plan doc §4 "Widget I"), covers narrative
 case-study activities (e.g. "Meet Maria the calamansi farmer," Session 1.2):

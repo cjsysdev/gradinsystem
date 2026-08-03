@@ -96,6 +96,15 @@
                             <span class="badge badge-secondary p-2">Missing: 0</span>
                         <?php endif; ?>
                     </div>
+                    <?php // Both quiz widgets store per-question results in classworks.code,
+                    // so the class-wide item analysis is available for either. ?>
+                    <?php if (!empty($widget) && in_array($widget['widget_key'], ['quiz', 'secure_quiz'], true)): ?>
+                        <div class="mb-3">
+                            <a href="<?= base_url('admin/quiz_stats/' . $selected_assessment_id) ?>" class="btn btn-sm btn-outline-primary">
+                                <i class="fa fa-chart-bar"></i> Item statistics &mdash; which questions were missed most &rarr;
+                            </a>
+                        </div>
+                    <?php endif; ?>
                     <?php if (!empty($selected_assessment) && !empty($selected_assessment['is_groupings'])): ?>
                         <div class="mb-3">
                             <a href="<?= base_url('group_submissions/' . $selected_assessment_id) ?>" class="btn btn-sm btn-outline-info">
@@ -139,7 +148,20 @@
                             data-classwork-id="<?= $row['classwork_id'] ?>"
                             data-max-score="<?= htmlspecialchars($row['max_score'], ENT_QUOTES, 'UTF-8') ?>">
                             <div class="card-body">
-                                <h3 class="card-title mb-1"><?= $row['classwork_id'] . " - " . $row['lastname'] . ", " . $row['firstname'] ?></h3>
+                                <h3 class="card-title mb-1">
+                                    <?= $row['classwork_id'] . " - " . $row['lastname'] . ", " . $row['firstname'] ?>
+                                    <?php // Tab switches recorded during a Timed/Secure Quiz attempt.
+                                    // NULL = not tracked (any older submission, or a widget that
+                                    // doesn't measure it); 0 = tracked and clean, so only a
+                                    // positive count is worth a badge. Client-reported, so this is
+                                    // a nudge to look closer — never an input to the score. ?>
+                                    <?php if (!empty($row['switch_count'])): ?>
+                                        <span class="badge badge-warning align-middle" style="font-size:0.5em;"
+                                              title="Left the quiz tab <?= (int) $row['switch_count'] ?> time(s) during the attempt (client-reported)">
+                                            <i class="fa fa-eye"></i> <?= (int) $row['switch_count'] ?> tab switch<?= $row['switch_count'] > 1 ? 'es' : '' ?>
+                                        </span>
+                                    <?php endif; ?>
+                                </h3>
                                 <hr>
                                 <p class="card-text mb-3"><?= $row['created_at'] , " " , $row['file_upload'], " - " ?><span class="current-score"><?= isset($row['score']) ? $row['score'] : 'No score yet' ?></span></p>
                                 <!-- Button to open modal -->
