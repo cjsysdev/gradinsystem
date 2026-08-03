@@ -746,6 +746,7 @@ let lastAutoFilledExample = null;
 let lastAutoFilledTitle = null;
 let lastAutoFilledDescription = null;
 let lastAutoFilledSlug = null;
+let lastAutoFilledMaxScore = null;
 
 // Turns a pasted topic's "title" into a slug candidate matching the server's
 // ^[a-z0-9_]{1,100}$ requirement (_save_pasted_topic_json()).
@@ -850,6 +851,67 @@ function autofillIqTopicMeta(topic) {
     }
 }
 
+// Reads one of the given key paths ('a.b' walks into nested objects) out of a
+// parsed config, flattened to plain text — client-side twin of the $pick()
+// closure in AdminController::_widget_config_meta().
+function pickConfigMeta(data, paths) {
+    for (const path of paths) {
+        let value = data;
+        let found = true;
+        for (const key of path.split('.')) {
+            if (!value || typeof value !== 'object' || value[key] === undefined) {
+                found = false;
+                break;
+            }
+            value = value[key];
+        }
+        if (!found || (typeof value !== 'string' && typeof value !== 'number')) continue;
+
+        const text = String(value).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+        if (text) return text;
+    }
+    return '';
+}
+
+// Fills Title/Description/Max Score from a widget config JSON that names
+// itself — configs written by the generator skills carry their own title,
+// description, and (for quiz-shaped ones) score, so there's nothing to retype.
+// Mirrors AdminController::_widget_config_meta() + _fill_blank_fields(), which
+// does the same on save for configs that never passed through this modal.
+// Same "don't clobber typed content" guard as autofillIqMetaFromJson(), except
+// a key the config doesn't carry leaves its field alone instead of blanking it
+// — this runs on every keystroke in the textarea, where the JSON is usually
+// half-typed.
+function autofillMetaFromWidgetConfig(text) {
+    let data;
+    try { data = JSON.parse(text); } catch (e) { return; }
+    if (!data || typeof data !== 'object') return;
+
+    const title = pickConfigMeta(data, ['title', 'meta.title', 'story.title']).substring(0, 64);
+    const description = pickConfigMeta(data, ['description', 'subtitle', 'meta.sub', 'prompt']);
+    const maxScore = parseInt(pickConfigMeta(data, ['max_score', 'total_points', 'points']), 10);
+
+    const titleInput = document.getElementById('modal_title');
+    const descInput = document.getElementById('modal_description');
+    const scoreInput = document.getElementById('modal_max_score');
+
+    if (title && (!titleInput.value.trim() || titleInput.value === lastAutoFilledTitle)) {
+        titleInput.value = title;
+        lastAutoFilledTitle = title;
+    }
+    if (description && (!descInput.value.trim() || descInput.value === lastAutoFilledDescription)) {
+        descInput.value = description;
+        lastAutoFilledDescription = description;
+    }
+    // Never touches Max Score for the topic-file widgets — applyIqMaxScoreLock()
+    // owns that field there (read-only, derived from the topic's item count).
+    if (maxScore > 0 && !selectedTopicFormat()
+        && (!scoreInput.value.trim() || scoreInput.value === lastAutoFilledMaxScore)) {
+        scoreInput.value = maxScore;
+        lastAutoFilledMaxScore = String(maxScore);
+    }
+}
+
 // Max Score isn't hand-entered for the topic-file widgets — it's the topic's
 // own item count (1 point per question for Interactive Discussion/Quiz, 1 per
 // micro-check + 1 per checkpoint for Microlearning Quiz, matching the
@@ -911,6 +973,7 @@ function toggleGivenWrap() {
     // config JSON. Falls back to raw-JSON-only for widgets without a schema.
     if (typeof initWidgetConfigUI === 'function') initWidgetConfigUI();
 
+    autofillMetaFromWidgetConfig(textarea.value);
     fetchWidgetPreview();
 }
 
@@ -940,6 +1003,7 @@ function applyCopyFrom() {
     lastAutoFilledTitle = null;
     lastAutoFilledDescription = null;
     lastAutoFilledSlug = null;
+    lastAutoFilledMaxScore = null;
 
     let givenTopic = '';
     if (src.given) {
@@ -1093,6 +1157,7 @@ document.getElementById('modal_given_file').addEventListener('change', function 
         const textarea = document.getElementById('modal_given');
         textarea.value = JSON.stringify(parsed, null, 2);
         lastAutoFilledExample = null; // real config now — switching widgets must not clobber it
+        autofillMetaFromWidgetConfig(textarea.value);
         fetchWidgetPreview();
     };
     reader.readAsText(file);
@@ -1185,7 +1250,10 @@ document.getElementById('modal_schedule_id').addEventListener('change', () => { 
 document.getElementById('modal_class_id').addEventListener('change', () => { refreshIqTopicOptions(); refreshCopyFromOptions(); });
 document.getElementById('modal_is_groupings').addEventListener('change', toggleGroupingSetWrap);
 document.getElementById('modal_widget_id').addEventListener('change', toggleGivenWrap);
-document.getElementById('modal_given').addEventListener('input', refreshWidgetPreviewDebounced);
+document.getElementById('modal_given').addEventListener('input', function () {
+    autofillMetaFromWidgetConfig(this.value);
+    refreshWidgetPreviewDebounced();
+});
 document.getElementById('modal_iq_topic').addEventListener('change', syncIqTopicToGiven);
 document.getElementById('modal_iq_source_existing').addEventListener('change', toggleIqSource);
 document.getElementById('modal_iq_source_new').addEventListener('change', toggleIqSource);
@@ -1223,6 +1291,7 @@ function openAddModal() {
     lastAutoFilledTitle = null;
     lastAutoFilledDescription = null;
     lastAutoFilledSlug = null;
+    lastAutoFilledMaxScore = null;
     toggleGivenWrap();
     document.getElementById('modal_auto_create_submissions').checked = false;
     document.getElementById('modal_submit_btn').textContent = 'Add Assessment';
@@ -1257,6 +1326,7 @@ function openEditModal(a) {
     lastAutoFilledTitle = null;
     lastAutoFilledDescription = null;
     lastAutoFilledSlug = null;
+    lastAutoFilledMaxScore = null;
     let givenTopic = '';
     if (a.given) {
         try { givenTopic = JSON.parse(a.given).topic || ''; } catch (e) {}

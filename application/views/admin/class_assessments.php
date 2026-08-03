@@ -614,6 +614,7 @@ let lastAutoFilledExample = null;
 let lastAutoFilledTitle = null;
 let lastAutoFilledDescription = null;
 let lastAutoFilledSlug = null;
+let lastAutoFilledMaxScore = null;
 
 // Turns a pasted topic's "title" into a slug candidate matching the server's
 // ^[a-z0-9_]{1,100}$ requirement (_save_pasted_topic_json()).
@@ -714,6 +715,58 @@ function autofillIqTopicMeta(topic) {
     }
 }
 
+// Twin of manage_assessments.php's config-meta autofill (see the fuller
+// comments there) and of AdminController::_widget_config_meta(): a widget
+// config JSON that names itself fills the Title/Description/Max Score fields
+// the admin left blank, and only those.
+function pickConfigMeta(data, paths) {
+    for (const path of paths) {
+        let value = data;
+        let found = true;
+        for (const key of path.split('.')) {
+            if (!value || typeof value !== 'object' || value[key] === undefined) {
+                found = false;
+                break;
+            }
+            value = value[key];
+        }
+        if (!found || (typeof value !== 'string' && typeof value !== 'number')) continue;
+
+        const text = String(value).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+        if (text) return text;
+    }
+    return '';
+}
+
+function autofillMetaFromWidgetConfig(text) {
+    let data;
+    try { data = JSON.parse(text); } catch (e) { return; }
+    if (!data || typeof data !== 'object') return;
+
+    const title = pickConfigMeta(data, ['title', 'meta.title', 'story.title']).substring(0, 64);
+    const description = pickConfigMeta(data, ['description', 'subtitle', 'meta.sub', 'prompt']);
+    const maxScore = parseInt(pickConfigMeta(data, ['max_score', 'total_points', 'points']), 10);
+
+    const titleInput = document.getElementById('modal_title');
+    const descInput = document.getElementById('modal_description');
+    const scoreInput = document.getElementById('modal_max_score');
+
+    if (title && (!titleInput.value.trim() || titleInput.value === lastAutoFilledTitle)) {
+        titleInput.value = title;
+        lastAutoFilledTitle = title;
+    }
+    if (description && (!descInput.value.trim() || descInput.value === lastAutoFilledDescription)) {
+        descInput.value = description;
+        lastAutoFilledDescription = description;
+    }
+    // Max Score belongs to applyIqMaxScoreLock() for the topic-file widgets.
+    if (maxScore > 0 && !selectedTopicFormat()
+        && (!scoreInput.value.trim() || scoreInput.value === lastAutoFilledMaxScore)) {
+        scoreInput.value = maxScore;
+        lastAutoFilledMaxScore = String(maxScore);
+    }
+}
+
 function toggleGivenWrap() {
     const select = document.getElementById('modal_widget_id');
     const key = selectedWidgetKey();
@@ -749,6 +802,7 @@ function toggleGivenWrap() {
     }
 
     if (typeof initWidgetConfigUI === 'function') initWidgetConfigUI();
+    autofillMetaFromWidgetConfig(textarea.value);
     fetchWidgetPreview();
 }
 
@@ -772,6 +826,7 @@ function applyCopyFrom() {
     lastAutoFilledTitle = null;
     lastAutoFilledDescription = null;
     lastAutoFilledSlug = null;
+    lastAutoFilledMaxScore = null;
 
     let givenTopic = '';
     if (src.given) {
@@ -854,6 +909,7 @@ document.getElementById('modal_given_file').addEventListener('change', function 
         const textarea = document.getElementById('modal_given');
         textarea.value = JSON.stringify(parsed, null, 2);
         lastAutoFilledExample = null;
+        autofillMetaFromWidgetConfig(textarea.value);
         fetchWidgetPreview();
     };
     reader.readAsText(file);
@@ -943,7 +999,10 @@ document.getElementById('assessmentForm').addEventListener('submit', function (e
 document.getElementById('modal_schedule_id').addEventListener('change', refreshGroupingSetOptions);
 document.getElementById('modal_is_groupings').addEventListener('change', toggleGroupingSetWrap);
 document.getElementById('modal_widget_id').addEventListener('change', toggleGivenWrap);
-document.getElementById('modal_given').addEventListener('input', refreshWidgetPreviewDebounced);
+document.getElementById('modal_given').addEventListener('input', function () {
+    autofillMetaFromWidgetConfig(this.value);
+    refreshWidgetPreviewDebounced();
+});
 document.getElementById('modal_iq_topic').addEventListener('change', syncIqTopicToGiven);
 document.getElementById('modal_iq_source_existing').addEventListener('change', toggleIqSource);
 document.getElementById('modal_iq_source_new').addEventListener('change', toggleIqSource);
@@ -972,6 +1031,7 @@ function resetModalCommon() {
     lastAutoFilledTitle = null;
     lastAutoFilledDescription = null;
     lastAutoFilledSlug = null;
+    lastAutoFilledMaxScore = null;
     toggleGivenWrap();
 }
 
@@ -1018,6 +1078,7 @@ function openEditModal(a) {
     lastAutoFilledTitle = null;
     lastAutoFilledDescription = null;
     lastAutoFilledSlug = null;
+    lastAutoFilledMaxScore = null;
 
     let givenTopic = '';
     if (a.given) {

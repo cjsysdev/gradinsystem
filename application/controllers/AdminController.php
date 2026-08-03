@@ -982,6 +982,77 @@ class AdminController extends CI_Controller
         return $count;
     }
 
+    // A config/topic JSON authored outside the modal (the generator skills, a
+    // pasted worksheet or quiz file) almost always names itself, so there's no
+    // reason to make the admin retype that into the form. Pulls whichever of
+    // title/description/max_score the JSON actually carries, from the key
+    // paths the existing configs use — top level for most widgets and every
+    // topic file, 'meta' for chapter_worksheet/case_dossier, 'story' for
+    // case_study. Returns ONLY the keys it found; the caller fills blank form
+    // fields with them via _fill_blank_fields() and never overwrites anything
+    // the admin typed. Mirrored client-side by
+    // autofillMetaFromWidgetConfig() in manage_assessments.php /
+    // class_assessments.php, which fills the same fields live as the config is
+    // pasted; this server-side pass is the backstop for configs that never
+    // went through that modal.
+    private function _widget_config_meta(array $config)
+    {
+        $pick = function (array $paths) use ($config) {
+            foreach ($paths as $path) {
+                $value = $config;
+                foreach (explode('.', $path) as $key) {
+                    if (!is_array($value) || !isset($value[$key])) {
+                        continue 2;
+                    }
+                    $value = $value[$key];
+                }
+                if (!is_string($value) && !is_numeric($value)) {
+                    continue;
+                }
+                // 'intro'-style values may hold admin-authored HTML; the form
+                // fields are plain text, so flatten before using them.
+                $text = trim(preg_replace('/\s+/', ' ', strip_tags((string) $value)));
+                if ($text !== '') {
+                    return $text;
+                }
+            }
+            return null;
+        };
+
+        $meta = [];
+
+        $title = $pick(['title', 'meta.title', 'story.title']);
+        if ($title !== null) {
+            // Matches the modal's maxlength="64" on the Title field.
+            $meta['title'] = mb_substr($title, 0, 64);
+        }
+
+        $description = $pick(['description', 'subtitle', 'meta.sub', 'prompt']);
+        if ($description !== null) {
+            $meta['description'] = $description;
+        }
+
+        $max_score = $pick(['max_score', 'total_points', 'points']);
+        if ($max_score !== null && (int) $max_score > 0) {
+            $meta['max_score'] = (int) $max_score;
+        }
+
+        return $meta;
+    }
+
+    // Fills only the fields the admin left blank (a 0/negative Max Score counts
+    // as blank — it's never a valid score). Used with _widget_config_meta().
+    private function _fill_blank_fields(array &$fields, array $meta)
+    {
+        foreach ($meta as $field => $value) {
+            $current = trim((string) ($fields[$field] ?? ''));
+            $is_blank = $current === '' || ($field === 'max_score' && (int) $current <= 0);
+            if ($is_blank) {
+                $fields[$field] = $value;
+            }
+        }
+    }
+
     // $assessment_id posted here is always a SECTION id (assessment_section_id)
     // — the id space consumers see everywhere (URLs, classworks.assessment_id,
     // etc.) never changed across the master/assessment_section split (see
@@ -1038,6 +1109,7 @@ class AdminController extends CI_Controller
                 $topic = json_decode($master_fields['given'] ?? '', true)['topic'] ?? '';
                 $topic_found = false;
                 $wrong_format = false;
+                $topic_meta = [];
                 if ($topic) {
                     foreach ($this->_glob_json_topics() as $file) {
                         if (basename($file, '.json') !== $topic) {
@@ -1054,6 +1126,7 @@ class AdminController extends CI_Controller
                             ? $this->_count_micro_topic_items($meta)
                             : $this->_count_iq_topic_questions($meta));
                         $topic_found = true;
+                        $topic_meta = $meta;
                         break;
                     }
                 }
@@ -1069,6 +1142,14 @@ class AdminController extends CI_Controller
                     redirect('manage_assessments' . (!empty($post['schedule_id']) ? '?schedule_id=' . $post['schedule_id'] : ''));
                     return;
                 }
+
+                // Topic files carry their own title/description — fill them in
+                // for an admin who left those fields blank. max_score is
+                // dropped: it was just derived from the topic's own item count
+                // above, which always wins over anything the file claims.
+                $found_meta = $this->_widget_config_meta($topic_meta);
+                unset($found_meta['max_score']);
+                $this->_fill_blank_fields($master_fields, $found_meta);
             } elseif ($widget) {
                 // All other widgets keep their config as a JSON string in
                 // assessments.given (the standard — see CLAUDE.md). Reject
@@ -1096,6 +1177,11 @@ class AdminController extends CI_Controller
                 if (in_array($widget['widget_key'], ['quiz', 'secure_quiz'], true) && !isset($config['questions'])) {
                     $master_fields['given'] = json_encode(['questions' => $this->Widgets_model->quiz_questions($config)]);
                 }
+
+                // Same idea as the topic branch above: a config JSON that names
+                // itself (title/description/max_score) fills whichever of those
+                // form fields the admin left blank.
+                $this->_fill_blank_fields($master_fields, $this->_widget_config_meta($config));
             }
         }
 
@@ -1453,6 +1539,7 @@ class AdminController extends CI_Controller
                 $topic = json_decode($master_fields['given'] ?? '', true)['topic'] ?? '';
                 $topic_found = false;
                 $wrong_format = false;
+                $topic_meta = [];
                 if ($topic) {
                     foreach ($this->_glob_json_topics() as $file) {
                         if (basename($file, '.json') !== $topic) {
@@ -1467,6 +1554,7 @@ class AdminController extends CI_Controller
                             ? $this->_count_micro_topic_items($meta)
                             : $this->_count_iq_topic_questions($meta));
                         $topic_found = true;
+                        $topic_meta = $meta;
                         break;
                     }
                 }
@@ -1482,6 +1570,10 @@ class AdminController extends CI_Controller
                     redirect('class_assessments' . ($class_id ? '?class_id=' . $class_id : ''));
                     return;
                 }
+
+                $found_meta = $this->_widget_config_meta($topic_meta);
+                unset($found_meta['max_score']);
+                $this->_fill_blank_fields($master_fields, $found_meta);
             } elseif ($widget) {
                 $given = trim((string) ($master_fields['given'] ?? ''));
                 $config = $given !== '' ? json_decode($given, true) : null;
@@ -1500,6 +1592,8 @@ class AdminController extends CI_Controller
                 if (in_array($widget['widget_key'], ['quiz', 'secure_quiz'], true) && !isset($config['questions'])) {
                     $master_fields['given'] = json_encode(['questions' => $this->Widgets_model->quiz_questions($config)]);
                 }
+
+                $this->_fill_blank_fields($master_fields, $this->_widget_config_meta($config));
             }
         }
 
