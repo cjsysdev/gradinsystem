@@ -271,7 +271,12 @@ class AdminStudentController extends Admin_Controller
         $this->load->model('classworks');
         $data['student']      = $student;
         $data['profile_pic']  = $account ? $account['profile_pic'] : null;
-        $data['has_account']  = $account && $account['role'] === 'student';
+        // Anything that isn't an admin is a student: most accounts predate the
+        // signup/register flows that set role='student' explicitly and carry an
+        // empty role instead. AuthenticationController::login() treats them the
+        // same way (only 'admin' is special-cased), so requiring the literal
+        // string here hid this button for every bulk-imported section.
+        $data['has_account']  = $account && $account['role'] !== 'admin';
         $data['attendance']   = $this->student_master->get_attendance_summary($student_id);
         $data['classworks']   = $this->classworks->get_submissions_by_student($student_id);
         $data['violations']   = $this->violation->get_all_violations(['student_id' => $student_id]);
@@ -292,8 +297,12 @@ class AdminStudentController extends Admin_Controller
             redirect('admin/students_by_section');
         }
 
-        $user = $this->accounts->with_student()->get(['student_id' => $student_id, 'role' => 'student']);
-        if (!$user) {
+        // Match on the student alone, then rule out admins — see the note in
+        // student_summary(): filtering on role='student' only ever matched the
+        // accounts created through signup/register, not the bulk-imported ones
+        // whose role is empty, so impersonation failed for whole sections.
+        $user = $this->accounts->with_student()->get(['student_id' => $student_id]);
+        if (!$user || $user->role === 'admin') {
             $this->session->set_flashdata('error', 'This student has no login account to log in as.');
             redirect('admin/student_summary/' . $student_id);
         }
