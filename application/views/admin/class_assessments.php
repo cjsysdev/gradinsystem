@@ -70,7 +70,7 @@
                         <th>Widget</th>
                         <th>Term</th>
                         <th>Max Score</th>
-                        <th>Status</th>
+                        <!-- <th>Status</th> -->
                         <th>Sections</th>
                         <th>Submissions</th>
                         <th>Actions</th>
@@ -92,10 +92,17 @@
                             ?>
                             <tr>
                                 <td><?= htmlspecialchars($a['title']) ?></td>
-                                <td><?= htmlspecialchars($a['iotype'] ?? '') ?></td>
+                                <td>
+                                    <?php
+                                    $iotypeBadges = [1 => 'badge-info', 2 => 'badge-primary', 3 => 'badge-danger', 4 => 'badge-warning'];
+                                    $iotypeBadge = $iotypeBadges[(int) $a['iotype_id']] ?? 'badge-secondary';
+                                    ?>
+                                    <span class="badge <?= $iotypeBadge ?>"><?= htmlspecialchars($a['iotype'] ?? '') ?></span>
+                                </td>
                                 <td>
                                     <?php if (!empty($a['widget_name'])): ?>
-                                        <span class="badge badge-primary"><?= htmlspecialchars($a['widget_name']) ?></span>
+                                        <?php $widgetHue = abs(crc32($a['widget_name'])) % 360; ?>
+                                        <span class="badge text-white" style="background-color: hsl(<?= $widgetHue ?>, 60%, 40%);"><?= htmlspecialchars($a['widget_name']) ?></span>
                                     <?php else: ?>
                                         <span class="text-muted">&mdash;</span>
                                     <?php endif; ?>
@@ -107,20 +114,21 @@
                                     ?>
                                 </td>
                                 <td><?= $a['max_score'] ?></td>
-                                <td>
+                                <!-- <td>
                                     <?php if ($is_draft): ?>
                                         <span class="badge badge-warning">Unassigned draft</span>
                                     <?php else: ?>
                                         <span class="badge badge-success">Assigned to <?= (int) $a['section_count'] ?> section<?= (int) $a['section_count'] != 1 ? 's' : '' ?></span>
                                     <?php endif; ?>
-                                </td>
+                                </td> -->
                                 <td>
                                     <?php if (!$section_pairs): ?>
                                         <span class="text-muted">&mdash;</span>
                                     <?php else: ?>
                                         <?php foreach ($section_pairs as $sp): ?>
+                                            <?php $sectionHue = abs(crc32($sp['code'])) % 360; ?>
                                             <a href="<?= base_url('manage_assessments?schedule_id=' . $sp['id']) ?>"
-                                               class="badge badge-secondary" title="Manage this section's due date/status in Assessments">
+                                               class="badge badge-secondary text-white" title="Manage this section's due date/status in Assessments">
                                                 <?= htmlspecialchars($sp['code']) ?>
                                             </a>
                                             <a href="<?= base_url('all_submissions/' . $sp['id']) ?>" title="View submissions">

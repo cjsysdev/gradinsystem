@@ -131,7 +131,10 @@
                         <?php $is_group_head = isset($a['_rowspan']); ?>
                         <tr class="<?= (int) $a['sibling_count'] > 1 ? 'table-shared-group' : '' ?>">
                             <td><?= $a['assessment_id'] ?></td>
-                            <td><span class="badge badge-secondary"><?= htmlspecialchars($a['section']) ?></span></td>
+                            <td>
+                                <?php $sectionHue = abs(crc32($a['section'] . '|' . $a['class_code'])) % 360; ?>
+                                <span class="badge text-white" style="background-color: hsl(<?= $sectionHue ?>, 55%, 42%);"><?= htmlspecialchars($a['section']) ?></span>
+                            </td>
                             <?php if ($is_group_head): ?>
                                 <td rowspan="<?= (int) $a['_rowspan'] ?>">
                                     <?= htmlspecialchars($a['title']) ?>
@@ -141,10 +144,17 @@
                                         </small>
                                     <?php endif; ?>
                                 </td>
-                                <td rowspan="<?= (int) $a['_rowspan'] ?>"><?= htmlspecialchars($a['iotype']) ?></td>
+                                <td rowspan="<?= (int) $a['_rowspan'] ?>">
+                                    <?php
+                                    $iotypeBadges = [1 => 'badge-info', 2 => 'badge-primary', 3 => 'badge-danger', 4 => 'badge-warning'];
+                                    $iotypeBadge = $iotypeBadges[(int) $a['iotype_id']] ?? 'badge-secondary';
+                                    ?>
+                                    <span class="badge <?= $iotypeBadge ?>"><?= htmlspecialchars($a['iotype']) ?></span>
+                                </td>
                                 <td rowspan="<?= (int) $a['_rowspan'] ?>">
                                     <?php if (!empty($a['widget_name'])): ?>
-                                        <span class="badge badge-primary"><?= htmlspecialchars($a['widget_name']) ?></span>
+                                        <?php $widgetHue = abs(crc32($a['widget_name'])) % 360; ?>
+                                        <span class="badge text-white" style="background-color: hsl(<?= $widgetHue ?>, 60%, 40%);"><?= htmlspecialchars($a['widget_name']) ?></span>
                                     <?php else: ?>
                                         <span class="text-muted">&mdash;</span>
                                     <?php endif; ?>
@@ -170,12 +180,13 @@
                             </td>
                             <td>
                                 <?php $statusValue = is_numeric($a['status']) ? (int)$a['status'] : ($a['status'] === 'open' ? 1 : 0); ?>
-                                <select class="form-control form-control-sm"
+                                <button type="button"
+                                        class="btn btn-sm <?= $statusValue === 1 ? 'btn-success' : 'btn-danger' ?>"
                                         data-id="<?= $a['assessment_id'] ?>"
-                                        onchange="updateStatus(this)">
-                                    <option value="1" <?= $statusValue === 1 ? 'selected' : '' ?>>Open</option>
-                                    <option value="0" <?= $statusValue === 0 ? 'selected' : '' ?>>Closed</option>
-                                </select>
+                                        data-status="<?= $statusValue ?>"
+                                        onclick="toggleStatus(this)">
+                                    <?= $statusValue === 1 ? 'Open' : 'Closed' ?>
+                                </button>
                             </td>
                             <td class="text-nowrap">
                                 <button class="btn btn-sm btn-outline-primary"
@@ -1402,10 +1413,12 @@ function deleteAssessment(id, title) {
     .catch(() => alert('Request failed.'));
 }
 
-function updateStatus(select) {
-    const assessment_id = select.dataset.id;
-    const status = select.value;
-    const original = status === '1' ? '0' : '1';
+function toggleStatus(btn) {
+    const assessment_id = btn.dataset.id;
+    const original = btn.dataset.status;
+    const status = original === '1' ? '0' : '1';
+
+    btn.disabled = true;
 
     fetch('<?= base_url('update_assessment_status') ?>', {
         method: 'POST',
@@ -1414,15 +1427,17 @@ function updateStatus(select) {
     })
     .then(r => r.json())
     .then(data => {
-        if (!data.success) {
+        if (data.success) {
+            btn.dataset.status = status;
+            btn.textContent = status === '1' ? 'Open' : 'Closed';
+            btn.classList.toggle('btn-success', status === '1');
+            btn.classList.toggle('btn-danger', status === '0');
+        } else {
             alert('Failed to update status.');
-            select.value = original;
         }
     })
-    .catch(() => {
-        alert('Request failed.');
-        select.value = original;
-    });
+    .catch(() => alert('Request failed.'))
+    .finally(() => { btn.disabled = false; });
 }
 </script>
 
