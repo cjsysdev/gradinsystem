@@ -224,6 +224,11 @@
             'readonly'      => true,
             'existing'      => json_decode($classwork['code'] ?? '', true) ?: [],
             'assessment_id' => $classwork['assessment_id'],
+            // Timed/Secure Quiz only: students reviewing their own attempt see
+            // just the items they missed, not the full answer key. Admins who
+            // open this page keep the complete item-by-item view.
+            'wrong_only'    => ($widget['widget_key'] ?? '') === 'secure_quiz'
+                && $this->session->userdata('role') !== 'admin',
         ]);
         ?>
       <?php elseif ($classwork['file_upload']): ?>
