@@ -1,0 +1,235 @@
+{
+    "topic": "controller_view_one_fact_four_checkpoints",
+    "title": "Controller & View — One Fact, Four Checkpoints",
+    "description": "Drills a single core fact about the CodeIgniter Controller-View relationship through four sections, each with micro-checks and a differently-formatted checkpoint.",
+    "coreFact": "The Controller receives the request, runs the logic, and calls $this->load->view() to hand data to a View, which renders the HTML. Logic stays in the Controller; presentation stays in the View.",
+    "congratsText": "Controller runs the logic, View renders the output — you've got it from every angle.",
+    "objectives": [
+        "Identify the Controller as the entry point that answers an incoming request",
+        "Apply $this->load->view() to render a View from inside a Controller",
+        "Pass prepared data from a Controller into a View using an array",
+        "Distinguish Controller responsibilities from View responsibilities"
+    ],
+    "recap": [
+        "A Controller method is what the URL actually reaches, and it decides which View to load",
+        "$this->load->view('name') is the call that hands control from the Controller to the View",
+        "Data is prepared in the Controller and passed as an array, whose keys become variables in the View",
+        "Logic belongs in the Controller; the View only displays what it was given"
+    ],
+    "sections": [
+        {
+            "id": 0,
+            "title": "The Controller Answers the Request",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "When a browser requests a URL, CodeIgniter routes it to a <span class=\"highlight\">Controller method</span> — not to a View file directly.",
+                    "check": {
+                        "question": "What does a URL request reach first?",
+                        "options": [
+                            "A Controller method",
+                            "A View file"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "The Controller runs whatever <span class=\"highlight\">logic</span> the request needs, then decides which View should be shown.",
+                    "check": {
+                        "question": "Who decides which View gets shown?",
+                        "options": [
+                            "The Controller",
+                            "The View"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "A View never runs on its own — it only produces output because a Controller <span class=\"highlight\">loaded</span> it.",
+                    "check": {
+                        "question": "Can a View render without a Controller loading it?",
+                        "options": [
+                            "No, it must be loaded",
+                            "Yes, it runs on its own"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "question": "What is the Controller's role in relation to the View?",
+                "options": [
+                    "It receives the request and loads the View to produce output",
+                    "It stores the finished HTML markup that gets sent to the browser",
+                    "It replaces the View entirely once the app is deployed to production",
+                    "It is generated automatically from whichever View file was requested"
+                ],
+                "correct": 0
+            }
+        },
+        {
+            "id": 1,
+            "title": "Loading the View",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "The call that hands off from Controller to View is <span class=\"code-inline\">$this->load->view('filename')</span>.",
+                    "check": {
+                        "question": "Which call loads a View?",
+                        "options": [
+                            "$this->load->view()",
+                            "$this->view->load()"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "The filename passed in matches a file inside the <span class=\"highlight\">application/views</span> folder, written without the .php extension.",
+                    "check": {
+                        "question": "Do you include .php in the view name?",
+                        "options": [
+                            "No, leave it off",
+                            "Yes, always include it"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "By default the loaded View's HTML is sent straight to the browser as part of the <span class=\"highlight\">response</span>.",
+                    "check": {
+                        "question": "Where does the View's HTML go by default?",
+                        "options": [
+                            "To the browser",
+                            "Into a log file"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "arrange",
+                "question": "Arrange the steps of a Controller-to-View request flow in order.",
+                "tokens": [
+                    "The View's HTML is sent back to the browser",
+                    "The browser requests a URL mapped to a Controller method",
+                    "$this->load->view('page') is called",
+                    "The Controller method runs its logic"
+                ],
+                "correctOrder": [
+                    "The browser requests a URL mapped to a Controller method",
+                    "The Controller method runs its logic",
+                    "$this->load->view('page') is called",
+                    "The View's HTML is sent back to the browser"
+                ]
+            }
+        },
+        {
+            "id": 2,
+            "title": "Passing Data to the View",
+            "callback": true,
+            "refSection": 1,
+            "chunks": [
+                {
+                    "text": "A Controller prepares values in an <span class=\"highlight\">array</span> and passes that array as the second argument to the view loader.",
+                    "check": {
+                        "question": "How is data handed to a View?",
+                        "options": [
+                            "As a second argument",
+                            "As a global variable"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Each <span class=\"highlight\">array key</span> becomes a plain variable inside the View — a key named title becomes <span class=\"code-inline\">$title</span>.",
+                    "check": {
+                        "question": "A key named 'user' becomes what in the View?",
+                        "options": [
+                            "$user",
+                            "$data['user']"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "The View only ever sees what the Controller chose to <span class=\"highlight\">pass in</span> — it cannot reach back for more.",
+                    "check": {
+                        "question": "Can a View fetch extra data on its own?",
+                        "options": [
+                            "No, only what was passed",
+                            "Yes, anytime it needs it"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "type",
+                "code": "class Page extends CI_Controller {\n    public function index() {\n        $data['title'] = 'Welcome';\n        // your line here\n    }\n}",
+                "question": "Type the line that loads the View 'home' and passes $data into it.",
+                "acceptedAnswers": [
+                    "$this->load->view('home', $data)",
+                    "$this->load->view('home', $data);",
+                    "$this->load->view(\"home\", $data)",
+                    "$this->load->view(\"home\", $data);"
+                ]
+            }
+        },
+        {
+            "id": 3,
+            "title": "Keeping Logic Out of Views",
+            "callback": true,
+            "refSection": "0 & 2",
+            "chunks": [
+                {
+                    "text": "A View's only job is to <span class=\"highlight\">display</span> values — echoing them, looping over them, formatting them for the page.",
+                    "check": {
+                        "question": "What is a View's job?",
+                        "options": [
+                            "Display values",
+                            "Calculate values"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Calculations, database calls, and decisions belong in the <span class=\"highlight\">Controller</span>, before the View is ever loaded.",
+                    "check": {
+                        "question": "Where does a price calculation belong?",
+                        "options": [
+                            "In the Controller",
+                            "In the View"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "This split is what keeps a project <span class=\"highlight\">maintainable</span> — you can redesign the page without touching the logic.",
+                    "check": {
+                        "question": "Why keep logic and display separate?",
+                        "options": [
+                            "Easier to maintain",
+                            "It runs faster"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "code": "// views/cart.php\n<?php\n$total = 0;\nforeach ($items as $item) {\n    $total += $item['price'] * 0.88;\n}\necho 'Total: ' . $total;",
+                "question": "What is wrong with this View file?",
+                "options": [
+                    "It computes a discounted total instead of just displaying one",
+                    "It uses a foreach loop, which is not permitted inside any View file",
+                    "It echoes a variable, which should always be handled by the Controller",
+                    "It is missing a closing PHP tag at the very bottom of the file"
+                ],
+                "correct": 0
+            }
+        }
+    ]
+}

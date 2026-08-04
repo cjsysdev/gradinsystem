@@ -1,0 +1,232 @@
+{
+    "topic": "c_array_functions_that_return_a_value",
+    "title": "C: Array Functions That Return a Value",
+    "description": "Writing functions that read an array and hand one number back to main().",
+    "congratsText": "Well done. You can now write a function that works out a value from an array, reuse what it returns, and pick a return type that fits.",
+    "objectives": [
+        "Write a function that returns one number worked out from an array",
+        "Keep a returned value in a variable and reuse it",
+        "Choose a return type that fits the answer being sent back",
+        "Add an extra parameter so one function answers many questions"
+    ],
+    "recap": [
+        "A function's return type says what it hands back; return is how the answer leaves.",
+        "A returned value can be stored and reused, and the size decides how far the loop goes.",
+        "int divided by int drops the decimals before any float return type sees it.",
+        "Start a counter at zero above the loop, build it up, then return it."
+    ],
+    "sections": [
+        {
+            "id": 0,
+            "title": "A Function That Gives a Number Back",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "The first word of the function is its <span class=\"highlight\">return type</span>. <span class=\"code-inline\">int total(...)</span> means it hands a whole number back to whoever called it.",
+                    "check": {
+                        "question": "What does the word int at the front of a function tell you?",
+                        "options": [
+                            "It sends one whole number back",
+                            "It only takes whole numbers in"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "The adding happens in a loop, but the answer leaves through <span class=\"code-inline\">return sum;</span>. Without that line, nothing gets back to <span class=\"code-inline\">main()</span>.",
+                    "check": {
+                        "question": "You delete return sum; but keep the loop. What does main() get?",
+                        "options": [
+                            "Some number nobody can rely on",
+                            "The correct total, from the loop"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "The call goes where a number would go. <span class=\"code-inline\">printf(\"%d\", total(scores, 5));</span> runs the function first, then prints what came back.",
+                    "check": {
+                        "question": "In that printf, what does %d actually print?",
+                        "options": [
+                            "Whatever total sent back",
+                            "The address that scores holds"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "code": "int total(int arr[], int size) {\n    int i;\n    int sum = 0;\n    for (i = 0; i < size; i++) {\n        sum = sum + arr[i];\n    }\n    return sum;\n}\n\nint scores[5] = {90, 85, 78, 92, 88};\nprintf(\"%d\", total(scores, 5));",
+                "question": "What does this print?",
+                "options": [
+                    "433, the five scores added up",
+                    "5, the size that was passed in",
+                    "90, the first item of the array",
+                    "An address, since arr[] holds one"
+                ],
+                "correct": 0
+            }
+        },
+        {
+            "id": 1,
+            "title": "Using the Value That Comes Back",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "You can keep the answer instead of printing it straight away: <span class=\"code-inline\">int classTotal = total(scores, 5);</span>. The loop runs once, and the number is yours to reuse.",
+                    "check": {
+                        "question": "You print classTotal twice. How many times does the loop run?",
+                        "options": [
+                            "Once, when total was called",
+                            "Twice, once per printf line"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "The <span class=\"highlight\">size</span> you pass decides how far the loop goes. Same array, smaller size, smaller answer.",
+                    "check": {
+                        "question": "The array holds 5 items but you call total(scores, 3). What happens?",
+                        "options": [
+                            "It adds the first three only",
+                            "It adds all five items anyway"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "A function can hand its job to another one. <span class=\"code-inline\">average()</span> has no loop &mdash; it just asks <span class=\"code-inline\">total()</span> for the sum.",
+                    "check": {
+                        "question": "average() has no loop of its own. Can it still work?",
+                        "options": [
+                            "Yes, total does the looping",
+                            "No, every function needs one"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "type",
+                "code": "int scores[5] = {90, 85, 78, 92, 88};\nprintf(\"%d\", total(scores, 3));",
+                "question": "Type the number this prints.",
+                "acceptedAnswers": [
+                    "253"
+                ]
+            }
+        },
+        {
+            "id": 2,
+            "title": "Making the Return Type Fit the Answer",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "<span class=\"code-inline\">total(arr, size) / size</span> divides an int by an int. C throws the decimals away <span class=\"highlight\">before</span> the float return type ever sees the answer.",
+                    "check": {
+                        "question": "433 / 5 in C, with both sides int, gives you what?",
+                        "options": [
+                            "86, with the rest dropped",
+                            "86.6, kept as written"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Writing <span class=\"code-inline\">(float) total(arr, size) / size</span> makes one side a float first, so the division keeps its decimals.",
+                    "check": {
+                        "question": "What does putting (float) in front change?",
+                        "options": [
+                            "How the division is worked out",
+                            "How printf lays the number out"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "This bug compiles with <span class=\"highlight\">no warning at all</span>. A quiet Compile Log only means the code is legal, not that it is right.",
+                    "check": {
+                        "question": "Your program builds with no errors. Is the answer correct?",
+                        "options": [
+                            "Not always, check it yourself",
+                            "Yes, a clean build proves it"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "arrange",
+                "question": "Arrange the tokens to build a function that returns the average as a decimal.",
+                "tokens": [
+                    "return (float) total(arr, size) / size;",
+                    "}",
+                    "float average(int arr[], int size)",
+                    "{"
+                ],
+                "correctOrder": [
+                    "float average(int arr[], int size)",
+                    "{",
+                    "return (float) total(arr, size) / size;",
+                    "}"
+                ]
+            }
+        },
+        {
+            "id": 3,
+            "title": "One More Parameter, Same Shape",
+            "callback": true,
+            "refSection": "0, 1 & 2",
+            "chunks": [
+                {
+                    "text": "Add a parameter and one function answers many questions: <span class=\"code-inline\">countAbove(arr, size, limit)</span> works for any limit you hand it.",
+                    "check": {
+                        "question": "Why add a limit parameter instead of writing countAbove86()?",
+                        "options": [
+                            "One function then covers every limit",
+                            "It makes the loop finish much faster"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "The shape never changes: start a counter at zero, loop, then <span class=\"code-inline\">return</span> it. Only what you count is different.",
+                    "check": {
+                        "question": "total returns a sum and countAbove returns a count. What is shared?",
+                        "options": [
+                            "Both build up a value, then return",
+                            "Both change items inside the array"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "<span class=\"highlight\">Setting</span> the counter to zero inside the loop wipes it every pass. This compiles fine and still gives a wrong count.",
+                    "check": {
+                        "question": "count = 0; sits inside the loop. What comes back?",
+                        "options": [
+                            "A count of the last item only",
+                            "The right count, just more slowly"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "code": "int countAbove(int arr[], int size, int limit) {\n    int i;\n    int count = 0;\n    for (i = 0; i < size; i++) {\n        if (arr[i] > limit) {\n            count++;\n        }\n    }\n    return count;\n}\n\nint marks[5] = {70, 95, 60, 88, 91};\nprintf(\"%d\", countAbove(marks, 5, 85));",
+                "question": "What does this print?",
+                "options": [
+                    "3, since 95, 88 and 91 clear the limit",
+                    "5, since every item is checked by the loop",
+                    "2, since only 95 and 91 are far enough up",
+                    "85, since the limit is what comes back here"
+                ],
+                "correct": 0
+            }
+        }
+    ]
+}

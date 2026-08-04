@@ -22,7 +22,7 @@
 
         <div class="row justify-content-center mt-4">
             <div class="col-md-8 text-center">
-                <h2 class="mb-1"><i class="fa fa-people-group"></i> Group Submissions</h2>
+                <h2 class="mb-1"> Group Submissions</h2>
                 <p class="text-muted small">
                     One card per group — grade a group's shared submission once and the
                     score applies to every member.
@@ -192,7 +192,7 @@
                                         <?php foreach ($g['members'] as $m): ?>
                                             <span class="badge <?= $m['submitted'] ? 'badge-light border' : 'badge-light border text-muted' ?> mr-1 mb-1 p-2">
                                                 <?php if ($m['submitted']): ?><i class="fa fa-check text-success"></i> <?php else: ?><i class="fa fa-minus text-muted"></i> <?php endif; ?>
-                                                <?= htmlspecialchars($m['lastname'] . ', ' . $m['firstname']) ?>
+                                                <?= htmlspecialchars($m['student_id'] . ' ' . $m['lastname'] . ', ' . $m['firstname'][0] . '.') ?>
                                             </span>
                                         <?php endforeach; ?>
                                         <?php if ($g['member_count'] === 0): ?>

@@ -235,10 +235,7 @@
     </div>
 </div>
 
-<?php // The stray "?>" inside the path used to make this 404, so CryptoJS was
-// undefined and the submit handler threw at the encrypt call — before its own
-// e.preventDefault(), so the form just posted natively and the student's local
-// backup copy was never produced. ?>
+<?php // The stray "?>
 <script src="<?= base_url('assets/crypto-js.min.js') ?>"></script>
 
 <script>

@@ -46,7 +46,7 @@ class Groupings extends CI_Controller
 
     public function index()
     {
-        $data['sections'] = $this->class_schedule->get_sections();
+        $data['sections'] = $this->class_student->get_sections_with_counts();
         $this->load->view('groupings/index', $data);
     }
 

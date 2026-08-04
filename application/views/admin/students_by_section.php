@@ -22,7 +22,7 @@
                        class="text-decoration-none">
                         <div class="card h-100 shadow-sm section-card text-center <?= $is_active ? 'border-primary active-section' : '' ?>">
                             <div class="card-body p-3">
-                                <i class="fa fa-users fa-2x <?= $is_active ? 'text-primary' : 'text-secondary' ?> mb-2"></i>
+                                <!-- <i class="fa fa-users fa-2x <?= $is_active ? 'text-primary' : 'text-secondary' ?> mb-2"></i> -->
                                 <p class="card-text mb-1" style="font-weight:600;line-height:1.2;">
                                     <?= htmlspecialchars($sec['section']) ?>
                                 </p>

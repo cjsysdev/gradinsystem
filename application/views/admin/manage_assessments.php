@@ -167,7 +167,7 @@
                                 </td>
                                 <td rowspan="<?= (int) $a['_rowspan'] ?>"><?= $a['max_score'] ?></td>
                             <?php endif; ?>
-                            <td><?= date('M j, y, D', strtotime($a['due'])) ?></td>
+                            <td><?= convert_due_date_week($a['due']) ?></td>
                             <td>
                                 <span class="badge badge-info"><?= $a['submission_count'] ?></span>
                                 <?php $missing_count = max(0, (int) $a['enrolled_count'] - (int) $a['submitted_student_count']); ?>
@@ -181,7 +181,7 @@
                             <td>
                                 <?php $statusValue = is_numeric($a['status']) ? (int)$a['status'] : ($a['status'] === 'open' ? 1 : 0); ?>
                                 <button type="button"
-                                        class="btn btn-sm <?= $statusValue === 1 ? 'btn-success' : 'btn-danger' ?>"
+                                        class="btn btn-sm <?= $statusValue === 1 ? 'btn-success' : 'btn-secondary' ?>"
                                         data-id="<?= $a['assessment_id'] ?>"
                                         data-status="<?= $statusValue ?>"
                                         onclick="toggleStatus(this)">
