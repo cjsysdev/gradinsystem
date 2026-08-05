@@ -54,9 +54,58 @@
         </div>
     <?php endif; ?>
 
+     <!-- ── Add / edit form ────────────────────────────────────────── -->
+    <?php if ($mode !== 'ungrouped'): ?>
+    <hr>
+    <h6 class="mb-3" id="form-heading">Add Progress Entry</h6>
+
+    <form id="log-form" action="<?= base_url('project_log/save') ?>" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="class_id" value="<?= (int)$selected_id ?>">
+
+        <div class="form-row">
+            <div class="form-group col-md-8">
+                <label class="form-label">Title / Milestone <span class="text-danger">*</span></label>
+                <input type="text" name="title" id="f-title" class="form-control" placeholder="e.g. Finished login page" required>
+            </div>
+            <div class="form-group col-md-4">
+                <label class="form-label">Status</label>
+                <select name="status" id="f-status" class="form-control">
+                    <option value="planned">Planned</option>
+                    <option value="in-progress">In Progress</option>
+                    <option value="done">Done</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Description / Notes</label>
+            <textarea name="description" id="f-description" class="form-control" rows="3" placeholder="What did you work on?"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Code (optional)</label>
+            <textarea name="code" id="code-editor"></textarea>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group col-md-6">
+                <label class="form-label">Link (repo / demo URL)</label>
+                <input type="url" name="link" id="f-link" class="form-control" placeholder="https://github.com/...">
+            </div>
+            <div class="form-group col-md-6">
+                <label class="form-label">Attachment (optional)</label>
+                <input type="file" name="file_upload" class="form-control-file">
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-info" id="form-submit">Add Entry</button>
+        <button type="button" class="btn btn-outline-secondary d-none" id="cancel-edit">Cancel</button>
+    </form>
+    <?php endif; ?>
+
     <!-- ── Entry list ─────────────────────────────────────────────── -->
     <?php if (!empty($entries)): ?>
-        <div class="mb-4">
+        <div class="mb-4 mt-4">
             <?php foreach ($entries as $e): ?>
                 <div class="card mb-3">
                     <div class="card-body py-2 px-3">
@@ -125,54 +174,7 @@
         <p class="text-muted">No progress entries yet for this course. Add your first one below.</p>
     <?php endif; ?>
 
-    <!-- ── Add / edit form ────────────────────────────────────────── -->
-    <?php if ($mode !== 'ungrouped'): ?>
-    <hr>
-    <h6 class="mb-3" id="form-heading">Add Progress Entry</h6>
-
-    <form id="log-form" action="<?= base_url('project_log/save') ?>" method="POST" enctype="multipart/form-data">
-        <input type="hidden" name="class_id" value="<?= (int)$selected_id ?>">
-
-        <div class="form-row">
-            <div class="form-group col-md-8">
-                <label class="form-label">Title / Milestone <span class="text-danger">*</span></label>
-                <input type="text" name="title" id="f-title" class="form-control" placeholder="e.g. Finished login page" required>
-            </div>
-            <div class="form-group col-md-4">
-                <label class="form-label">Status</label>
-                <select name="status" id="f-status" class="form-control">
-                    <option value="planned">Planned</option>
-                    <option value="in-progress">In Progress</option>
-                    <option value="done">Done</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label class="form-label">Description / Notes</label>
-            <textarea name="description" id="f-description" class="form-control" rows="3" placeholder="What did you work on?"></textarea>
-        </div>
-
-        <div class="form-group">
-            <label class="form-label">Code (optional)</label>
-            <textarea name="code" id="code-editor"></textarea>
-        </div>
-
-        <div class="form-row">
-            <div class="form-group col-md-6">
-                <label class="form-label">Link (repo / demo URL)</label>
-                <input type="url" name="link" id="f-link" class="form-control" placeholder="https://github.com/...">
-            </div>
-            <div class="form-group col-md-6">
-                <label class="form-label">Attachment (optional)</label>
-                <input type="file" name="file_upload" class="form-control-file">
-            </div>
-        </div>
-
-        <button type="submit" class="btn btn-info" id="form-submit">Add Entry</button>
-        <button type="button" class="btn btn-outline-secondary d-none" id="cancel-edit">Cancel</button>
-    </form>
-    <?php endif; ?>
+   
 </div>
 
 <script>

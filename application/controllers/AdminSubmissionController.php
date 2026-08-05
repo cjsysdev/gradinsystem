@@ -69,6 +69,7 @@ class AdminSubmissionController extends Admin_Controller
             'widget'        => null,
             'section_count' => 1,
             'stats'         => null,
+            'ranking'       => null,
             'error'         => null,
         ];
 
@@ -104,17 +105,32 @@ class AdminSubmissionController extends Admin_Controller
 
         // Which section(s) to pool.
         $master_id   = $this->assessments->master_id_for_section($assessment_id);
-        $all_section_ids = $master_id
-            ? array_column($this->assessments->sections_of_master($master_id), 'assessment_section_id')
-            : [$assessment_id];
+        $sections    = $master_id
+            ? $this->assessments->sections_of_master($master_id)
+            : [['assessment_section_id' => $assessment_id, 'schedule_id' => null]];
+        $all_section_ids = array_column($sections, 'assessment_section_id');
         $data['section_count'] = count($all_section_ids);
 
         $section_ids = $data['scope'] === 'all' ? $all_section_ids : [$assessment_id];
 
+        // Section labels for the ranking tables — only worth a lookup when the
+        // pooled scope actually mixes students from more than one section.
+        $section_labels = [];
+        if (count($section_ids) > 1) {
+            $schedule_of = array_column($sections, 'schedule_id', 'assessment_section_id');
+            foreach ($section_ids as $sid) {
+                $schedule = !empty($schedule_of[$sid])
+                    ? $this->class_schedule->as_array()->get($schedule_of[$sid])
+                    : null;
+                $section_labels[$sid] = $schedule['section'] ?? null;
+            }
+        }
+
         // Reuses the existing per-section query rather than adding a second one;
         // a master has a handful of sections at most.
-        $result_lists = [];
+        $result_lists  = [];
         $switch_counts = [];
+        $rows          = [];
         foreach ($section_ids as $sid) {
             foreach ($this->classworks->get_all_submissions($sid) as $row) {
                 $decoded = json_decode($row['code'] ?? '', true);
@@ -122,11 +138,17 @@ class AdminSubmissionController extends Admin_Controller
                 if (isset($row['switch_count']) && $row['switch_count'] !== null) {
                     $switch_counts[] = (int) $row['switch_count'];
                 }
+                $row['section'] = $section_labels[$sid] ?? null;
+                $rows[] = $row;
             }
         }
 
         $config = json_decode($assessment['given'] ?? '', true) ?: [];
         $data['stats'] = $this->Widgets_model->quiz_item_stats($result_lists, $config);
+
+        // Per-student leaderboard over the same submissions — the whole cohort
+        // ranked, from the recorded score rather than a recount.
+        $data['ranking'] = $this->Widgets_model->quiz_score_ranking($rows);
 
         // Soft proctoring readout — client-reported tab switches, recorded by
         // SecureQuizController::submit(). Never an input to any score.

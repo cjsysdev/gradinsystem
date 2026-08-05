@@ -3,8 +3,18 @@
 // Fed by AdminSubmissionController::quiz_stats() / Widgets_model::quiz_item_stats().
 // Styling deliberately mirrors interactive_quiz_analytics_view.php, which is the
 // same report for the iq_discussion widget, so the two read as one feature.
-$stats  = $stats ?? null;
-$switch = $switch ?? ['tracked' => 0, 'flagged' => 0, 'max' => 0];
+$stats   = $stats ?? null;
+$switch  = $switch ?? ['tracked' => 0, 'flagged' => 0, 'max' => 0];
+$ranking = $ranking ?? null;
+
+// Trailing zeros off a score, so a whole 18.00 prints as "18" but a hand-entered
+// 17.5 keeps its half mark.
+if (!function_exists('qs_score')) {
+    function qs_score($n)
+    {
+        return rtrim(rtrim(number_format((float) $n, 2, '.', ''), '0'), '.');
+    }
+}
 ?>
 <?php $this->load->view('header'); ?>
 
@@ -63,6 +73,21 @@ $switch = $switch ?? ['tracked' => 0, 'flagged' => 0, 'max' => 0];
 .qs-scope-tab.active { background: var(--qs-primary); color: #fff; }
 
 .no-data-msg { text-align: center; padding: 40px 20px; color: #aaa; font-size: 15px; }
+
+/* Full student ranking table */
+.qs-rank-table td { vertical-align: middle; }
+.qs-rank-num { color: #999; font-weight: 600; font-size: 13px; }
+.qs-rank-num.qs-rank-podium { color: var(--qs-primary); font-size: 15px; }
+.qs-tie { color: #bbb; font-weight: 400; margin-left: 1px; }
+.qs-score-bar { height: 6px; border-radius: 3px; background: #e9ecef; overflow: hidden; }
+.qs-score-fill { height: 100%; border-radius: 3px; }
+.qs-rank-tools { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.qs-rank-tools input { max-width: 260px; }
+.qs-summary-line {
+    font-size: 13px; color: #666; background: #fafafa;
+    border-radius: 6px; padding: 8px 12px; margin-bottom: 16px;
+}
+.qs-summary-line strong { color: #333; }
 </style>
 
 <div class="container">
@@ -291,6 +316,95 @@ $switch = $switch ?? ['tracked' => 0, 'flagged' => 0, 'max' => 0];
             </p>
         </div>
     <?php endif; ?>
+
+    <?php // Full per-student ranking, highest first. Equal scores share a rank. ?>
+    <?php if (!empty($ranking['count'])): ?>
+        <?php $show_section = $scope === 'all' && $section_count > 1; ?>
+        <div class="qs-card">
+            <h6>Student ranking &mdash; all <?= (int) $ranking['count'] ?> submissions</h6>
+
+            <div class="qs-summary-line">
+                Highest <strong><?= qs_score($ranking['highest']) ?></strong>,
+                lowest <strong><?= qs_score($ranking['lowest']) ?></strong>,
+                average <strong><?= qs_score($ranking['average']) ?></strong>,
+                median <strong><?= qs_score($ranking['median']) ?></strong>
+                out of <?= (int) $ranking['max_score'] ?>.
+                <?php if ($show_section): ?>
+                    Pooled across all <?= (int) $section_count ?> sections.
+                <?php endif; ?>
+            </div>
+
+            <div class="qs-rank-tools">
+                <input type="text" id="qsRankFilter" class="form-control form-control-sm"
+                       placeholder="Filter by student name&hellip;" autocomplete="off">
+                <span class="text-muted small" id="qsRankCount"></span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-sm table-hover qs-rank-table mb-0" id="qsRankTable">
+                    <thead class="thead-light">
+                        <tr>
+                            <th style="width:56px;">Rank</th>
+                            <th>Student</th>
+                            <?php if ($show_section): ?><th style="width:90px;">Section</th><?php endif; ?>
+                            <th class="text-right" style="width:90px;">Score</th>
+                            <th class="text-right" style="width:70px;">%</th>
+                            <th style="width:150px;">&nbsp;</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <?php foreach ($ranking['students'] as $i => $e): ?>
+                        <?php
+                        $pct  = $e['percent'];
+                        $tone = $pct === null ? 'muted' : ($pct >= 70 ? 'success' : ($pct >= 50 ? 'warning' : 'danger'));
+                        $bar  = $pct === null ? 0 : max(0, min(100, $pct));
+                        ?>
+                        <tr data-name="<?= htmlspecialchars(strtolower($e['name']), ENT_QUOTES, 'UTF-8') ?>">
+                            <td class="qs-rank-num<?= $e['rank'] <= 3 ? ' qs-rank-podium' : '' ?>">
+                                <?= (int) $e['rank'] ?><?= $e['tied'] ? '<span class="qs-tie" title="Tied with another student on the same score">=</span>' : '' ?>
+                            </td>
+                            <td>
+                                <?= htmlspecialchars($e['name']) ?>
+                                <?php if (!$e['graded']): ?>
+                                    <span class="badge badge-warning ml-1" title="No score recorded on this submission — the figure shown is a count of correct items.">ungraded</span>
+                                <?php endif; ?>
+                                <?php if (!empty($e['switch_count'])): ?>
+                                    <span class="badge badge-light border text-muted ml-1" title="Client-reported tab switches during the quiz. Never affects a score.">
+                                        <i class="fa fa-eye"></i> <?= (int) $e['switch_count'] ?>
+                                    </span>
+                                <?php endif; ?>
+                                <?php if ($e['unanswered'] > 0): ?>
+                                    <small class="text-muted d-block"><?= (int) $e['unanswered'] ?> item(s) left unanswered</small>
+                                <?php endif; ?>
+                            </td>
+                            <?php if ($show_section): ?>
+                                <td class="text-muted small"><?= htmlspecialchars($e['section'] ?? '—') ?></td>
+                            <?php endif; ?>
+                            <td class="text-right">
+                                <strong><?= qs_score($e['score']) ?></strong><span class="text-muted small">/<?= (int) $e['max_score'] ?></span>
+                            </td>
+                            <td class="text-right text-<?= $tone ?>">
+                                <?= $pct === null ? '&mdash;' : $pct . '%' ?>
+                            </td>
+                            <td>
+                                <div class="qs-score-bar">
+                                    <div class="qs-score-fill bg-<?= $tone === 'muted' ? 'secondary' : $tone ?>" style="width:<?= $bar ?>%;"></div>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+            <p class="text-muted small mb-0 mt-2" id="qsRankEmpty" style="display:none;">No student matches that filter.</p>
+
+            <p class="text-muted small mb-0 mt-2">
+                Ranked on the recorded score, so any manual adjustment is reflected; equal scores share a
+                rank (marked <span class="qs-tie">=</span>). Students who never submitted are not listed
+                &mdash; see the submissions page for who is missing.
+            </p>
+        </div>
+    <?php endif; ?>
 </div>
 
 <script src="<?= base_url('assets/chart.js') ?>"></script>
@@ -354,6 +468,29 @@ $switch = $switch ?? ['tracked' => 0, 'flagged' => 0, 'max' => 0];
         }
     });
     <?php endif; ?>
+
+    // Ranking filter — the whole cohort is rendered, so a class of 50 needs a
+    // way to jump to one student without scrolling.
+    const rankFilter = document.getElementById('qsRankFilter');
+    if (rankFilter) {
+        const rows     = Array.from(document.querySelectorAll('#qsRankTable tbody tr'));
+        const countEl  = document.getElementById('qsRankCount');
+        const emptyEl  = document.getElementById('qsRankEmpty');
+
+        const apply = () => {
+            const q = rankFilter.value.trim().toLowerCase();
+            let shown = 0;
+            rows.forEach(tr => {
+                const hit = !q || (tr.dataset.name || '').indexOf(q) !== -1;
+                tr.style.display = hit ? '' : 'none';
+                if (hit) shown++;
+            });
+            countEl.textContent = q ? shown + ' of ' + rows.length + ' shown' : '';
+            emptyEl.style.display = shown === 0 ? '' : 'none';
+        };
+
+        rankFilter.addEventListener('input', apply);
+    }
 })();
 </script>
 

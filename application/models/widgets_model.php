@@ -538,6 +538,110 @@ class Widgets_model extends CI_Model
         ];
     }
 
+    // Per-student score ranking over the same submissions quiz_item_stats()
+    // aggregates anonymously — "who topped this quiz, and who needs a second
+    // look". Sits beside it (and grade_quiz()) for the same reason: this reads
+    // the result shape that model writes, and split files drift.
+    //
+    // $submissions: rows from classworks::get_all_submissions(), optionally with
+    //               a 'section' label added by the caller when several sections
+    //               of one master are pooled.
+    //
+    // Returns the WHOLE cohort ranked, not a top-N slice — the instructor wants
+    // to find one named student as often as to see who topped the quiz, and a
+    // 51-row table is cheap.
+    //
+    // Ranking is on the RECORDED classworks.score, not on a recount of the
+    // stored results: the score is what the student's grade is actually built
+    // from, and an instructor may have adjusted it. Only when the score is NULL
+    // (never graded — shouldn't happen for the auto-graded quiz widgets, but
+    // possible on a hand-made row) does it fall back to counting is_correct,
+    // and that entry is flagged so the view can say so.
+    //
+    // Descriptive only — no transmutation, no weighting, nothing written. Grade
+    // arithmetic stays in Grade_calculator (see CLAUDE.md).
+    public function quiz_score_ranking(array $submissions)
+    {
+        $entries = [];
+
+        foreach ($submissions as $row) {
+            $results = json_decode($row['code'] ?? '', true);
+            if (!is_array($results)) $results = [];
+
+            $correct    = 0;
+            $unanswered = 0;
+            foreach ($results as $r) {
+                if (!is_array($r)) continue;
+                if (!empty($r['is_correct']))                            $correct++;
+                elseif (($r['user_answer'] ?? '') === 'No answer')       $unanswered++;
+            }
+
+            $graded = isset($row['score']) && $row['score'] !== null && $row['score'] !== '';
+            $score  = $graded ? (float) $row['score'] : (float) $correct;
+            $max    = (float) ($row['max_score'] ?? 0);
+
+            $entries[] = [
+                'name'         => trim(($row['lastname'] ?? '') . ', ' . ($row['firstname'] ?? '')),
+                'section'      => $row['section'] ?? null,
+                'score'        => $score,
+                'max_score'    => $max,
+                'percent'      => $max > 0 ? round(($score / $max) * 100, 1) : null,
+                'correct'      => $correct,
+                'items'        => count($results),
+                'unanswered'   => $unanswered,
+                'graded'       => $graded,
+                'switch_count' => isset($row['switch_count']) && $row['switch_count'] !== null
+                    ? (int) $row['switch_count'] : null,
+            ];
+        }
+
+        if (!$entries) {
+            return [
+                'count'     => 0,
+                'students'  => [],
+                'average'   => 0.0, 'median' => 0.0, 'highest' => 0.0, 'lowest' => 0.0,
+                'max_score' => 0.0,
+            ];
+        }
+
+        // Highest first. Ties break on fewer unanswered items then name, so the
+        // order is stable between page loads instead of following row order.
+        usort($entries, function ($a, $b) {
+            if ($a['score'] != $b['score'])           return $b['score'] <=> $a['score'];
+            if ($a['unanswered'] != $b['unanswered']) return $a['unanswered'] <=> $b['unanswered'];
+            return strcasecmp($a['name'], $b['name']);
+        });
+
+        $count = count($entries);
+
+        // Competition ranking: equal scores share a rank and the next one skips
+        // (1, 2, 2, 4). Sequential numbering would claim an order between two
+        // students who scored exactly the same, which the data doesn't support.
+        // 'tied' lets the view mark a shared rank instead of looking like a bug.
+        $rank = 0;
+        foreach ($entries as $i => $e) {
+            $same = $i > 0 && $e['score'] == $entries[$i - 1]['score'];
+            if (!$same) $rank = $i + 1;
+            $entries[$i]['rank'] = $rank;
+            $entries[$i]['tied'] = $same
+                || ($i + 1 < $count && $e['score'] == $entries[$i + 1]['score']);
+        }
+
+        $scores = array_column($entries, 'score');
+        sort($scores);
+        $mid = (int) floor($count / 2);
+
+        return [
+            'count'     => $count,
+            'students'  => $entries,
+            'average'   => round(array_sum($scores) / $count, 2),
+            'median'    => $count % 2 ? $scores[$mid] : round(($scores[$mid - 1] + $scores[$mid]) / 2, 2),
+            'highest'   => $scores[$count - 1],
+            'lowest'    => $scores[0],
+            'max_score' => (float) $entries[0]['max_score'],
+        ];
+    }
+
     private function _add_column_if_missing($table, $column, $definition)
     {
         $exists = $this->db->query(
