@@ -13,7 +13,7 @@
     <?php endif; ?>
 
     <?php if (empty($courses)): ?>
-        <p class="text-muted">You have no enrolled courses this semester, so there is nothing to log yet.</p>
+        <p class="text-muted">None of your courses has a project log set up yet, so there is nothing to log.</p>
         </div><?php $this->load->view('footer'); return; ?>
     <?php endif; ?>
 
@@ -87,7 +87,7 @@
             <textarea name="code" id="code-editor"></textarea>
         </div>
 
-        <div class="form-row">
+        <!-- <div class="form-row">
             <div class="form-group col-md-6">
                 <label class="form-label">Link (repo / demo URL)</label>
                 <input type="url" name="link" id="f-link" class="form-control" placeholder="https://github.com/...">
@@ -96,7 +96,7 @@
                 <label class="form-label">Attachment (optional)</label>
                 <input type="file" name="file_upload" class="form-control-file">
             </div>
-        </div>
+        </div> -->
 
         <button type="submit" class="btn btn-info" id="form-submit">Add Entry</button>
         <button type="button" class="btn btn-outline-secondary d-none" id="cancel-edit">Cancel</button>
@@ -105,6 +105,11 @@
 
     <!-- ── Entry list ─────────────────────────────────────────────── -->
     <?php if (!empty($entries)): ?>
+        <?php if ($total > $per_page): ?>
+            <p class="text-muted small mb-0 mt-4">
+                Showing <?= $offset + 1 ?>–<?= min($offset + $per_page, $total) ?> of <?= $total ?> entr<?= $total != 1 ? 'ies' : 'y' ?>
+            </p>
+        <?php endif; ?>
         <div class="mb-4 mt-4">
             <?php foreach ($entries as $e): ?>
                 <div class="card mb-3">
@@ -170,6 +175,12 @@
                 </div>
             <?php endforeach; ?>
         </div>
+
+        <?php if ($total > $per_page && $pagination): ?>
+            <nav class="d-flex justify-content-center mb-4">
+                <?= $pagination ?>
+            </nav>
+        <?php endif; ?>
     <?php else: ?>
         <p class="text-muted">No progress entries yet for this course. Add your first one below.</p>
     <?php endif; ?>

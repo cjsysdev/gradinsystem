@@ -88,12 +88,53 @@ class Project_log_model extends CI_Model
             ->get()->result_array();
     }
 
-    public function get_by_student_class($student_id, $class_id)
+    // $limit = null returns the whole log (original behaviour); pass a limit to
+    // page through it — see ProjectLogController::index().
+    // The subset of the student's courses that actually have a project log
+    // set up — i.e. a grouping set designated in project_log_groupings. This
+    // is what the student sees in the course picker, and what decides whether
+    // the Project Log button appears in the nav bar at all.
+    public function get_designated_courses_for_student($student_id)
     {
+        // Guard: CI turns a NULL here into `student_id IS NULL`, which matches
+        // the stray NULL-student rows in class_student.
+        if (empty($student_id)) {
+            return [];
+        }
+
         return $this->db
+            ->distinct()
+            ->select('c.class_id, c.class_code, c.class_name')
+            ->from('class_student cls')
+            ->join('class_schedule cs', 'cls.section = cs.section')
+            ->join('classes c', 'cs.class_id = c.class_id')
+            ->join('semester_master sem', 'cs.semester_id = sem.trans_no')
+            ->join('project_log_groupings plg', 'plg.class_id = c.class_id')
+            ->where('cls.student_id', $student_id)
+            ->where('sem.is_active', 1)
+            ->order_by('c.class_code')
+            ->get()->result_array();
+    }
+
+    public function get_by_student_class($student_id, $class_id, $limit = null, $offset = 0)
+    {
+        $this->db
             ->where(['student_id' => $student_id, 'class_id' => $class_id])
             ->order_by('created_at', 'DESC')
-            ->get($this->table)->result_array();
+            ->order_by('log_id', 'DESC');
+
+        if ($limit !== null) {
+            $this->db->limit($limit, $offset);
+        }
+
+        return $this->db->get($this->table)->result_array();
+    }
+
+    public function count_by_student_class($student_id, $class_id)
+    {
+        return (int) $this->db
+            ->where(['student_id' => $student_id, 'class_id' => $class_id])
+            ->count_all_results($this->table);
     }
 
     // ── Groupings integration ────────────────────────────────────────────────
@@ -143,14 +184,53 @@ class Project_log_model extends CI_Model
     }
 
     // Shared team entries, each tagged with its author's name.
-    public function get_by_group($group_id)
+    public function get_by_group($group_id, $limit = null, $offset = 0)
     {
-        return $this->db
+        $this->db
             ->select('pl.*, sm.firstname, sm.lastname')
             ->from($this->table . ' pl')
             ->join('student_master sm', 'pl.student_id = sm.trans_no', 'left')
             ->where('pl.group_id', $group_id)
             ->order_by('pl.created_at', 'DESC')
+            ->order_by('pl.log_id', 'DESC');
+
+        if ($limit !== null) {
+            $this->db->limit($limit, $offset);
+        }
+
+        return $this->db->get()->result_array();
+    }
+
+    public function count_by_group($group_id)
+    {
+        return (int) $this->db
+            ->where('group_id', $group_id)
+            ->count_all_results($this->table);
+    }
+
+    // Teams available to filter the admin browse by: every group of the
+    // grouping set(s) designated for this course, each with how many log
+    // entries it has. The LEFT JOIN keeps teams that have logged nothing —
+    // those are usually the ones worth spotting.
+    public function get_teams_for_class($class_id)
+    {
+        if (empty($class_id)) {
+            return [];
+        }
+
+        return $this->db
+            ->select('g.group_id, g.group_name, gs.name AS set_name, gs.section_id,
+                      COUNT(pl.log_id) AS entry_count')
+            ->from('project_log_groupings plg')
+            ->join('groupings g', 'g.set_id = plg.set_id')
+            ->join('grouping_sets gs', 'gs.set_id = g.set_id')
+            // escape=FALSE: the condition is compound, and the only value in it
+            // is the int-cast class id.
+            ->join('project_logs pl', 'pl.group_id = g.group_id AND pl.class_id = ' . (int) $class_id, 'left', false)
+            ->where('plg.class_id', (int) $class_id)
+            ->group_by('g.group_id')
+            ->order_by('gs.section_id')
+            ->order_by('g.group_id')
             ->get()->result_array();
     }
 
@@ -182,21 +262,17 @@ class Project_log_model extends CI_Model
             ->delete($this->table);
     }
 
-    // Admin read-only browse, optionally filtered by course and/or section.
-    public function get_all_for_admin($class_id = null, $section = null)
+    // Joins + WHEREs shared by the admin browse and its row count.
+    // $group_id: a group_id to show one team's entries, the string 'none' for
+    // individual (team-less) entries, or empty for no team filter.
+    private function _admin_filters($class_id = null, $section = null, $group_id = null)
     {
         $this->db
-            ->select('pl.*, c.class_code, c.class_name, cls.section,
-                      sm.lastname, sm.firstname, g.group_name')
             ->from('project_logs pl')
             ->join('classes c', 'pl.class_id = c.class_id', 'left')
             ->join('student_master sm', 'pl.student_id = sm.trans_no', 'left')
             ->join('class_student cls', 'cls.student_id = pl.student_id', 'left')
-            ->join('groupings g', 'pl.group_id = g.group_id', 'left')
-            ->group_by('pl.log_id')
-            ->order_by('c.class_code')
-            ->order_by('sm.lastname')
-            ->order_by('pl.created_at', 'DESC');
+            ->join('groupings g', 'pl.group_id = g.group_id', 'left');
 
         if (!empty($class_id)) {
             $this->db->where('pl.class_id', $class_id);
@@ -204,8 +280,45 @@ class Project_log_model extends CI_Model
         if (!empty($section)) {
             $this->db->where('cls.section', $section);
         }
+        if ($group_id === 'none') {
+            $this->db->where('pl.group_id IS NULL', null, false);
+        } elseif (!empty($group_id)) {
+            $this->db->where('pl.group_id', (int) $group_id);
+        }
+    }
+
+    // Admin read-only browse, optionally filtered by course, section and/or
+    // team. Pass $limit to page through the results.
+    public function get_all_for_admin($class_id = null, $section = null, $group_id = null, $limit = null, $offset = 0)
+    {
+        $this->_admin_filters($class_id, $section, $group_id);
+
+        $this->db
+            ->select('pl.*, c.class_code, c.class_name, cls.section,
+                      sm.lastname, sm.firstname, g.group_name')
+            ->group_by('pl.log_id')
+            ->order_by('c.class_code')
+            ->order_by('sm.lastname')
+            ->order_by('pl.created_at', 'DESC')
+            ->order_by('pl.log_id', 'DESC'); // tiebreaker: paging must be stable
+
+        if ($limit !== null) {
+            $this->db->limit($limit, $offset);
+        }
 
         return $this->db->get()->result_array();
+    }
+
+    // Row count for the same filters. Counted DISTINCT rather than with
+    // count_all_results(): the class_student join fans a student out once per
+    // enrolment (the GROUP BY above collapses that), and CI's
+    // count_all_results() on a grouped query returns the first group's count.
+    public function count_all_for_admin($class_id = null, $section = null, $group_id = null)
+    {
+        $this->_admin_filters($class_id, $section, $group_id);
+
+        $row = $this->db->select('COUNT(DISTINCT pl.log_id) AS n')->get()->row();
+        return $row ? (int) $row->n : 0;
     }
 
     // Distinct courses that have at least one log entry — for the admin filter.

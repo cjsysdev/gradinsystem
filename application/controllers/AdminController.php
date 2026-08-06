@@ -19,9 +19,25 @@ class AdminController extends Admin_Controller
     public function project_logs()
     {
         $this->load->model(['Project_log_model', 'classes']);
+        $this->load->library('pagination');
+        $this->load->helper('pagination');
 
         $class_id = $this->input->get('class_id') ?: null;
         $section  = $this->input->get('section') ?: null;
+
+        // The team list is course-scoped, so a group_id belonging to another
+        // course (left over from a course switch, or hand-typed) is dropped
+        // rather than silently filtering everything away. 'none' — individual,
+        // team-less entries — is always valid.
+        $teams    = $this->Project_log_model->get_teams_for_class($class_id);
+        $group_id = $class_id ? ($this->input->get('group_id') ?: null) : null;
+        if ($group_id !== null && $group_id !== 'none'
+            && !in_array((int) $group_id, array_map('intval', array_column($teams, 'group_id')), true)) {
+            $group_id = null;
+        }
+
+        $per_page = 25;
+        $offset   = (int) $this->input->get('per_page');
 
         $all_courses = $this->classes->as_array()->order_by('class_code')->get_all();
 
@@ -34,12 +50,23 @@ class AdminController extends Admin_Controller
             ];
         }
 
+        $total = $this->Project_log_model->count_all_for_admin($class_id, $section, $group_id);
+        $this->pagination->initialize(
+            bs_pagination_config(base_url('admin/project_logs'), $total, $per_page)
+        );
+
         $data['courses']      = $this->Project_log_model->get_logged_courses();
         $data['sections']     = $this->class_schedule->get_sections();
+        $data['teams']        = $teams;
         $data['class_id']     = $class_id;
         $data['section']      = $section;
-        $data['logs']         = $this->Project_log_model->get_all_for_admin($class_id, $section);
+        $data['group_id']     = $group_id;
+        $data['logs']         = $this->Project_log_model->get_all_for_admin($class_id, $section, $group_id, $per_page, $offset);
         $data['designations'] = $designations;
+        $data['pagination']   = $this->pagination->create_links();
+        $data['total']        = $total;
+        $data['per_page']     = $per_page;
+        $data['offset']       = $offset;
 
         $this->load->view('admin/project_logs', $data);
     }

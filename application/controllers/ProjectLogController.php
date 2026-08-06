@@ -16,14 +16,14 @@ class ProjectLogController extends CI_Controller
     public function index($class_id = null)
     {
         $student_id = $this->session->student_id;
-        $courses = $this->Project_log_model->get_courses_for_student($student_id);
 
-        // Default to the only/first course when none was requested.
-        if (empty($class_id) && !empty($courses)) {
-            $class_id = $courses[0]['class_id'];
-        }
+        // Only courses whose project log has actually been set up (a grouping
+        // set designated in project_log_groupings) — same list the nav bar
+        // uses to decide whether to show the Project Log button at all.
+        $courses = $this->Project_log_model->get_designated_courses_for_student($student_id);
 
-        // Only allow a course the student is actually enrolled in.
+        // Only allow one of those courses; anything else falls back to the
+        // first one rather than rendering a half-empty page.
         $selected = null;
         foreach ($courses as $c) {
             if ((int) $c['class_id'] === (int) $class_id) {
@@ -31,16 +31,33 @@ class ProjectLogController extends CI_Controller
                 break;
             }
         }
+        if ($selected === null && !empty($courses)) {
+            $selected = $courses[0];
+        }
 
         $group_ctx = $selected ? $this->_resolve_group($student_id, $selected['class_id']) : ['mode' => 'individual'];
 
+        $per_page = 10;
+        $offset   = (int) $this->input->get('per_page');
+        $entries  = [];
+        $total    = 0;
+
         if ($group_ctx['mode'] === 'group') {
-            $entries = $this->Project_log_model->get_by_group($group_ctx['group']['group_id']);
+            $group_id = $group_ctx['group']['group_id'];
+            $total    = $this->Project_log_model->count_by_group($group_id);
+            $entries  = $this->Project_log_model->get_by_group($group_id, $per_page, $offset);
         } elseif ($selected) {
-            $entries = $this->Project_log_model->get_by_student_class($student_id, $selected['class_id']);
-        } else {
-            $entries = [];
+            $total   = $this->Project_log_model->count_by_student_class($student_id, $selected['class_id']);
+            $entries = $this->Project_log_model->get_by_student_class($student_id, $selected['class_id'], $per_page, $offset);
         }
+
+        $this->load->library('pagination');
+        $this->load->helper('pagination');
+        $this->pagination->initialize(bs_pagination_config(
+            base_url('project_log' . ($selected ? '/' . (int) $selected['class_id'] : '')),
+            $total,
+            $per_page
+        ));
 
         $data = [
             'courses'     => $courses,
@@ -50,6 +67,10 @@ class ProjectLogController extends CI_Controller
             'mode'        => $group_ctx['mode'],
             'group'       => $group_ctx['group'] ?? null,
             'members'     => $group_ctx['members'] ?? [],
+            'pagination'  => $this->pagination->create_links(),
+            'total'       => $total,
+            'per_page'    => $per_page,
+            'offset'      => $offset,
         ];
 
         $this->load->view('project_log', $data);

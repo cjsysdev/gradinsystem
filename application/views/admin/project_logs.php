@@ -24,7 +24,7 @@
                 Designate a grouping set for a course to make its project log shared per team
                 instead of per student. Clear the selection to go back to individual logs.
             </p>
-            <form method="post" action="<?= base_url('admin/save_project_log_groupings') ?>" class="form-row align-items-end">
+            <form method="post" action="<?= base_url('admin/save_project_log_groupings') ?>" class="form-row align-items-end" id="designation-form">
                 <div class="form-group col-md-4">
                     <label class="form-label small mb-1">Course</label>
                     <select name="class_id" class="form-control" id="designation-course" onchange="showDesignationSets(this.value)">
@@ -38,22 +38,35 @@
                 </div>
                 <div class="form-group col-md-6">
                     <label class="form-label small mb-1">Grouping Set(s)</label>
+                    <?php // Checkboxes, not a multi-select: saving REPLACES a course's
+                          // designations, and with Ctrl-click semantics one stray click
+                          // silently dropped a section's set — which quietly cut every
+                          // student in that section off from their team log. ?>
                     <?php foreach ($designations as $d): ?>
-                        <select name="set_id[]" multiple disabled
-                                class="form-control designation-sets"
-                                id="designation-sets-<?= $d['course']['class_id'] ?>"
-                                style="display:none;">
+                        <div class="designation-sets border rounded p-2"
+                             id="designation-sets-<?= $d['course']['class_id'] ?>"
+                             style="display:none; max-height:180px; overflow:auto;">
                             <?php foreach ($d['available_sets'] as $s): ?>
-                                <option value="<?= $s['set_id'] ?>" <?= in_array((int)$s['set_id'], $d['set_ids'], true) ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($s['name'] . ' (' . $s['section_id'] . ')') ?>
-                                </option>
+                                <div class="custom-control custom-checkbox">
+                                    <input type="checkbox" class="custom-control-input" disabled
+                                           name="set_id[]" value="<?= $s['set_id'] ?>"
+                                           id="set-<?= $d['course']['class_id'] ?>-<?= $s['set_id'] ?>"
+                                           <?= in_array((int)$s['set_id'], $d['set_ids'], true) ? 'checked' : '' ?>>
+                                    <label class="custom-control-label small"
+                                           for="set-<?= $d['course']['class_id'] ?>-<?= $s['set_id'] ?>">
+                                        <?= htmlspecialchars($s['name'] . ' (' . $s['section_id'] . ')') ?>
+                                    </label>
+                                </div>
                             <?php endforeach; ?>
                             <?php if (empty($d['available_sets'])): ?>
-                                <option value="" disabled>No grouping sets for this course's sections yet</option>
+                                <span class="small text-muted">No grouping sets for this course's sections yet</span>
                             <?php endif; ?>
-                        </select>
+                        </div>
                     <?php endforeach; ?>
-                    <small class="form-text text-muted">Ctrl/Cmd-click to select multiple; select none to clear.</small>
+                    <small class="form-text text-muted">
+                        Tick every set that governs this course — one per section. Unticking a set
+                        sends that section's students back to individual logs.
+                    </small>
                 </div>
                 <div class="form-group col-md-2">
                     <button type="submit" class="btn btn-info btn-block"><i class="fa fa-save"></i> Save</button>
@@ -64,9 +77,12 @@
 
     <!-- Filters -->
     <form method="get" action="<?= base_url('admin/project_logs') ?>" class="form-row align-items-end mb-4">
-        <div class="form-group col-md-4">
+        <div class="form-group col-md-3">
             <label class="form-label small mb-1">Course</label>
-            <select name="class_id" class="form-control">
+            <!-- Submitting on change reloads the Team list for the picked course;
+                 the old course's team selection is cleared first. -->
+            <select name="class_id" class="form-control"
+                    onchange="if (this.form.group_id) { this.form.group_id.value = ''; } this.form.submit();">
                 <option value="">All courses</option>
                 <?php foreach ($courses as $c): ?>
                     <option value="<?= $c['class_id'] ?>" <?= ((int)$class_id === (int)$c['class_id']) ? 'selected' : '' ?>>
@@ -75,7 +91,7 @@
                 <?php endforeach; ?>
             </select>
         </div>
-        <div class="form-group col-md-4">
+        <div class="form-group col-md-3">
             <label class="form-label small mb-1">Section</label>
             <select name="section" class="form-control">
                 <option value="">All sections</option>
@@ -86,11 +102,40 @@
                 <?php endforeach; ?>
             </select>
         </div>
-        <div class="form-group col-md-4">
+        <div class="form-group col-md-3">
+            <label class="form-label small mb-1">Team</label>
+            <?php if (empty($class_id)): ?>
+                <select class="form-control" disabled>
+                    <option>Select a course first</option>
+                </select>
+            <?php elseif (empty($teams)): ?>
+                <select class="form-control" disabled>
+                    <option>No teams designated for this course</option>
+                </select>
+            <?php else: ?>
+                <select name="group_id" class="form-control">
+                    <option value="">All teams</option>
+                    <option value="none" <?= ((string)$group_id === 'none') ? 'selected' : '' ?>>Individual (no team)</option>
+                    <?php foreach ($teams as $t): ?>
+                        <option value="<?= $t['group_id'] ?>" <?= ((string)$group_id === (string)$t['group_id']) ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($t['group_name'] . ' — ' . $t['set_name'] . ' (' . $t['section_id'] . ')') ?>
+                            · <?= (int)$t['entry_count'] ?> <?= ((int)$t['entry_count'] === 1) ? 'entry' : 'entries' ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            <?php endif; ?>
+        </div>
+        <div class="form-group col-md-3">
             <button type="submit" class="btn btn-outline-secondary"><i class="fa fa-filter"></i> Filter</button>
             <a href="<?= base_url('admin/project_logs') ?>" class="btn btn-link">Reset</a>
         </div>
     </form>
+
+    <?php if ($total > 0): ?>
+        <p class="text-muted small mb-2">
+            Showing <?= $offset + 1 ?>–<?= min($offset + $per_page, $total) ?> of <?= $total ?> entr<?= $total != 1 ? 'ies' : 'y' ?>
+        </p>
+    <?php endif; ?>
 
     <?php if (empty($logs)): ?>
         <p class="text-muted">No project log entries found for the selected filter.</p>
@@ -145,15 +190,24 @@
                 </tbody>
             </table>
         </div>
+
+        <?php if ($pagination): ?>
+            <nav class="d-flex justify-content-center mt-3">
+                <?= $pagination ?>
+            </nav>
+        <?php endif; ?>
     <?php endif; ?>
 </div>
 
 <script>
     function showDesignationSets(classId) {
-        document.querySelectorAll('.designation-sets').forEach(function (sel) {
-            var isTarget = sel.id === 'designation-sets-' + classId;
-            sel.style.display = isTarget ? '' : 'none';
-            sel.disabled = !isTarget;
+        document.querySelectorAll('.designation-sets').forEach(function (box) {
+            var isTarget = box.id === 'designation-sets-' + classId;
+            box.style.display = isTarget ? '' : 'none';
+            // Hidden courses' boxes are disabled so they post nothing.
+            box.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
+                cb.disabled = !isTarget;
+            });
         });
     }
 
@@ -167,6 +221,19 @@
         var courseSelect = document.getElementById('designation-course');
         if (courseSelect && courseSelect.value) {
             showDesignationSets(courseSelect.value);
+        }
+
+        // Saving replaces the course's designations, so an empty save is a
+        // "clear everything" — make that deliberate.
+        var designationForm = document.getElementById('designation-form');
+        if (designationForm) {
+            designationForm.addEventListener('submit', function (e) {
+                var checked = designationForm.querySelectorAll('input[name="set_id[]"]:checked:not([disabled])');
+                if (checked.length === 0 &&
+                    !confirm('No grouping set is ticked. This clears this course\'s team project logs and sends its students back to individual logs. Continue?')) {
+                    e.preventDefault();
+                }
+            });
         }
     });
 </script>
