@@ -1,0 +1,182 @@
+{
+    "topic": "using_codeigniter_models_part_2",
+    "title": "Using CodeIgniter Models (Part 2)",
+    "description": "A continuation of the Models introduction: calling a Model method, fetching rows with the query builder, and seeing Model, Controller, and View work together.",
+    "congratsText": "You can now pull real data out of a Model and get it onto the page!",
+    "objectives": [
+        "Call a Model method from a Controller and store the value it returns",
+        "Use $this->db->get() inside a Model to fetch rows from a table",
+        "Choose between result() and row() based on how many rows you expect",
+        "Trace how a Model, Controller, and View cooperate on one request"
+    ],
+    "recap": [
+        "A Model method returns data, and the Controller catches that value in a variable",
+        "$this->db->get('table') runs the SELECT and hands back a query object",
+        "result() gives many rows, while row() gives just one",
+        "The Model supplies data, the Controller directs traffic, and the View displays it"
+    ],
+    "sections": [
+        {
+            "id": 0,
+            "title": "Calling a Method, Catching the Return",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "Once a Model is loaded, you call its methods like this: <span class=\"code-inline\">$this->student_model->get_all()</span>.",
+                    "check": {
+                        "question": "How do you call a Model method?",
+                        "options": [
+                            "$this->model->method()",
+                            "model::method()"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "A Model method <span class=\"highlight\">returns</span> its data back to the Controller — it does not print anything on its own.",
+                    "check": {
+                        "question": "Does a Model method echo its data?",
+                        "options": [
+                            "No, it returns it",
+                            "Yes, it prints it"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "The Controller catches that value in a <span class=\"highlight\">variable</span>, then puts it in <span class=\"code-inline\">$data</span> to pass to a View.",
+                    "check": {
+                        "question": "What does the Controller do with the value?",
+                        "options": [
+                            "Stores it in a variable",
+                            "Sends it back again"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "code": "$this->load->model('student_model');\n$list = $this->student_model->get_all();",
+                "question": "What is stored in $list after the second line runs?",
+                "options": [
+                    "The name of the Model method that was just called",
+                    "Whatever the get_all method returned to the Controller",
+                    "Nothing, because the Model printed the data by itself",
+                    "A copy of the Model object so it can be reused later on"
+                ],
+                "correct": 1
+            }
+        },
+        {
+            "id": 1,
+            "title": "Getting Rows with get()",
+            "callback": true,
+            "refSection": 0,
+            "chunks": [
+                {
+                    "text": "Inside a Model you reach the database through <span class=\"code-inline\">$this->db</span>, which CodeIgniter provides for you.",
+                    "check": {
+                        "question": "What object talks to the database?",
+                        "options": [
+                            "$this->db",
+                            "$this->sql"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "<span class=\"code-inline\">$this->db->get('students')</span> runs a SELECT on the <span class=\"highlight\">students</span> table and hands back a query object.",
+                    "check": {
+                        "question": "What does get('students') do?",
+                        "options": [
+                            "Selects from the table",
+                            "Deletes the table"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Add <span class=\"code-inline\">->result()</span> when you expect many rows, or <span class=\"code-inline\">->row()</span> when you expect only <span class=\"highlight\">one</span>.",
+                    "check": {
+                        "question": "Which one returns a single row?",
+                        "options": [
+                            "row()",
+                            "result()"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "type",
+                "code": "public function get_one($id) {\n    return $this->db->get_where('students', ['id' => $id])->???;\n}",
+                "question": "This method should return only one student. Type the missing call.",
+                "acceptedAnswers": [
+                    "row()",
+                    "row",
+                    "row();",
+                    "->row()"
+                ]
+            }
+        },
+        {
+            "id": 2,
+            "title": "Model, Controller, View Together",
+            "callback": true,
+            "refSection": "0 & 1",
+            "chunks": [
+                {
+                    "text": "The <span class=\"highlight\">Model</span> gets the data, and that is the only job it has on the request.",
+                    "check": {
+                        "question": "The Model's job is to do what?",
+                        "options": [
+                            "Get the data",
+                            "Draw the page"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "The <span class=\"highlight\">Controller</span> asks the Model for that data, then passes it into a View.",
+                    "check": {
+                        "question": "Who asks the Model for data?",
+                        "options": [
+                            "The Controller",
+                            "The View"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "The <span class=\"highlight\">View</span> loops over the rows and turns them into HTML for the browser.",
+                    "check": {
+                        "question": "Who turns the rows into HTML?",
+                        "options": [
+                            "The View",
+                            "The Model"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "arrange",
+                "question": "Arrange the steps of a request that displays a list of students.",
+                "tokens": [
+                    "The Controller passes the rows into a View",
+                    "The Controller loads the Model",
+                    "The View displays the rows as HTML",
+                    "The Model queries the students table"
+                ],
+                "correctOrder": [
+                    "The Controller loads the Model",
+                    "The Model queries the students table",
+                    "The Controller passes the rows into a View",
+                    "The View displays the rows as HTML"
+                ]
+            }
+        }
+    ]
+}
