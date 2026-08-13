@@ -242,16 +242,191 @@ class AdminStudentController extends Admin_Controller
     public function students_by_section()
     {
         $this->load->model('class_student');
+        $this->load->model('Section_officer');
         $section = $this->input->get('section');
         $data['sections'] = $this->class_student->get_sections_with_counts();
         $data['selected_section'] = $section;
         $data['students'] = [];
+        $data['officers'] = [];
+        $data['officer_positions'] = $this->_officer_positions();
+        $data['officers_ready'] = $this->Section_officer->table_ready();
 
         if ($section) {
             $data['students'] = $this->class_student->get_students_with_profile_by_section($section);
+            $data['officers'] = $this->Section_officer->get_map(
+                $section,
+                $this->class_student->active_semester_id()
+            );
         }
 
         $this->load->view('admin/students_by_section', $data);
+    }
+
+    // The officer whitelist, in display order. Position keys are only ever
+    // valid if they appear here — see application/config/officers.php.
+    private function _officer_positions()
+    {
+        $this->load->config('officers', TRUE);
+        $positions = $this->config->item('officer_positions', 'officers');
+        return is_array($positions) ? $positions : [];
+    }
+
+    // AJAX — set (or clear, with an empty position) a student's officer
+    // designation in one section. Returns the students who lost a designation
+    // as a side effect, so the grid can blank their badges without reloading.
+    public function assign_officer()
+    {
+        header('Content-Type: application/json');
+
+        $this->load->model('class_student');
+        $this->load->model('Section_officer');
+
+        $section    = trim((string) $this->input->post('section'));
+        $student_id = (int) $this->input->post('student_id');
+        $position   = trim((string) $this->input->post('position'));
+        $positions  = $this->_officer_positions();
+
+        if ($section === '' || $student_id <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Missing section or student.']);
+            return;
+        }
+
+        if ($position !== '' && !array_key_exists($position, $positions)) {
+            echo json_encode(['success' => false, 'message' => 'Unknown position.']);
+            return;
+        }
+
+        if (!$this->Section_officer->table_ready()) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Officer designations are not set up yet — run the setup on this page first.',
+            ]);
+            return;
+        }
+
+        $semester_id = $this->class_student->active_semester_id();
+        if (!$semester_id) {
+            echo json_encode(['success' => false, 'message' => 'No active semester.']);
+            return;
+        }
+
+        // Only a student actually enrolled in this section this term can hold
+        // one of its positions.
+        $enrolled = $this->db
+            ->where('student_id', $student_id)
+            ->where('section', $section)
+            ->where('semester_id', $semester_id)
+            ->count_all_results('class_student') > 0;
+
+        if (!$enrolled) {
+            echo json_encode(['success' => false, 'message' => 'Student is not enrolled in this section.']);
+            return;
+        }
+
+        if ($position === '') {
+            $this->Section_officer->clear($section, $semester_id, $student_id);
+            echo json_encode(['success' => true, 'cleared' => []]);
+            return;
+        }
+
+        $displaced = $this->Section_officer->assign($section, $semester_id, $student_id, $position);
+
+        if ($displaced === FALSE) {
+            echo json_encode(['success' => false, 'message' => 'Could not save the designation.']);
+            return;
+        }
+
+        echo json_encode(['success' => true, 'cleared' => $displaced]);
+    }
+
+    // Downloads one section's officer list as .xlsx, in config position order.
+    public function export_officers()
+    {
+        $section = trim((string) $this->input->get('section'));
+
+        if ($section === '') {
+            $this->session->set_flashdata('error', 'Pick a section to export.');
+            redirect('admin/students_by_section');
+            return;
+        }
+
+        $this->load->model('class_student');
+        $this->load->model('Section_officer');
+
+        $semester_id = $this->class_student->active_semester_id();
+        $officers    = $semester_id
+            ? $this->Section_officer->get_for_export($section, $semester_id)
+            : [];
+
+        if (empty($officers)) {
+            $this->session->set_flashdata('error', 'No officers assigned in section ' . $section . '.');
+            redirect('admin/students_by_section?section=' . urlencode($section));
+            return;
+        }
+
+        // Sort by the config's order, not by whatever order rows were saved in.
+        $positions = $this->_officer_positions();
+        $rank      = array_flip(array_keys($positions));
+        usort($officers, function ($a, $b) use ($rank) {
+            $a_rank = isset($rank[$a['position']]) ? $rank[$a['position']] : PHP_INT_MAX;
+            $b_rank = isset($rank[$b['position']]) ? $rank[$b['position']] : PHP_INT_MAX;
+            return $a_rank <=> $b_rank;
+        });
+
+        $this->load->library('xlsx_writer');
+
+        $this->xlsx_writer
+            ->set_sheet_name($section)
+            ->set_columns([20, 16, 18, 18, 8, 18])
+            ->add_row([
+                'Position',
+                'Student No',
+                'Lastname',
+                'Firstname',
+                'Middle Initial',
+                'Contact Number',
+            ], TRUE);
+
+        foreach ($officers as $officer) {
+            $this->xlsx_writer->add_row([
+                isset($positions[$officer['position']]) ? $positions[$officer['position']] : $officer['position'],
+                $officer['student_no'],
+                $officer['lastname'],
+                $officer['firstname'],
+                $this->middle_initial($officer['middlename']),
+                $officer['contact_no'],
+            ]);
+        }
+
+        $safe_section = preg_replace('/[^A-Za-z0-9_-]/', '_', $section);
+        $this->xlsx_writer->download('officers_' . $safe_section . '_' . date('Y-m-d') . '.xlsx');
+    }
+
+    // One-time (idempotent) schema setup for section_officers — run once as
+    // admin. Confirmation + pre-flight backup: see Schema_guard.
+    public function section_officers_install()
+    {
+        $this->load->library('schema_guard');
+        $this->load->model('Section_officer');
+        $tables = ['section_officers'];
+
+        if (!$this->schema_guard->confirmed('Section officers table setup', 'admin/section_officers_install', $tables)) {
+            return;
+        }
+
+        $backup   = $this->schema_guard->backup($tables, 'section_officers');
+        $failures = $this->Section_officer->install();
+
+        if (!empty($failures)) {
+            $this->session->set_flashdata('error',
+                'Section officers schema finished with ' . count($failures) . ' failed statement(s) — see application/logs/. '
+                . 'Backup: ' . ($backup ?: 'NOT WRITTEN'));
+        } else {
+            $this->session->set_flashdata('success',
+                'Section officers table ready.' . ($backup ? ' Backup written to ' . basename($backup) . '.' : ''));
+        }
+
+        redirect('admin/students_by_section');
     }
 
     public function student_summary($student_id = null)

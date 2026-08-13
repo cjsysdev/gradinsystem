@@ -55,7 +55,7 @@ class class_student extends MY_Model
 
     public function add_section($id, $section, $semester_id = null)
     {
-        $semester_id = $semester_id ?: $this->_active_semester_id();
+        $semester_id = $semester_id ?: $this->active_semester_id();
         return $this->db
             ->where('student_id', $id)
             ->where('semester_id', $semester_id)
@@ -64,7 +64,7 @@ class class_student extends MY_Model
 
     public function update_class($id, $class, $semester_id = null)
     {
-        $semester_id = $semester_id ?: $this->_active_semester_id();
+        $semester_id = $semester_id ?: $this->active_semester_id();
         return $this->db
             ->where('student_id', $id)
             ->where('semester_id', $semester_id)
@@ -110,7 +110,10 @@ class class_student extends MY_Model
             ->count_all_results($this->table) > 0;
     }
 
-    private function _active_semester_id()
+    // Public because anything scoped to "the current term" needs it — the
+    // officer designations, for one. Keeping it private meant a fourth copy of
+    // this lookup every time something else needed the active semester.
+    public function active_semester_id()
     {
         $row = $this->db->select('trans_no')->where('is_active', 1)->get('semester_master')->row();
         return $row ? $row->trans_no : null;
@@ -157,6 +160,10 @@ class class_student extends MY_Model
         return $query ? $query->row_array() : [];
     }
 
+    // One card per student on students_by_section. The GROUP BY is load-bearing:
+    // class_student holds one row per enrollment, so a student taking two
+    // schedules under the same section string would otherwise render twice —
+    // which is also why get_sections_with_counts() counts DISTINCT student_id.
     public function get_students_with_profile_by_section($section)
     {
         $sql = "
@@ -170,6 +177,7 @@ class class_student extends MY_Model
             LEFT JOIN accounts a ON a.student_id = cs.student_id
             JOIN semester_master sem ON cs.semester_id = sem.trans_no
             WHERE cs.section = ? AND sem.is_active = 1
+            GROUP BY cs.student_id, sm.firstname, sm.lastname, a.profile_pic
             ORDER BY sm.lastname, sm.firstname
         ";
 

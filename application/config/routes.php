@@ -218,6 +218,9 @@ $route['uncleared_students/clear/(:num)/(:any)'] = 'AdminStudentController/clear
 $route['uncleared_students/(:any)'] = 'AdminStudentController/uncleared_students/$1';
 $route['admin/students_by_section'] = 'AdminStudentController/students_by_section';
 $route['admin/student_summary/(:num)'] = 'AdminStudentController/student_summary/$1';
+$route['admin/assign_officer'] = 'AdminStudentController/assign_officer';
+$route['admin/export_officers'] = 'AdminStudentController/export_officers';
+$route['admin/section_officers_install'] = 'AdminStudentController/section_officers_install';
 $route['admin/register_student'] = 'AdminStudentController/register_student';
 $route['admin/check_student_no'] = 'AdminStudentController/check_student_no';
 $route['admin/check_username'] = 'AdminStudentController/check_username';
@@ -258,7 +261,8 @@ $legacy_admin_routes = [
         . '|add_violation|update_violation_status|students_by_section|student_summary'
         . '|login_as_student|register_student|check_student_no|check_username'
         . '|student_requests|process_student_request|password_resets|process_password_reset'
-        . '|search_students|semesters|save_semester|activate_semester',
+        . '|search_students|semesters|save_semester|activate_semester'
+        . '|assign_officer|export_officers|section_officers_install',
     'AdminContentController' => 'manage_json_files|manage_discussions|save_discussion'
         . '|delete_discussion|worksheet_generator|worksheet_assessments_for_schedule'
         . '|worksheet_source_from_assessment|worksheet_generate',
