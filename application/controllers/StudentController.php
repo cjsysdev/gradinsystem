@@ -260,7 +260,48 @@ class StudentController extends CI_Controller
     {
         $student_id = $this->session->student_id;
         $data['contacts'] = $this->emergency_contact->get_by_student($student_id);
+        $data['student']  = $this->student_master->get_student_info($student_id);
         $this->load->view('emergency_contacts', $data);
+    }
+
+    /**
+     * The student's own mobile number, used for class announcements.
+     *
+     * Ownership comes from the session, never from a posted id — same rule as
+     * save_emergency_contact() below. The number is normalised before storage
+     * so the SMS gateway never has to guess: '0917 123 4567' and
+     * '+639171234567' both land as '09171234567'.
+     */
+    public function save_my_number()
+    {
+        $student_id = $this->session->student_id;
+
+        if (!$student_id) {
+            redirect('login');
+            return;
+        }
+
+        $this->load->library('sms_message');
+        $raw = trim((string) $this->input->post('contact_no'));
+
+        if ($raw === '') {
+            $this->session->set_flashdata('error', 'Enter your mobile number.');
+            redirect('emergency_contacts');
+            return;
+        }
+
+        $national = Sms_message::to_national($raw);
+
+        if ($national === null) {
+            $this->session->set_flashdata('error',
+                'That does not look like a Philippine mobile number. Use the format 09171234567.');
+            redirect('emergency_contacts');
+            return;
+        }
+
+        $this->student_master->set_contact_no($student_id, $national);
+        $this->session->set_flashdata('success', 'Mobile number saved as ' . $national . '.');
+        redirect('emergency_contacts');
     }
 
     public function save_emergency_contact()

@@ -50,6 +50,22 @@ class student_master extends MY_Model
     public $protected = array('trans_no');
 
 
+    /**
+     * The student's own mobile number.
+     *
+     * This is the only UPDATE to student_master in the codebase — the table was
+     * insert-only at registration, which is why half the roster had a wrong or
+     * missing number with no way to correct it. Deliberately narrow: one
+     * column, one row, and callers must pass an id they own (see
+     * StudentController::save_my_number()).
+     */
+    public function set_contact_no($student_id, $contact_no)
+    {
+        return $this->db
+            ->where('trans_no', (int) $student_id)
+            ->update('student_master', ['contact_no' => $contact_no]);
+    }
+
     public function search_by_name($search)
     {
         $this->db->like('firstname', $search);

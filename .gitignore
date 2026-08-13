@@ -36,3 +36,6 @@ uploads
 
 # Claude/Anthropic API key — never commit
 application/config/anthropic.php
+
+# PhilSMS API token — never commit
+application/config/philsms.php

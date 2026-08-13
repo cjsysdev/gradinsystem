@@ -75,6 +75,7 @@ $route['emergency_contacts'] = 'StudentController/emergency_contacts';
 $route['save_emergency_contact'] = 'StudentController/save_emergency_contact';
 $route['delete_emergency_contact/(:num)'] = 'StudentController/delete_emergency_contact/$1';
 $route['set_primary_contact/(:num)'] = 'StudentController/set_primary_contact/$1';
+$route['save_my_number'] = 'StudentController/save_my_number';
 $route['student/get-discussion-mode'] = 'StudentController/get_discussion_mode';
 $route['student/add_section'] = 'StudentController/add_section';
 $route['student/section'] = 'StudentController/section';
@@ -224,6 +225,18 @@ $route['admin/section_officers_install'] = 'AdminStudentController/section_offic
 $route['admin/register_student'] = 'AdminStudentController/register_student';
 $route['admin/check_student_no'] = 'AdminStudentController/check_student_no';
 $route['admin/check_username'] = 'AdminStudentController/check_username';
+// SMS announcements (PhilSMS). A brand-new controller, so no $legacy_admin_routes
+// entry is needed — none of these ever lived at AdminController/*.
+$route['admin/announcements'] = 'AdminSmsController/announcements';
+$route['admin/sms_preview'] = 'AdminSmsController/preview';
+$route['admin/sms_start_send'] = 'AdminSmsController/start_send';
+$route['admin/sms_send_chunk'] = 'AdminSmsController/send_chunk';
+$route['admin/sms_finish_send'] = 'AdminSmsController/finish_send';
+$route['admin/sms_test'] = 'AdminSmsController/test_send';
+$route['admin/sms_history/(:num)'] = 'AdminSmsController/history/$1';
+$route['admin/sms_history'] = 'AdminSmsController/history';
+$route['admin/sms_install'] = 'AdminSmsController/install';
+
 $route['admin/semesters'] = 'AdminStudentController/semesters';
 $route['admin/save_semester'] = 'AdminStudentController/save_semester';
 $route['admin/activate_semester/(:num)'] = 'AdminStudentController/activate_semester/$1';

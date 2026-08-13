@@ -65,6 +65,9 @@
         <a href="<?= base_url(
                         'admin/worksheet_generator'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Worksheet Generator"><i class="fa fa-wand-magic-sparkles"></i></a>
+        <a href="<?= base_url(
+                        'admin/announcements'
+                    ) ?>" class="btn btn-outline-secondary col m-2" title="SMS Announcements"><i class="fa fa-bullhorn"></i></a>
         <?php $over_max_count = $this->classworks->count_scores_exceeding_max(); ?>
         <!-- <a href="<?= base_url(
                         'admin/score_integrity'
