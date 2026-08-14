@@ -778,4 +778,57 @@ class Grade_calculator extends CI_Model
         }
         return number_format($grade['percentage'], $decimals);
     }
+
+    /**
+     * Passed / Failed / INC for a term or overall block.
+     *
+     * The cutoff is grading_point_passing (the transmutation of exactly the
+     * passing rate), so this stays in step with transmute() instead of being a
+     * second 3.0 hardcoded into a view. Anything that is not an 'ok' grade is
+     * INC — a slip must never label an incomplete term as Failed.
+     *
+     * @return array ['key' => 'passed'|'failed'|'inc', 'label' => string]
+     */
+    public function remark(array $grade)
+    {
+        if (($grade['status'] ?? '') !== 'ok' || ($grade['grade_point'] ?? null) === null) {
+            return ['key' => 'inc', 'label' => 'INC'];
+        }
+
+        $passing = (float) $this->cfg('grading_point_passing');
+
+        return ((float) $grade['grade_point'] <= $passing)
+            ? ['key' => 'passed', 'label' => 'Passed']
+            : ['key' => 'failed', 'label' => 'Failed'];
+    }
+
+    /**
+     * Human-readable explanation of why a term or overall grade is not 'ok'.
+     * Empty string when it is.
+     *
+     * $io_types is optional — it exists so a caller that already has the map
+     * from for_schedule() can pass it instead of re-reading the table.
+     */
+    public function inc_reason(array $grade, array $io_types = null)
+    {
+        if (($grade['status'] ?? '') === 'ok') {
+            return '';
+        }
+
+        if (($grade['reason'] ?? '') === 'missing_components' && !empty($grade['missing_iotypes'])) {
+            $io_types = ($io_types === null) ? $this->io_types() : $io_types;
+
+            $names = [];
+            foreach ($grade['missing_iotypes'] as $id) {
+                $names[] = $io_types[$id]['type'] ?? "io_type $id";
+            }
+            return 'No ' . implode(', ', $names) . ' recorded yet';
+        }
+
+        if (($grade['reason'] ?? '') === 'below_passing') {
+            return 'Below passing';
+        }
+
+        return 'Incomplete';
+    }
 }

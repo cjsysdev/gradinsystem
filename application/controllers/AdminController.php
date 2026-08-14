@@ -253,12 +253,8 @@ class AdminController extends Admin_Controller
 
         $columns = $this->_monitoring_columns($f['show_grades'], $f['show_attendance'], $f['grade_mode']);
 
-        $sched = $this->db->query("
-            SELECT sched.section, sched.type, cl.class_code
-            FROM class_schedule sched
-            JOIN classes cl ON cl.class_id = sched.class_id
-            WHERE sched.schedule_id = ?
-        ", [$f['schedule_id']])->row_array() ?: ['section' => '', 'type' => '', 'class_code' => ''];
+        $sched = $this->_monitoring_schedule($f['schedule_id'])
+            ?: ['section' => '', 'type' => '', 'class_code' => ''];
 
         $this->load->library('xlsx_writer');
 
@@ -286,6 +282,68 @@ class AdminController extends Admin_Controller
         // sitting in a downloads folder cannot be mistaken for an official one.
         $tag = ($f['grade_mode'] === Grade_calculator::MODE_CURRENT && $f['show_grades']) ? '_current' : '';
         $this->xlsx_writer->download('section_monitoring_' . $safe . $tag . '_' . date('Y-m-d') . '.xlsx');
+    }
+
+    /**
+     * The printable Grade & Attendance slip: one 5.5in x 8.5in half sheet per
+     * student, two to a landscape sheet with a cut guide down the middle, or a
+     * single half sheet on its own when student_id is given.
+     *
+     * This path deliberately never calls _monitoring_filters(). A slip is a
+     * document that leaves the building, so it is always the official grade:
+     * with no grade_mode to read, no query string can put a provisional figure
+     * on paper. Every number renders through display_grade_point()'s default
+     * MODE_INC, and an incomplete term prints INC with its reason.
+     */
+    public function print_slips()
+    {
+        $this->load->model('Grade_calculator');
+
+        $schedule_id = (int) $this->input->get('schedule_id');
+        $student_id  = (int) $this->input->get('student_id');
+
+        // Whitelisted, so a mangled term can never reach the term column of
+        // raw_components() and quietly return an empty set that reads as INC.
+        $term = $this->input->get('term');
+        if (!in_array($term, ['midterm', 'tentative-final', 'final'], TRUE)) {
+            $term = 'midterm';
+        }
+
+        if (!$schedule_id) {
+            $this->session->set_flashdata('error', 'Pick a section to print slips for.');
+            redirect('view_attendance');
+            return;
+        }
+
+        $sched = $this->_monitoring_schedule($schedule_id);
+        if (!$sched) {
+            $this->session->set_flashdata('error', 'That section could not be found.');
+            redirect('view_attendance');
+            return;
+        }
+
+        $slips = $this->_slip_rows($schedule_id, $term, $student_id ?: NULL);
+        if (empty($slips)) {
+            $this->session->set_flashdata('error', $student_id
+                ? 'That student is not enrolled on this section for the active semester.'
+                : 'No enrolled students on that section.');
+            redirect('view_attendance?schedule_id=' . $schedule_id);
+            return;
+        }
+
+        $this->load->view('admin/slips_print', [
+            'slips'       => $slips,
+            'sched'       => $sched,
+            'term'        => $term,
+            'term_label'  => $this->_term_label($term),
+            'schedule_id' => $schedule_id,
+            'student_id'  => $student_id,
+            'single'      => (bool) $student_id,
+            // Stamped on every slip: a printout found later has to say what it
+            // was generated from and when, or it cannot be trusted as a record.
+            'generated'   => date('M d, Y g:i A'),
+            'printed_by'  => trim($this->session->firstname . ' ' . $this->session->lastname),
+        ]);
     }
 
     /**
@@ -440,6 +498,163 @@ class AdminController extends Admin_Controller
         }
 
         return $cols;
+    }
+
+    /**
+     * One schedule's identity for a heading: section, type, subject, teacher,
+     * meeting time, plus the active semester row. Both the .xlsx export and the
+     * printable slips read it, so a heading can't say one thing on paper and
+     * another in the spreadsheet.
+     *
+     * @return array|null NULL when the schedule doesn't exist
+     */
+    protected function _monitoring_schedule($schedule_id)
+    {
+        $this->load->model('Grade_calculator');
+
+        $sched = $this->db->query("
+            SELECT sched.schedule_id, sched.section, sched.type, sched.day,
+                   sched.time_start, sched.time_end,
+                   cl.class_code, cl.class_name, cl.instructor
+            FROM class_schedule sched
+            JOIN classes cl ON cl.class_id = sched.class_id
+            WHERE sched.schedule_id = ?
+        ", [(int) $schedule_id])->row_array();
+
+        if (!$sched) {
+            return NULL;
+        }
+
+        // Read, never hardcoded: section_grades.php prints a literal
+        // "2nd Semester, S.Y 2024 - 2025" that has been wrong for two years.
+        $sched['semester'] = $this->db->where('is_active', 1)
+            ->get('semester_master')->row_array() ?: [];
+
+        $sched['schedule_text'] = $this->Grade_calculator->format_schedule($sched);
+
+        return $sched;
+    }
+
+    /**
+     * One printable slip per enrolled student, in the same roster order and
+     * with the same numbering as the Section Monitoring table.
+     *
+     * Everything grade-shaped comes straight off Grade_calculator::for_schedule()
+     * — components, weights, percentages, contributions, the term block and its
+     * remark. Nothing here recomputes a grade; the slip is a rendering of the
+     * engine's answer, and the mode is always the official MODE_INC.
+     *
+     * $only_student_id filters AFTER the numbering pass, so a single slip keeps
+     * the student's number on the section sheet instead of always reading #1.
+     */
+    protected function _slip_rows($schedule_id, $term, $only_student_id = NULL)
+    {
+        $gc = $this->Grade_calculator;
+
+        $result   = $gc->for_schedule($schedule_id, $term);
+        $counts   = $this->attendance->status_counts_for_schedule($schedule_id);
+        $absences = $this->attendance->absences_for_schedule($schedule_id);
+        $profiles = $this->_slip_profiles(array_keys($result['students']));
+
+        $slips = [];
+        $n     = 0;
+
+        foreach ($result['students'] as $sid => $s) {
+            $n++;
+            if ($only_student_id !== NULL && (int) $sid !== (int) $only_student_id) {
+                continue;
+            }
+
+            $t = $s['term'];
+            $c = isset($counts[$sid]) ? $counts[$sid] : ['present' => 0, 'absent' => 0, 'late' => 0, 'excuse' => 0];
+
+            // Recorded sessions, not "meetings held": a student enrolled late
+            // has fewer rows, and 'others' is not tallied by
+            // status_counts_for_schedule() so it stays out of the denominator
+            // here too. This is attendance reporting only — it never feeds a
+            // grade, and no grade rule reads it.
+            $sessions = $c['present'] + $c['absent'] + $c['late'] + $c['excuse'];
+
+            $components = [];
+            foreach ($s['components'] as $comp) {
+                $components[] = [
+                    'name'          => $comp['iotype_name'],
+                    'weight'        => $comp['iotype_percentage'],
+                    'score'         => $comp['total_score'],
+                    'max'           => $comp['total_max_score'],
+                    'percentage'    => $comp['percentage'],     // NULL when nothing measurable
+                    'contribution'  => $comp['weighted_grade'], // NULL likewise — never printed as 0
+                    'n_assessments' => $comp['n_assessments'],
+                    'n_ungraded'    => $comp['n_ungraded'],
+                ];
+            }
+
+            $middle = trim((string) $s['middlename']);
+
+            $slips[] = [
+                'n'             => $n,
+                'student_id'    => $sid,
+                'student_no'    => $s['student_no'],
+                'fullname'      => $s['lastname'] . ', ' . $s['firstname']
+                    . ($middle !== '' ? ' ' . strtoupper(substr($middle, 0, 1)) . '.' : ''),
+                'course'        => isset($profiles[$sid]['course']) ? $profiles[$sid]['course'] : '',
+                'grade_point'   => $gc->display_grade_point($t, 2),
+                'percentage'    => $gc->display_percentage($t, 2),
+                'remark'        => $gc->remark($t),
+                'inc_reason'    => $gc->inc_reason($t, $result['io_types']),
+                'pending_count' => (int) (isset($t['pending_count']) ? $t['pending_count'] : 0),
+                'components'    => $components,
+                'attendance'    => [
+                    'present'  => $c['present'],
+                    'absent'   => $c['absent'],
+                    'late'     => $c['late'],
+                    'excuse'   => $c['excuse'],
+                    'sessions' => $sessions,
+                    'rate'     => $sessions > 0 ? round(($c['present'] / $sessions) * 100) : NULL,
+                ],
+                // Same window and same filter as the absent tally above, so the
+                // list length always equals the Absent tile.
+                'absences'      => isset($absences[$sid]) ? $absences[$sid] : [],
+            ];
+        }
+
+        return $slips;
+    }
+
+    /**
+     * Course / year for the slip heading, one query for the whole section.
+     *
+     * A lookup, not a roster: the ids come from Grade_calculator::roster() via
+     * for_schedule(), so this cannot reintroduce the class_student.section =
+     * class_schedule.section join that ignored semester and enrolment status.
+     */
+    protected function _slip_profiles(array $student_ids)
+    {
+        if (empty($student_ids)) {
+            return [];
+        }
+
+        $rows = $this->db->select('trans_no, course, current_year, year_section')
+            ->from('student_master')
+            ->where_in('trans_no', $student_ids)
+            ->get()->result_array();
+
+        $out = [];
+        foreach ($rows as $r) {
+            $out[$r['trans_no']] = $r;
+        }
+        return $out;
+    }
+
+    /** The term enum as it should read on a printed heading. */
+    protected function _term_label($term)
+    {
+        $labels = [
+            'midterm'         => 'Midterm',
+            'tentative-final' => 'Tentative Final',
+            'final'           => 'Final',
+        ];
+        return isset($labels[$term]) ? $labels[$term] : ucfirst($term);
     }
 
     // Every attendance record for one student, across every class/schedule

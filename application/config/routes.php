@@ -194,6 +194,9 @@ $route['dashboard'] = 'AdminController/dashboard';
 $route['view_attendance'] = 'AdminController/section_monitoring';
 $route['admin/section_monitoring'] = 'AdminController/section_monitoring';
 $route['admin/export_section_monitoring'] = 'AdminController/export_section_monitoring';
+// Printable half-sheet Grade & Attendance slips for the same section. A brand
+// new method on AdminController, so it needs no $legacy_admin_routes entry.
+$route['admin/print_slips'] = 'AdminController/print_slips';
 $route['admin/student_attendance/(:num)'] = 'AdminController/student_attendance/$1';
 
 $route['manage_assessments'] = 'AdminAssessmentController/manage_assessments';

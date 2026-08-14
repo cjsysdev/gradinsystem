@@ -62,6 +62,13 @@
                    class="btn btn-outline-secondary">
                     <i class="fas fa-file-excel"></i> Export
                 </a>
+                <!-- No grade_mode on this link: printed slips are always the
+                     official grade, whatever the screen is currently showing.
+                     The term is picked on the print page itself. -->
+                <a href="<?= base_url('admin/print_slips?schedule_id=' . (int) $schedule_id) ?>"
+                   target="_blank" class="btn btn-outline-secondary" title="Printable half-sheet slips, 2 per page">
+                    <i class="fas fa-print"></i> Slips
+                </a>
             <?php endif; ?>
         </div>
     </form>
@@ -104,9 +111,13 @@
                                 ?>
                                 <td<?= $cell_class ? ' class="' . $cell_class . '"' : '' ?>><?= htmlspecialchars((string) $row[$c['key']]) ?><?= $provisional ? '*' : '' ?></td>
                             <?php endforeach; ?>
-                            <td>
+                            <td class="text-nowrap">
                                 <a href="<?= base_url('admin/student_attendance/' . (int) $row['student_id']) ?>"
                                    class="btn btn-sm btn-outline-primary">View / Edit</a>
+                                <a href="<?= base_url('admin/print_slips?schedule_id=' . (int) $schedule_id . '&student_id=' . (int) $row['student_id']) ?>"
+                                   target="_blank" class="btn btn-sm btn-outline-secondary" title="Print this student's slip">
+                                    <i class="fas fa-print"></i>
+                                </a>
                             </td>
                         </tr>
                     <?php endforeach; ?>

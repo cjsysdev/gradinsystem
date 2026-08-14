@@ -262,6 +262,47 @@ class attendance extends MY_Model
         return $out;
     }
 
+    /**
+     * The dated 'absent' rows behind status_counts_for_schedule()'s absent
+     * tally, per student, for the printable Grade & Attendance slips.
+     *
+     * The joins, the active-semester filter and the class_started floor are
+     * copied from status_counts_for_schedule() deliberately and must stay in
+     * step with it: the slip prints the count and the list side by side, so a
+     * different window here would put a "3 absences" tile above four dates.
+     *
+     * Not get_student_absences() — that one filters by the section string and
+     * takes an explicit date range, i.e. a different window and a different
+     * roster definition.
+     *
+     * `reason` is nullable; callers render their own placeholder rather than
+     * inventing one here.
+     *
+     * @return array student_id => [ ['date' => datetime, 'reason' => ?string], ... ] oldest first
+     */
+    public function absences_for_schedule($schedule_id)
+    {
+        $rows = $this->db->query("
+            SELECT att.student_id, att.date, att.reason
+            FROM attendance att
+            JOIN class_schedule sched ON sched.schedule_id = att.schedule_id
+            JOIN semester_master sem  ON sem.trans_no = sched.semester_id AND sem.is_active = 1
+            WHERE att.schedule_id = ?
+              AND att.status = 'absent'
+              AND DATE(att.date) >= sem.class_started
+            ORDER BY att.date
+        ", [$schedule_id])->result_array();
+
+        $out = [];
+        foreach ($rows as $r) {
+            $out[$r['student_id']][] = [
+                'date'   => $r['date'],
+                'reason' => $r['reason'],
+            ];
+        }
+        return $out;
+    }
+
     public function get_present_students($section_id, $date)
     {
         $sql = "

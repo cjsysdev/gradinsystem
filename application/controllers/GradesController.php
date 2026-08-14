@@ -193,23 +193,15 @@ class GradesController extends CI_Controller
         });
     }
 
-    /** Human-readable explanation of why a term is INC. */
+    /**
+     * Human-readable explanation of why a term is INC.
+     *
+     * Delegates to the model so the sheets and the printable slips word it
+     * identically — the wording is part of the grade report, so it has one home.
+     */
     private function _inc_reason(array $term, array $io_types)
     {
-        if ($term['status'] === 'ok') {
-            return '';
-        }
-        if (($term['reason'] ?? '') === 'missing_components' && !empty($term['missing_iotypes'])) {
-            $names = [];
-            foreach ($term['missing_iotypes'] as $id) {
-                $names[] = $io_types[$id]['type'] ?? "io_type $id";
-            }
-            return 'No ' . implode(', ', $names) . ' recorded yet';
-        }
-        if (($term['reason'] ?? '') === 'below_passing') {
-            return 'Below passing';
-        }
-        return 'Incomplete';
+        return $this->Grade_calculator->inc_reason($term, $io_types);
     }
 
     // ------------------------------------------------------------------
