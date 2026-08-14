@@ -2,7 +2,8 @@
 defined('BASEPATH') or exit('No direct script access allowed');
 
 /**
- * Admin dashboard, attendance, and project-log browsing.
+ * Admin dashboard, attendance (daily roll + the Section Monitoring sheet), and
+ * project-log browsing.
  *
  * The other admin screens live in AdminSubmissionController,
  * AdminAssessmentController, AdminStudentController and AdminContentController;
@@ -191,29 +192,254 @@ class AdminController extends Admin_Controller
         redirect('dashboard');
     }
 
-    public function view_attendance()
+    // Section Monitoring — one row per enrolled student on a schedule, with
+    // their term grades and their attendance tallies, either half toggleable.
+    // Replaces the old view_attendance sheet, which filtered on the section
+    // string and so joined class_student.section to class_schedule.section,
+    // ignoring semester and enrolment status and double-counting anyone
+    // enrolled in both a LEC and a LAB of the same section.
+    public function section_monitoring()
     {
-        $active_semester = $this->db->where('is_active', 1)->get('semester_master')->row_array();
-        $default_start_date = ($active_semester['class_started'] ?? null) ?: date('Y-m-d');
+        $this->load->model('Grade_calculator');
 
-        $section_id = $this->input->get('section_id');
-        $start_date = $this->input->get('start_date') ?: $default_start_date;
+        $f = $this->_monitoring_filters();
 
-        // Fetch all sections for the dropdown
-        $data['sections'] = $this->class_schedule->get_sections();
+        // Guard here, not inside _monitoring_rows(): schedule_id 0 would
+        // otherwise run three full grade passes over an empty roster.
+        $data['rows'] = $f['schedule_id']
+            ? $this->_monitoring_rows($f['schedule_id'], $f['grade_mode'])
+            : [];
 
-        // Fetch attendance data once a section is picked (start date always
-        // has a value — defaults to the active semester's class_started).
-        if ($section_id) {
-            $data['attendance'] = $this->attendance->get_attendance_by_section($section_id, $start_date);
-            $data['selected_section_id'] = $section_id;
-        } else {
-            $data['attendance'] = [];
-            $data['selected_section_id'] = null;
+        $data['schedules']       = $this->class_schedule->get_all_active();
+        $data['schedule_id']     = $f['schedule_id'];
+        $data['show_grades']     = $f['show_grades'];
+        $data['show_attendance'] = $f['show_attendance'];
+        $data['grade_mode']      = $f['grade_mode'];
+        $data['columns']         = $this->_monitoring_columns($f['show_grades'], $f['show_attendance'], $f['grade_mode']);
+
+        // Built here rather than reassembled in the view, so the Export link
+        // can never disagree with the filters the table was rendered from.
+        $data['export_query'] = [
+            'schedule_id'     => $f['schedule_id'],
+            'filters_applied' => 1,
+            'show_grades'     => $f['show_grades'] ? 1 : 0,
+            'show_attendance' => $f['show_attendance'] ? 1 : 0,
+            'grade_mode'      => $f['grade_mode'],
+        ];
+
+        $this->load->view('admin/section_monitoring', $data);
+    }
+
+    // The same rows and the same columns as the screen, as .xlsx — it reads
+    // the same GET params, so the download always matches what's on display.
+    public function export_section_monitoring()
+    {
+        $this->load->model('Grade_calculator');
+
+        $f = $this->_monitoring_filters();
+
+        if (!$f['schedule_id']) {
+            $this->session->set_flashdata('error', 'Pick a section to export.');
+            redirect('view_attendance');
+            return;
         }
-        $data['start_date'] = $start_date;
 
-        $this->load->view('admin/view_attendance', $data);
+        $rows = $this->_monitoring_rows($f['schedule_id'], $f['grade_mode']);
+        if (empty($rows)) {
+            $this->session->set_flashdata('error', 'No enrolled students on that section.');
+            redirect('view_attendance?schedule_id=' . $f['schedule_id']);
+            return;
+        }
+
+        $columns = $this->_monitoring_columns($f['show_grades'], $f['show_attendance'], $f['grade_mode']);
+
+        $sched = $this->db->query("
+            SELECT sched.section, sched.type, cl.class_code
+            FROM class_schedule sched
+            JOIN classes cl ON cl.class_id = sched.class_id
+            WHERE sched.schedule_id = ?
+        ", [$f['schedule_id']])->row_array() ?: ['section' => '', 'type' => '', 'class_code' => ''];
+
+        $this->load->library('xlsx_writer');
+
+        $this->xlsx_writer
+            ->set_sheet_name(trim($sched['section'] . ' ' . $sched['class_code']))
+            ->set_columns(array_column($columns, 'width'))
+            ->add_row(array_column($columns, 'label'), TRUE);
+
+        // Cells go in raw — Xlsx_writer::esc() escapes them itself, and
+        // pre-escaping here would write literal &amp; into the spreadsheet.
+        foreach ($rows as $row) {
+            $cells = [];
+            foreach ($columns as $c) {
+                $cells[] = $row[$c['key']];
+            }
+            $this->xlsx_writer->add_row($cells);
+        }
+
+        $safe = preg_replace(
+            '/[^A-Za-z0-9_-]/',
+            '_',
+            $sched['section'] . '_' . $sched['class_code'] . '_' . $sched['type']
+        );
+        // The filename says which grades are inside, so a provisional export
+        // sitting in a downloads folder cannot be mistaken for an official one.
+        $tag = ($f['grade_mode'] === Grade_calculator::MODE_CURRENT && $f['show_grades']) ? '_current' : '';
+        $this->xlsx_writer->download('section_monitoring_' . $safe . $tag . '_' . date('Y-m-d') . '.xlsx');
+    }
+
+    /**
+     * The Section Monitoring filter state, read identically by the screen and
+     * the export so the two can never disagree.
+     *
+     * Both checkboxes default to on, and an unticked checkbox sends no key at
+     * all — so "never submitted" and "deliberately unticked" look the same in
+     * the query string. The form's hidden filters_applied=1 marker separates
+     * them; without it, unticking a box would silently re-tick on reload.
+     *
+     * grade_mode needs no such marker — a <select> always submits a value — and
+     * anything other than an explicit 'current' falls back to the official INC
+     * rendering, so a mangled query string can never turn a submission sheet
+     * into provisional numbers by accident.
+     */
+    protected function _monitoring_filters()
+    {
+        $submitted = $this->input->get('filters_applied') !== NULL;
+
+        return [
+            'schedule_id'     => (int) $this->input->get('schedule_id'),
+            'show_grades'     => $submitted ? ($this->input->get('show_grades') === '1') : TRUE,
+            'show_attendance' => $submitted ? ($this->input->get('show_attendance') === '1') : TRUE,
+            'grade_mode'      => $this->input->get('grade_mode') === Grade_calculator::MODE_CURRENT
+                ? Grade_calculator::MODE_CURRENT
+                : Grade_calculator::MODE_INC,
+        ];
+    }
+
+    /**
+     * The Section Monitoring row set for one schedule, in roster order
+     * (lastname, firstname — Grade_calculator::roster() already sorts it, and
+     * for_schedule() preserves that insertion order, so no usort is needed).
+     *
+     * Three for_schedule() passes is deliberate: for_schedule_final() covers
+     * midterm + final + overall but never touches 'tentative-final', and the
+     * alternative — one bespoke multi-term query — would be a fourth copy of
+     * the weighting rules, which is exactly what Grade_calculator exists to
+     * prevent. $with_attendance is FALSE on all of them: it saves three
+     * redundant queries and keeps the grading-derived `late` out of the data
+     * entirely, so the raw ENUM counts can't be confused with it.
+     */
+    protected function _monitoring_rows($schedule_id, $grade_mode = Grade_calculator::MODE_INC)
+    {
+        $gc = $this->Grade_calculator;
+
+        $finals    = $gc->for_schedule_final($schedule_id, FALSE);
+        $tentative = $gc->for_schedule($schedule_id, 'tentative-final', FALSE);
+        $counts    = $this->attendance->status_counts_for_schedule($schedule_id);
+
+        $rows = [];
+        $n    = 0;
+        foreach ($finals['students'] as $sid => $s) {
+            // Same roster on all three passes, so this fallback should never
+            // fire; it carries grade_point because display_grade_point() reads
+            // that key once the status check lets it through, and no
+            // 'provisional' key so MODE_CURRENT falls through to 'INC' rather
+            // than inventing a standing for a student we have no data for.
+            $t = isset($tentative['students'][$sid]['term'])
+                ? $tentative['students'][$sid]['term']
+                : ['status' => 'inc', 'grade_point' => NULL];
+
+            $rows[] = $this->_monitoring_row(
+                ++$n,
+                $s,
+                $t,
+                isset($counts[$sid]) ? $counts[$sid] : NULL,
+                $grade_mode
+            );
+        }
+
+        return $rows;
+    }
+
+    /**
+     * One Section Monitoring row. Always carries every field — which of them
+     * get rendered is _monitoring_columns()' job — and returns values raw, so
+     * each consumer escapes for its own medium.
+     *
+     * $s comes from for_schedule_final() and carries 'midterm', 'final' and
+     * 'overall'; $tentative is the 'tentative-final' term block. The Final
+     * Grade column is `overall` (the midterm/final blend), not the 'final'
+     * term on its own.
+     *
+     * Under MODE_CURRENT an incomplete grade renders as its provisional figure
+     * instead of 'INC'. Each such cell also gets a `<key>_provisional` flag so
+     * the screen can mark which numbers are not the official grade — the .xlsx
+     * ignores those keys and takes the mode from the column headings instead.
+     * `is_inc` keeps meaning "the OFFICIAL overall grade is INC" in both modes,
+     * so the mode never changes what that flag reports.
+     */
+    protected function _monitoring_row($n, array $s, array $tentative, $counts, $grade_mode = Grade_calculator::MODE_INC)
+    {
+        $gc     = $this->Grade_calculator;
+        $counts = $counts ?: ['present' => 0, 'absent' => 0, 'late' => 0, 'excuse' => 0];
+
+        return [
+            'n'                     => $n,
+            'student_id'            => $s['student_id'],
+            'lastname'              => $s['lastname'],
+            'firstname'             => $s['firstname'],
+            'midterm'               => $gc->display_grade_point($s['midterm'], 2, $grade_mode),
+            'tentative'             => $gc->display_grade_point($tentative, 2, $grade_mode),
+            'overall'               => $gc->display_grade_point($s['overall'], 2, $grade_mode),
+            'midterm_provisional'   => $gc->is_provisional($s['midterm'], $grade_mode),
+            'tentative_provisional' => $gc->is_provisional($tentative, $grade_mode),
+            'overall_provisional'   => $gc->is_provisional($s['overall'], $grade_mode),
+            'is_inc'                => $s['overall']['status'] !== 'ok',
+            'present'               => $counts['present'],
+            'absent'                => $counts['absent'],
+            'late'                  => $counts['late'],
+            'excuse'                => $counts['excuse'],
+        ];
+    }
+
+    /**
+     * The ordered column spec the HTML table and the .xlsx both render from,
+     * so adding or reordering a column cannot desync the two outputs. Header
+     * text, the _monitoring_row() key and the spreadsheet width live together.
+     *
+     * The per-row View/Edit link is deliberately absent — it has no
+     * spreadsheet counterpart, so the view appends that column itself.
+     *
+     * The grade headings carry the display mode, which is the only way an
+     * exported .xlsx can say whether its numbers are official or provisional —
+     * a bare spreadsheet has no legend and outlives the query string that
+     * produced it.
+     */
+    protected function _monitoring_columns($show_grades, $show_attendance, $grade_mode = Grade_calculator::MODE_INC)
+    {
+        $cols = [
+            ['key' => 'n',         'label' => '#',         'width' => 5],
+            ['key' => 'lastname',  'label' => 'Lastname',  'width' => 22],
+            ['key' => 'firstname', 'label' => 'Firstname', 'width' => 22],
+        ];
+
+        if ($show_grades) {
+            $suffix = ($grade_mode === Grade_calculator::MODE_CURRENT) ? ' (current)' : '';
+            $grow   = ($grade_mode === Grade_calculator::MODE_CURRENT) ? 10 : 0;
+
+            $cols[] = ['key' => 'midterm',   'label' => 'Midterm' . $suffix,         'width' => 12 + $grow];
+            $cols[] = ['key' => 'tentative', 'label' => 'Tentative Final' . $suffix, 'width' => 16 + $grow];
+            $cols[] = ['key' => 'overall',   'label' => 'Final Grade' . $suffix,     'width' => 13 + $grow];
+        }
+
+        if ($show_attendance) {
+            $cols[] = ['key' => 'present', 'label' => 'Present', 'width' => 10];
+            $cols[] = ['key' => 'absent',  'label' => 'Absent',  'width' => 10];
+            $cols[] = ['key' => 'late',    'label' => 'Late',    'width' => 10];
+            $cols[] = ['key' => 'excuse',  'label' => 'Excused', 'width' => 10];
+        }
+
+        return $cols;
     }
 
     // Every attendance record for one student, across every class/schedule

@@ -16,7 +16,7 @@
                 <?php endif; ?>
             </small>
         </div>
-        <a href="<?= base_url('view_attendance') ?>" class="btn btn-outline-secondary btn-sm">Back to Attendance</a>
+        <a href="<?= base_url('view_attendance') ?>" class="btn btn-outline-secondary btn-sm">Back to Section Monitoring</a>
     </div>
 
     <?php if (!empty($records)): ?>

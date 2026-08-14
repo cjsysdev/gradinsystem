@@ -62,6 +62,18 @@ Rules that are easy to break:
 - **A term is INC unless every `io_type` has at least one assessment.** Weights
   are never renormalized; a term missing its Major Exam does not scale the rest
   up. `'INC'` is a `status` field — never put the string into a numeric field.
+- **`provisional_grade()` / `provisional_final_grade()` are the ONE sanctioned
+  exception**, and they never touch the official path: `term_grade()` and
+  `final_grade()` are unchanged, and the provisional figure rides along as
+  `$term['provisional']` for display only. They renormalize over the components
+  actually recorded so a mid-semester monitoring sheet can show a standing
+  instead of a wall of INC, and they deliberately ignore
+  `grading_fail_as_inc_above` so a failing student is visible rather than hidden
+  behind INC. Rendering is gated on `display_grade_point($block, $decimals,
+  Grade_calculator::MODE_CURRENT)`, which defaults to `MODE_INC` — **grade
+  submission sheets (`GradesController`) must stay on the default**; only the
+  admin Section Monitoring screen opts in, and every provisional value it shows
+  is labelled as such. Never report a provisional figure as a term grade.
 - **All score writes go through `classworks::set_score()`**, which validates and
   clamps to `max_score`.
 - `convertPercentageToGradePoint()` is a deprecated shim; call

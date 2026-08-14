@@ -178,6 +178,114 @@ class Grade_calculator extends CI_Model
     }
 
     /**
+     * The "grade so far" — the same weighted sum as term_grade(), but
+     * renormalised over only the components that actually have assessments.
+     *
+     * This is the ONE place renormalisation is allowed, and it exists solely so
+     * a monitoring sheet can answer "where does this student stand today"
+     * mid-semester. It is NOT a term grade and must never be reported as one:
+     * term_grade() remains the only official answer, still INC, still
+     * un-renormalised. Every caller renders this behind an explicit
+     * display mode and labels it provisional.
+     *
+     * Renormalising is what makes the number readable. Without it a student
+     * with 90% in the only recorded component (weight 30) scores 27 and the
+     * whole sheet reads as failing, which is worse than showing INC.
+     *
+     * A component counts as recorded only when it has an assessment AND a
+     * measurable percentage — an assessment with max_score 0 yields a NULL
+     * percentage, and letting its weight into the denominator would silently
+     * drag the result toward zero.
+     */
+    public function provisional_grade(array $components, $passing_rate)
+    {
+        $covered = 0.0; // weight of the components that have been recorded
+        $earned  = 0.0; // their weighted_grade contributions
+        $pending = 0;
+
+        foreach ($components as $c) {
+            $pending += (int) ($c['n_ungraded'] ?? 0);
+
+            if (empty($c['n_assessments']) || ($c['percentage'] ?? null) === null) {
+                continue;
+            }
+            $covered += (float) ($c['iotype_percentage'] ?? 0);
+            $earned  += (float) ($c['weighted_grade'] ?? 0);
+        }
+
+        if ($covered <= 0) {
+            return [
+                'status'         => 'none',
+                'reason'         => 'nothing_recorded',
+                'percentage'     => null,
+                'grade_point'    => null,
+                'weight_covered' => 0.0,
+                'pending_count'  => $pending,
+            ];
+        }
+
+        $percentage = round($earned * (100 / $covered), 2);
+
+        return [
+            'status'         => 'provisional',
+            'reason'         => null,
+            'percentage'     => $percentage,
+            'grade_point'    => $this->transmute($percentage, $passing_rate),
+            'weight_covered' => round($covered, 2),
+            'pending_count'  => $pending,
+        ];
+    }
+
+    /**
+     * The provisional counterpart of final_grade(): blend whichever terms have
+     * a percentage, renormalised across their term weights.
+     *
+     * Takes two nullable percentages rather than term blocks so it stays a pure
+     * function of the policy — the caller decides what each term's effective
+     * percentage is (see _effective_percentage()).
+     *
+     * Deliberately does NOT apply grading_fail_as_inc_above. That rule exists so
+     * an official sheet never reports a failing number; this function exists so
+     * a teacher can see the failing number and act on it before it becomes
+     * official. Suppressing it here would make the mode pointless for exactly
+     * the students it is meant to surface.
+     */
+    public function provisional_final_grade($midterm_pct, $final_pct, $passing_rate)
+    {
+        $weights = $this->cfg('grading_term_weights');
+
+        $covered = 0.0;
+        $acc     = 0.0;
+        foreach (['midterm' => $midterm_pct, 'final' => $final_pct] as $term => $pct) {
+            if ($pct === null || !is_numeric($pct)) {
+                continue;
+            }
+            $acc     += (float) $pct * (float) $weights[$term];
+            $covered += (float) $weights[$term];
+        }
+
+        if ($covered <= 0) {
+            return [
+                'status'         => 'none',
+                'reason'         => 'nothing_recorded',
+                'percentage'     => null,
+                'grade_point'    => null,
+                'weight_covered' => 0.0,
+            ];
+        }
+
+        $percentage = round($acc / $covered, 2);
+
+        return [
+            'status'         => 'provisional',
+            'reason'         => null,
+            'percentage'     => $percentage,
+            'grade_point'    => $this->transmute($percentage, $passing_rate),
+            'weight_covered' => round($covered * 100, 2),
+        ];
+    }
+
+    /**
      * Blend the two term grades into the overall grade.
      *
      * INC in either term propagates. A single configurable cutoff replaces the
@@ -411,6 +519,12 @@ class Grade_calculator extends CI_Model
                 $components[$iotype_id] = $c;
             }
 
+            // The official grade and the "so far" grade travel together on the
+            // same block, so choosing between them is a rendering decision at
+            // the call site rather than a second trip through the engine.
+            $term = $this->term_grade($components, $required, $passing_rate);
+            $term['provisional'] = $this->provisional_grade($components, $passing_rate);
+
             $students[$sid] = [
                 'student_id' => $sid,
                 'student_no' => $s['student_no'],
@@ -419,7 +533,7 @@ class Grade_calculator extends CI_Model
                 'middlename' => $s['middlename'],
                 'is_cleared' => $s['is_cleared'],
                 'components' => $components,
-                'term'       => $this->term_grade($components, $required, $passing_rate),
+                'term'       => $term,
                 'attendance' => $attendance[$sid] ?? ['present' => 0, 'absent' => 0, 'late' => 0],
             ];
         }
@@ -432,6 +546,35 @@ class Grade_calculator extends CI_Model
             'required_iotypes' => $required,
             'students'         => $students,
         ];
+    }
+
+    /**
+     * final_grade() with its provisional counterpart attached, so both overall
+     * views are built the same way wherever an overall grade is produced.
+     */
+    public function overall_grade(array $midterm, array $final, $passing_rate)
+    {
+        $overall = $this->final_grade($midterm, $final, $passing_rate);
+        $overall['provisional'] = $this->provisional_final_grade(
+            $this->effective_percentage($midterm),
+            $this->effective_percentage($final),
+            $passing_rate
+        );
+        return $overall;
+    }
+
+    /**
+     * The percentage a term contributes in provisional mode: its own when the
+     * term is complete, otherwise its renormalised "so far" figure, and NULL
+     * when the term has nothing recorded at all (so an unstarted final term
+     * drops out of the blend instead of counting as a zero).
+     */
+    private function effective_percentage(array $term)
+    {
+        if (($term['status'] ?? '') === 'ok') {
+            return $term['percentage'];
+        }
+        return $term['provisional']['percentage'] ?? null;
     }
 
     /**
@@ -459,7 +602,7 @@ class Grade_calculator extends CI_Model
                 'attendance'  => $m['attendance'],
                 'midterm'     => $m['term'],
                 'final'       => $f_term,
-                'overall'     => $this->final_grade($m['term'], $f_term, $passing_rate),
+                'overall'     => $this->overall_grade($m['term'], $f_term, $passing_rate),
             ];
         }
 
@@ -513,7 +656,7 @@ class Grade_calculator extends CI_Model
             'final_components'   => $f['components'] ?? [],
             'midterm'            => $m['term'],
             'final'              => $f_term,
-            'overall'            => $this->final_grade($m['term'], $f_term, $midterm['passing_rate']),
+            'overall'            => $this->overall_grade($m['term'], $f_term, $midterm['passing_rate']),
         ];
     }
 
@@ -580,13 +723,52 @@ class Grade_calculator extends CI_Model
     // Display helpers — so views never do arithmetic
     // ==================================================================
 
-    /** Render a term/overall grade block as either a number or 'INC'. */
-    public function display_grade_point(array $grade, $decimals = 2)
+    /** The two ways an incomplete grade may be rendered. */
+    const MODE_INC     = 'inc';     // official: an incomplete term reads 'INC'
+    const MODE_CURRENT = 'current'; // monitoring: fall back to the "so far" grade
+
+    /**
+     * Render a term/overall grade block as either a number or 'INC'.
+     *
+     * $mode defaults to MODE_INC, which is the official rendering and the only
+     * one any grade-submission sheet may use. MODE_CURRENT falls back to the
+     * block's provisional figure when the official grade is not 'ok' — a
+     * teacher-facing view of where the student stands today. It still returns
+     * 'INC' when nothing has been recorded, because there is no standing to
+     * report yet.
+     *
+     * Callers using MODE_CURRENT must label the result as provisional; see
+     * is_provisional() for deciding which values need the label.
+     */
+    public function display_grade_point(array $grade, $decimals = 2, $mode = self::MODE_INC)
     {
-        if (($grade['status'] ?? '') !== 'ok' || $grade['grade_point'] === null) {
-            return 'INC';
+        if (($grade['status'] ?? '') === 'ok' && $grade['grade_point'] !== null) {
+            return number_format($grade['grade_point'], $decimals);
         }
-        return number_format($grade['grade_point'], $decimals);
+
+        if ($mode === self::MODE_CURRENT) {
+            $gp = $grade['provisional']['grade_point'] ?? null;
+            if ($gp !== null) {
+                return number_format($gp, $decimals);
+            }
+        }
+
+        return 'INC';
+    }
+
+    /**
+     * TRUE when display_grade_point() would fall back to the provisional figure
+     * for this block — i.e. the rendered number is not the official grade.
+     */
+    public function is_provisional(array $grade, $mode = self::MODE_INC)
+    {
+        if ($mode !== self::MODE_CURRENT) {
+            return FALSE;
+        }
+        if (($grade['status'] ?? '') === 'ok' && $grade['grade_point'] !== null) {
+            return FALSE;
+        }
+        return ($grade['provisional']['grade_point'] ?? null) !== null;
     }
 
     public function display_percentage(array $grade, $decimals = 2)

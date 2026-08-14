@@ -444,6 +444,85 @@ class GradeAuditController extends CI_Controller
             $fail[] = 'pending_count should be 2, got ' . var_export($t['pending_count'], true);
         } else { $pass++; }
 
+        // --- provisional_grade: renormalises over the recorded components ---
+        // Weights 30/30/40 with only Activity (30) recorded at 90% must read as
+        // 90, not 27 — that rescaling is the whole point of the mode.
+        $partial = [
+            1 => ['weighted_grade' => 27.0, 'percentage' => 90.0, 'iotype_percentage' => 30, 'n_assessments' => 2, 'n_ungraded' => 1],
+            2 => ['weighted_grade' => null, 'percentage' => null, 'iotype_percentage' => 30, 'n_assessments' => 0, 'n_ungraded' => 0],
+            3 => ['weighted_grade' => null, 'percentage' => null, 'iotype_percentage' => 40, 'n_assessments' => 0, 'n_ungraded' => 0],
+        ];
+        $p = $gc->provisional_grade($partial, 60);
+        $check('provisional_grade percentage (one component)', $p['percentage'], 90.0);
+        $check('provisional_grade grade_point (one component)', $p['grade_point'], 1.5);
+        $check('provisional_grade weight_covered', $p['weight_covered'], 30.0);
+        if ($p['status'] !== 'provisional' || $p['pending_count'] !== 1) {
+            $fail[] = 'provisional_grade status/pending wrong: ' . json_encode($p);
+        } else { $pass++; }
+
+        // A recorded component with no measurable percentage (max_score 0) must
+        // stay out of the denominator instead of dragging the result down.
+        $partial[2] = ['weighted_grade' => null, 'percentage' => null, 'iotype_percentage' => 30, 'n_assessments' => 4, 'n_ungraded' => 0];
+        $check('provisional_grade ignores unmeasurable component', $gc->provisional_grade($partial, 60)['percentage'], 90.0);
+
+        // Nothing recorded at all has no standing to report.
+        $empty = [
+            1 => ['weighted_grade' => null, 'percentage' => null, 'iotype_percentage' => 30, 'n_assessments' => 0, 'n_ungraded' => 0],
+        ];
+        $e = $gc->provisional_grade($empty, 60);
+        if ($e['status'] !== 'none' || $e['grade_point'] !== null) {
+            $fail[] = 'provisional_grade with nothing recorded should be status=none/null, got ' . json_encode($e);
+        } else { $pass++; }
+
+        // A complete term must produce the same number either way — the mode
+        // may only ever change what an INCOMPLETE term shows.
+        $complete = [
+            1 => ['weighted_grade' => 24.0, 'percentage' => 80.0, 'iotype_percentage' => 30, 'n_assessments' => 1, 'n_ungraded' => 0],
+            2 => ['weighted_grade' => 24.0, 'percentage' => 80.0, 'iotype_percentage' => 30, 'n_assessments' => 1, 'n_ungraded' => 0],
+            3 => ['weighted_grade' => 32.0, 'percentage' => 80.0, 'iotype_percentage' => 40, 'n_assessments' => 1, 'n_ungraded' => 0],
+        ];
+        $check(
+            'provisional == official when the term is complete',
+            $gc->provisional_grade($complete, 60)['percentage'],
+            $gc->term_grade($complete, [1, 2, 3], 60)['percentage']
+        );
+
+        // --- provisional_final_grade: an unstarted term drops out of the blend
+        // rather than counting as a zero ---
+        $check('provisional_final_grade midterm only', $gc->provisional_final_grade(90.0, null, 60)['percentage'], 90.0);
+        $check('provisional_final_grade both terms',   $gc->provisional_final_grade(90.0, 70.0, 60)['percentage'], 80.0);
+        if ($gc->provisional_final_grade(null, null, 60)['status'] !== 'none') {
+            $fail[] = 'provisional_final_grade with no terms should be status=none';
+        } else { $pass++; }
+
+        // Provisional mode deliberately shows a failing number where the
+        // official sheet reports INC — that is what makes it actionable.
+        $failing = $gc->provisional_final_grade(40.0, 40.0, 60);
+        if ($failing['status'] !== 'provisional' || $failing['grade_point'] === null) {
+            $fail[] = 'provisional_final_grade must report failing grades as numbers, got ' . json_encode($failing);
+        } else { $pass++; }
+
+        // --- display mode: MODE_INC must be unaffected by a provisional block ---
+        $inc_block = [
+            'status' => 'inc', 'grade_point' => null,
+            'provisional' => ['status' => 'provisional', 'grade_point' => 1.5],
+        ];
+        if ($gc->display_grade_point($inc_block, 2) !== 'INC') {
+            $fail[] = 'display_grade_point default mode must still render INC';
+        } else { $pass++; }
+        if ($gc->display_grade_point($inc_block, 2, Grade_calculator::MODE_CURRENT) !== '1.50') {
+            $fail[] = 'display_grade_point MODE_CURRENT should render the provisional figure';
+        } else { $pass++; }
+        if ($gc->is_provisional($inc_block, Grade_calculator::MODE_INC)
+            || !$gc->is_provisional($inc_block, Grade_calculator::MODE_CURRENT)) {
+            $fail[] = 'is_provisional must be false in MODE_INC and true in MODE_CURRENT';
+        } else { $pass++; }
+
+        // No provisional figure to fall back on -> still INC in either mode.
+        if ($gc->display_grade_point(['status' => 'inc', 'grade_point' => null], 2, Grade_calculator::MODE_CURRENT) !== 'INC') {
+            $fail[] = 'MODE_CURRENT must stay INC when there is no provisional figure';
+        } else { $pass++; }
+
         // --- INC propagates through the blend ---
         $ok  = ['status' => 'ok', 'percentage' => 90.0, 'grade_point' => 1.5];
         $inc = ['status' => 'inc', 'percentage' => null, 'grade_point' => null];

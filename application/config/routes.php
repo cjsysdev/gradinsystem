@@ -187,7 +187,13 @@ $route['output_upload'] = 'Main/output_upload';
 // AdminController was split into five controllers (see application/core/
 // MY_Controller.php); the URLs below are unchanged, only their targets moved.
 $route['dashboard'] = 'AdminController/dashboard';
-$route['view_attendance'] = 'AdminController/view_attendance';
+// The attendance sheet is now Section Monitoring (grades + attendance,
+// filtered by schedule, exportable). The old URL is kept pointing at it so the
+// nav bar, student_attendance.php's back-link and student_attendance()'s two
+// guard redirects all keep working untouched — only the target method moved.
+$route['view_attendance'] = 'AdminController/section_monitoring';
+$route['admin/section_monitoring'] = 'AdminController/section_monitoring';
+$route['admin/export_section_monitoring'] = 'AdminController/export_section_monitoring';
 $route['admin/student_attendance/(:num)'] = 'AdminController/student_attendance/$1';
 
 $route['manage_assessments'] = 'AdminAssessmentController/manage_assessments';

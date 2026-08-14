@@ -20,7 +20,7 @@
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Submissions"><i class="fa fa-file-alt"></i></a> -->
         <a href="<?= base_url(
                         'view_attendance'
-                    ) ?>" class="btn btn-outline-secondary col m-2" title="Attendance"><i class="fa fa-calendar-check"></i></a>
+                    ) ?>" class="btn btn-outline-secondary col m-2" title="Section Monitoring"><i class="fa fa-calendar-check"></i></a>
         <a href="<?= base_url(
                         'admin/emergency_contacts'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Emergency Contacts"><i class="fa fa-phone"></i></a>

@@ -215,43 +215,51 @@ class attendance extends MY_Model
         return $query->result_array();
     }
 
-    public function get_attendance_by_section($section_id, $start_date)
+    /**
+     * Per-student RAW status counts for one schedule, from the active
+     * semester's class_started date. Backs the Section Monitoring sheet
+     * (AdminController::section_monitoring()).
+     *
+     * Grade_calculator::attendance_for_schedule() also returns a `late`, but
+     * that one is a grading-policy figure — a status='present' row clocked in
+     * more than grading_late_threshold_minutes after time_start. This one is
+     * status='late' exactly as recorded, and adds 'excuse', which the grading
+     * version has no use for. The two are not interchangeable.
+     *
+     * 'others' is deliberately not tallied; it has no column. The roster is
+     * not joined in here either — that definition belongs to
+     * Grade_calculator::roster(), and duplicating it is how the old
+     * class_student.section = class_schedule.section join crept in. Students
+     * with no attendance rows simply don't appear; callers zero-fill.
+     *
+     * @return array student_id => ['present'=>int,'absent'=>int,'late'=>int,'excuse'=>int]
+     */
+    public function status_counts_for_schedule($schedule_id)
     {
-        $sql = "
-            SELECT 
-                s.trans_no AS student_id, 
-                s.lastname, 
-                s.firstname, 
-                sec.section, 
-                SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END) AS present,
-                SUM(CASE WHEN a.status = 'absent' THEN 1 ELSE 0 END) AS absents,
-                GROUP_CONCAT(DISTINCT DATE(a.date) ORDER BY a.date ASC SEPARATOR ', ') AS absence_dates
-            FROM 
-                attendance a
-            JOIN 
-                student_master s ON a.student_id = s.trans_no
-            JOIN 
-                class_student sec ON s.trans_no = sec.student_id
-            JOIN 
-                class_schedule cs ON sec.section = cs.section
-            JOIN 
-                semester_master sem ON cs.semester_id = sem.trans_no
-                WHERE 
-                sec.section = ? 
-            AND 
-                a.date >= ?
-            AND 
-                a.status = 'absent'
-            AND 
-                sem.is_active = 1
-            GROUP BY 
-                s.trans_no, s.lastname, s.firstname, sec.section
-            ORDER BY 
-                absents DESC;
-        ";
+        $rows = $this->db->query("
+            SELECT att.student_id,
+                   SUM(att.status = 'present') AS n_present,
+                   SUM(att.status = 'absent')  AS n_absent,
+                   SUM(att.status = 'late')    AS n_late,
+                   SUM(att.status = 'excuse')  AS n_excuse
+            FROM attendance att
+            JOIN class_schedule sched ON sched.schedule_id = att.schedule_id
+            JOIN semester_master sem  ON sem.trans_no = sched.semester_id AND sem.is_active = 1
+            WHERE att.schedule_id = ?
+              AND DATE(att.date) >= sem.class_started
+            GROUP BY att.student_id
+        ", [$schedule_id])->result_array();
 
-        $query = $this->db->query($sql, [$section_id, $start_date]);
-        return $query->result_array();
+        $out = [];
+        foreach ($rows as $r) {
+            $out[$r['student_id']] = [
+                'present' => (int) $r['n_present'],
+                'absent'  => (int) $r['n_absent'],
+                'late'    => (int) $r['n_late'],
+                'excuse'  => (int) $r['n_excuse'],
+            ];
+        }
+        return $out;
     }
 
     public function get_present_students($section_id, $date)
