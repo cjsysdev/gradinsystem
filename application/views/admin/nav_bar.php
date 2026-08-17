@@ -68,6 +68,10 @@
         <a href="<?= base_url(
                         'admin/announcements'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="SMS Announcements"><i class="fa fa-bullhorn"></i></a>
+        <!-- fa-folder-tree, not fa-folder-open: that one already means Classwork above. -->
+        <a href="<?= base_url(
+                        'admin/materials'
+                    ) ?>" class="btn btn-outline-secondary col m-2" title="Class Materials"><i class="fa fa-folder-tree"></i></a>
         <?php $over_max_count = $this->classworks->count_scores_exceeding_max(); ?>
         <!-- <a href="<?= base_url(
                         'admin/score_integrity'

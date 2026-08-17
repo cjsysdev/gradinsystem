@@ -79,6 +79,8 @@ $route['save_my_number'] = 'StudentController/save_my_number';
 $route['student/get-discussion-mode'] = 'StudentController/get_discussion_mode';
 $route['student/add_section'] = 'StudentController/add_section';
 $route['student/section'] = 'StudentController/section';
+// Class Materials, student side. Admin side lives in the Admin block below.
+$route['materials'] = 'StudentController/materials';
 
 // Grades Routes
 $route['grades'] = 'GradesController/grades';
@@ -249,6 +251,18 @@ $route['admin/sms_install'] = 'AdminSmsController/install';
 $route['admin/semesters'] = 'AdminStudentController/semesters';
 $route['admin/save_semester'] = 'AdminStudentController/save_semester';
 $route['admin/activate_semester/(:num)'] = 'AdminStudentController/activate_semester/$1';
+
+// Class Materials. Admin uploads course/demo files into assets/materials/
+// {CLASS_CODE}/ and assigns them to class_schedule sections; students see only
+// the ones assigned to a section they are enrolled in (student route below, in
+// the Student block). Brand-new controller, so no $legacy_admin_routes entry is
+// needed — none of these ever lived at AdminController/*.
+// Specific routes before the bare one, per the house habit (cf. quiz_stats).
+$route['admin/materials_install']      = 'AdminMaterialController/install';
+$route['admin/upload_material']        = 'AdminMaterialController/upload_material';
+$route['admin/update_material']        = 'AdminMaterialController/update_material';
+$route['admin/delete_material/(:num)'] = 'AdminMaterialController/delete_material/$1';
+$route['admin/materials']              = 'AdminMaterialController/manage_materials';
 
 $route['manage_json_files'] = 'AdminContentController/manage_json_files';
 $route['admin/worksheet_generator'] = 'AdminContentController/worksheet_generator';

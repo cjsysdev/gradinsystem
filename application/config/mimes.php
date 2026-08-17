@@ -43,7 +43,16 @@ return array(
 	'gtar'	=>	'application/x-gtar',
 	'gz'	=>	'application/x-gzip',
 	'gzip'  =>	'application/x-gzip',
-	'php'	=>	array('application/x-httpd-php', 'application/php', 'application/x-php', 'text/php', 'text/x-php', 'application/x-httpd-php-source'),
+	// Widened past stock CI3 for the Class Materials module, which accepts .php
+	// demo source (AdminMaterialController::UPLOAD_WHITELIST — and stores it
+	// with a .txt tail so it can never execute). CI3 validates against what
+	// finfo REPORTS, not what the browser claims, and finfo says 'text/html'
+	// for any demo that opens with markup before its first <?php, 'text/plain'
+	// for a short snippet, and 'application/octet-stream' when the magic
+	// database has nothing. Without those three, ordinary lecture demos are
+	// rejected as "filetype not allowed". Only this module allows the 'php'
+	// extension at all, so nothing else is loosened by this line.
+	'php'	=>	array('application/x-httpd-php', 'application/php', 'application/x-php', 'text/php', 'text/x-php', 'application/x-httpd-php-source', 'text/html', 'text/plain', 'application/octet-stream'),
 	'php4'	=>	'application/x-httpd-php',
 	'php3'	=>	'application/x-httpd-php',
 	'phtml'	=>	'application/x-httpd-php',
@@ -182,5 +191,22 @@ return array(
 	'odt'	=>	'application/vnd.oasis.opendocument.text',
 	'odm'	=>	'application/vnd.oasis.opendocument.text-master',
 	'ott'	=>	'application/vnd.oasis.opendocument.text-template',
-	'oth'	=>	'application/vnd.oasis.opendocument.text-web'
+	'oth'	=>	'application/vnd.oasis.opendocument.text-web',
+
+	// ── Class Materials module (assets/materials/) ───────────────────────────
+	// CI3's Upload::do_upload() resolves allowed_types against THIS array, so an
+	// extension missing here is rejected no matter what allowed_types says. The
+	// nine below are the demo/source types AdminMaterialController accepts and
+	// stock CI3 does not ship. 'text/plain' and 'application/octet-stream' are
+	// listed on the source formats because that is what browsers actually send
+	// for them — without those the MIME check still fails.
+	'md'	=>	array('text/markdown', 'text/x-markdown', 'text/plain', 'application/octet-stream'),
+	'webp'	=>	array('image/webp'),
+	'sql'	=>	array('text/plain', 'text/x-sql', 'application/sql', 'application/octet-stream'),
+	'c'		=>	array('text/plain', 'text/x-c', 'text/x-csrc', 'application/octet-stream'),
+	'cpp'	=>	array('text/plain', 'text/x-c', 'text/x-c++src', 'application/octet-stream'),
+	'h'		=>	array('text/plain', 'text/x-c', 'text/x-chdr', 'application/octet-stream'),
+	'py'	=>	array('text/plain', 'text/x-python', 'application/x-python-code', 'application/octet-stream'),
+	'java'	=>	array('text/plain', 'text/x-java-source', 'application/octet-stream'),
+	'ts'	=>	array('text/plain', 'application/typescript', 'text/x-typescript', 'application/octet-stream')
 );

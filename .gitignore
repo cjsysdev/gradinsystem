@@ -34,6 +34,12 @@ user_guide_src/cilexer/pycilexer.egg-info/*
 uploads
 /uploads
 
+# Uploaded class materials — content, not code. These live only on the host they
+# were uploaded to (deploy.php is a bare `git pull`, so committing them would
+# ship files to production whose DB rows stayed behind). Keep the hardening rules.
+assets/materials/*
+!assets/materials/.htaccess
+
 # Claude/Anthropic API key — never commit
 application/config/anthropic.php
 

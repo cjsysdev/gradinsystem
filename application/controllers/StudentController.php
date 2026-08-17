@@ -603,4 +603,40 @@ class StudentController extends CI_Controller
 
         $this->load->view('performance_sheet', $data);
     }
+
+    /**
+     * Class Materials: the demo files / handouts an admin uploaded for the
+     * sections this student is enrolled in. Upload side is
+     * AdminMaterialController; visibility rules live in Class_material.
+     *
+     * The session check is inline on purpose — this class has no constructor,
+     * so there is no shared gate to inherit (every other method here does its
+     * own check too). Do not assume a logged-in session in anything added here.
+     */
+    public function materials()
+    {
+        if (!isset($_SESSION['online'])) {
+            redirect('login');
+        }
+
+        $this->load->model('Class_material');
+
+        // Returns [] rather than throwing when the tables don't exist yet, so
+        // the page is safe to hit before admin/materials_install has been run.
+        $materials = $this->Class_material->get_for_student($this->session->student_id);
+
+        // Group by category for rendering. The SQL already sorted categories
+        // with the NULL/blank ones last, so insertion order is render order and
+        // "General" naturally lands at the bottom.
+        $grouped = [];
+        foreach ($materials as $m) {
+            $key = ($m['category'] !== null && $m['category'] !== '') ? $m['category'] : 'General';
+            $grouped[$key][] = $m;
+        }
+
+        $this->load->view('materials', [
+            'grouped' => $grouped,
+            'total'   => count($materials),
+        ]);
+    }
 }
