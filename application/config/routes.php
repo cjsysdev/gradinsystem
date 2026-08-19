@@ -79,6 +79,11 @@ $route['student/get-discussion-mode'] = 'StudentController/get_discussion_mode';
 $route['student/add_section'] = 'StudentController/add_section';
 $route['student/section'] = 'StudentController/section';
 
+// Grade audit harness (admin-only / CLI). Makes the /grade_audit/... URLs the
+// docblocks and CLAUDE.md refer to actually resolve.
+$route['grade_audit/(:any)/(:any)'] = 'GradeAuditController/$1/$2';
+$route['grade_audit/(:any)'] = 'GradeAuditController/$1';
+
 // Grades Routes
 $route['grades'] = 'GradesController/grades';
 $route['grades/all'] = 'GradesController/AllSectionGrades';
