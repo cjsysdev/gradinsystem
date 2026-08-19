@@ -347,13 +347,43 @@ class Grade_calculator extends CI_Model
         return $this->io_types;
     }
 
-    private function required_iotypes()
+    /**
+     * The io_types a term must contain before it can be graded at all.
+     * Public because the front-end estimator has to apply the same INC rule as
+     * term_grade() does — see policy().
+     */
+    public function required_iotypes()
     {
         $configured = $this->cfg('grading_required_iotypes');
         if (is_array($configured)) {
             return array_map('intval', $configured);
         }
         return array_keys($this->io_types());
+    }
+
+    /**
+     * Every tunable the POLICY layer reads, in one serialisable bundle.
+     *
+     * Exists so the read-only front-end estimator (assets/js/grade-estimator.js)
+     * can mirror transmute()/component()/term_grade()/final_grade() without
+     * hardcoding a single constant of its own. Nothing here is a new rule — it
+     * is the same config/grading.php values these methods already use, exposed
+     * so there remains exactly ONE place a rule is defined.
+     *
+     * Change a rule in config/grading.php and the estimator follows it; the
+     * estimator must never carry a literal that could drift from this.
+     */
+    public function policy()
+    {
+        return [
+            'point_floor'          => (float) $this->cfg('grading_point_floor'),
+            'point_passing'        => (float) $this->cfg('grading_point_passing'),
+            'point_ceiling'        => (float) $this->cfg('grading_point_ceiling'),
+            'term_weights'         => $this->cfg('grading_term_weights'),
+            'fail_as_inc_above'    => $this->cfg('grading_fail_as_inc_above'),
+            'passing_rate_fallback'=> (float) $this->cfg('grading_passing_rate_fallback'),
+            'required_iotypes'     => $this->required_iotypes(),
+        ];
     }
 
     /**
@@ -652,6 +682,8 @@ class Grade_calculator extends CI_Model
             'schedule_id'        => (int) $schedule_id,
             'passing_rate'       => $midterm['passing_rate'],
             'io_types'           => $midterm['io_types'],
+            'required_iotypes'   => $midterm['required_iotypes'],
+            'policy'             => $this->policy(),
             'midterm_components' => $m['components'],
             'final_components'   => $f['components'] ?? [],
             'midterm'            => $m['term'],

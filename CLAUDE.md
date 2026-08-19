@@ -82,8 +82,37 @@ Rules that are easy to break:
 `GradeAuditController` (admin-only, also CLI-runnable) is the safety net:
 `selftest` (policy unit checks), `diff` (compare against the frozen baseline in
 `uploads/grade_audit/`), `integrity` (data drift report), `scoretest`
-(guardrails, transactional + rolled back), `student/{id}` (spot-check).
-**Run `selftest` and `diff` after any change to grading.**
+(guardrails, transactional + rolled back), `student/{id}` (spot-check),
+`policyvectors` + `jsparity` (PHP↔JS parity, below).
+**Run `selftest`, `diff` and `jsparity` after any change to grading.**
+
+### The one sanctioned second implementation
+`assets/js/grade-estimator.js` re-implements the **policy layer only** so the
+student dashboard (`home.php`) can show live "what if I scored X?" slider
+estimates without a round trip. It is display-only: nothing it computes is
+posted, stored, or shown as an official grade, and the real server-rendered
+grade stays on the page behind a toggle.
+
+It is allowed to exist only because it cannot silently drift:
+- **It hardcodes no rule.** Passing rate, io_type weights, scale anchors, term
+  weights, `grading_fail_as_inc_above` and the required-io_type list all reach
+  the browser via `Grade_calculator::policy()` and the controller's
+  `_estimator_payload()`. A grading literal in that JS file is a bug — change
+  `config/grading.php` and the estimator follows.
+- **Parity is machine-checked.** `/grade_audit/policyvectors` emits ~7,800
+  input/output vectors generated *by* `Grade_calculator` (so PHP is the
+  expectation by definition); `/grade_audit/jsparity` replays them through the
+  real JS file in a browser and reports any mismatch. The set includes
+  end-to-end `estimate_initial` cases asserting that an *untouched* estimate
+  equals the server's own grade exactly.
+- **`phpRound()` mirrors PHP 8.4's `round()`**, which rounds the shortest
+  round-trip decimal rather than the scaled binary value. Naive
+  `Math.round(x * 100) / 100` disagrees on ~1.5% of realistic grades — enough
+  to move a percentage by 0.01 and flip an INC at the cutoff. If `jsparity`
+  starts failing, check the server's PHP version first.
+
+Do not add grade arithmetic to any *other* JS file, and do not extend this one
+beyond the policy layer.
 
 ## Admin controllers
 The old 3,100-line `AdminController` was split into five controllers, all
