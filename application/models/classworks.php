@@ -272,6 +272,70 @@ class classworks extends MY_Model
     // prior-semester and non-enrolled rows. This model now owns submission
     // CRUD only — it does not compute grades.
 
+    /**
+     * Assessments assigned to this student that have no classworks row at all.
+     *
+     * The mirror image of get_submissions_by_student(): that one starts from
+     * classworks and can only ever show what was handed in, so a student who
+     * submitted nothing looked identical to one with nothing assigned.
+     *
+     * Roster rule as per Grade_calculator::roster() — keyed on
+     * class_student.schedule_id in the active semester, accepting
+     * status='enrolled' OR status IS NULL (NULL is a backfill gap from the bulk
+     * import, not a "not enrolled" marker). get_missing_submissions() above
+     * filters on 'enrolled' alone, which is why it reports nothing for
+     * legacy-imported sections.
+     *
+     * assessment_full.status is NOT filtered here, deliberately: that column is
+     * the open/closed submission toggle, not draft/published. Closed
+     * assessments are the ones a student can no longer make up, so filtering on
+     * status = 1 would hide exactly the work that matters — and only 38 of 388
+     * rows are open at any time. Grade_calculator::raw_components() ignores it
+     * for the same reason, so this list matches what the grade actually counts.
+     *
+     * @param  int   $student_id
+     * @return array one row per unsubmitted assessment, ordered by due date
+     */
+    public function get_unsubmitted_by_student($student_id)
+    {
+        $sql = "
+            SELECT DISTINCT
+                a.assessment_id,
+                a.title,
+                a.max_score,
+                a.iotype_id,
+                a.term,
+                a.due
+            FROM
+                class_student cst
+            JOIN
+                class_schedule sched ON sched.schedule_id = cst.schedule_id
+            JOIN
+                semester_master sem ON sem.trans_no = sched.semester_id AND sem.is_active = 1
+            JOIN
+                assessment_full a ON a.schedule_id = sched.schedule_id
+            LEFT JOIN
+                classworks c ON c.assessment_id = a.assessment_id
+                            AND c.student_id = cst.student_id
+            WHERE
+                cst.student_id = ?
+                AND (cst.status = 'enrolled' OR cst.status IS NULL)
+                AND c.classwork_id IS NULL
+            ORDER BY
+                a.due ASC, a.title ASC
+        ";
+
+        $query = $this->db->query($sql, [$student_id]);
+
+        if ($query === false) {
+            $error = $this->db->error();
+            log_message('error', 'Database error: ' . $error['message']);
+            return [];
+        }
+
+        return $query->result_array();
+    }
+
     public function get_submissions_by_student($student_id)
     {
         $sql = "

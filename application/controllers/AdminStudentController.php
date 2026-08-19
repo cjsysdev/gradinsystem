@@ -454,6 +454,11 @@ class AdminStudentController extends Admin_Controller
         $data['has_account']  = $account && $account['role'] !== 'admin';
         $data['attendance']   = $this->student_master->get_attendance_summary($student_id);
         $data['classworks']   = $this->classworks->get_submissions_by_student($student_id);
+        // Assessments with no submission row at all. Kept as a separate list
+        // rather than merged into $classworks so the submitted-work percentage
+        // in the view keeps its existing meaning (scored / max over work handed
+        // in) instead of silently gaining every missing assessment's max_score.
+        $data['unsubmitted']  = $this->classworks->get_unsubmitted_by_student($student_id);
         $data['violations']   = $this->violation->get_all_violations(['student_id' => $student_id]);
         $data['vio_summary']  = $this->violation->get_violation_summary_by_student($student_id);
         $data['contacts']     = $this->emergency_contact->get_by_student($student_id);

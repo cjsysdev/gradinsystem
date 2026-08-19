@@ -139,16 +139,27 @@
     $total_score = array_sum(array_column(array_filter($classworks, function($c) { return $c['score'] !== null; }), 'score'));
     $total_max   = array_sum(array_column(array_filter($classworks, function($c) { return $c['max_score'] !== null; }), 'max_score'));
     $pct = $total_max > 0 ? round(($total_score / $total_max) * 100, 1) : null;
+
+    $unsubmitted = $unsubmitted ?? [];
+    // Past due vs. still open: a missing assessment that isn't due yet is not
+    // the teacher's problem yet, so the two are counted and coloured apart.
+    $today   = date('Y-m-d');
+    $overdue = array_filter($unsubmitted, function($a) use ($today) {
+        return !empty($a['due']) && substr($a['due'], 0, 10) > '0000-00-00' && substr($a['due'], 0, 10) < $today;
+    });
     ?>
     <h5 class="mt-4">Classwork
-        <small class="text-muted">(<?= count($classworks) ?> submitted)</small>
+        <small class="text-muted">(<?= count($classworks) ?> submitted<?= count($unsubmitted) ? ', ' . count($unsubmitted) . ' unsubmitted' : '' ?>)</small>
         <?php if ($pct !== null): ?>
-            <span class="badge badge-info"><?= $pct ?>%</span>
+            <span class="badge badge-info" title="Score over max, submitted work only"><?= $pct ?>%</span>
+        <?php endif; ?>
+        <?php if (count($overdue) > 0): ?>
+            <span class="badge badge-danger"><?= count($overdue) ?> missing</span>
         <?php endif; ?>
     </h5>
 
-    <?php if (empty($classworks)): ?>
-        <div class="alert alert-info py-2">No submitted classwork found for this student.</div>
+    <?php if (empty($classworks) && empty($unsubmitted)): ?>
+        <div class="alert alert-info py-2">No classwork assigned to this student's sections this semester.</div>
     <?php else: ?>
         <div class="table-responsive">
             <table class="table table-sm table-bordered table-hover">
@@ -157,7 +168,9 @@
                         <th>Title</th>
                         <th>Score</th>
                         <th>Max</th>
+                        <th>Due</th>
                         <th>Submitted</th>
+                        <th>Status</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -166,12 +179,46 @@
                             <td><?= htmlspecialchars($cw['title']) ?></td>
                             <td><?= $cw['score'] !== null ? $cw['score'] : '<span class="text-muted">—</span>' ?></td>
                             <td><?= $cw['max_score'] ?? '—' ?></td>
+                            <td class="text-muted">—</td>
                             <td><?= $cw['created_at'] ? date('M j, Y', strtotime($cw['created_at'])) : '—' ?></td>
+                            <td>
+                                <?php if ($cw['score'] !== null): ?>
+                                    <span class="badge badge-success">Graded</span>
+                                <?php else: ?>
+                                    <span class="badge badge-secondary">Ungraded</span>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+
+                    <?php foreach ($unsubmitted as $a): ?>
+                        <?php
+                        $due_date = (!empty($a['due']) && substr($a['due'], 0, 10) > '0000-00-00')
+                            ? substr($a['due'], 0, 10) : null;
+                        $is_overdue = $due_date !== null && $due_date < $today;
+                        ?>
+                        <tr class="<?= $is_overdue ? 'table-danger' : 'table-warning' ?>">
+                            <td><?= htmlspecialchars($a['title']) ?></td>
+                            <td><span class="text-muted">—</span></td>
+                            <td><?= $a['max_score'] ?? '—' ?></td>
+                            <td><?= $due_date ? date('M j, Y', strtotime($due_date)) : '<span class="text-muted">—</span>' ?></td>
+                            <td><span class="text-muted">—</span></td>
+                            <td>
+                                <?php if ($is_overdue): ?>
+                                    <span class="badge badge-danger">Missing</span>
+                                <?php else: ?>
+                                    <span class="badge badge-warning">Not submitted</span>
+                                <?php endif; ?>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
+        <small class="text-muted d-block mb-2">
+            The percentage above covers submitted work only and is not a grade —
+            see the grade sheet for the official standing.
+        </small>
     <?php endif; ?>
 
     <!-- Emergency contacts -->
