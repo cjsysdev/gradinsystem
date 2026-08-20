@@ -175,6 +175,7 @@ class assessments extends MY_Model
                 SUM(CASE WHEN cw.classwork_id IS NOT NULL AND cw.score IS NULL THEN 1 ELSE 0 END) AS unscored_count,
                 (SELECT COUNT(*) FROM class_student cst WHERE cst.schedule_id = a.schedule_id AND cst.status = 'enrolled') AS enrolled_count,
                 COUNT(DISTINCT cw.student_id) AS submitted_student_count,
+                MIN(COALESCE(cw.submitted_at, cw.created_at)) AS first_submission,
                 (SELECT COUNT(*) FROM assessment_section s2 WHERE s2.assessment_id = a.master_id) AS sibling_count,
                 (SELECT GROUP_CONCAT(cs2.section ORDER BY cs2.section SEPARATOR ', ')
                     FROM assessment_section s2 JOIN class_schedule cs2 ON cs2.schedule_id = s2.schedule_id

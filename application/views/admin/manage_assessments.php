@@ -119,7 +119,7 @@
                     <th>Widget</th>
                     <th>Term</th>
                     <th>Max Score</th>
-                    <th>Due</th>
+                    <th title="Earliest student submission for this assessment">First Submission</th>
                     <th>Submissions</th>
                     <th>Status</th>
                     <th>Actions</th>
@@ -167,7 +167,15 @@
                                 </td>
                                 <td rowspan="<?= (int) $a['_rowspan'] ?>"><?= $a['max_score'] ?></td>
                             <?php endif; ?>
-                            <td><?= convert_due_date_week($a['due']) ?></td>
+                            <td class="text-nowrap">
+                                <?php if (!empty($a['first_submission']) && $a['first_submission'] !== '0000-00-00 00:00:00'): ?>
+                                    <?php $firstSub = new DateTime($a['first_submission']); ?>
+                                    <?= $firstSub->format('M j, Y') ?>
+                                    <br><small class="text-muted"><?= $firstSub->format('g:i A') ?></small>
+                                <?php else: ?>
+                                    <span class="text-muted" title="No submissions yet">&mdash;</span>
+                                <?php endif; ?>
+                            </td>
                             <td>
                                 <span class="badge badge-info"><?= $a['submission_count'] ?></span>
                                 <?php $missing_count = max(0, (int) $a['enrolled_count'] - (int) $a['submitted_student_count']); ?>
