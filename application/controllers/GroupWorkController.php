@@ -52,6 +52,9 @@ class GroupWorkController extends CI_Controller
             return;
         }
 
+        // Group work is still "taking" the assessment — same gate.
+        if (clearance_gate($resolved['assessment'])) return;
+
         $set = $resolved['set'];
         $group = $resolved['group'];
 
@@ -136,6 +139,7 @@ class GroupWorkController extends CI_Controller
     public function create_group($assessment_id)
     {
         $resolved = $this->_resolve($assessment_id);
+        if ($resolved && clearance_gate($resolved['assessment'])) return;
         if (!$resolved || empty($resolved['set']['self_select'])) {
             show_404();
             return;
@@ -165,6 +169,7 @@ class GroupWorkController extends CI_Controller
     public function join_group($assessment_id, $group_id)
     {
         $resolved = $this->_resolve($assessment_id);
+        if ($resolved && clearance_gate($resolved['assessment'])) return;
         if (!$resolved || empty($resolved['set']['self_select'])) {
             show_404();
             return;
@@ -198,6 +203,7 @@ class GroupWorkController extends CI_Controller
     public function leave_group($assessment_id)
     {
         $resolved = $this->_resolve($assessment_id);
+        if ($resolved && clearance_gate($resolved['assessment'])) return;
         if (!$resolved || empty($resolved['set']['self_select']) || !$resolved['group']) {
             redirect('GroupWorkController/workspace/' . $assessment_id);
             return;
@@ -216,6 +222,7 @@ class GroupWorkController extends CI_Controller
     public function save_draft($assessment_id)
     {
         $resolved = $this->_resolve($assessment_id);
+        if ($resolved && clearance_gate_json($resolved['assessment'])) return;
         if (!$resolved || !$resolved['group']) {
             $this->_json(['ok' => false], 400);
             return;
@@ -358,6 +365,7 @@ class GroupWorkController extends CI_Controller
     public function toggle_ready($assessment_id)
     {
         $resolved = $this->_resolve($assessment_id);
+        if ($resolved && clearance_gate_json($resolved['assessment'])) return;
         if (!$resolved || !$resolved['group']) {
             $this->_json(['ok' => false], 400);
             return;
@@ -393,6 +401,7 @@ class GroupWorkController extends CI_Controller
     public function submit_group($assessment_id)
     {
         $resolved = $this->_resolve($assessment_id);
+        if ($resolved && clearance_gate($resolved['assessment'], 'classwork')) return;
         if (!$resolved || !$resolved['group']) {
             $this->session->set_flashdata('error', 'Unable to submit — group not found.');
             redirect('classwork');
@@ -691,6 +700,7 @@ class GroupWorkController extends CI_Controller
     public function submit_group_iq($assessment_id)
     {
         $resolved = $this->_resolve($assessment_id);
+        if ($resolved && clearance_gate_json($resolved['assessment'])) return;
         if (!$resolved || !$resolved['group']) {
             $this->_json(['success' => false, 'message' => 'Group not found'], 400);
             return;

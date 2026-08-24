@@ -231,13 +231,18 @@ $route['admin/add_violation'] = 'AdminStudentController/add_violation';
 $route['admin/update_violation_status'] = 'AdminStudentController/update_violation_status';
 $route['admin/search_students'] = 'AdminStudentController/search_students';
 $route['uncleared_students'] = 'AdminStudentController/uncleared_students_overview';
+$route['uncleared_students/install'] = 'AdminStudentController/student_clearance_install';
+// $1 is student_master.trans_no (not the class_student row id) — clearance is
+// per student/semester/term, and the semester + term ride in the query string.
 $route['uncleared_students/clear/(:num)/(:any)'] = 'AdminStudentController/clear_student/$1/$2';
+$route['uncleared_students/unclear/(:num)/(:any)'] = 'AdminStudentController/unclear_student/$1/$2';
 $route['uncleared_students/(:any)'] = 'AdminStudentController/uncleared_students/$1';
 $route['admin/students_by_section'] = 'AdminStudentController/students_by_section';
 $route['admin/student_summary/(:num)'] = 'AdminStudentController/student_summary/$1';
 $route['admin/assign_officer'] = 'AdminStudentController/assign_officer';
 $route['admin/export_officers'] = 'AdminStudentController/export_officers';
 $route['admin/section_officers_install'] = 'AdminStudentController/section_officers_install';
+$route['admin/student_clearance_install'] = 'AdminStudentController/student_clearance_install';
 $route['admin/register_student'] = 'AdminStudentController/register_student';
 $route['admin/check_student_no'] = 'AdminStudentController/check_student_no';
 $route['admin/check_username'] = 'AdminStudentController/check_username';
@@ -298,7 +303,8 @@ $legacy_admin_routes = [
         . '|delete_class_assessment|preview_widget|update_assessment_status'
         . '|bulk_update_assessment_status|delete_assessment',
     'AdminStudentController' => 'emergency_contacts|export_emergency_contacts'
-        . '|uncleared_students_overview|uncleared_students|clear_student|student_violations'
+        . '|uncleared_students_overview|uncleared_students|clear_student|unclear_student'
+        . '|student_clearance_install|student_violations'
         . '|add_violation|update_violation_status|students_by_section|student_summary'
         . '|login_as_student|register_student|check_student_no|check_username'
         . '|student_requests|process_student_request|password_resets|process_password_reset'

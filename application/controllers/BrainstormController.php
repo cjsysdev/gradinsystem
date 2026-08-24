@@ -38,6 +38,8 @@ class BrainstormController extends CI_Controller
             return;
         }
 
+        if (clearance_gate($assessment)) return;
+
         $config = json_decode($assessment['given'] ?? '', true) ?: [];
         $state = $this->Live_state_model->get_or_create($assessment_id, null);
 
@@ -73,6 +75,8 @@ class BrainstormController extends CI_Controller
             return;
         }
 
+        if (clearance_gate_json($assessment)) return;
+
         $text = trim((string) $this->input->post('text'));
         if ($text === '') {
             $this->_json(['ok' => false, 'msg' => 'Note text is required'], 400);
@@ -105,6 +109,8 @@ class BrainstormController extends CI_Controller
             $this->_json(['ok' => false], 400);
             return;
         }
+
+        if (clearance_gate_json($assessment)) return;
 
         $note_id = (int) $this->input->post('note_id');
         $config = json_decode($assessment['given'] ?? '', true) ?: [];

@@ -51,6 +51,8 @@ class assessments extends MY_Model
                 a.max_score,
                 a.created_at,
                 a.due,
+                a.term,
+                a.widget_id,
                 iot.type,
                 cs.section
             FROM

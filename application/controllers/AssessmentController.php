@@ -23,11 +23,15 @@ class AssessmentController extends CI_Controller
     {
         $classwork = $this->assessments->as_array()->get($classwork_id);
 
-        $student_info = $this->class_student->get_class_student_info($this->session->student_id);
-
         if (!$classwork) {
             show_404();
         }
+
+        // Clearance gate FIRST — above the widget hand-offs below. It used to
+        // sit after them, so a Major Exam delivered as a secure quiz, an
+        // interactive quiz, a brainstorm or a group activity redirected out of
+        // this method before the check ever ran. See clearance_helper.php.
+        if (clearance_gate($classwork)) return;
 
         $widget = null;
         if (!empty($classwork['widget_id'])) {
@@ -101,11 +105,6 @@ class AssessmentController extends CI_Controller
             }
         }
 
-        if(empty($student_info['is_cleared']) && $classwork['iotype_id'] == 3) {
-            $this->session->set_flashdata('warning', 'Only students with cleared clearance requirements may take the exam.');
-            redirect('attendance');
-        }
-
         // Prefill the widget with the student's prior submission (if any) —
         // without this, re-opening a submitted widget always renders blank,
         // and Turn In would overwrite the good submission with blank JSON.
@@ -123,7 +122,7 @@ class AssessmentController extends CI_Controller
 
         $data = [
             'classwork' => $classwork,
-            'is_cleared' => $student_info['is_cleared'],
+            'is_cleared' => clearance_allows($classwork),
             'widget' => $widget,
             'widget_config' => $widget ? (json_decode($classwork['given'] ?? '', true) ?: []) : [],
             'widget_existing' => $widget_existing,
@@ -177,6 +176,10 @@ class AssessmentController extends CI_Controller
         $post = $this->input->post();
         $student_id = $this->session->student_id;
         $assessment_id = $post['assessment_id'];
+
+        // Gating the page alone would only hide the form — this endpoint is a
+        // plain POST anyone can replay. See clearance_helper.php.
+        if (clearance_gate($assessment_id, 'classwork')) return;
 
         // Initialize submission data
         $submission_data = [

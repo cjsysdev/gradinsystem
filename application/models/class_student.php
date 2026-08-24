@@ -19,39 +19,13 @@ class class_student extends MY_Model
         parent::__construct();
     }
 
-    public function get_uncleared_students_by_section($section)
-    {
-        return $this->db
-            ->join('student_master', 'class_student.student_id = student_master.trans_no')
-            ->join('semester_master', 'class_student.semester_id = semester_master.trans_no')
-            ->where('class_student.section', $section)
-            ->where('semester_master.is_active', 1)
-            ->where('is_cleared IS NULL', null, false)
-            ->order_by('student_master.lastname')
-            ->get($this->table)
-            ->result_array();
-    }
-
-    public function clear_student($id)
-    {
-        return $this->db
-            ->where('id', $id)
-            ->update($this->table, ['is_cleared' => 1]);
-    }
-
-    public function get_sections_with_uncleared_counts()
-    {
-        $sql = "
-            SELECT cs.section, COUNT(*) AS uncleared_count
-            FROM class_student cs
-            JOIN semester_master sm ON cs.semester_id = sm.trans_no
-            WHERE sm.is_active = 1 AND cs.is_cleared IS NULL
-            GROUP BY cs.section
-            ORDER BY cs.section
-        ";
-        $query = $this->db->query($sql);
-        return $query ? $query->result_array() : [];
-    }
+    // Clearance moved to the `student_clearance` table (see Student_clearance):
+    // it is per student, per SEMESTER and per TERM, which a single column on a
+    // per-enrollment row could not express. get_uncleared_students_by_section(),
+    // clear_student() and get_sections_with_uncleared_counts() lived here and
+    // are now Student_clearance::students_by_section() / clear() /
+    // sections_with_counts(). The `is_cleared` column is left in place for the
+    // old rows the backfill read, but nothing writes it any more.
 
     public function add_section($id, $section, $semester_id = null)
     {
@@ -146,6 +120,7 @@ class class_student extends MY_Model
                 cs.class_id,
                 cs.section,
                 cs.is_cleared,
+                cs.semester_id,
                 cs.status,
                 sm.semcode,
                 sm.description AS semester_description,

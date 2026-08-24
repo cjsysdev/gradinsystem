@@ -23,7 +23,7 @@
              AdminController::_monitoring_filters(). -->
         <input type="hidden" name="filters_applied" value="1">
 
-        <div class="col-md-4 mb-2">
+        <div class="col-md-3 mb-2">
             <label for="schedule_id" class="mb-1">Section</label>
             <select name="schedule_id" id="schedule_id" class="form-control">
                 <option value="">-- Select Section --</option>
@@ -35,7 +35,7 @@
             </select>
         </div>
 
-        <div class="col-md-3 mb-2">
+        <div class="col-md-4 mb-2">
             <label class="mb-1 d-block">Show</label>
             <div class="form-check form-check-inline">
                 <input class="form-check-input" type="checkbox" name="show_grades" value="1" id="show_grades" <?= $show_grades ? 'checked' : '' ?>>
@@ -44,6 +44,18 @@
             <div class="form-check form-check-inline">
                 <input class="form-check-input" type="checkbox" name="show_attendance" value="1" id="show_attendance" <?= $show_attendance ? 'checked' : '' ?>>
                 <label class="form-check-label" for="show_attendance">Attendance</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="checkbox" name="show_missing" value="1" id="show_missing" <?= $show_missing ? 'checked' : '' ?>>
+                <label class="form-check-label" for="show_missing"
+                       title="Count of past-due classwork with nothing handed in, per component">Missing</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="only_with_values" value="1" id="only_with_values" <?= $only_with_values ? 'checked' : '' ?>>
+                <label class="form-check-label small" for="only_with_values"
+                       title="Hides students whose Missing and Absent tallies are all zero">
+                    Only rows with missing / absences
+                </label>
             </div>
         </div>
 
@@ -75,11 +87,24 @@
 
     <?php if (!$schedule_id): ?>
         <div class="alert alert-info">Pick a section to see its monitoring sheet.</div>
+    <?php elseif (empty($rows) && $only_with_values && $total_rows > 0): ?>
+        <div class="alert alert-success">
+            All <?= (int) $total_rows ?> student<?= $total_rows === 1 ? '' : 's' ?> on this section are clear —
+            nothing missing and no absences. Untick <em>Only rows with missing / absences</em> to see the full sheet.
+        </div>
     <?php elseif (empty($rows)): ?>
         <div class="alert alert-warning">No students enrolled on this section for the active semester.</div>
     <?php else: ?>
-        <?php if (!$show_grades && !$show_attendance): ?>
-            <div class="alert alert-secondary">Tick Grades or Attendance to show more columns.</div>
+        <?php if (!$show_grades && !$show_attendance && !$show_missing): ?>
+            <div class="alert alert-secondary">Tick Grades, Attendance or Missing to show more columns.</div>
+        <?php endif; ?>
+
+        <?php if ($only_with_values && !$show_missing && !$show_attendance): ?>
+            <div class="alert alert-secondary">
+                <em>Only rows with missing / absences</em> has nothing to filter on while both
+                <strong>Missing</strong> and <strong>Attendance</strong> are hidden, so the whole
+                roster is shown. A row is only ever hidden on a tally the sheet is displaying.
+            </div>
         <?php endif; ?>
 
         <div class="table-responsive">
@@ -87,7 +112,7 @@
                 <thead class="thead-light">
                     <tr>
                         <?php foreach ($columns as $c): ?>
-                            <th><?= htmlspecialchars($c['label']) ?></th>
+                            <th<?= isset($c['label_long']) ? ' title="' . htmlspecialchars($c['label_long']) . '"' : '' ?>><?= htmlspecialchars($c['label']) ?></th>
                         <?php endforeach; ?>
                         <th>Action</th>
                     </tr>
@@ -101,7 +126,14 @@
                                 // takes the red INC styling — it gets its own muted italic,
                                 // explained by the legend below the table.
                                 $provisional = !empty($row[$c['key'] . '_provisional']);
-                                if ($provisional) {
+                                $kind = isset($c['kind']) ? $c['kind'] : '';
+                                if ($kind === 'missing') {
+                                    // A zero here is the good case, so it stays
+                                    // quiet and only a real backlog draws the eye.
+                                    $cell_class = $row[$c['key']] > 0
+                                        ? 'text-danger font-weight-bold'
+                                        : 'text-muted';
+                                } elseif ($provisional) {
                                     $cell_class = 'font-italic text-info';
                                 } elseif ($c['key'] === 'overall' && $row['is_inc']) {
                                     $cell_class = 'text-danger font-weight-bold';
@@ -112,8 +144,12 @@
                                 <td<?= $cell_class ? ' class="' . $cell_class . '"' : '' ?>><?= htmlspecialchars((string) $row[$c['key']]) ?><?= $provisional ? '*' : '' ?></td>
                             <?php endforeach; ?>
                             <td class="text-nowrap">
+                                <a href="<?= base_url('admin/student_summary/' . (int) $row['student_id']) ?>"
+                                   class="btn btn-sm btn-outline-info" title="Attendance, classwork, violations and contacts for this student">
+                                    <i class="fas fa-id-card"></i>
+                                </a>
                                 <a href="<?= base_url('admin/student_attendance/' . (int) $row['student_id']) ?>"
-                                   class="btn btn-sm btn-outline-primary">View / Edit</a>
+                                   class="btn btn-sm btn-outline-primary"> <i class="fas fa-edit"></i></a>
                                 <a href="<?= base_url('admin/print_slips?schedule_id=' . (int) $schedule_id . '&student_id=' . (int) $row['student_id']) ?>"
                                    target="_blank" class="btn btn-sm btn-outline-secondary" title="Print this student's slip">
                                     <i class="fas fa-print"></i>
@@ -124,6 +160,25 @@
                 </tbody>
             </table>
         </div>
+
+        <?php if ($show_missing): ?>
+            <p class="small text-muted mb-1">
+                <strong>Missing</strong> columns count past-due classwork with
+                <em>nothing handed in</em>, per component:
+                <?php
+                $legend = [];
+                foreach ($columns as $c) {
+                    if (isset($c['kind']) && $c['kind'] === 'missing') {
+                        $legend[] = '<strong>' . htmlspecialchars($c['label']) . '</strong> = '
+                            . htmlspecialchars(preg_replace('/^Missing /', '', $c['label_long']));
+                    }
+                }
+                echo implode(', ', $legend);
+                ?>.
+                Work that isn't due yet is not counted, and a submitted-but-ungraded
+                item is not missing.
+            </p>
+        <?php endif; ?>
 
         <?php if ($show_grades && $grade_mode === 'current'): ?>
             <p class="small text-muted mb-1">
@@ -136,7 +191,15 @@
             </p>
         <?php endif; ?>
 
-        <p class="text-muted small"><?= count($rows) ?> student<?= count($rows) === 1 ? '' : 's' ?></p>
+        <p class="text-muted small">
+            <?php if ($only_with_values && count($rows) < $total_rows): ?>
+                <?= count($rows) ?> of <?= (int) $total_rows ?> students shown —
+                the rest have nothing missing and no absences. The <strong>#</strong>
+                column keeps each student's place on the full roster, so it skips.
+            <?php else: ?>
+                <?= count($rows) ?> student<?= count($rows) === 1 ? '' : 's' ?>
+            <?php endif; ?>
+        </p>
     <?php endif; ?>
 </div>
 

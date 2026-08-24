@@ -478,6 +478,9 @@ class InteractiveQuizController extends CI_Controller
         }
 
         $assessment_id      = $assessment_id ? (int) $assessment_id : null;
+
+        // Playing a topic that is wired to a gated assessment IS taking it.
+        if ($assessment_id && clearance_gate($assessment_id)) return;
         $already_submitted  = false;
         $previous_score     = null;
         $previous_answers   = [];
@@ -543,6 +546,9 @@ class InteractiveQuizController extends CI_Controller
         }
 
         $assessment_id     = $assessment_id ? (int) $assessment_id : null;
+
+        // Playing a topic that is wired to a gated assessment IS taking it.
+        if ($assessment_id && clearance_gate($assessment_id)) return;
         $already_submitted = false;
         $previous_score    = null;
         $previous_answers  = [];
@@ -574,6 +580,10 @@ class InteractiveQuizController extends CI_Controller
     public function save_result()
     {
         $assessment_id = (int) $this->input->post('assessment_id');
+
+        // The score-writing endpoint needs the gate as much as the player does.
+        if ($assessment_id && clearance_gate_json($assessment_id)) return;
+
         $score         = (int) $this->input->post('score');
         $answers       = $this->input->post('answers'); // JSON string — per-question choices, for later review
         $student_id    = $this->session->student_id;

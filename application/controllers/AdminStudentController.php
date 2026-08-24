@@ -141,26 +141,122 @@ class AdminStudentController extends Admin_Controller
         return strtoupper(mb_substr($middlename, 0, 1, 'UTF-8')) . '.';
     }
 
+    // ── Clearance ───────────────────────────────────────────────────────────
+    // Scoped by semester AND term: clearance is issued once per term, so a
+    // midterm clearance says nothing about the finals. See Student_clearance.
+
+    /**
+     * Semester + term for the clearance screens, from the query string.
+     * Defaults to the active semester and the midterm, and falls back to the
+     * active semester if ?semester= names one that doesn't exist.
+     */
+    private function _clearance_scope()
+    {
+        $this->load->model('Student_clearance');
+
+        $term        = $this->Student_clearance->normalize_term($this->input->get('term'));
+        $semesters   = $this->Student_clearance->semesters();
+        $semester_id = (int) $this->input->get('semester');
+
+        $valid = array_column($semesters, 'trans_no');
+        if (!$semester_id || !in_array($semester_id, array_map('intval', $valid), true)) {
+            $semester_id = $this->Student_clearance->active_semester_id();
+        }
+
+        $semester = null;
+        foreach ($semesters as $row) {
+            if ((int) $row['trans_no'] === (int) $semester_id) {
+                $semester = $row;
+                break;
+            }
+        }
+
+        return [
+            'term'        => $term,
+            'terms'       => Student_clearance::TERMS,
+            'semester_id' => $semester_id,
+            'semester'    => $semester,
+            'semesters'   => $semesters,
+        ];
+    }
+
+    /** ?semester=&term= suffix, so every link/redirect keeps the scope. */
+    private function _clearance_query($scope)
+    {
+        return '?semester=' . (int) $scope['semester_id'] . '&term=' . $scope['term'];
+    }
+
     public function uncleared_students_overview()
     {
-        $this->load->model('class_student');
-        $data['sections'] = $this->class_student->get_sections_with_uncleared_counts();
+        $data = $this->_clearance_scope();
+        $data['table_ready'] = $this->Student_clearance->table_ready();
+        $data['sections'] = $data['table_ready']
+            ? $this->Student_clearance->sections_with_counts($data['semester_id'], $data['term'])
+            : [];
         $this->load->view('admin/uncleared_students_overview', $data);
     }
 
     public function uncleared_students($section)
     {
-        $this->load->model('class_student');
-        $data['students'] = $this->class_student->get_uncleared_students_by_section($section);
+        $section = urldecode($section);
+        $data = $this->_clearance_scope();
+        $data['table_ready'] = $this->Student_clearance->table_ready();
+        $data['students'] = $data['table_ready']
+            ? $this->Student_clearance->students_by_section($section, $data['semester_id'], $data['term'])
+            : [];
         $data['section'] = $section;
         $this->load->view('admin/uncleared_students', $data);
     }
 
-    public function clear_student($id, $section)
+    /** $student_id is student_master.trans_no (class_student.student_id). */
+    public function clear_student($student_id, $section)
     {
-        $this->load->model('class_student');
-        $this->class_student->clear_student($id);
-        redirect('uncleared_students/' . urlencode($section));
+        $section = urldecode($section);
+        $scope   = $this->_clearance_scope();
+        $this->Student_clearance->clear(
+            $student_id,
+            $scope['semester_id'],
+            $scope['term'],
+            $this->session->userdata('username')
+        );
+        redirect('uncleared_students/' . rawurlencode($section) . $this->_clearance_query($scope));
+    }
+
+    /** Undo — revokes clearance for that semester + term only. */
+    public function unclear_student($student_id, $section)
+    {
+        $section = urldecode($section);
+        $scope   = $this->_clearance_scope();
+        $this->Student_clearance->unclear($student_id, $scope['semester_id'], $scope['term']);
+        redirect('uncleared_students/' . rawurlencode($section) . $this->_clearance_query($scope));
+    }
+
+    // One-time (idempotent) schema setup for student_clearance, including the
+    // backfill from the legacy class_student.is_cleared flag — run once as
+    // admin. Confirmation + pre-flight backup: see Schema_guard.
+    public function student_clearance_install()
+    {
+        $this->load->library('schema_guard');
+        $this->load->model('Student_clearance');
+        $tables = ['student_clearance', 'class_student'];
+
+        if (!$this->schema_guard->confirmed('Student clearance table setup', 'uncleared_students/install', $tables)) {
+            return;
+        }
+
+        $backup   = $this->schema_guard->backup($tables, 'student_clearance');
+        $failures = $this->Student_clearance->install();
+
+        if (!empty($failures)) {
+            $this->session->set_flashdata('error',
+                'Student clearance schema finished with ' . count($failures) . ' failed statement(s) — see application/logs/. '
+                . 'Backup: ' . ($backup ?: 'NOT WRITTEN'));
+        } else {
+            $this->session->set_flashdata('success',
+                'Student clearance table ready.' . ($backup ? ' Backup written to ' . basename($backup) . '.' : ''));
+        }
+
+        redirect('uncleared_students');
     }
 
     public function student_violations()

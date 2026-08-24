@@ -56,7 +56,7 @@ class AuthenticationController extends CI_Controller
                 'username'     => $user->username,
                 'profile_pic'  => $user->profile_pic,
                 'online'       => true,
-                'exam_term'    => false,
+                'exam_term'    => true,
                 'exam_review'  => false,
                 'must_change_password' => (int) ($user->must_change_password ?? 0),
             ];

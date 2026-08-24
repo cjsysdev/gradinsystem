@@ -80,8 +80,8 @@
                 <span class="badge badge-danger position-absolute" style="top:0; right:0; transform:translate(25%,-25%);"><?= $over_max_count ?></span>
             <?php endif; ?>
         </a> -->
-        <!-- <a href="<?= base_url(
+        <a href="<?= base_url(
                         'uncleared_students'
-                    ) ?>" class="btn btn-outline-secondary col m-2" title="Uncleared Students"><i class="fa fa-user-times"></i></a> -->
+                    ) ?>" class="btn btn-outline-secondary col m-2" title="Uncleared Students"><i class="fa fa-user-times"></i></a>
     </div>
 </div>

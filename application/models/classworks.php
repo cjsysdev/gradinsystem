@@ -95,6 +95,61 @@ class classworks extends MY_Model
     }
 
     /**
+     * Per-(student, io_type) count of assessments on a schedule the student
+     * handed nothing in for, for the Section Monitoring "missing" columns.
+     *
+     * Missing is not the same as ungraded: a submitted-but-unscored row still
+     * exists, still counts as 0 in Grade_calculator, and is reported there as
+     * pending. This counts only assessments with no `classworks` row at all.
+     *
+     * Work that isn't due yet is excluded — it isn't late, it's pending — which
+     * matches how admin/student_summary splits "Missing" from "Not submitted".
+     * `assessment_section.status` is deliberately ignored: a closed assessment
+     * nobody submitted is exactly the case these columns exist to surface.
+     *
+     * Nothing here feeds a grade, so it stays out of Grade_calculator.
+     *
+     * @param  int   $schedule_id
+     * @return array [student_id => [iotype_id => count]]
+     */
+    public function missing_counts_for_schedule($schedule_id)
+    {
+        $sql = "
+            SELECT cs.student_id,
+                   a.iotype_id,
+                   COUNT(*) AS n_missing
+            FROM class_student cs
+            JOIN class_schedule sched ON sched.schedule_id = cs.schedule_id
+            JOIN semester_master sem  ON sem.trans_no = sched.semester_id AND sem.is_active = 1
+            JOIN assessment_full a    ON a.schedule_id = sched.schedule_id
+            LEFT JOIN classworks c    ON c.assessment_id = a.assessment_id
+                                     AND c.student_id = cs.student_id
+            WHERE cs.schedule_id = ?
+              AND (cs.status = 'enrolled' OR cs.status IS NULL)
+              AND c.classwork_id IS NULL
+              AND a.due IS NOT NULL
+              AND a.due > '1000-01-01'
+              AND a.due < NOW()
+            GROUP BY cs.student_id, a.iotype_id
+        ";
+
+        $query = $this->db->query($sql, [(int) $schedule_id]);
+
+        if ($query === false) {
+            $error = $this->db->error();
+            log_message('error', 'Database error: ' . $error['message']);
+            return [];
+        }
+
+        $out = [];
+        foreach ($query->result_array() as $r) {
+            $out[(int) $r['student_id']][(int) $r['iotype_id']] = (int) $r['n_missing'];
+        }
+
+        return $out;
+    }
+
+    /**
      * The single validated way to write a score.
      *
      * Every scoring path should go through here. Scores used to be written raw

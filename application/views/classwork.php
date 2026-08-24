@@ -97,9 +97,21 @@ if (!function_exists('truncate_html_preserve')) {
                     <button type="button" class="btn btn-link btn-sm p-0 see-more-btn">See more</button>
                   <?php endif; ?>
                 </div>
-                <a href="<?= base_url('assessment/' . $row['assessment_id']) ?>" class="btn btn-info btn-block">
-                  <?= ($row['iotype_id'] == 3) ? "Start Exam" : "Create" ?>
-                </a>
+                <?php if (!clearance_allows($row)): ?>
+                  <!-- The gate itself is enforced server-side at every entry
+                       point (clearance_helper.php); this only stops the student
+                       walking into a dead end. -->
+                  <button type="button" class="btn btn-secondary btn-block" disabled>
+                    <i class="fa fa-lock"></i> Clearance required
+                  </button>
+                  <small class="text-muted d-block text-center mt-1">
+                    Settle your clearance to take this <?= ($row['iotype_id'] == 3) ? 'exam' : 'assessment' ?>.
+                  </small>
+                <?php else: ?>
+                  <a href="<?= base_url('assessment/' . $row['assessment_id']) ?>" class="btn btn-info btn-block">
+                    <?= ($row['iotype_id'] == 3) ? "Start Exam" : "Create" ?>
+                  </a>
+                <?php endif; ?>
               </div>
             </div>
           <?php endforeach; ?>

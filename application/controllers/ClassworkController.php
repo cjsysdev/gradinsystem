@@ -41,6 +41,11 @@ class ClassworkController extends CI_Controller
     public function submit_classwork()
     {
         $post = $this->input->post();
+
+        // Same gate as AssessmentController::submit_classwork() — this is the
+        // second POST path into classworks. See clearance_helper.php.
+        if (clearance_gate($post['assessment_id'] ?? null, 'classwork')) return;
+
         $value = $this->classworks->where(
             [
                 'student_id' => $this->session->student_id,

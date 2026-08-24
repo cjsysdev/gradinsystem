@@ -30,6 +30,10 @@ class SecureQuizController extends CI_Controller
             return;
         }
 
+        // Reachable directly by URL, not only through AssessmentController's
+        // redirect — so the clearance gate has to be here too.
+        if (clearance_gate($assessment)) return;
+
         $config = json_decode($assessment->given ?? '', true) ?: [];
         $query_max_items = $assessment->max_score;
         $data['max_items'] = $query_max_items;
@@ -72,6 +76,9 @@ class SecureQuizController extends CI_Controller
 
     public function submit($assessment_id)
     {
+        // An uncleared student must not be able to POST an attempt either.
+        if (clearance_gate($assessment_id)) return;
+
         $session_key = 'shuffled_questions_' . $assessment_id;
         $questions = $this->session->userdata($session_key) ?: [];
         $userAnswers = $this->input->post('answers') ?: [];

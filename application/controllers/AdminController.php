@@ -206,25 +206,40 @@ class AdminController extends Admin_Controller
 
         // Guard here, not inside _monitoring_rows(): schedule_id 0 would
         // otherwise run three full grade passes over an empty roster.
-        $data['rows'] = $f['schedule_id']
+        $rows = $f['schedule_id']
             ? $this->_monitoring_rows($f['schedule_id'], $f['grade_mode'])
             : [];
 
-        $data['schedules']       = $this->class_schedule->get_all_active();
-        $data['schedule_id']     = $f['schedule_id'];
-        $data['show_grades']     = $f['show_grades'];
-        $data['show_attendance'] = $f['show_attendance'];
-        $data['grade_mode']      = $f['grade_mode'];
-        $data['columns']         = $this->_monitoring_columns($f['show_grades'], $f['show_attendance'], $f['grade_mode']);
+        $columns = $this->_monitoring_columns(
+            $f['show_grades'], $f['show_attendance'], $f['grade_mode'], $f['show_missing']
+        );
+
+        // The unfiltered roster size, so the view can say "9 of 51" and can
+        // tell "nobody has anything outstanding" apart from "nobody enrolled".
+        $data['total_rows'] = count($rows);
+        $data['rows']       = $this->_monitoring_only_with_values(
+            $rows, $columns, $f['only_with_values']
+        );
+
+        $data['schedules']        = $this->class_schedule->get_all_active();
+        $data['schedule_id']      = $f['schedule_id'];
+        $data['show_grades']      = $f['show_grades'];
+        $data['show_attendance']  = $f['show_attendance'];
+        $data['show_missing']     = $f['show_missing'];
+        $data['only_with_values'] = $f['only_with_values'];
+        $data['grade_mode']       = $f['grade_mode'];
+        $data['columns']          = $columns;
 
         // Built here rather than reassembled in the view, so the Export link
         // can never disagree with the filters the table was rendered from.
         $data['export_query'] = [
-            'schedule_id'     => $f['schedule_id'],
-            'filters_applied' => 1,
-            'show_grades'     => $f['show_grades'] ? 1 : 0,
-            'show_attendance' => $f['show_attendance'] ? 1 : 0,
-            'grade_mode'      => $f['grade_mode'],
+            'schedule_id'      => $f['schedule_id'],
+            'filters_applied'  => 1,
+            'show_grades'      => $f['show_grades'] ? 1 : 0,
+            'show_attendance'  => $f['show_attendance'] ? 1 : 0,
+            'show_missing'     => $f['show_missing'] ? 1 : 0,
+            'only_with_values' => $f['only_with_values'] ? 1 : 0,
+            'grade_mode'       => $f['grade_mode'],
         ];
 
         $this->load->view('admin/section_monitoring', $data);
@@ -244,14 +259,21 @@ class AdminController extends Admin_Controller
             return;
         }
 
-        $rows = $this->_monitoring_rows($f['schedule_id'], $f['grade_mode']);
+        $rows    = $this->_monitoring_rows($f['schedule_id'], $f['grade_mode']);
+        $columns = $this->_monitoring_columns(
+            $f['show_grades'], $f['show_attendance'], $f['grade_mode'], $f['show_missing']
+        );
+        // Filtered here too, so the download is the same sheet that was on
+        // screen when the link was clicked and not a quietly fuller one.
+        $rows = $this->_monitoring_only_with_values($rows, $columns, $f['only_with_values']);
+
         if (empty($rows)) {
-            $this->session->set_flashdata('error', 'No enrolled students on that section.');
+            $this->session->set_flashdata('error', $f['only_with_values']
+                ? 'Nothing to export: no student on that section has anything outstanding.'
+                : 'No enrolled students on that section.');
             redirect('view_attendance?schedule_id=' . $f['schedule_id']);
             return;
         }
-
-        $columns = $this->_monitoring_columns($f['show_grades'], $f['show_attendance'], $f['grade_mode']);
 
         $sched = $this->_monitoring_schedule($f['schedule_id'])
             ?: ['section' => '', 'type' => '', 'class_code' => ''];
@@ -261,7 +283,12 @@ class AdminController extends Admin_Controller
         $this->xlsx_writer
             ->set_sheet_name(trim($sched['section'] . ' ' . $sched['class_code']))
             ->set_columns(array_column($columns, 'width'))
-            ->add_row(array_column($columns, 'label'), TRUE);
+            // label_long where a column has one: the abbreviated headings that
+            // keep the screen narrow have a legend under the table, and a
+            // spreadsheet has none. Same reasoning as the grade headings.
+            ->add_row(array_map(function ($c) {
+                return isset($c['label_long']) ? $c['label_long'] : $c['label'];
+            }, $columns), TRUE);
 
         // Cells go in raw — Xlsx_writer::esc() escapes them itself, and
         // pre-escaping here would write literal &amp; into the spreadsheet.
@@ -365,10 +392,15 @@ class AdminController extends Admin_Controller
         $submitted = $this->input->get('filters_applied') !== NULL;
 
         return [
-            'schedule_id'     => (int) $this->input->get('schedule_id'),
-            'show_grades'     => $submitted ? ($this->input->get('show_grades') === '1') : TRUE,
-            'show_attendance' => $submitted ? ($this->input->get('show_attendance') === '1') : TRUE,
-            'grade_mode'      => $this->input->get('grade_mode') === Grade_calculator::MODE_CURRENT
+            'schedule_id'      => (int) $this->input->get('schedule_id'),
+            'show_grades'      => $submitted ? ($this->input->get('show_grades') === '1') : TRUE,
+            'show_attendance'  => $submitted ? ($this->input->get('show_attendance') === '1') : TRUE,
+            'show_missing'     => $submitted ? ($this->input->get('show_missing') === '1') : TRUE,
+            // Off unless asked for, and read without the $submitted marker for
+            // the same reason: this filter hides students, so it may only ever
+            // be on because the query string says so.
+            'only_with_values' => $this->input->get('only_with_values') === '1',
+            'grade_mode'       => $this->input->get('grade_mode') === Grade_calculator::MODE_CURRENT
                 ? Grade_calculator::MODE_CURRENT
                 : Grade_calculator::MODE_INC,
         ];
@@ -394,6 +426,10 @@ class AdminController extends Admin_Controller
         $finals    = $gc->for_schedule_final($schedule_id, FALSE);
         $tentative = $gc->for_schedule($schedule_id, 'tentative-final', FALSE);
         $counts    = $this->attendance->status_counts_for_schedule($schedule_id);
+        // One grouped query for the whole section, fetched unconditionally like
+        // the attendance counts: _monitoring_row() always carries every field,
+        // and _monitoring_columns() decides what is rendered.
+        $missing   = $this->classworks->missing_counts_for_schedule($schedule_id);
 
         $rows = [];
         $n    = 0;
@@ -412,7 +448,8 @@ class AdminController extends Admin_Controller
                 $s,
                 $t,
                 isset($counts[$sid]) ? $counts[$sid] : NULL,
-                $grade_mode
+                $grade_mode,
+                isset($missing[$sid]) ? $missing[$sid] : []
             );
         }
 
@@ -436,12 +473,18 @@ class AdminController extends Admin_Controller
      * `is_inc` keeps meaning "the OFFICIAL overall grade is INC" in both modes,
      * so the mode never changes what that flag reports.
      */
-    protected function _monitoring_row($n, array $s, array $tentative, $counts, $grade_mode = Grade_calculator::MODE_INC)
-    {
+    protected function _monitoring_row(
+        $n,
+        array $s,
+        array $tentative,
+        $counts,
+        $grade_mode = Grade_calculator::MODE_INC,
+        array $missing = []
+    ) {
         $gc     = $this->Grade_calculator;
         $counts = $counts ?: ['present' => 0, 'absent' => 0, 'late' => 0, 'excuse' => 0];
 
-        return [
+        $row = [
             'n'                     => $n,
             'student_id'            => $s['student_id'],
             'lastname'              => $s['lastname'],
@@ -458,6 +501,16 @@ class AdminController extends Admin_Controller
             'late'                  => $counts['late'],
             'excuse'                => $counts['excuse'],
         ];
+
+        // One key per io_type, always present even at zero, so a column lookup
+        // can never hit an undefined index on a student missing nothing.
+        foreach ($gc->io_types() as $iotype_id => $io) {
+            $row['missing_' . $iotype_id] = isset($missing[$iotype_id])
+                ? (int) $missing[$iotype_id]
+                : 0;
+        }
+
+        return $row;
     }
 
     /**
@@ -473,8 +526,12 @@ class AdminController extends Admin_Controller
      * a bare spreadsheet has no legend and outlives the query string that
      * produced it.
      */
-    protected function _monitoring_columns($show_grades, $show_attendance, $grade_mode = Grade_calculator::MODE_INC)
-    {
+    protected function _monitoring_columns(
+        $show_grades,
+        $show_attendance,
+        $grade_mode = Grade_calculator::MODE_INC,
+        $show_missing = FALSE
+    ) {
         $cols = [
             ['key' => 'n',         'label' => '#',         'width' => 5],
             ['key' => 'lastname',  'label' => 'Lastname',  'width' => 22],
@@ -492,12 +549,110 @@ class AdminController extends Admin_Controller
 
         if ($show_attendance) {
             $cols[] = ['key' => 'present', 'label' => 'Present', 'width' => 10];
-            $cols[] = ['key' => 'absent',  'label' => 'Absent',  'width' => 10];
+            // 'attention' is what _monitoring_only_with_values() filters on.
+            // Absent only: a late or an excused arrival is not an outstanding
+            // item to chase, and present is the opposite of one.
+            $cols[] = ['key' => 'absent',  'label' => 'Absent',  'width' => 10, 'attention' => TRUE];
             $cols[] = ['key' => 'late',    'label' => 'Late',    'width' => 10];
             $cols[] = ['key' => 'excuse',  'label' => 'Excused', 'width' => 10];
         }
 
+        // Built from io_type rather than a fixed four, so a new component gets
+        // its column for free. Headings are abbreviated to keep four extra
+        // columns off the width of the sheet; 'kind' lets the view style a
+        // non-zero tally, and label_long carries the full name into the .xlsx.
+        if ($show_missing) {
+            foreach ($this->Grade_calculator->io_types() as $iotype_id => $io) {
+                $cols[] = [
+                    'key'        => 'missing_' . $iotype_id,
+                    'label'      => $this->_iotype_abbrev($io['type']),
+                    'label_long' => 'Missing ' . $io['type'],
+                    'kind'       => 'missing',
+                    'attention'  => TRUE,
+                    'width'      => 8,
+                ];
+            }
+        }
+
         return $cols;
+    }
+
+    /**
+     * Short heading for an io_type. Display only — nothing keys off it.
+     *
+     * The four current components get hand-picked forms; anything added later
+     * falls back to initials (or the first three letters of a single word) so a
+     * new io_type still gets a usable column head without an edit here.
+     */
+    protected function _iotype_abbrev($type)
+    {
+        $known = [
+            'activity'         => 'ACT',
+            'performance task' => 'PT',
+            'major exam'       => 'EXM',
+            'quiz'             => 'QZ',
+        ];
+
+        $key = strtolower(trim($type));
+        if (isset($known[$key])) {
+            return $known[$key];
+        }
+
+        $words = preg_split('/[^a-z0-9]+/', $key, -1, PREG_SPLIT_NO_EMPTY);
+        if (count($words) > 1) {
+            $initials = '';
+            foreach ($words as $w) {
+                $initials .= $w[0];
+            }
+            return strtoupper($initials);
+        }
+
+        return strtoupper(substr($key, 0, 3));
+    }
+
+    /**
+     * Drops the students who have nothing outstanding — every 'attention'
+     * column in the current spec (the Missing tallies and Absent) sits at zero.
+     *
+     * Gated on the columns actually being rendered, so a row can always show
+     * why it survived the filter: untick Missing and the list narrows to
+     * absences alone. With neither shown there is nothing to judge on, so the
+     * roster comes back whole rather than empty.
+     *
+     * Runs after _monitoring_rows() has numbered the roster, so `n` keeps
+     * meaning "position on the full roster" and still matches the printed
+     * slips — the numbering is meant to go 3, 7, 12 here.
+     *
+     * @param  array $rows     _monitoring_rows() output
+     * @param  array $columns  _monitoring_columns() output
+     * @param  bool  $enabled
+     * @return array
+     */
+    protected function _monitoring_only_with_values(array $rows, array $columns, $enabled)
+    {
+        if (!$enabled) {
+            return $rows;
+        }
+
+        $keys = [];
+        foreach ($columns as $c) {
+            if (!empty($c['attention'])) {
+                $keys[] = $c['key'];
+            }
+        }
+
+        if (empty($keys)) {
+            return $rows;
+        }
+
+        return array_values(array_filter($rows, function ($row) use ($keys) {
+            foreach ($keys as $k) {
+                if (isset($row[$k]) && (int) $row[$k] > 0) {
+                    return TRUE;
+                }
+            }
+            return FALSE;
+        }));
     }
 
     /**
