@@ -14,6 +14,24 @@ defined('BASEPATH') or exit('No direct script access allowed');
  */
 class AdminController extends Admin_Controller
 {
+    /**
+     * Decimal places for the grade columns on the Section Monitoring sheet and
+     * the .xlsx exported from it. Grade points only span 1.0 - 5.0, so one
+     * decimal is the whole meaningful range and keeps a wide sheet readable.
+     * Applies to that sheet only — print_slips() is a document that leaves the
+     * building and stays at two.
+     */
+    const MONITORING_GRADE_DECIMALS = 1;
+
+    /**
+     * How the Section Monitoring sheet names a student: two sortable columns,
+     * or one "Lastname, Firstname" column. Both are built from the same row —
+     * _monitoring_row() always carries all three keys and _monitoring_columns()
+     * picks — so switching cannot change which students are listed.
+     */
+    const NAME_SPLIT = 'split'; // Lastname | Firstname
+    const NAME_FULL  = 'full';  // Fullname ("Lastname, Firstname")
+
     // Read-only browse of students' project progress logs, optionally filtered
     // by course and/or section. Also carries the group-designation panel: for
     // every course, which grouping set(s) (if any) govern its project log.
@@ -211,7 +229,8 @@ class AdminController extends Admin_Controller
             : [];
 
         $columns = $this->_monitoring_columns(
-            $f['show_grades'], $f['show_attendance'], $f['grade_mode'], $f['show_missing']
+            $f['show_grades'], $f['show_attendance'], $f['grade_mode'], $f['show_missing'],
+            $f['name_format']
         );
 
         // The unfiltered roster size, so the view can say "9 of 51" and can
@@ -228,6 +247,7 @@ class AdminController extends Admin_Controller
         $data['show_missing']     = $f['show_missing'];
         $data['only_with_values'] = $f['only_with_values'];
         $data['grade_mode']       = $f['grade_mode'];
+        $data['name_format']      = $f['name_format'];
         $data['columns']          = $columns;
 
         // Built here rather than reassembled in the view, so the Export link
@@ -240,6 +260,7 @@ class AdminController extends Admin_Controller
             'show_missing'     => $f['show_missing'] ? 1 : 0,
             'only_with_values' => $f['only_with_values'] ? 1 : 0,
             'grade_mode'       => $f['grade_mode'],
+            'name_format'      => $f['name_format'],
         ];
 
         $this->load->view('admin/section_monitoring', $data);
@@ -261,7 +282,8 @@ class AdminController extends Admin_Controller
 
         $rows    = $this->_monitoring_rows($f['schedule_id'], $f['grade_mode']);
         $columns = $this->_monitoring_columns(
-            $f['show_grades'], $f['show_attendance'], $f['grade_mode'], $f['show_missing']
+            $f['show_grades'], $f['show_attendance'], $f['grade_mode'], $f['show_missing'],
+            $f['name_format']
         );
         // Filtered here too, so the download is the same sheet that was on
         // screen when the link was clicked and not a quietly fuller one.
@@ -403,6 +425,12 @@ class AdminController extends Admin_Controller
             'grade_mode'       => $this->input->get('grade_mode') === Grade_calculator::MODE_CURRENT
                 ? Grade_calculator::MODE_CURRENT
                 : Grade_calculator::MODE_INC,
+            // Same shape as grade_mode: a <select> always submits, and anything
+            // unrecognised falls back to the two-column default rather than
+            // erroring, so a hand-edited query string degrades quietly.
+            'name_format'      => $this->input->get('name_format') === self::NAME_FULL
+                ? self::NAME_FULL
+                : self::NAME_SPLIT,
         ];
     }
 
@@ -491,6 +519,12 @@ class AdminController extends Admin_Controller
         $gc     = $this->Grade_calculator;
         $counts = $counts ?: ['present' => 0, 'absent' => 0, 'late' => 0, 'excuse' => 0];
 
+        // One place, so the screen and the .xlsx built from these same rows
+        // cannot drift apart. number_format() pads rather than trims, so a
+        // whole grade point still reads '2.0' and every column stays aligned.
+        // The printed slips are a separate document and keep two decimals.
+        $decimals = self::MONITORING_GRADE_DECIMALS;
+
         // Which columns the override blacks out. 'tentative' reports the
         // tentative-final term; 'overall' is the midterm/final blend, so
         // unsubmitted work in EITHER of those terms blocks it — the same way
@@ -506,12 +540,16 @@ class AdminController extends Admin_Controller
             'student_id'            => $s['student_id'],
             'lastname'              => $s['lastname'],
             'firstname'             => $s['firstname'],
+            // Always built, whichever name columns are on show: the row carries
+            // every field and _monitoring_columns() decides what is rendered,
+            // the same contract the grade and attendance keys follow.
+            'fullname'              => trim($s['lastname'] . ', ' . $s['firstname']),
             'midterm'               => $blocked['midterm']
-                ? 'INC' : $gc->display_grade_point($s['midterm'], 2, $grade_mode),
+                ? 'INC' : $gc->display_grade_point($s['midterm'], $decimals, $grade_mode),
             'tentative'             => $blocked['tentative']
-                ? 'INC' : $gc->display_grade_point($tentative, 2, $grade_mode),
+                ? 'INC' : $gc->display_grade_point($tentative, $decimals, $grade_mode),
             'overall'               => $blocked['overall']
-                ? 'INC' : $gc->display_grade_point($s['overall'], 2, $grade_mode),
+                ? 'INC' : $gc->display_grade_point($s['overall'], $decimals, $grade_mode),
             // A forced INC is not a provisional number, so the flag that draws
             // the italic "* provisional" styling has to clear with it.
             'midterm_provisional'   => !$blocked['midterm'] && $gc->is_provisional($s['midterm'], $grade_mode),
@@ -522,6 +560,11 @@ class AdminController extends Admin_Controller
             'absent'                => $counts['absent'],
             'late'                  => $counts['late'],
             'excuse'                => $counts['excuse'],
+            // Days the student was not in class, however it was recorded. Summed
+            // here rather than in the view or the SQL so the screen and the
+            // .xlsx cannot arrive at two different totals — the same reason the
+            // grade cells are formatted here.
+            'total_absent'          => (int) $counts['absent'] + (int) $counts['excuse'],
         ];
 
         // One key per io_type, always present even at zero, so a column lookup
@@ -611,13 +654,21 @@ class AdminController extends Admin_Controller
         $show_grades,
         $show_attendance,
         $grade_mode = Grade_calculator::MODE_INC,
-        $show_missing = FALSE
+        $show_missing = FALSE,
+        $name_format = self::NAME_SPLIT
     ) {
         $cols = [
-            ['key' => 'n',         'label' => '#',         'width' => 5],
-            ['key' => 'lastname',  'label' => 'Lastname',  'width' => 22],
-            ['key' => 'firstname', 'label' => 'Firstname', 'width' => 22],
+            ['key' => 'n', 'label' => '#', 'width' => 5],
         ];
+
+        // One column or two, never both. Width is the two split widths plus the
+        // ", " that joins them, so the .xlsx column is sized for what it holds.
+        if ($name_format === self::NAME_FULL) {
+            $cols[] = ['key' => 'fullname', 'label' => 'Fullname', 'width' => 46];
+        } else {
+            $cols[] = ['key' => 'lastname',  'label' => 'Lastname',  'width' => 22];
+            $cols[] = ['key' => 'firstname', 'label' => 'Firstname', 'width' => 22];
+        }
 
         if ($show_grades) {
             $suffix = ($grade_mode === Grade_calculator::MODE_CURRENT) ? ' (current)' : '';
@@ -636,6 +687,17 @@ class AdminController extends Admin_Controller
             $cols[] = ['key' => 'absent',  'label' => 'Absent',  'width' => 10, 'attention' => TRUE];
             $cols[] = ['key' => 'late',    'label' => 'Late',    'width' => 10];
             $cols[] = ['key' => 'excuse',  'label' => 'Excused', 'width' => 10];
+            // Deliberately NOT 'attention': that flag decides which rows the
+            // "only rows with missing / absences" filter keeps, and Absent
+            // already carries it. Marking this one too would start showing
+            // students whose only days out were excused, which is exactly the
+            // row that filter is meant to hide.
+            $cols[] = [
+                'key'        => 'total_absent',
+                'label'      => 'Total Absences',
+                'label_long' => 'Total Absences (absent + excused)',
+                'width'      => 16,
+            ];
         }
 
         // Built from io_type rather than a fixed four, so a new component gets

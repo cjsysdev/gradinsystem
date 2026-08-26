@@ -35,7 +35,9 @@
             </select>
         </div>
 
-        <div class="col-md-4 mb-2">
+        <!-- Grid budget: 3 + 3 + 2 + 2 + 2 = 12. Adding a control here means
+             taking the width from somewhere, or the row wraps mid-filter. -->
+        <div class="col-md-3 mb-2">
             <label class="mb-1 d-block">Show</label>
             <div class="form-check form-check-inline">
                 <input class="form-check-input" type="checkbox" name="show_grades" value="1" id="show_grades" <?= $show_grades ? 'checked' : '' ?>>
@@ -59,11 +61,19 @@
             </div>
         </div>
 
-        <div class="col-md-3 mb-2">
+        <div class="col-md-2 mb-2">
             <label for="grade_mode" class="mb-1">Incomplete grades</label>
             <select name="grade_mode" id="grade_mode" class="form-control">
                 <option value="inc" <?= $grade_mode === 'current' ? '' : 'selected' ?>>Show as INC</option>
                 <option value="current" <?= $grade_mode === 'current' ? 'selected' : '' ?>>Show current grade</option>
+            </select>
+        </div>
+
+        <div class="col-md-2 mb-2">
+            <label for="name_format" class="mb-1">Name</label>
+            <select name="name_format" id="name_format" class="form-control">
+                <option value="split" <?= $name_format === 'full' ? '' : 'selected' ?>>Lastname / Firstname</option>
+                <option value="full" <?= $name_format === 'full' ? 'selected' : '' ?>>Fullname</option>
             </select>
         </div>
 
