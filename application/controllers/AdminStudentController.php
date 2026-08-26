@@ -558,8 +558,64 @@ class AdminStudentController extends Admin_Controller
         $data['violations']   = $this->violation->get_all_violations(['student_id' => $student_id]);
         $data['vio_summary']  = $this->violation->get_violation_summary_by_student($student_id);
         $data['contacts']     = $this->emergency_contact->get_by_student($student_id);
+        $data['grades']       = $this->_student_grade_blocks($student_id);
 
         $this->load->view('admin/student_summary', $data);
+    }
+
+    /**
+     * The student's grades for the profile page — one block per schedule they
+     * are enrolled in this semester, already rendered into strings by
+     * Grade_calculator's display helpers so the view does no arithmetic.
+     *
+     * Official (MODE_INC) figures are what the block reports. The provisional
+     * "so far" figure rides along in `provisional` for the terms that are still
+     * INC, exactly as on Section Monitoring, and the view labels it as such —
+     * it is never presented as the term grade.
+     */
+    private function _student_grade_blocks($student_id)
+    {
+        $this->load->model('Grade_calculator');
+        $gc = $this->Grade_calculator;
+
+        $blocks = [];
+
+        foreach ($gc->schedules_for_student($student_id) as $sched) {
+            $g = $gc->for_student($student_id, $sched['schedule_id']);
+            if (!$g) {
+                continue;
+            }
+
+            $terms = [];
+            foreach (['midterm' => $g['midterm'], 'final' => $g['final'], 'overall' => $g['overall']] as $key => $b) {
+                $terms[$key] = [
+                    'grade_point'   => $gc->display_grade_point($b),
+                    'percentage'    => $gc->display_percentage($b),
+                    'remark'        => $gc->remark($b),
+                    'inc_reason'    => $gc->inc_reason($b, $g['io_types']),
+                    'pending_count' => (int) ($b['pending_count'] ?? 0),
+                    'provisional'   => $gc->is_provisional($b, Grade_calculator::MODE_CURRENT)
+                        ? $gc->display_grade_point($b, 2, Grade_calculator::MODE_CURRENT)
+                        : null,
+                ];
+            }
+
+            $blocks[] = [
+                'schedule_id' => (int) $sched['schedule_id'],
+                'class_code'  => $sched['class_code'],
+                'class_name'  => $sched['class_name'],
+                'section'     => $sched['section'],
+                'type'        => $sched['type'],
+                'schedule'    => $gc->format_schedule($sched),
+                'terms'       => $terms,
+                'components'  => [
+                    'midterm' => $g['midterm_components'],
+                    'final'   => $g['final_components'],
+                ],
+            ];
+        }
+
+        return $blocks;
     }
 
     // Admin-only "log in as" this student, for testing features from the

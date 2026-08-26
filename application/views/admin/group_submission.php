@@ -309,7 +309,12 @@
                 <?php if (!empty($missing_students)): ?>
                     <ul class="list-group">
                         <?php foreach ($missing_students as $student): ?>
-                            <li class="list-group-item"><?= htmlspecialchars($student['lastname'] . ', ' . $student['firstname']) ?></li>
+                            <?php // firstname is empty for a roster row whose student_master
+                            // record is gone; lastname then carries the "[no student record #id]"
+                            // placeholder, so don't append a dangling comma. ?>
+                            <li class="list-group-item"><?= htmlspecialchars(trim($student['firstname']) !== ''
+                                ? $student['lastname'] . ', ' . $student['firstname']
+                                : $student['lastname']) ?></li>
                         <?php endforeach; ?>
                     </ul>
                 <?php else: ?>

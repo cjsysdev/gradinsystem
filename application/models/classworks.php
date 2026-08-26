@@ -44,11 +44,18 @@ class classworks extends MY_Model
         // result shape either way (NULL already means "not recorded").
         $switch_count = $this->has_switch_count() ? 'c.switch_count' : 'NULL AS switch_count';
 
-        $sql = "SELECT c.classwork_id, s.trans_no, c.score, s.firstname,
-        s.lastname, c.code, c.file_upload, c.created_at, a.max_score, a.iotype_id,
+        // student_master is LEFT joined for the same reason as
+        // get_missing_submissions(): a submission whose student_master row was
+        // deleted is still a real submission with a real score to enter, and an
+        // INNER JOIN made those cards vanish from this page entirely while
+        // manage_assessments still counted them in its submission badge.
+        $sql = "SELECT c.classwork_id, c.student_id AS trans_no, c.score,
+        COALESCE(s.firstname, '') AS firstname,
+        COALESCE(s.lastname, CONCAT('[no student record #', c.student_id, ']')) AS lastname,
+        c.code, c.file_upload, c.created_at, a.max_score, a.iotype_id,
         $switch_count
                 FROM classworks c
-                JOIN student_master s ON s.trans_no = c.student_id
+                LEFT JOIN student_master s ON s.trans_no = c.student_id
                 JOIN assessment_full a ON a.assessment_id = c.assessment_id
                 JOIN class_schedule cs ON cs.schedule_id = a.schedule_id
                 JOIN semester_master sem ON cs.semester_id = sem.trans_no
@@ -68,20 +75,31 @@ class classworks extends MY_Model
 
     // Enrolled students (for the assessment's schedule) who have no
     // classworks row for this assessment yet — i.e. haven't submitted.
+    //
+    // student_master is LEFT joined on purpose: a `class_student` row whose
+    // student_master row was deleted is still an enrolled roster slot, and an
+    // INNER JOIN silently dropped those from this list while
+    // assessments::get_all_for_admin()'s roster arithmetic still counted them
+    // — the manage_assessments badge said 4 missing where this modal listed 1.
+    // The roster is class_student; a missing name is drift to surface, not a
+    // reason to shrink the count.
     public function get_missing_submissions($assessment_id)
     {
-        $sql = "SELECT s.trans_no, s.firstname, s.lastname
+        $sql = "SELECT cst.student_id AS trans_no,
+                       COALESCE(s.firstname, '') AS firstname,
+                       COALESCE(s.lastname, CONCAT('[no student record #', cst.student_id, ']')) AS lastname
                 FROM class_student cst
-                JOIN student_master s ON s.trans_no = cst.student_id
+                LEFT JOIN student_master s ON s.trans_no = cst.student_id
                 JOIN assessment_full a ON a.schedule_id = cst.schedule_id
                 WHERE a.assessment_id = ?
                 AND cst.status = 'enrolled'
+                AND cst.student_id IS NOT NULL
                 AND NOT EXISTS (
                     SELECT 1 FROM classworks c
                     WHERE c.assessment_id = a.assessment_id
                     AND c.student_id = cst.student_id
                 )
-                ORDER BY s.lastname, s.firstname";
+                ORDER BY lastname, firstname";
 
         $query = $this->db->query($sql, [$assessment_id]);
 
@@ -95,27 +113,39 @@ class classworks extends MY_Model
     }
 
     /**
-     * Per-(student, io_type) count of assessments on a schedule the student
-     * handed nothing in for, for the Section Monitoring "missing" columns.
+     * Per-(student, term, io_type) count of assessments on a schedule the
+     * student handed nothing in for, for the Section Monitoring sheet.
      *
      * Missing is not the same as ungraded: a submitted-but-unscored row still
      * exists, still counts as 0 in Grade_calculator, and is reported there as
      * pending. This counts only assessments with no `classworks` row at all.
      *
-     * Work that isn't due yet is excluded — it isn't late, it's pending — which
-     * matches how admin/student_summary splits "Missing" from "Not submitted".
-     * `assessment_section.status` is deliberately ignored: a closed assessment
-     * nobody submitted is exactly the case these columns exist to surface.
+     * The due date is deliberately ignored, as is `assessment_section.status`:
+     * this answers "what has this student not handed in", and a due date that
+     * was never set, or was left at a placeholder after the work was actually
+     * given, would otherwise hide the whole assessment from the sheet. A closed
+     * assessment nobody submitted is exactly the case the Missing columns exist
+     * to surface. The cost is that work genuinely still ahead of its due date is
+     * counted too, so a tally here is "outstanding", not "late".
      *
-     * Nothing here feeds a grade, so it stays out of Grade_calculator.
+     * Split by term because each grade column on that sheet answers for one
+     * term: an unsubmitted midterm Performance Task has nothing to say about
+     * the tentative-final column. The Missing columns themselves show the
+     * all-terms total, which AdminController sums back up.
+     *
+     * Nothing here feeds a grade — Grade_calculator is still the only place a
+     * grade is computed, and it never reads this. AdminController uses it for a
+     * display-only INC override on the monitoring sheet; see
+     * AdminController::_missing_blocks_grade().
      *
      * @param  int   $schedule_id
-     * @return array [student_id => [iotype_id => count]]
+     * @return array [student_id => [term => [iotype_id => count]]]
      */
     public function missing_counts_for_schedule($schedule_id)
     {
         $sql = "
             SELECT cs.student_id,
+                   a.term,
                    a.iotype_id,
                    COUNT(*) AS n_missing
             FROM class_student cs
@@ -127,10 +157,7 @@ class classworks extends MY_Model
             WHERE cs.schedule_id = ?
               AND (cs.status = 'enrolled' OR cs.status IS NULL)
               AND c.classwork_id IS NULL
-              AND a.due IS NOT NULL
-              AND a.due > '1000-01-01'
-              AND a.due < NOW()
-            GROUP BY cs.student_id, a.iotype_id
+            GROUP BY cs.student_id, a.term, a.iotype_id
         ";
 
         $query = $this->db->query($sql, [(int) $schedule_id]);
@@ -143,7 +170,8 @@ class classworks extends MY_Model
 
         $out = [];
         foreach ($query->result_array() as $r) {
-            $out[(int) $r['student_id']][(int) $r['iotype_id']] = (int) $r['n_missing'];
+            $out[(int) $r['student_id']][(string) $r['term']][(int) $r['iotype_id']]
+                = (int) $r['n_missing'];
         }
 
         return $out;

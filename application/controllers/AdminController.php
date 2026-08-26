@@ -428,7 +428,9 @@ class AdminController extends Admin_Controller
         $counts    = $this->attendance->status_counts_for_schedule($schedule_id);
         // One grouped query for the whole section, fetched unconditionally like
         // the attendance counts: _monitoring_row() always carries every field,
-        // and _monitoring_columns() decides what is rendered.
+        // and _monitoring_columns() decides what is rendered. Fetched even when
+        // the Missing columns are hidden, because the INC override below reads
+        // the same data and must not depend on a display checkbox.
         $missing   = $this->classworks->missing_counts_for_schedule($schedule_id);
 
         $rows = [];
@@ -470,8 +472,13 @@ class AdminController extends Admin_Controller
      * instead of 'INC'. Each such cell also gets a `<key>_provisional` flag so
      * the screen can mark which numbers are not the official grade — the .xlsx
      * ignores those keys and takes the mode from the column headings instead.
-     * `is_inc` keeps meaning "the OFFICIAL overall grade is INC" in both modes,
-     * so the mode never changes what that flag reports.
+     * `is_inc` keeps meaning "the overall grade on this sheet is INC" in both
+     * modes, so the mode never changes what that flag reports.
+     *
+     * $missing is [term => [iotype_id => count]] for this one student. It feeds
+     * two separate things: the Missing columns (all terms summed) and the
+     * display-only INC override in _missing_blocks_grade(), which is applied
+     * per column against the term that column actually reports on.
      */
     protected function _monitoring_row(
         $n,
@@ -484,18 +491,33 @@ class AdminController extends Admin_Controller
         $gc     = $this->Grade_calculator;
         $counts = $counts ?: ['present' => 0, 'absent' => 0, 'late' => 0, 'excuse' => 0];
 
+        // Which columns the override blacks out. 'tentative' reports the
+        // tentative-final term; 'overall' is the midterm/final blend, so
+        // unsubmitted work in EITHER of those terms blocks it — the same way
+        // Grade_calculator::final_grade() propagates an INC from either term.
+        $blocked = [
+            'midterm'   => $this->_missing_blocks_grade($missing, ['midterm'], $grade_mode),
+            'tentative' => $this->_missing_blocks_grade($missing, ['tentative-final'], $grade_mode),
+            'overall'   => $this->_missing_blocks_grade($missing, ['midterm', 'final'], $grade_mode),
+        ];
+
         $row = [
             'n'                     => $n,
             'student_id'            => $s['student_id'],
             'lastname'              => $s['lastname'],
             'firstname'             => $s['firstname'],
-            'midterm'               => $gc->display_grade_point($s['midterm'], 2, $grade_mode),
-            'tentative'             => $gc->display_grade_point($tentative, 2, $grade_mode),
-            'overall'               => $gc->display_grade_point($s['overall'], 2, $grade_mode),
-            'midterm_provisional'   => $gc->is_provisional($s['midterm'], $grade_mode),
-            'tentative_provisional' => $gc->is_provisional($tentative, $grade_mode),
-            'overall_provisional'   => $gc->is_provisional($s['overall'], $grade_mode),
-            'is_inc'                => $s['overall']['status'] !== 'ok',
+            'midterm'               => $blocked['midterm']
+                ? 'INC' : $gc->display_grade_point($s['midterm'], 2, $grade_mode),
+            'tentative'             => $blocked['tentative']
+                ? 'INC' : $gc->display_grade_point($tentative, 2, $grade_mode),
+            'overall'               => $blocked['overall']
+                ? 'INC' : $gc->display_grade_point($s['overall'], 2, $grade_mode),
+            // A forced INC is not a provisional number, so the flag that draws
+            // the italic "* provisional" styling has to clear with it.
+            'midterm_provisional'   => !$blocked['midterm'] && $gc->is_provisional($s['midterm'], $grade_mode),
+            'tentative_provisional' => !$blocked['tentative'] && $gc->is_provisional($tentative, $grade_mode),
+            'overall_provisional'   => !$blocked['overall'] && $gc->is_provisional($s['overall'], $grade_mode),
+            'is_inc'                => $blocked['overall'] || $s['overall']['status'] !== 'ok',
             'present'               => $counts['present'],
             'absent'                => $counts['absent'],
             'late'                  => $counts['late'],
@@ -503,14 +525,73 @@ class AdminController extends Admin_Controller
         ];
 
         // One key per io_type, always present even at zero, so a column lookup
-        // can never hit an undefined index on a student missing nothing.
+        // can never hit an undefined index on a student missing nothing. Summed
+        // across terms: these columns are a whole-semester backlog tally, and
+        // splitting them per term would double the width of the sheet.
         foreach ($gc->io_types() as $iotype_id => $io) {
-            $row['missing_' . $iotype_id] = isset($missing[$iotype_id])
-                ? (int) $missing[$iotype_id]
-                : 0;
+            $n_missing = 0;
+            foreach ($missing as $per_iotype) {
+                $n_missing += (int) (isset($per_iotype[$iotype_id]) ? $per_iotype[$iotype_id] : 0);
+            }
+            $row['missing_' . $iotype_id] = $n_missing;
         }
 
         return $row;
+    }
+
+    /**
+     * TRUE when this student's unsubmitted work should black out a grade cell
+     * on the Section Monitoring sheet.
+     *
+     * This is a DISPLAY rule, not a grading rule, and it is the one deliberate
+     * exception to "grades are decided in Grade_calculator" in this controller.
+     * It computes nothing: the grade itself is untouched, and all this does is
+     * substitute the string 'INC' for a number Grade_calculator already
+     * produced. The official grade — GradesController submission sheets,
+     * printed slips, the student's own dashboard — still counts an unsubmitted
+     * item as a zero and is not affected. Nothing here may ever grow into
+     * arithmetic; if this rule should become official it belongs in
+     * Grade_calculator::term_grade() with parity vectors, not here.
+     *
+     * Which components block is config, not a literal: see
+     * `monitoring_inc_on_missing_iotypes` in config/grading.php.
+     *
+     * Only MODE_INC is overridden. MODE_CURRENT exists to answer "where does
+     * this student stand today" and must keep showing a number, so a sheet
+     * switched to Show current grade reports the standing regardless.
+     *
+     * @param  array  $missing    [term => [iotype_id => count]] for one student
+     * @param  array  $terms      the terms the column being rendered covers
+     * @param  string $grade_mode Grade_calculator::MODE_*
+     * @return bool
+     */
+    protected function _missing_blocks_grade(array $missing, array $terms, $grade_mode)
+    {
+        if ($grade_mode !== Grade_calculator::MODE_INC) {
+            return FALSE;
+        }
+
+        // grading.php is loaded into its own section (Grade_calculator's
+        // constructor does the same), so the item() lookup needs naming too —
+        // without the second argument this reads NULL and silently never fires.
+        // The load is idempotent; it guards against a caller that reached here
+        // without Grade_calculator having been constructed first.
+        $this->load->config('grading', TRUE);
+
+        $blocking = $this->config->item('monitoring_inc_on_missing_iotypes', 'grading');
+        if (!is_array($blocking) || empty($blocking)) {
+            return FALSE;
+        }
+
+        foreach ($terms as $term) {
+            foreach ($blocking as $iotype_id) {
+                if (!empty($missing[$term][(int) $iotype_id])) {
+                    return TRUE;
+                }
+            }
+        }
+
+        return FALSE;
     }
 
     /**

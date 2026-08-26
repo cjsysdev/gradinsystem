@@ -722,6 +722,33 @@ class Grade_calculator extends CI_Model
     }
 
     /**
+     * The schedules one student is actually enrolled in this semester.
+     *
+     * Same roster rule as roster() — schedule_id + enrolment status + active
+     * semester — so a student profile can show a grade block per schedule
+     * without falling back to the section string. for_student() resolves only
+     * the first of these when no schedule is given.
+     */
+    public function schedules_for_student($student_id)
+    {
+        return $this->db->query("
+            SELECT sched.schedule_id, sched.section, sched.type,
+                   sched.time_start, sched.time_end, sched.day,
+                   cl.class_id, cl.class_code, cl.class_name
+            FROM class_student cs
+            JOIN class_schedule sched ON sched.schedule_id = cs.schedule_id
+            JOIN semester_master sem  ON sem.trans_no = sched.semester_id AND sem.is_active = 1
+            JOIN classes cl           ON cl.class_id = sched.class_id
+            WHERE cs.student_id = ?
+              AND (cs.status = 'enrolled' OR cs.status IS NULL)
+            GROUP BY sched.schedule_id, sched.section, sched.type,
+                     sched.time_start, sched.time_end, sched.day,
+                     cl.class_id, cl.class_code, cl.class_name
+            ORDER BY cl.class_code, sched.schedule_id
+        ", [(int) $student_id])->result_array();
+    }
+
+    /**
      * All active schedules' final grades, flattened for the all-sections sheet.
      */
     public function for_all_schedules_final()

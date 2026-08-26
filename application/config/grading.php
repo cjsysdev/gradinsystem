@@ -59,3 +59,23 @@ $config['grading_fail_as_inc_above'] = 3.0;
 | as late. Previously a bare 20 buried in two copies of the grade SQL.
 */
 $config['grading_late_threshold_minutes'] = 20;
+
+/*
+| DISPLAY ONLY — not a grading rule, and Grade_calculator never reads it.
+|
+| io_type ids whose unsubmitted work makes the Section Monitoring sheet show
+| INC in place of that term's grade (2 = Performance Task, 3 = Major Exam).
+| A student with an assessment of one of these types and no `classworks` row
+| at all reads INC for the term it belongs to, and for the Final Grade column
+| if it belongs to either term the final blends.
+|
+| This is deliberately NOT in Grade_calculator::term_grade(): the official
+| grade — submission sheets, printed slips, the student's own dashboard — is
+| unchanged and still counts an unsubmitted item as a zero. The override is a
+| chase-list marker on one admin screen, applied in
+| AdminController::_missing_blocks_grade(), and only under the sheet's
+| "Show as INC" mode; "Show current grade" shows the number regardless.
+|
+| Empty array turns the override off.
+*/
+$config['monitoring_inc_on_missing_iotypes'] = [2, 3];

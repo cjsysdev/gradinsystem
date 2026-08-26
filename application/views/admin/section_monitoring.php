@@ -48,7 +48,7 @@
             <div class="form-check form-check-inline">
                 <input class="form-check-input" type="checkbox" name="show_missing" value="1" id="show_missing" <?= $show_missing ? 'checked' : '' ?>>
                 <label class="form-check-label" for="show_missing"
-                       title="Count of past-due classwork with nothing handed in, per component">Missing</label>
+                       title="Count of classwork with nothing handed in, per component — due date ignored">Missing</label>
             </div>
             <div class="form-check">
                 <input class="form-check-input" type="checkbox" name="only_with_values" value="1" id="only_with_values" <?= $only_with_values ? 'checked' : '' ?>>
@@ -175,8 +175,19 @@
                 }
                 echo implode(', ', $legend);
                 ?>.
-                Work that isn't due yet is not counted, and a submitted-but-ungraded
-                item is not missing.
+                The due date is not consulted, so work that is still ahead of its
+                deadline is counted too — read these as <em>outstanding</em>, not
+                <em>late</em>. A submitted-but-ungraded item is not missing.
+            </p>
+        <?php endif; ?>
+
+        <?php if ($show_grades && $grade_mode !== 'current'): ?>
+            <p class="small text-muted mb-1">
+                A grade reads <strong>INC</strong> when the term is incomplete
+                <em>or</em> when the student has a Performance Task or Major Exam
+                with nothing handed in — due date not considered. Switch
+                <em>Incomplete grades</em> to <em>Show current grade</em> to see the
+                standing behind an INC.
             </p>
         <?php endif; ?>
 

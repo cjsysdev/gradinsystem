@@ -152,8 +152,11 @@ class assessments extends MY_Model
                 $conds[] = 'EXISTS (SELECT 1 FROM classworks cwf WHERE cwf.assessment_id = a.assessment_id AND cwf.score IS NULL)';
                 break;
             case 'missing':
-                $conds[] = "(SELECT COUNT(*) FROM class_student cst WHERE cst.schedule_id = a.schedule_id AND cst.status = 'enrolled')"
-                         . " > (SELECT COUNT(DISTINCT cwf.student_id) FROM classworks cwf WHERE cwf.assessment_id = a.assessment_id)";
+                // Same roster definition as the badge in get_all_for_admin():
+                // an enrolled student with no classworks row of their own.
+                $conds[] = "EXISTS (SELECT 1 FROM class_student cst WHERE cst.schedule_id = a.schedule_id AND cst.status = 'enrolled'"
+                         . " AND cst.student_id IS NOT NULL"
+                         . " AND NOT EXISTS (SELECT 1 FROM classworks cwf WHERE cwf.assessment_id = a.assessment_id AND cwf.student_id = cst.student_id))";
                 break;
         }
 
@@ -175,8 +178,24 @@ class assessments extends MY_Model
                 w.name AS widget_name,
                 COUNT(cw.classwork_id) AS submission_count,
                 SUM(CASE WHEN cw.classwork_id IS NOT NULL AND cw.score IS NULL THEN 1 ELSE 0 END) AS unscored_count,
-                (SELECT COUNT(*) FROM class_student cst WHERE cst.schedule_id = a.schedule_id AND cst.status = 'enrolled') AS enrolled_count,
-                COUNT(DISTINCT cw.student_id) AS submitted_student_count,
+                -- DISTINCT + NOT NULL: class_student holds at least one junk row
+                -- with a NULL student_id, and a plain COUNT(*) turned it into a
+                -- phantom roster slot that could never submit anything.
+                (SELECT COUNT(DISTINCT cst.student_id) FROM class_student cst
+                    WHERE cst.schedule_id = a.schedule_id AND cst.status = 'enrolled'
+                      AND cst.student_id IS NOT NULL) AS enrolled_count,
+                -- Only roster submitters count here. Counting every classworks
+                -- row's student let a submission from someone no longer enrolled
+                -- cancel out a genuinely missing student, so the badge
+                -- (enrolled_count - submitted_student_count) undercounted — and
+                -- disagreed with classworks::get_missing_submissions(), which
+                -- has always listed exactly the enrolled non-submitters.
+                COUNT(DISTINCT CASE WHEN EXISTS (
+                    SELECT 1 FROM class_student cst2
+                    WHERE cst2.schedule_id = a.schedule_id
+                      AND cst2.student_id = cw.student_id
+                      AND cst2.status = 'enrolled'
+                ) THEN cw.student_id END) AS submitted_student_count,
                 MIN(COALESCE(cw.submitted_at, cw.created_at)) AS first_submission,
                 (SELECT COUNT(*) FROM assessment_section s2 WHERE s2.assessment_id = a.master_id) AS sibling_count,
                 (SELECT GROUP_CONCAT(cs2.section ORDER BY cs2.section SEPARATOR ', ')

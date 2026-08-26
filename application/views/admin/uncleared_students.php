@@ -95,10 +95,10 @@ foreach ($students as $s) {
         <table class="table table-bordered table-hover align-middle">
             <thead class="table-info">
                 <tr class="text-center">
-                    <th>Student No.</th>
+                    <!-- <th>Student No.</th> -->
                     <th>Last Name</th>
                     <th>First Name</th>
-                    <th>Status</th>
+                    <!-- <th>Status</th> -->
                     <th>Action</th>
                 </tr>
             </thead>
@@ -110,10 +110,10 @@ foreach ($students as $s) {
                         $full_name  = $student['firstname'] . ' ' . $student['lastname'];
                         ?>
                         <tr class="<?= $is_cleared ? '' : 'table-warning' ?>">
-                            <td><?= htmlspecialchars((string) $student['student_no']) ?></td>
+                            <!-- <td><?= htmlspecialchars((string) $student['student_no']) ?></td> -->
                             <td><?= htmlspecialchars($student['lastname']) ?></td>
                             <td><?= htmlspecialchars($student['firstname']) ?></td>
-                            <td class="text-center">
+                            <!-- <td class="text-center">
                                 <?php if ($is_cleared): ?>
                                     <span class="badge badge-success">Cleared</span>
                                     <?php if (!empty($student['cleared_at'])): ?>
@@ -125,7 +125,7 @@ foreach ($students as $s) {
                                 <?php else: ?>
                                     <span class="badge badge-danger">Uncleared</span>
                                 <?php endif; ?>
-                            </td>
+                            </td> -->
                             <td class="text-center">
                                 <?php if ($is_cleared): ?>
                                     <a href="<?= base_url('uncleared_students/unclear/' . (int) $student['student_id'] . '/' . $section_u) . $scope_q ?>"
