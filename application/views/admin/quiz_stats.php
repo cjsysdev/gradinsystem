@@ -353,6 +353,7 @@ if (!function_exists('qs_score')) {
                         </tr>
                     </thead>
                     <tbody>
+                        <?php $count = 1; ?>
                     <?php foreach ($ranking['students'] as $i => $e): ?>
                         <?php
                         $pct  = $e['percent'];
@@ -360,8 +361,11 @@ if (!function_exists('qs_score')) {
                         $bar  = $pct === null ? 0 : max(0, min(100, $pct));
                         ?>
                         <tr data-name="<?= htmlspecialchars(strtolower($e['name']), ENT_QUOTES, 'UTF-8') ?>">
-                            <td class="qs-rank-num<?= $e['rank'] <= 3 ? ' qs-rank-podium' : '' ?>">
+                            <!-- <td class="qs-rank-num<?= $e['rank'] <= 3 ? ' qs-rank-podium' : '' ?>">
                                 <?= (int) $e['rank'] ?><?= $e['tied'] ? '<span class="qs-tie" title="Tied with another student on the same score">=</span>' : '' ?>
+                            </td> -->
+                            <td>
+                                <?=  $count++; ?>
                             </td>
                             <td>
                                 <?= htmlspecialchars($e['name']) ?>
