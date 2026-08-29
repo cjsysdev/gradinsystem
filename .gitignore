@@ -36,3 +36,10 @@ uploads
 
 # Claude/Anthropic API key — never commit
 application/config/anthropic.php
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example
