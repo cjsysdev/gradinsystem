@@ -188,7 +188,7 @@ const widgetExamples = {
         }
     },
     case_dossier: {
-        hint: 'Hook question + read-only framework explainer + multiple parallel case dossiers (each rated 1-5 per factor with a cited-evidence text field) + reflection questions. Not auto-graded. This example is the full Session 2.1 "Innovation Triangle" worksheet (GCash/Kodak/Friendster) — ready to use as-is.',
+        hint: 'Hook question + read-only framework explainer + multiple parallel case dossiers (each factor answered by citing a fact from that dossier) + reflection questions. Not auto-graded. This example is the full Session 2.1 "Innovation Triangle" worksheet (GCash/Kodak/Friendster) — ready to use as-is.',
         example: {
             meta: {
                 eyebrow: 'Session 2.1 · Field Notebook',

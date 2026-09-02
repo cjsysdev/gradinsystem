@@ -394,7 +394,7 @@ patterns. Build 6 reusable widgets, not 16 custom interfaces.
       {
         "name": "GCash", "accent": "mango",
         "dossier": {"title": "Case Dossier — GCash", "facts": ["...", "..."], "source": "Sources: ..."},
-        "factors": [{"title": "TECH", "question": "Did the technology work?"}]
+        "factors": [{"title": "TECH", "question": "Did the technology work?", "evidence_label": "Cite 1 dossier fact that answers this:", "placeholder": "...", "rows": 2}]
       }
     ],
     "reflection": {"label": "Reflection", "timing": "...", "questions": [ {"type": "text", "badge": "core", "prompt": "...", "rows": 3, "placeholder": "..."} ]}
@@ -403,19 +403,23 @@ patterns. Build 6 reusable widgets, not 16 custom interfaces.
   `hook`/`reflection` questions reuse Widget I's `text`/`list`/`choice`
   field names exactly. `framework` and `groups[].dossier` are pure
   admin-authored display content, no answer captured. `groups[].factors` is
-  the new interaction: each renders a 1–5 rating scale + an evidence text
-  input.
+  the new interaction: each renders a single evidence textarea in which the
+  student cites the dossier fact that answers that factor's question.
+  `evidence_label`/`placeholder`/`rows` are optional per-factor overrides.
 - **Submission (`classworks.code`):**
   ```json
   {
     "hook_answers": {"0": ["line one", "line two", "line three"]},
-    "group_ratings": {"0": {"0": {"score": 4, "evidence": "cited number/fact"}}},
+    "group_ratings": {"0": {"0": {"evidence": "cited number/fact"}}},
     "reflection_answers": {"0": "...", "1": 2}
   }
   ```
   `hook_answers`/`reflection_answers` are flat, index-keyed-object maps
   (same convention as every other widget). `group_ratings` is keyed
-  `group index → factor index → {score, evidence}` (`score` 1–5 or `null`).
+  `group index → factor index → {evidence}`. (Key name is legacy: an
+  earlier build also captured a 1–5 `score` per factor, dropped in favour of
+  citing the fact directly. Old submissions still carrying `score` render
+  fine — the view reads `evidence` only.)
 - **Not auto-graded** — manual score entry, same as every worksheet-style
   widget so far.
 - **Implemented:** `application/views/widgets/case_dossier.php`. No shared

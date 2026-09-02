@@ -88,12 +88,16 @@ class Widgets_model extends CI_Model
         // manual-score-entry pattern as Worksheet Form/Lab Worksheet.
         $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
             VALUES ('case_study', 'Case Study Worksheet', 'widgets/case_study', NULL)");
-        // Case Dossier Rating: hook question -> read-only framework explainer
-        // -> multiple parallel case dossiers, each rated 1-5 per factor with a
-        // cited-evidence text field -> reflection questions. Not auto-graded,
+        // Case Dossier: hook question -> read-only framework explainer ->
+        // multiple parallel case dossiers, each factor answered by citing a
+        // fact from that dossier -> reflection questions. Not auto-graded,
         // same manual-score-entry pattern as the other worksheet-style widgets.
         $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
-            VALUES ('case_dossier', 'Case Dossier Rating', 'widgets/case_dossier', NULL)");
+            VALUES ('case_dossier', 'Case Dossier', 'widgets/case_dossier', NULL)");
+        // Renamed from 'Case Dossier Rating' when the 1-5 scale was dropped —
+        // INSERT IGNORE above can't update an already-seeded row.
+        $this->db->query("UPDATE widgets SET name = 'Case Dossier'
+            WHERE widget_key = 'case_dossier' AND name = 'Case Dossier Rating'");
         // Timed/Secure Quiz: same {question, choices, answer} config/grading as
         // the 'quiz' widget above, but students take it in a dedicated
         // fullscreen/timer/tab-switch-lockdown page (SecureQuizController)
@@ -237,8 +241,9 @@ class Widgets_model extends CI_Model
     }
 
     // Mirrors widgets/case_dossier.php's updateProgress(): hook questions +
-    // each group's per-factor rating (answered when a 1-5 score is picked,
-    // matching the bar's .cd-rate-btn.picked check) + reflection questions.
+    // each group's per-factor evidence citation (answered when the evidence
+    // text is non-blank, matching the bar's .cd-evidence-input check) +
+    // reflection questions.
     private function _progress_case_dossier($config, $answers)
     {
         $hook       = $config['hook'] ?? [];
@@ -261,8 +266,8 @@ class Widgets_model extends CI_Model
             $ratings = $group_ratings[$gi] ?? [];
             foreach ($group['factors'] ?? [] as $fi => $factor) {
                 $total++;
-                $score = $ratings[$fi]['score'] ?? null;
-                if (is_numeric($score)) $done++;
+                $evidence = $ratings[$fi]['evidence'] ?? null;
+                if (is_string($evidence) && trim($evidence) !== '') $done++;
             }
         }
 

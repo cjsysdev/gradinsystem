@@ -1010,7 +1010,7 @@ function applyCopyFrom() {
     document.getElementById('modal_title').value = src.title || '';
     document.getElementById('modal_description').value = src.description || '';
     document.getElementById('modal_max_score').value = src.max_score || '';
-    document.getElementById('modal_term').value = src.term || 'midterm';
+    document.getElementById('modal_term').value = src.term || 'final';
     document.getElementById('modal_due').value = src.due ? src.due.replace(' ', 'T').substring(0, 16) : '';
     document.getElementById('modal_is_groupings').checked = parseInt(src.is_groupings) === 1;
     refreshGroupingSetOptions();
@@ -1294,7 +1294,7 @@ function openAddModal() {
     document.getElementById('modal_title').value = '';
     document.getElementById('modal_description').value = '';
     document.getElementById('modal_max_score').value = '';
-    document.getElementById('modal_term').value = 'midterm';
+    document.getElementById('modal_term').value = 'final';
     document.getElementById('modal_status').value = '0';
     document.getElementById('modal_due').value = '';
     document.getElementById('modal_is_groupings').checked = false;

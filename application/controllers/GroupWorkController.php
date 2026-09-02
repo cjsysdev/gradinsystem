@@ -599,7 +599,7 @@ class GroupWorkController extends CI_Controller
 
     // Recursively checks a decoded widget payload (or a plain string) for any
     // non-blank value. trim((string) 0) !== '' is true, so numeric 0 ratings
-    // (decision_matrix, case_dossier) correctly count as content.
+    // (decision_matrix) correctly count as content.
     private function _has_content($decoded)
     {
         if (is_array($decoded)) {
