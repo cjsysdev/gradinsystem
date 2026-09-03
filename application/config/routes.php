@@ -177,6 +177,7 @@ $route['project_log/save'] = 'ProjectLogController/save';
 $route['project_log/update/(:num)'] = 'ProjectLogController/update/$1';
 $route['project_log/delete/(:num)'] = 'ProjectLogController/delete/$1';
 $route['project_log/install'] = 'ProjectLogController/install';
+$route['project_log/set_status/(:num)'] = 'ProjectLogController/set_status/$1';
 $route['project_log/(:num)'] = 'ProjectLogController/index/$1'; // keep after the specific routes above
 $route['admin/project_logs'] = 'AdminController/project_logs';
 $route['admin/save_project_log_groupings'] = 'AdminController/save_project_log_groupings';

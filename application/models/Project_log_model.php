@@ -5,6 +5,56 @@ class Project_log_model extends CI_Model
 {
     protected $table = 'project_logs';
 
+    /**
+     * The project log's kanban columns, in board order, plus everything the UI
+     * needs to draw one. This is the single source of truth for status: the DB
+     * ENUM (install()), ProjectLogController::_clean_status(), the student
+     * board and the admin browse all derive from it. Adding a column here and
+     * re-running ProjectLogController/install is the whole change.
+     *
+     * Order matters — it is the left-to-right order of the board and the order
+     * of the status <select>.
+     */
+    const STATUSES = [
+        'planned'     => ['label' => 'Planned',     'badge' => 'secondary', 'icon' => 'fa-clipboard-list', 'color' => '#6c757d', 'hint' => 'Not started yet'],
+        'in-progress' => ['label' => 'In Progress', 'badge' => 'warning',   'icon' => 'fa-person-digging', 'color' => '#ffc107', 'hint' => 'Being worked on right now'],
+        'blocked'     => ['label' => 'Blocked',     'badge' => 'danger',    'icon' => 'fa-ban',            'color' => '#dc3545', 'hint' => 'Stuck — needs help or a decision'],
+        'done'        => ['label' => 'Done',        'badge' => 'success',   'icon' => 'fa-check',          'color' => '#28a745', 'hint' => 'Finished — includes shipped/demoed work'],
+    ];
+
+    const DEFAULT_STATUS = 'planned';
+
+    public static function statuses()
+    {
+        return self::STATUSES;
+    }
+
+    public static function status_keys()
+    {
+        return array_keys(self::STATUSES);
+    }
+
+    // Any value not in STATUSES falls back to the default rather than reaching
+    // the ENUM, where an unknown value is stored as '' without an error
+    // (db_debug is off).
+    public static function clean_status($status)
+    {
+        return isset(self::STATUSES[$status]) ? $status : self::DEFAULT_STATUS;
+    }
+
+    // Never returns null — rows written before a column existed still render.
+    public static function status_meta($status)
+    {
+        if (isset(self::STATUSES[$status])) {
+            return self::STATUSES[$status];
+        }
+        // A blank status is what a pre-widening ENUM leaves behind on a rejected
+        // write — label it rather than render an empty badge.
+        $label = ($status === null || $status === '') ? 'Unset' : ucfirst((string) $status);
+        return ['label' => $label, 'badge' => 'secondary',
+                'icon' => 'fa-circle-question', 'color' => '#6c757d', 'hint' => ''];
+    }
+
     // One-time (idempotent) schema setup — run once as admin via
     // ProjectLogController/install. Mirrors Grouping_model::install().
     // A project log is a running, per-student list of progress entries for a
@@ -18,7 +68,7 @@ class Project_log_model extends CI_Model
             `class_id`    INT NOT NULL,
             `title`       VARCHAR(150) NOT NULL,
             `description` TEXT NULL,
-            `status`      ENUM('planned','in-progress','done') NOT NULL DEFAULT 'planned',
+            `status`      " . $this->_status_enum_sql() . ",
             `link`        VARCHAR(512) NULL,
             `file_upload` VARCHAR(512) NULL,
             `code`        LONGTEXT NULL,
@@ -42,6 +92,57 @@ class Project_log_model extends CI_Model
         // project_logs already exists in live installs.
         $this->_add_column_if_missing('project_logs', 'group_id', 'INT UNSIGNED NULL');
         $this->_add_index_if_missing('project_logs', 'idx_group', '(`group_id`)');
+
+        // Live installs still carry the original ENUM, without 'blocked'.
+        $this->_sync_status_enum();
+    }
+
+    private function _status_enum_sql()
+    {
+        return "ENUM('" . implode("','", self::status_keys()) . "') NOT NULL DEFAULT '" . self::DEFAULT_STATUS . "'";
+    }
+
+    // The ENUM only ever grows here — statuses are added, never dropped, so
+    // this MODIFY cannot strand an existing row (MySQL re-matches each row by
+    // value name, not by index, so inserting 'blocked' mid-list is safe).
+    // Widening is what makes a new column writable at all: MySQL rejects an
+    // out-of-list ENUM value, and with db_debug off that rejection is
+    // invisible — the row just saves as ''.
+    private function _sync_status_enum()
+    {
+        if ($this->status_enum_ready()) {
+            return;
+        }
+        $this->db->query("ALTER TABLE `project_logs` MODIFY `status` " . $this->_status_enum_sql());
+    }
+
+    // Board columns the live ENUM does not accept yet, as labels. Empty means
+    // the schema is current. The admin banner lists these rather than naming
+    // them in the view, so it stays right when STATUSES changes again.
+    public function missing_status_labels()
+    {
+        $row = $this->db->query(
+            "SELECT COLUMN_TYPE AS t FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'project_logs' AND COLUMN_NAME = 'status'"
+        )->row();
+
+        if (!$row) {
+            return []; // not installed yet; install() will create it correctly
+        }
+
+        $missing = [];
+        foreach (self::STATUSES as $key => $meta) {
+            if (strpos($row->t, "'" . $key . "'") === false) {
+                $missing[] = $meta['label'];
+            }
+        }
+        return $missing;
+    }
+
+    // True when the live column already accepts every status in STATUSES.
+    public function status_enum_ready()
+    {
+        return $this->missing_status_labels() === [];
     }
 
     private function _add_column_if_missing($table, $column, $definition)
@@ -88,8 +189,6 @@ class Project_log_model extends CI_Model
             ->get()->result_array();
     }
 
-    // $limit = null returns the whole log (original behaviour); pass a limit to
-    // page through it — see ProjectLogController::index().
     // The subset of the student's courses that actually have a project log
     // set up — i.e. a grouping set designated in project_log_groupings. This
     // is what the student sees in the course picker, and what decides whether
@@ -116,6 +215,8 @@ class Project_log_model extends CI_Model
             ->get()->result_array();
     }
 
+    // $limit = null returns the whole log — that is what the kanban board asks
+    // for, since a paged board would show empty columns that aren't empty.
     public function get_by_student_class($student_id, $class_id, $limit = null, $offset = 0)
     {
         $this->db
@@ -128,13 +229,6 @@ class Project_log_model extends CI_Model
         }
 
         return $this->db->get($this->table)->result_array();
-    }
-
-    public function count_by_student_class($student_id, $class_id)
-    {
-        return (int) $this->db
-            ->where(['student_id' => $student_id, 'class_id' => $class_id])
-            ->count_all_results($this->table);
     }
 
     // ── Groupings integration ────────────────────────────────────────────────
@@ -201,13 +295,6 @@ class Project_log_model extends CI_Model
         return $this->db->get()->result_array();
     }
 
-    public function count_by_group($group_id)
-    {
-        return (int) $this->db
-            ->where('group_id', $group_id)
-            ->count_all_results($this->table);
-    }
-
     // Teams available to filter the admin browse by: every group of the
     // grouping set(s) designated for this course, each with how many log
     // entries it has. The LEFT JOIN keeps teams that have logged nothing —
@@ -255,6 +342,20 @@ class Project_log_model extends CI_Model
             ->update($this->table, $data);
     }
 
+    // Kanban drag-and-drop write. Ownership-scoped like every other write, so
+    // a teammate can read a card on the shared board but only its author can
+    // move it — the same rule the edit/delete buttons already follow.
+    // $status is validated by the controller through clean_status().
+    public function set_status($log_id, $student_id, $status)
+    {
+        return $this->db
+            ->where(['log_id' => $log_id, 'student_id' => $student_id])
+            ->update($this->table, [
+                'status'     => $status,
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+    }
+
     public function delete_entry($log_id, $student_id)
     {
         return $this->db
@@ -265,7 +366,8 @@ class Project_log_model extends CI_Model
     // Joins + WHEREs shared by the admin browse and its row count.
     // $group_id: a group_id to show one team's entries, the string 'none' for
     // individual (team-less) entries, or empty for no team filter.
-    private function _admin_filters($class_id = null, $section = null, $group_id = null)
+    // $status: one of STATUSES, or empty for no status filter.
+    private function _admin_filters($class_id = null, $section = null, $group_id = null, $status = null)
     {
         $this->db
             ->from('project_logs pl')
@@ -285,13 +387,16 @@ class Project_log_model extends CI_Model
         } elseif (!empty($group_id)) {
             $this->db->where('pl.group_id', (int) $group_id);
         }
+        if (!empty($status) && isset(self::STATUSES[$status])) {
+            $this->db->where('pl.status', $status);
+        }
     }
 
     // Admin read-only browse, optionally filtered by course, section and/or
     // team. Pass $limit to page through the results.
-    public function get_all_for_admin($class_id = null, $section = null, $group_id = null, $limit = null, $offset = 0)
+    public function get_all_for_admin($class_id = null, $section = null, $group_id = null, $limit = null, $offset = 0, $status = null)
     {
-        $this->_admin_filters($class_id, $section, $group_id);
+        $this->_admin_filters($class_id, $section, $group_id, $status);
 
         $this->db
             ->select('pl.*, c.class_code, c.class_name, cls.section,
@@ -313,12 +418,35 @@ class Project_log_model extends CI_Model
     // count_all_results(): the class_student join fans a student out once per
     // enrolment (the GROUP BY above collapses that), and CI's
     // count_all_results() on a grouped query returns the first group's count.
-    public function count_all_for_admin($class_id = null, $section = null, $group_id = null)
+    public function count_all_for_admin($class_id = null, $section = null, $group_id = null, $status = null)
     {
-        $this->_admin_filters($class_id, $section, $group_id);
+        $this->_admin_filters($class_id, $section, $group_id, $status);
 
         $row = $this->db->select('COUNT(DISTINCT pl.log_id) AS n')->get()->row();
         return $row ? (int) $row->n : 0;
+    }
+
+    // Board summary for the admin browse: how many entries sit in each column
+    // under the current course/section/team filter. Deliberately ignores the
+    // status filter — the strip is how you see the whole board and click into
+    // one column, so filtering it by the selected column would empty it.
+    // Counted DISTINCT for the same class_student fan-out reason as above.
+    public function status_counts_for_admin($class_id = null, $section = null, $group_id = null)
+    {
+        $this->_admin_filters($class_id, $section, $group_id);
+
+        $rows = $this->db
+            ->select('pl.status, COUNT(DISTINCT pl.log_id) AS n')
+            ->group_by('pl.status')
+            ->get()->result_array();
+
+        $counts = array_fill_keys(self::status_keys(), 0);
+        foreach ($rows as $r) {
+            if (isset($counts[$r['status']])) {
+                $counts[$r['status']] = (int) $r['n'];
+            }
+        }
+        return $counts;
     }
 
     // Distinct courses that have at least one log entry — for the admin filter.

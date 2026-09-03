@@ -37,43 +37,69 @@ class ProjectLogController extends CI_Controller
 
         $group_ctx = $selected ? $this->_resolve_group($student_id, $selected['class_id']) : ['mode' => 'individual'];
 
-        $per_page = 10;
-        $offset   = (int) $this->input->get('per_page');
-        $entries  = [];
-        $total    = 0;
-
+        // The board is not paged: a kanban whose columns only hold page 1 shows
+        // a false picture of the project (a "Blocked" column can read empty
+        // just because its cards fell on page 2). The whole log is loaded and
+        // each column scrolls on its own instead.
+        $entries = [];
         if ($group_ctx['mode'] === 'group') {
-            $group_id = $group_ctx['group']['group_id'];
-            $total    = $this->Project_log_model->count_by_group($group_id);
-            $entries  = $this->Project_log_model->get_by_group($group_id, $per_page, $offset);
+            $entries = $this->Project_log_model->get_by_group($group_ctx['group']['group_id']);
         } elseif ($selected) {
-            $total   = $this->Project_log_model->count_by_student_class($student_id, $selected['class_id']);
-            $entries = $this->Project_log_model->get_by_student_class($student_id, $selected['class_id'], $per_page, $offset);
+            $entries = $this->Project_log_model->get_by_student_class($student_id, $selected['class_id']);
         }
 
-        $this->load->library('pagination');
-        $this->load->helper('pagination');
-        $this->pagination->initialize(bs_pagination_config(
-            base_url('project_log' . ($selected ? '/' . (int) $selected['class_id'] : '')),
-            $total,
-            $per_page
-        ));
+        // Bucket once here rather than re-filtering the list per column in the
+        // view. clean_status() folds any legacy/blank status into the default
+        // column so a row can never vanish off the board.
+        $statuses = Project_log_model::statuses();
+        $board    = array_fill_keys(array_keys($statuses), []);
+        foreach ($entries as $e) {
+            $board[Project_log_model::clean_status($e['status'])][] = $e;
+        }
 
         $data = [
             'courses'     => $courses,
             'selected'    => $selected,
             'selected_id' => $selected ? (int) $selected['class_id'] : null,
             'entries'     => $entries,
+            'board'       => $board,
+            'statuses'    => $statuses,
             'mode'        => $group_ctx['mode'],
             'group'       => $group_ctx['group'] ?? null,
             'members'     => $group_ctx['members'] ?? [],
-            'pagination'  => $this->pagination->create_links(),
-            'total'       => $total,
-            'per_page'    => $per_page,
-            'offset'      => $offset,
+            'total'       => count($entries),
         ];
 
         $this->load->view('project_log', $data);
+    }
+
+    // AJAX — move a card to another column on the kanban board. Answers JSON;
+    // the board reverts the card to where it came from on anything but
+    // success, so a rejected move never lies about what was saved.
+    public function set_status($log_id)
+    {
+        header('Content-Type: application/json');
+
+        $student_id = $this->session->student_id;
+        $status     = (string) $this->input->post('status');
+
+        // Not _clean_status(): that coerces an unknown value to 'planned', and
+        // a dropped card silently resetting to Planned would be worse than a
+        // refused move.
+        if (!in_array($status, Project_log_model::status_keys(), true)) {
+            echo json_encode(['success' => false, 'error' => 'Unknown status.']);
+            return;
+        }
+
+        // get_one() is ownership-scoped, so this also rejects moving a
+        // teammate's card on a shared team board.
+        if (!$this->Project_log_model->get_one($log_id, $student_id)) {
+            echo json_encode(['success' => false, 'error' => 'Entry not found.']);
+            return;
+        }
+
+        $this->Project_log_model->set_status($log_id, $student_id, $status);
+        echo json_encode(['success' => true, 'status' => $status]);
     }
 
     public function save()
@@ -236,10 +262,10 @@ class ProjectLogController extends CI_Controller
         return false;
     }
 
+    // The status list lives on the model — see Project_log_model::STATUSES.
     private function _clean_status($status)
     {
-        $allowed = ['planned', 'in-progress', 'done'];
-        return in_array($status, $allowed, true) ? $status : 'planned';
+        return Project_log_model::clean_status($status);
     }
 
     // Returns the stored filename on a successful upload, or null when no file

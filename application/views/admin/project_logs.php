@@ -14,7 +14,30 @@
         <div class="alert alert-danger"><?= $this->session->flashdata('error') ?></div>
     <?php endif; ?>
 
-    <?php $status_badge = ['planned' => 'secondary', 'in-progress' => 'warning', 'done' => 'success']; ?>
+    <?php
+        // Status labels/badges come from Project_log_model::STATUSES ($statuses).
+        // Adding a kanban column is a model change, never a view change.
+        // Builds a filter URL that keeps the other filters intact.
+        $filter_url = function ($overrides = []) use ($class_id, $section, $group_id, $status) {
+            $q = array_filter(array_merge([
+                'class_id' => $class_id,
+                'section'  => $section,
+                'group_id' => $group_id,
+                'status'   => $status,
+            ], $overrides), function ($v) { return $v !== null && $v !== ''; });
+            return base_url('admin/project_logs') . ($q ? '?' . http_build_query($q) : '');
+        };
+    ?>
+
+    <?php if (!empty($missing_statuses)): ?>
+        <div class="alert alert-warning">
+            <i class="fa fa-triangle-exclamation"></i>
+            <strong>Schema update pending.</strong> The <code>project_logs.status</code> column
+            doesn't accept <strong><?= htmlspecialchars(implode(', ', $missing_statuses)) ?></strong>
+            yet, so students' cards can't be moved there. Run
+            <a href="<?= base_url('project_log/install') ?>">project_log/install</a> once to widen it.
+        </div>
+    <?php endif; ?>
 
     <!-- ── Group designation panel ───────────────────────────────── -->
     <div class="card mb-4">
@@ -125,11 +148,39 @@
                 </select>
             <?php endif; ?>
         </div>
-        <div class="form-group col-md-3">
-            <button type="submit" class="btn btn-outline-secondary"><i class="fa fa-filter"></i> Filter</button>
-            <a href="<?= base_url('admin/project_logs') ?>" class="btn btn-link">Reset</a>
+        <div class="form-group col-md-2">
+            <label class="form-label small mb-1">Column</label>
+            <select name="status" class="form-control">
+                <option value="">All columns</option>
+                <?php foreach ($statuses as $key => $meta): ?>
+                    <option value="<?= htmlspecialchars($key) ?>" <?= ($status === $key) ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($meta['label']) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div class="form-group col-md-1">
+            <button type="submit" class="btn btn-outline-secondary btn-block" title="Filter"><i class="fa fa-filter"></i></button>
+        </div>
+        <div class="form-group col-md-12 mb-0">
+            <a href="<?= base_url('admin/project_logs') ?>" class="btn btn-link pl-0">Reset filters</a>
         </div>
     </form>
+
+    <!-- ── Board summary: the students' kanban, counted ───────────────── -->
+    <?php // Counts ignore the Column filter on purpose — this strip is how you
+          // see the whole board and click into one column. ?>
+    <div class="d-flex flex-wrap mb-3" style="gap: 8px;">
+        <?php foreach ($statuses as $key => $meta): ?>
+            <a href="<?= $filter_url(['status' => ($status === $key) ? null : $key, 'per_page' => null]) ?>"
+               class="btn btn-sm <?= ($status === $key) ? 'btn-' . $meta['badge'] : 'btn-outline-' . $meta['badge'] ?>"
+               title="<?= htmlspecialchars($meta['hint']) ?>">
+                <i class="fa <?= htmlspecialchars($meta['icon']) ?>"></i>
+                <?= htmlspecialchars($meta['label']) ?>
+                <span class="badge badge-light ml-1"><?= (int) ($status_counts[$key] ?? 0) ?></span>
+            </a>
+        <?php endforeach; ?>
+    </div>
 
     <?php if ($total > 0): ?>
         <p class="text-muted small mb-2">
@@ -163,9 +214,11 @@
                             <td><?= htmlspecialchars((string)$l['class_code']) ?></td>
                             <td><?= !empty($l['group_name']) ? htmlspecialchars($l['group_name']) : '<span class="text-muted">—</span>' ?></td>
                             <td><?= htmlspecialchars($l['title']) ?></td>
-                            <td>
-                                <span class="badge badge-<?= $status_badge[$l['status']] ?? 'secondary' ?>">
-                                    <?= htmlspecialchars(ucfirst($l['status'])) ?>
+                            <td class="text-nowrap">
+                                <?php $meta = Project_log_model::status_meta($l['status']); ?>
+                                <span class="badge badge-<?= $meta['badge'] ?>">
+                                    <i class="fa <?= htmlspecialchars($meta['icon']) ?>"></i>
+                                    <?= htmlspecialchars($meta['label']) ?>
                                 </span>
                             </td>
                             <td style="max-width:280px;">

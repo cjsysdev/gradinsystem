@@ -44,6 +44,13 @@ class AdminController extends Admin_Controller
         $class_id = $this->input->get('class_id') ?: null;
         $section  = $this->input->get('section') ?: null;
 
+        // Kanban column filter. Anything not in Project_log_model::STATUSES is
+        // dropped rather than filtering the browse down to nothing.
+        $status = $this->input->get('status') ?: null;
+        if ($status !== null && !in_array($status, Project_log_model::status_keys(), true)) {
+            $status = null;
+        }
+
         // The team list is course-scoped, so a group_id belonging to another
         // course (left over from a course switch, or hand-typed) is dropped
         // rather than silently filtering everything away. 'none' — individual,
@@ -69,7 +76,7 @@ class AdminController extends Admin_Controller
             ];
         }
 
-        $total = $this->Project_log_model->count_all_for_admin($class_id, $section, $group_id);
+        $total = $this->Project_log_model->count_all_for_admin($class_id, $section, $group_id, $status);
         $this->pagination->initialize(
             bs_pagination_config(base_url('admin/project_logs'), $total, $per_page)
         );
@@ -80,8 +87,16 @@ class AdminController extends Admin_Controller
         $data['class_id']     = $class_id;
         $data['section']      = $section;
         $data['group_id']     = $group_id;
-        $data['logs']         = $this->Project_log_model->get_all_for_admin($class_id, $section, $group_id, $per_page, $offset);
+        $data['status']       = $status;
+        $data['statuses']     = Project_log_model::statuses();
+        $data['status_counts'] = $this->Project_log_model->status_counts_for_admin($class_id, $section, $group_id);
+        $data['logs']         = $this->Project_log_model->get_all_for_admin($class_id, $section, $group_id, $per_page, $offset, $status);
         $data['designations'] = $designations;
+        // 'blocked' was added to STATUSES after the table already existed, and MySQL
+        // stores an out-of-list ENUM value as '' without raising anything
+        // (db_debug is off) — so warn here rather than let students' cards
+        // quietly refuse to move.
+        $data['missing_statuses'] = $this->Project_log_model->missing_status_labels();
         $data['pagination']   = $this->pagination->create_links();
         $data['total']        = $total;
         $data['per_page']     = $per_page;
