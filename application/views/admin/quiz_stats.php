@@ -347,7 +347,7 @@ if (!function_exists('qs_score')) {
                             <th style="width:56px;">Rank</th>
                             <th>Student</th>
                             <?php if ($show_section): ?><th style="width:90px;">Section</th><?php endif; ?>
-                            <!-- <th class="text-right" style="width:90px;">Score</th> -->
+                            <th class="text-right" style="width:90px;">Score</th>
                             <th class="text-right" style="width:70px;">%</th>
                             <th style="width:150px;">&nbsp;</th>
                         </tr>
@@ -384,11 +384,11 @@ if (!function_exists('qs_score')) {
                             <?php if ($show_section): ?>
                                 <td class="text-muted small"><?= htmlspecialchars($e['section'] ?? '—') ?></td>
                             <?php endif; ?>
-                            <!-- <td class="text-right">
+                            <td class="text-right">
                                 <strong><?= qs_score($e['score']) ?></strong><span class="text-muted small">/<?= (int) $e['max_score'] ?></span>
-                            </td> -->
+                            </td>
                             <td class="text-right text-<?= $tone ?>">
-                                <!-- <?= $pct === null ? '&mdash;' : $pct . '%' ?> -->
+                                <?= $pct === null ? '&mdash;' : $pct . '%' ?>
                             </td>
                             <td>
                                 <div class="qs-score-bar">

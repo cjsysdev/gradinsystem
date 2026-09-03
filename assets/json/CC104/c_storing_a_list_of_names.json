@@ -1,0 +1,233 @@
+{
+    "topic": "c_storing_a_list_of_names",
+    "title": "C: Storing a List of Names",
+    "description": "Holding several names in a 2D char array and filling them with a loop.",
+    "congratsText": "Well done. You can now store a list of names, tell a row apart from the whole grid, and pass either one where it belongs.",
+    "objectives": [
+        "Declare a 2D char array that holds several names",
+        "Fill every row using a loop and a one-name function",
+        "Distinguish names, names[i] and names[i][j]",
+        "Pass a whole grid into a function that prints the list"
+    ],
+    "recap": [
+        "char names[3][20] is 3 rows of 20 letters; one row holds one name.",
+        "names[i] is a single row, so a one-name function fills it unchanged.",
+        "One index picks the row; two indexes pick a single letter inside that row.",
+        "A grid parameter is written char list[][20] — the row width cannot be left out."
+    ],
+    "sections": [
+        {
+            "id": 0,
+            "title": "A List of Names Is a Grid",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "<span class=\"code-inline\">char names[3][20];</span> is <span class=\"highlight\">3 rows</span>, each row holding up to 20 letters. One row holds one name.",
+                    "check": {
+                        "question": "How many names can char names[3][20]; hold?",
+                        "options": [
+                            "Three",
+                            "Twenty"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "The first number is <span class=\"highlight\">how many names</span>. The second is <span class=\"highlight\">how long</span> each one may be — they do very different jobs.",
+                    "check": {
+                        "question": "In char names[3][20], what does the 20 control?",
+                        "options": [
+                            "How long each name can be",
+                            "How many names fit in total"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Starting every row at <span class=\"code-inline\">\"none\"</span> is a habit worth keeping — an unfilled row then <span class=\"highlight\">says so</span> instead of showing leftover memory.",
+                    "check": {
+                        "question": "Why start each row at \"none\" before filling it?",
+                        "options": [
+                            "An empty row is then obvious",
+                            "C refuses to run without it"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "code": "char names[3][20] = {\"none\", \"none\", \"none\"};\nprintf(\"%s\", names[1]);",
+                "question": "Nothing else has run yet. What does this print?",
+                "options": [
+                    "none, the row's starting text",
+                    "1, the index that was written",
+                    "20, the width of every row",
+                    "Nothing at all, the row is empty"
+                ],
+                "correct": 0
+            }
+        },
+        {
+            "id": 1,
+            "title": "One Row Is One Name",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "<span class=\"code-inline\">names[i]</span> is not a letter — it is a <span class=\"highlight\">whole row</span>, which means one complete name.",
+                    "check": {
+                        "question": "What does names[1] refer to?",
+                        "options": [
+                            "The second whole name",
+                            "The second letter stored"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Because a row is just a name, a function written for <span class=\"highlight\">one name</span> works on it with no edits: <span class=\"code-inline\">getName(names[i]);</span>.",
+                    "check": {
+                        "question": "Does getName need rewriting to work on a list of names?",
+                        "options": [
+                            "No, it is handed one row",
+                            "Yes, lists need their own version"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Wrap that call in a loop and the whole list fills: three turns of the loop means <span class=\"highlight\">three different rows</span> handed over, one at a time.",
+                    "check": {
+                        "question": "The loop runs 3 times calling getName(names[i]). How many rows get filled?",
+                        "options": [
+                            "Three, a different one each turn",
+                            "One, the same row every turn"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "type",
+                "code": "char names[3][20] = {\"none\", \"none\", \"none\"};\nint i;\nfor (i = 0; i < 3; i++) {\n    getName(names[i]);\n}\n/* user types: Maria, Jose, Ana */\nprintf(\"%s\", names[2]);",
+                "question": "Type the exact word this prints.",
+                "acceptedAnswers": [
+                    "Ana",
+                    "ana"
+                ]
+            }
+        },
+        {
+            "id": 2,
+            "title": "One Index or Two",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "Read the brackets left to right: the first picks the <span class=\"highlight\">row</span>, the second picks the <span class=\"highlight\">letter</span> inside that row.",
+                    "check": {
+                        "question": "In names[2][0], what does the 2 pick?",
+                        "options": [
+                            "The row, meaning which name",
+                            "The letter inside the name"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "So <span class=\"code-inline\">names[0]</span> prints with <span class=\"code-inline\">%s</span> as a whole word, while <span class=\"code-inline\">names[0][0]</span> prints with <span class=\"code-inline\">%c</span> as a <span class=\"highlight\">single letter</span>.",
+                    "check": {
+                        "question": "Row 0 holds Maria. What is in names[0][0]?",
+                        "options": [
+                            "The letter M",
+                            "The whole word Maria"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Dropping the row index is the classic slip. <span class=\"code-inline\">getName(names)</span> hands over the <span class=\"highlight\">whole grid</span>, not a row, and every answer lands in row 0.",
+                    "check": {
+                        "question": "getName(names) is called three times. Which rows get filled?",
+                        "options": [
+                            "Only row 0, overwritten each time",
+                            "All three rows, one per call"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "arrange",
+                "question": "Arrange the tokens to build a function that prints every name in the list.",
+                "tokens": [
+                    "}",
+                    "int i;\n    for (i = 0; i < size; i++) {\n        printf(\"%s\\n\", list[i]);\n    }",
+                    "void showNames(char list[][20], int size)",
+                    "{"
+                ],
+                "correctOrder": [
+                    "void showNames(char list[][20], int size)",
+                    "{",
+                    "int i;\n    for (i = 0; i < size; i++) {\n        printf(\"%s\\n\", list[i]);\n    }",
+                    "}"
+                ]
+            }
+        },
+        {
+            "id": 3,
+            "title": "Handing Over the Whole Grid",
+            "callback": true,
+            "refSection": "0, 1 & 2",
+            "chunks": [
+                {
+                    "text": "A function that prints the <span class=\"highlight\">whole list</span> needs the whole grid, so its parameter is written <span class=\"code-inline\">char list[][20]</span>.",
+                    "check": {
+                        "question": "showNames prints every name. What must it be given?",
+                        "options": [
+                            "The whole grid of names",
+                            "One row, like getName gets"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "The <span class=\"code-inline\">[20]</span> cannot be left out. Without the row width, C <span class=\"highlight\">cannot tell</span> where one name ends and the next begins.",
+                    "check": {
+                        "question": "Why must the 20 stay in char list[][20]?",
+                        "options": [
+                            "C needs it to find each row",
+                            "It sets how many rows exist"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Nothing is returned, and nothing needs to be. The grid arrives as an <span class=\"highlight\">address</span>, so the function reads and writes the real list in main().",
+                    "check": {
+                        "question": "Does showNames need a return line to give the list back?",
+                        "options": [
+                            "No, it used the real grid",
+                            "Yes, or the list is lost"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "code": "void showNames(char list[][20], int size) {\n    int i;\n    for (i = 0; i < size; i++) {\n        printf(\"%s \", list[i]);\n    }\n}\n\nchar names[3][20] = {\"none\", \"none\", \"none\"};\ngetName(names);\n/* user types: Maria */\nshowNames(names, 3);",
+                "question": "The [i] was left out of the getName call. What prints?",
+                "options": [
+                    "Maria none none",
+                    "Maria Maria Maria",
+                    "none none none",
+                    "Maria, then nothing more"
+                ],
+                "correct": 0
+            }
+        }
+    ]
+}
