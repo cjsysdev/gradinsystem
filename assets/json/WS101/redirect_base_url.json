@@ -1,0 +1,234 @@
+{
+    "topic": "redirect_base_url",
+    "title": "Redirect & Base URL",
+    "description": "Load url_helper, use redirect() to move between controllers and methods, and configure base_url so those redirects actually work.",
+    "congratsText": "You mastered redirect() and base_url!",
+    "objectives": [
+        "Load the url_helper before calling redirect()",
+        "Use redirect('controller/method') to move a user between controllers and methods",
+        "Configure base_url in config.php and explain why redirect() needs it",
+        "Trace a login-to-home redirect end to end"
+    ],
+    "recap": [
+        "Loading: $this->load->helper('url'); makes redirect() available.",
+        "redirect('controller/method') sends the browser to a new address, and is always the last line a method runs.",
+        "base_url() builds that address from $config['base_url'] in config.php.",
+        "check() now takes you to home(); logout() now takes you back to login()."
+    ],
+    "sections": [
+        {
+            "id": 0,
+            "title": "Loading the URL Helper",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "Functions like <span class=\"code-inline\">redirect()</span> live in a <span class=\"highlight\">helper file</span>, not in CI3's core. Helpers are not loaded until you ask for them.",
+                    "check": {
+                        "question": "Is redirect() ready to use the moment a controller starts?",
+                        "options": [
+                            "No, not until loaded",
+                            "Yes, always ready"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Load it with <span class=\"code-inline\">$this->load->helper('url');</span> at the top of any method that will call <span class=\"code-inline\">redirect()</span>.",
+                    "check": {
+                        "question": "Which loads the url_helper?",
+                        "options": [
+                            "$this->load->helper('url');",
+                            "$this->load->library('url');"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Skip that line and call <span class=\"code-inline\">redirect()</span> anyway, and PHP throws <span class=\"highlight\">Call to undefined function redirect()</span> &mdash; a fatal error, not a silent failure.",
+                    "check": {
+                        "question": "Forgetting to load the helper causes...",
+                        "options": [
+                            "a fatal, visible error",
+                            "a quiet blank page"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "code": "",
+                "question": "A method calls redirect('auth/home') but never loaded the url_helper. What happens?",
+                "options": [
+                    "A fatal undefined function error shows",
+                    "The page just reloads with no change",
+                    "CI3 quietly loads the helper just in time",
+                    "redirect() silently does nothing at all"
+                ],
+                "correct": 0
+            }
+        },
+        {
+            "id": 1,
+            "title": "redirect() Moves You",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "<span class=\"code-inline\">redirect('auth/home')</span> sends the browser to a <span class=\"highlight\">new controller and method</span> &mdash; the same controller/method path you'd type in the address bar.",
+                    "check": {
+                        "question": "'auth/home' names...",
+                        "options": [
+                            "a controller and a method",
+                            "a database table"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Call it as the <span class=\"highlight\">last thing</span> a method does. Any code after <span class=\"code-inline\">redirect()</span> never runs &mdash; the browser has already left.",
+                    "check": {
+                        "question": "Does code written after redirect() still run?",
+                        "options": [
+                            "No, the browser already left",
+                            "Yes, it runs first"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "In <span class=\"code-inline\">check()</span>, store the session value <span class=\"highlight\">first</span>, then <span class=\"code-inline\">redirect()</span> &mdash; storing it after would be too late.",
+                    "check": {
+                        "question": "Should set_userdata() run before or after redirect()?",
+                        "options": [
+                            "Before",
+                            "After"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "type",
+                "code": "public function check()\n{\n    $this->load->helper('url');\n    $this->session->set_userdata('username', 'maria');\n    // type the missing line\n}",
+                "question": "Type the line that sends the browser to home() in the Auth controller.",
+                "acceptedAnswers": [
+                    "redirect('auth/home');",
+                    "redirect(\"auth/home\");",
+                    "redirect('auth/home')"
+                ]
+            }
+        },
+        {
+            "id": 2,
+            "title": "base_url() and config.php",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "<span class=\"code-inline\">redirect()</span> has to build a full address. It gets the starting part from <span class=\"highlight\">base_url()</span>.",
+                    "check": {
+                        "question": "Where does redirect() get the starting part of the address?",
+                        "options": [
+                            "base_url()",
+                            "the login form's action"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "<span class=\"code-inline\">base_url()</span> just reads <span class=\"code-inline\">$config['base_url']</span> from <span class=\"highlight\">application/config/config.php</span>.",
+                    "check": {
+                        "question": "base_url() reads its value from...",
+                        "options": [
+                            "config.php",
+                            "the routes file"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Leave <span class=\"code-inline\">$config['base_url']</span> blank, and every <span class=\"code-inline\">redirect()</span> and link built with <span class=\"highlight\">base_url()</span> comes out incomplete.",
+                    "check": {
+                        "question": "A blank base_url makes redirect() links...",
+                        "options": [
+                            "incomplete",
+                            "still perfectly fine"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "arrange",
+                "question": "Arrange the tokens to build the config.php line that sets base_url.",
+                "tokens": [
+                    "=",
+                    "'http://localhost/ci3/'",
+                    ";",
+                    "$config['base_url']"
+                ],
+                "correctOrder": [
+                    "$config['base_url']",
+                    "=",
+                    "'http://localhost/ci3/'",
+                    ";"
+                ]
+            }
+        },
+        {
+            "id": 3,
+            "title": "Login to Home, Traced",
+            "callback": true,
+            "refSection": "0, 1 & 2",
+            "chunks": [
+                {
+                    "text": "A teammate's <span class=\"code-inline\">check()</span> loads the helper, sets the session, then calls <span class=\"code-inline\">redirect('auth/home')</span> &mdash; but <span class=\"code-inline\">$config['base_url']</span> is still blank.",
+                    "check": {
+                        "question": "Will redirect() still send the browser somewhere?",
+                        "options": [
+                            "Yes, but the address is incomplete",
+                            "No, redirect() itself fails"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Another teammate's <span class=\"code-inline\">logout()</span> calls <span class=\"code-inline\">redirect('auth/login')</span> <span class=\"highlight\">before</span> <span class=\"code-inline\">sess_destroy()</span>.",
+                    "check": {
+                        "question": "Does sess_destroy() still run in that order?",
+                        "options": [
+                            "No, the browser already left",
+                            "Yes, order doesn't matter"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Fix it: move <span class=\"code-inline\">redirect()</span> to the <span class=\"highlight\">very last line</span>, after every other statement in the method.",
+                    "check": {
+                        "question": "Where should redirect() sit in a method?",
+                        "options": [
+                            "Last",
+                            "First"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "code": "public function logout()\n{\n    redirect('auth/login');\n    $this->session->sess_destroy();\n}",
+                "question": "In this logout(), what actually happens when a user clicks logout?",
+                "options": [
+                    "The browser leaves before sess_destroy() can run",
+                    "sess_destroy() runs first, then the browser leaves",
+                    "Both lines run at the same time, in parallel",
+                    "PHP throws a fatal error about the wrong order"
+                ],
+                "correct": 0
+            }
+        }
+    ]
+}

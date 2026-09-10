@@ -1,0 +1,234 @@
+{
+    "topic": "linear_search_on_strings_finding_a_name_in_a_list",
+    "title": "Linear Search on Strings: Finding a Name in a List",
+    "description": "Search a list of names with strcmp, and see why == quietly fails on words.",
+    "congratsText": "You can now search a list of names and say why strcmp is the only way to compare two words.",
+    "objectives": [
+        "Explain what strcmp gives back and why the test is written == 0.",
+        "Predict the row number a name search reports, including -1.",
+        "Explain why == compares addresses instead of letters.",
+        "Apply the same search shape to a different list of words."
+    ],
+    "recap": [
+        "strcmp gives back 0 when two words match, so the test is == 0.",
+        "A row number means found; -1 means no row matched, and case matters.",
+        "== compares two addresses, compiles without warning, and never matches.",
+        "searchCity reuses the shape unchanged &mdash; only the list and name differ."
+    ],
+    "sections": [
+        {
+            "id": 0,
+            "title": "Comparing Words with strcmp",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "<span class=\"code-inline\">searchName(char list[][20], int size, char target[])</span> keeps the same loop as a number search. The list is now a grid of rows, and the target is now a word.",
+                    "check": {
+                        "question": "What is searchName handed as its third thing?",
+                        "options": [
+                            "The word it is looking for",
+                            "The row it should start on"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "<span class=\"highlight\">strcmp</span> walks two words letter by letter and hands back <span class=\"code-inline\">0</span> when it runs out of differences. So <span class=\"code-inline\">0</span> means <b>same</b>, not <b>true</b>.",
+                    "check": {
+                        "question": "What does strcmp give back for two equal words?",
+                        "options": [
+                            "1, because the answer is true",
+                            "0, because nothing differs"
+                        ],
+                        "correct": 1
+                    }
+                },
+                {
+                    "text": "That is why the test is written <span class=\"code-inline\">if (strcmp(list[i], target) == 0)</span>. On a match it runs <span class=\"code-inline\">return i;</span>; if the loop ends with no match, <span class=\"code-inline\">return -1;</span> runs instead.",
+                    "check": {
+                        "question": "Why is == 0 written after the strcmp call?",
+                        "options": [
+                            "Because 0 is the answer that means same",
+                            "Because strcmp counts down toward zero"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "code": "char names[5][20] = {\"Ana\", \"Ben\", \"Cely\", \"Dino\", \"Ella\"};\nfound = searchName(names, 5, \"Cely\");",
+                "question": "What number does found hold after this runs?",
+                "options": [
+                    "0, because strcmp matched the word Cely",
+                    "2, the row number where Cely sits",
+                    "3, counting the rows from 1 instead of 0",
+                    "4, the number of letters in the word Cely"
+                ],
+                "correct": 1
+            }
+        },
+        {
+            "id": 1,
+            "title": "What the Answer Number Means",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "<span class=\"code-inline\">searchName(names, 5, \"Ana\")</span> hands back <span class=\"code-inline\">0</span>. Row 0 is a real row, so <span class=\"code-inline\">0</span> here means <b>found, at the front</b>.",
+                    "check": {
+                        "question": "Does 0 mean the search failed?",
+                        "options": [
+                            "No, it is the first row",
+                            "Yes, nothing was found"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "<span class=\"code-inline\">searchName(names, 5, \"Zeny\")</span> has to check all five rows. None match, so the loop ends and the function hands back <span class=\"code-inline\">-1</span> instead.",
+                    "check": {
+                        "question": "How many rows does the search for Zeny check?",
+                        "options": [
+                            "One, then it gives up",
+                            "All five, then it stops"
+                        ],
+                        "correct": 1
+                    }
+                },
+                {
+                    "text": "<span class=\"highlight\">strcmp is case sensitive</span>. A capital A and a small a are different letters, so <span class=\"code-inline\">searchName(names, 5, \"ana\")</span> hands back <span class=\"code-inline\">-1</span> even though Ana is in the list.",
+                    "check": {
+                        "question": "Why does searching for ana give -1?",
+                        "options": [
+                            "The list holds Ana with a capital A",
+                            "Short words are skipped by the loop"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "type",
+                "code": "char names[5][20] = {\"Ana\", \"Ben\", \"Cely\", \"Dino\", \"Ella\"};\nfound = searchName(names, 5, \"Dino\");",
+                "question": "Type the number found holds after this runs.",
+                "acceptedAnswers": [
+                    "3"
+                ]
+            }
+        },
+        {
+            "id": 2,
+            "title": "Why == Cannot Compare Words",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "A word in C is not held in one box. <span class=\"code-inline\">list[i]</span> and <span class=\"code-inline\">target</span> are each an <span class=\"highlight\">address</span> &mdash; a note saying where the letters are kept.",
+                    "check": {
+                        "question": "What does list[i] hold on its own?",
+                        "options": [
+                            "Where the letters are kept",
+                            "The letters themselves"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Two words kept in two different places have two different addresses. So <span class=\"code-inline\">list[i] == target</span> compares the two notes, not the letters, and stays false even when the words match.",
+                    "check": {
+                        "question": "What does list[i] == target actually compare?",
+                        "options": [
+                            "The letters inside both words",
+                            "The two addresses"
+                        ],
+                        "correct": 1
+                    }
+                },
+                {
+                    "text": "The worst part: it <span class=\"highlight\">compiles with no warning</span>. Searching for Cely just reports <span class=\"code-inline\">-1</span> as if Cely were not in the list at all.",
+                    "check": {
+                        "question": "How does the compiler react to list[i] == target?",
+                        "options": [
+                            "It stops with an error message",
+                            "It says nothing at all"
+                        ],
+                        "correct": 1
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "arrange",
+                "question": "Arrange the tokens to build the body of searchName.",
+                "tokens": [
+                    "return -1;",
+                    "if (strcmp(list[i], target) == 0) { return i; }",
+                    "int i;",
+                    "for (i = 0; i < size; i++) {",
+                    "}"
+                ],
+                "correctOrder": [
+                    "int i;",
+                    "for (i = 0; i < size; i++) {",
+                    "if (strcmp(list[i], target) == 0) { return i; }",
+                    "}",
+                    "return -1;"
+                ]
+            }
+        },
+        {
+            "id": 3,
+            "title": "Same Shape, New List of Words",
+            "callback": true,
+            "refSection": "0, 1 & 2",
+            "chunks": [
+                {
+                    "text": "<span class=\"code-inline\">searchCity(char list[][20], int size, char target[])</span> is the same shape pointed at <span class=\"code-inline\">cities[5][20]</span>. The loop and the strcmp test are untouched.",
+                    "check": {
+                        "question": "What changes between searchName and searchCity?",
+                        "options": [
+                            "The way two words get compared",
+                            "The list handed in, and the name"
+                        ],
+                        "correct": 1
+                    }
+                },
+                {
+                    "text": "With <span class=\"code-inline\">{\"Carmen\", \"Tagbilaran\", \"Ubay\", \"Talibon\", \"Loon\"}</span>, <span class=\"code-inline\">searchCity(cities, 5, \"Talibon\")</span> hands back <span class=\"code-inline\">3</span>.",
+                    "check": {
+                        "question": "Why does that call give 3?",
+                        "options": [
+                            "Talibon is the third city listed",
+                            "Talibon sits in row 3, counting from 0"
+                        ],
+                        "correct": 1
+                    }
+                },
+                {
+                    "text": "Loop, strcmp, hand back <span class=\"code-inline\">i</span>, and <span class=\"code-inline\">return -1;</span> at the end. That <span class=\"highlight\">shape</span> never changes &mdash; not for numbers, not for words.",
+                    "check": {
+                        "question": "What has to be rewritten to search a new list?",
+                        "options": [
+                            "Nothing about the loop itself",
+                            "The compare test inside it"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "code": "char cities[5][20] = {\"Carmen\", \"Tagbilaran\", \"Ubay\",\n                      \"Talibon\", \"Loon\"};\nprintf(\"%d\\n\", searchCity(cities, 5, \"Ubay\"));\nprintf(\"%d\\n\", searchCity(cities, 5, \"ubay\"));",
+                "question": "What two numbers print, and why?",
+                "options": [
+                    "2 then 2, since both spellings reach the very same row",
+                    "2 then -1, because strcmp treats U and u as different",
+                    "3 then -1, since the rows are counted starting from 1",
+                    "2 then 0, and the 0 means the second search failed"
+                ],
+                "correct": 1
+            }
+        }
+    ]
+}

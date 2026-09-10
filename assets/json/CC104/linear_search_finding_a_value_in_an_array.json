@@ -1,0 +1,234 @@
+{
+    "topic": "linear_search_finding_a_value_in_an_array",
+    "title": "Linear Search: Finding a Value in an Array",
+    "description": "Walk an array slot by slot, stop at the first match, and report the slot number &mdash; or -1 when there is none.",
+    "congratsText": "You can now write a search function that reports where a value sits, and say what -1 means.",
+    "objectives": [
+        "Explain what searchScore is handed and what it sends back.",
+        "Predict the slot number a search reports for a given target.",
+        "Explain why not-found must report -1 and never 0.",
+        "Apply the same search shape to a different array."
+    ],
+    "recap": [
+        "searchScore takes an array, its size, and a target, and returns a slot number.",
+        "The loop stops at the first match; a missing target costs a full pass.",
+        "0 is a real slot, so -1 is the only safe way to report not-found.",
+        "searchAge reuses the shape unchanged &mdash; only the array and name differ."
+    ],
+    "sections": [
+        {
+            "id": 0,
+            "title": "The Loop-and-Compare Shape",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "A <span class=\"highlight\">linear search</span> walks an array one slot at a time and compares each value to a target. <span class=\"code-inline\">searchScore(int arr[], int size, int target)</span> takes the array, how many slots it has, and the value to look for.",
+                    "check": {
+                        "question": "What is the third thing searchScore is handed?",
+                        "options": [
+                            "The value it is looking for",
+                            "The slot number to start at"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Inside the loop, <span class=\"code-inline\">if (arr[i] == target) return i;</span> does the work. The moment a slot matches, the function hands back <span class=\"code-inline\">i</span> &mdash; the slot number &mdash; and stops walking.",
+                    "check": {
+                        "question": "When a slot matches, what is sent back?",
+                        "options": [
+                            "The value stored in that slot",
+                            "The slot number that matched"
+                        ],
+                        "correct": 1
+                    }
+                },
+                {
+                    "text": "Because it hands a number back, <span class=\"code-inline\">searchScore</span> is declared <span class=\"code-inline\">int</span>, not <span class=\"code-inline\">void</span>. It answers a question instead of printing one.",
+                    "check": {
+                        "question": "Why is searchScore declared int and not void?",
+                        "options": [
+                            "It prints the slot number to the screen",
+                            "It sends a slot number back to main"
+                        ],
+                        "correct": 1
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "code": "int scores[5] = {90, 85, 78, 92, 88};\nfound = searchScore(scores, 5, 78);",
+                "question": "What number does found hold after this runs?",
+                "options": [
+                    "78, the value that was searched for",
+                    "2, the slot number where 78 sits",
+                    "3, counting the slots from 1 instead of 0",
+                    "1, meaning the search worked"
+                ],
+                "correct": 1
+            }
+        },
+        {
+            "id": 1,
+            "title": "Where the Target Sits Changes the Work",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "With <span class=\"code-inline\">scores[5] = {90, 85, 78, 92, 88}</span>, <span class=\"code-inline\">searchScore(scores, 5, 90)</span> matches on the very first slot. It checks one slot and hands back <span class=\"code-inline\">0</span>.",
+                    "check": {
+                        "question": "How many slots does the search for 90 check?",
+                        "options": [
+                            "One, then it stops",
+                            "All five, then it stops"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "<span class=\"code-inline\">searchScore(scores, 5, 88)</span> has to check every slot, because 88 sits last. Same function, same array &mdash; only the target moved.",
+                    "check": {
+                        "question": "What did the search for 88 hand back?",
+                        "options": [
+                            "5, the number of slots",
+                            "4, the last slot number"
+                        ],
+                        "correct": 1
+                    }
+                },
+                {
+                    "text": "If the target is not in the array, no <span class=\"code-inline\">return i;</span> ever runs. The loop simply ends, and the <span class=\"highlight\">last line</span> of the function runs instead: <span class=\"code-inline\">return -1;</span>.",
+                    "check": {
+                        "question": "When does the return -1 line run?",
+                        "options": [
+                            "Only after every slot failed to match",
+                            "Right away, before the loop starts"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "type",
+                "code": "int scores[5] = {90, 85, 78, 92, 88};\nfound = searchScore(scores, 5, 92);",
+                "question": "Type the number found holds after this runs.",
+                "acceptedAnswers": [
+                    "3"
+                ]
+            }
+        },
+        {
+            "id": 2,
+            "title": "Why Not-Found Has To Be -1",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "Slot numbers start at <span class=\"code-inline\">0</span>. In <span class=\"code-inline\">scores</span>, slot 0 is a real slot holding the real score 90. So <span class=\"code-inline\">0</span> is already taken as a meaning: &quot;found, at the front&quot;.",
+                    "check": {
+                        "question": "Is 0 a real, usable slot number?",
+                        "options": [
+                            "No, slot numbers begin at 1",
+                            "Yes, it is the first slot"
+                        ],
+                        "correct": 1
+                    }
+                },
+                {
+                    "text": "If the last line of the function were <span class=\"code-inline\">return 0;</span> instead, then searching for 100 &mdash; a value that is not there &mdash; would hand back <span class=\"code-inline\">0</span>, which reads exactly like a hit at the front.",
+                    "check": {
+                        "question": "What breaks when not-found sends back 0?",
+                        "options": [
+                            "A miss looks the same as a hit at slot 0",
+                            "The loop stops before checking any slot"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "No slot is ever numbered <span class=\"code-inline\">-1</span>. That is the whole reason it was chosen: it is a <span class=\"highlight\">safe</span> answer, one that can never be mistaken for a real slot.",
+                    "check": {
+                        "question": "Why is -1 safe as the not-found answer?",
+                        "options": [
+                            "It is the smallest number a function can return",
+                            "No real slot is ever numbered -1"
+                        ],
+                        "correct": 1
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "arrange",
+                "question": "Arrange the tokens to build the body of searchScore.",
+                "tokens": [
+                    "return -1;",
+                    "if (arr[i] == target) { return i; }",
+                    "int i;",
+                    "for (i = 0; i < size; i++) {",
+                    "}"
+                ],
+                "correctOrder": [
+                    "int i;",
+                    "for (i = 0; i < size; i++) {",
+                    "if (arr[i] == target) { return i; }",
+                    "}",
+                    "return -1;"
+                ]
+            }
+        },
+        {
+            "id": 3,
+            "title": "Same Shape, New Array",
+            "callback": true,
+            "refSection": "0, 1 & 2",
+            "chunks": [
+                {
+                    "text": "<span class=\"code-inline\">searchAge(int arr[], int size, int target)</span> is the same shape pointed at a different array: <span class=\"code-inline\">ages[5] = {19, 22, 18, 21, 20}</span>.",
+                    "check": {
+                        "question": "What is different between searchAge and searchScore?",
+                        "options": [
+                            "The array it gets handed and its name",
+                            "The way it reports a value it cannot find"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "<span class=\"code-inline\">searchAge(ages, 5, 21)</span> hands back <span class=\"code-inline\">3</span>, because 21 sits in slot 3 of <span class=\"code-inline\">{19, 22, 18, 21, 20}</span>.",
+                    "check": {
+                        "question": "Why does searchAge(ages, 5, 21) give 3?",
+                        "options": [
+                            "21 is the third value in the list",
+                            "21 sits in slot 3, counting from 0"
+                        ],
+                        "correct": 1
+                    }
+                },
+                {
+                    "text": "Loop, compare, hand back <span class=\"code-inline\">i</span>, and <span class=\"code-inline\">return -1;</span> at the end. That <span class=\"highlight\">shape</span> never changes &mdash; only the array and the function name do.",
+                    "check": {
+                        "question": "What has to change to search a different array?",
+                        "options": [
+                            "The loop and the comparison logic",
+                            "The array handed in, and the name"
+                        ],
+                        "correct": 1
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "code": "int ages[5] = {19, 22, 18, 21, 20};\nprintf(\"%d\\n\", searchAge(ages, 5, 19));\nprintf(\"%d\\n\", searchAge(ages, 5, 25));",
+                "question": "What two numbers print, and what do they mean?",
+                "options": [
+                    "0 then -1: a hit in slot 0, then no match at all",
+                    "19 then 25: each search echoes back the value handed to it",
+                    "1 then 0: one search succeeded and the other one did not",
+                    "0 then 0: slot 0 for the hit, and slot 0 for the miss too"
+                ],
+                "correct": 0
+            }
+        }
+    ]
+}
