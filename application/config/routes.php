@@ -224,6 +224,13 @@ $route['admin/fix_score/(:num)'] = 'AdminSubmissionController/fix_score/$1';
 // 1-arg form.
 $route['admin/quiz_stats/(:num)/(:any)'] = 'AdminSubmissionController/quiz_stats/$1/$2';
 $route['admin/quiz_stats/(:num)'] = 'AdminSubmissionController/quiz_stats/$1';
+// All Submissions randomizer turn tracker (randomizer_picks / randomizer_rounds).
+// These methods are new to AdminSubmissionController — they never lived on
+// AdminController, so there is no legacy URL to preserve below.
+$route['admin/randomizer_install'] = 'AdminSubmissionController/randomizer_install';
+$route['admin/randomizer/state/(:num)'] = 'AdminSubmissionController/randomizer_state/$1';
+$route['admin/randomizer/draw/(:num)'] = 'AdminSubmissionController/randomizer_draw/$1';
+$route['admin/randomizer/reset/(:num)'] = 'AdminSubmissionController/randomizer_reset/$1';
 
 $route['admin/emergency_contacts'] = 'AdminStudentController/emergency_contacts';
 $route['admin/export_emergency_contacts'] = 'AdminStudentController/export_emergency_contacts';

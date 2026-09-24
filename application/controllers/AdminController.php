@@ -152,7 +152,6 @@ class AdminController extends Admin_Controller
                 $data['attendance'] = [];
                 $data['lates'] = [];
                 $data['absents'] = [];
-                $data['chronic_absentees'] = $this->attendance->get_chronic_absentees(null, $today, 3);
                 $this->load->view('admin/dashboard', $data);
                 return;
             }

@@ -38,10 +38,16 @@ class AdminSubmissionController extends Admin_Controller
                 $data['widget'] = $this->Widgets_model->get($assessment['widget_id']);
                 $data['widget_config'] = json_decode($assessment['given'] ?? '', true) ?: [];
             }
+
+            // The randomizer's round, rendered on first paint so a refresh
+            // visibly keeps its progress instead of starting over (it used to
+            // live in localStorage, which no other machine could see).
+            $data['randomizer'] = $this->_randomizer_state($assessment_id);
         } else {
             $data['submissions'] = [];
             $data['missing_students'] = [];
             $data['selected_assessment_id'] = null;
+            $data['randomizer'] = $this->_randomizer_state(null);
         }
 
         $this->load->view('admin/all_submission', $data);
@@ -502,6 +508,190 @@ class AdminSubmissionController extends Admin_Controller
             ->where('classwork_id', $classwork_id)
             ->update('classwork');
         echo json_encode(['success' => true]);
+    }
+
+    // ── Randomizer ──────────────────────────────────────────────────────────
+    //
+    // The All Submissions randomizer draws without replacement: every eligible
+    // student is called once before anyone repeats. The round used to live in
+    // the browser's localStorage, so a refresh on another machine restarted it
+    // at zero and nothing recorded who had actually had a turn. It now lives in
+    // randomizer_picks / randomizer_rounds (Randomizer_model), and the draw
+    // itself happens here rather than in the browser — which is also what stops
+    // two open tabs calling the same student twice.
+
+    /**
+     * Students still in play: they have a submission, and they are not yet
+     * scored to max. Same rule the page's JS eligibleStudents() applies, kept
+     * here so the pool the server draws from and the pool the page counts are
+     * one definition. Reuses get_all_submissions(), which already returns
+     * trans_no, score and max_score.
+     */
+    private function _randomizer_eligible($assessment_id)
+    {
+        $eligible = [];
+        foreach ($this->classworks->get_all_submissions($assessment_id) as $row) {
+            if ($row['score'] === null || (float) $row['score'] < (float) $row['max_score']) {
+                $eligible[] = $row;
+            }
+        }
+        return $eligible;
+    }
+
+    /**
+     * The round as the page needs it: current round number, who has been
+     * called in it, and the call-order history for the "who's had a turn"
+     * panel. Safe on a database where the installer hasn't run — `installed`
+     * comes back FALSE and the page shows a banner instead of breaking.
+     */
+    private function _randomizer_state($assessment_id)
+    {
+        $this->load->model('Randomizer_model');
+
+        if (!$assessment_id) {
+            return ['installed' => $this->Randomizer_model->installed(),
+                    'round' => 1, 'picked' => [], 'history' => []];
+        }
+
+        $round = $this->Randomizer_model->current_round($assessment_id);
+
+        $history = [];
+        foreach ($this->Randomizer_model->picks($assessment_id, $round) as $pick) {
+            $history[] = [
+                'student_id' => (int) $pick['student_id'],
+                'name'       => trim($pick['firstname']) !== ''
+                    ? $pick['lastname'] . ', ' . $pick['firstname']
+                    : $pick['lastname'],
+                'picked_at'  => $pick['picked_at'],
+            ];
+        }
+
+        return [
+            'installed' => $this->Randomizer_model->installed(),
+            'round'     => $round,
+            'picked'    => $this->Randomizer_model->picked_student_ids($assessment_id, $round),
+            'history'   => $history,
+        ];
+    }
+
+    /** JSON view of the same state — page-load uses the private helper. */
+    public function randomizer_state($assessment_id)
+    {
+        echo json_encode($this->_randomizer_state($assessment_id));
+    }
+
+    /**
+     * Draws the next student and records the turn.
+     *
+     * Everyone eligible is drawn once before the pool refills; when it empties,
+     * a new round starts automatically and the whole class goes through again.
+     * The insert is what makes a pick real: uq_turn refuses a student already
+     * called this round, so a lost race just means we draw again from the
+     * refreshed pool rather than calling anyone twice.
+     */
+    public function randomizer_draw($assessment_id)
+    {
+        $this->load->model('Randomizer_model');
+
+        $eligible = $this->_randomizer_eligible($assessment_id);
+        if (!$eligible) {
+            echo json_encode(['success' => false, 'message' => 'No eligible students.']);
+            return;
+        }
+
+        $admin_id  = $this->session->userdata('student_id');
+        $persisted = $this->Randomizer_model->installed();
+        $round     = $this->Randomizer_model->current_round($assessment_id);
+        $new_round = false;
+
+        // One retry is enough: the only way the insert is refused is that
+        // someone else took this student between our read and our write, and
+        // the re-read pool excludes them.
+        for ($attempt = 0; $attempt < 2; $attempt++) {
+            $picked = array_flip($this->Randomizer_model->picked_student_ids($assessment_id, $round));
+
+            $pool = array_values(array_filter($eligible, function ($row) use ($picked) {
+                return !isset($picked[(int) $row['trans_no']]);
+            }));
+
+            if (!$pool) {
+                $round     = $this->Randomizer_model->start_new_round($assessment_id, $admin_id);
+                $new_round = true;
+                $pool      = $eligible;
+                $picked    = [];
+            }
+
+            $pick = $pool[random_int(0, count($pool) - 1)];
+
+            if (!$persisted || $this->Randomizer_model->record_pick(
+                    $assessment_id, $round, $pick['trans_no'], $pick['classwork_id'], $admin_id)) {
+                echo json_encode([
+                    'success'   => true,
+                    'persisted' => $persisted,
+                    'round'     => (int) $round,
+                    'new_round' => $new_round,
+                    'called'    => count($picked) + 1,
+                    'remaining' => count($pool) - 1,
+                    'student'   => [
+                        'classwork_id' => (int) $pick['classwork_id'],
+                        'student_id'   => (int) $pick['trans_no'],
+                        'lastname'     => $pick['lastname'],
+                        'firstname'    => $pick['firstname'],
+                        'picked_at'    => date('Y-m-d H:i:s'),
+                    ],
+                ]);
+                return;
+            }
+        }
+
+        echo json_encode(['success' => false, 'message' => 'Could not record the draw — try again.']);
+    }
+
+    /**
+     * Starts a fresh round. Past picks are kept with their old round_no, so
+     * "who was called, and when" survives the reset.
+     */
+    public function randomizer_reset($assessment_id)
+    {
+        $this->load->model('Randomizer_model');
+
+        $round = $this->Randomizer_model->start_new_round(
+            $assessment_id, $this->session->userdata('student_id'));
+
+        echo json_encode([
+            'success'   => true,
+            'persisted' => $this->Randomizer_model->installed(),
+            'round'     => (int) $round,
+        ]);
+    }
+
+    /**
+     * One-time (idempotent) schema setup for the randomizer tracker.
+     * Confirmation + pre-flight backup: see Schema_guard.
+     */
+    public function randomizer_install()
+    {
+        $this->load->model('Randomizer_model');
+        $this->load->library('schema_guard');
+
+        $tables = [Randomizer_model::PICKS, Randomizer_model::ROUNDS];
+
+        if (!$this->schema_guard->confirmed('Randomizer tracker tables', 'admin/randomizer_install', $tables)) {
+            return;
+        }
+
+        $backup = $this->schema_guard->backup($tables, 'randomizer');
+        $this->Randomizer_model->install();
+
+        if ($this->schema_guard->failed()) {
+            $this->session->set_flashdata('error',
+                'Randomizer tracker setup failed: ' . implode(' | ', $this->schema_guard->failures()));
+        } else {
+            $this->session->set_flashdata('success',
+                'Randomizer tracker ready.' . ($backup ? ' Backup written to ' . basename($backup) . '.' : ''));
+        }
+
+        redirect('AdminController/all_submissions');
     }
 
     public function add_score($classwork_id, $score)

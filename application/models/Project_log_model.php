@@ -402,9 +402,9 @@ class Project_log_model extends CI_Model
             ->select('pl.*, c.class_code, c.class_name, cls.section,
                       sm.lastname, sm.firstname, g.group_name')
             ->group_by('pl.log_id')
+            ->order_by('pl.created_at', 'DESC')
             ->order_by('c.class_code')
             ->order_by('sm.lastname')
-            ->order_by('pl.created_at', 'DESC')
             ->order_by('pl.log_id', 'DESC'); // tiebreaker: paging must be stable
 
         if ($limit !== null) {
