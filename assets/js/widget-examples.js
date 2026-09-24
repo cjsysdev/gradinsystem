@@ -371,5 +371,16 @@ const widgetExamples = {
             min_features: 4,
             require_all_crud: true
         }
+    },
+    file_upload: {
+        hint: 'Students attach files (code, documents, text, images...) plus an optional note. Works for individual or group assessments — turn on Groupings for a group upload. "allowed_extensions" limits the file types ([] = any safe type); "max_size_mb" is per file (capped at 50); set "note_label" to "" to hide the note box. Not auto-graded — score it manually like Worksheet Form.',
+        example: {
+            instructions: 'Upload your C program source file(s) for this activity. Include every .c/.h file needed to compile it.',
+            allowed_extensions: ['c', 'h', 'txt', 'pdf', 'docx'],
+            max_files: 5,
+            max_size_mb: 10,
+            note_label: 'How to compile/run it, and anything unfinished (optional)',
+            require_note: false
+        }
     }
 };

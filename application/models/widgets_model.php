@@ -106,6 +106,14 @@ class Widgets_model extends CI_Model
         // manual-score-entry pattern as Worksheet Form/Case Study Worksheet.
         $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
             VALUES ('project_proposal', 'Project Proposal', 'widgets/project_proposal', NULL)");
+        // File Upload: students attach files (C source, documents, text,
+        // images, PDFs...) plus an optional note, individually or as a group
+        // (renders in group_workspace.php like any widget; the file list syncs
+        // through the shared draft). Files go through WidgetFileController
+        // over AJAX; only their metadata is stored in classworks.code. Not
+        // auto-graded, same manual-score-entry pattern as Worksheet Form.
+        $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
+            VALUES ('file_upload', 'File Upload', 'widgets/file_upload', NULL)");
     }
 
     public function get_all()
