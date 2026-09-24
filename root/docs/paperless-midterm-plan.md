@@ -513,6 +513,64 @@ patterns. Build 6 reusable widgets, not 16 custom interfaces.
   confirming no widget code changes are needed per worksheet. Worksheets
   3–10 remain unauthored — see the pack's docx for their content.
 
+### Widget L — File Upload (added outside original scope)
+- **Why:** plenty of classwork is genuinely a file — a C program's `.c`/`.h`
+  sources, a `.docx` write-up, a `.txt` output log, a screenshot, a PDF. The
+  legacy no-widget "Upload File" dropdown in `assessment_view_code.php` takes
+  one file, has no type/size rules, doesn't work for groups, and grading it
+  means opening a raw `uploads/classworks/` link. This widget gives
+  multi-file upload with per-assessment rules, individual **or** group
+  submission, and inline preview for the instructor.
+- **Config (`assessments.given`):**
+  ```json
+  {
+    "instructions": "Upload your C program source file(s)...",
+    "allowed_extensions": ["c", "h", "txt", "pdf", "docx"],
+    "max_files": 5,
+    "max_size_mb": 10,
+    "note_label": "How to compile/run it, and anything unfinished (optional)",
+    "require_note": false
+  }
+  ```
+  All keys optional. `allowed_extensions` `[]`/omitted = any type except the
+  always-blocked server-script/executable list
+  (`WidgetFileController::BLOCKED_EXTENSIONS`); `max_size_mb` defaults to 10
+  and is capped at 50 (same ceiling as `submit_classwork()`); `note_label`
+  `""` hides the note box.
+- **Submission (`classworks.code`):**
+  `{"files": {"<id>": {"id", "name", "size", "ext", "path", "uploaded_at",
+  "uploaded_by", "removed": 0|1}}, "note": "..."}`. `files` is id-keyed (not
+  a list) and a removed file stays as a `removed: 1` tombstone, because
+  `group_workspace.php` syncs by merging changed leaf paths — list indexes
+  would collide when two members upload at once, and a deleted key would
+  never reach teammates.
+- **Upload flow:** files are *not* posted with the Turn In form. Each is sent
+  over AJAX to `WidgetFileController::upload/{assessment_id}` when picked,
+  which validates type/size, refuses once graded, and stores it at
+  `uploads/widget_files/{assessment_id}/{owner}/{id}.upload` (+ `{id}.json`
+  sidecar with the original name). `{owner}` is `s{student_id}` for solo or
+  `g{group_id}` for a grouping assessment, so teammates share a folder. Only
+  the returned metadata enters the widget state, so `submit_classwork()` and
+  `submit_group()` are unchanged, as for every widget.
+- **Download/preview:** only through `WidgetFileController::download/{path}`
+  — admins see everything, a student only their own `s…` folder or a `g…`
+  folder of a group they belong to. The folder gets a deny-all `.htaccess`
+  and files keep a neutral `.upload` extension, so an uploaded `.php`/`.html`
+  can never execute or render on the LMS origin. `?inline=1` serves images /
+  PDFs inline and code/text as `text/plain` (sandboxed CSP), which the
+  widget's Preview button shows in a code block — so the instructor can read
+  a student's `.c` file without downloading it.
+- **Individual vs group:** no widget setting — turn on Groupings for the
+  assessment as usual. Solo renders inline in `assessment_view_code.php`;
+  grouping renders in `group_workspace.php`, where every member can add or
+  remove files and the list syncs live.
+- **Grading:** not auto-graded — same manual-score-entry pattern as
+  Worksheet Form.
+- **Files:** `application/views/widgets/file_upload.php`,
+  `application/controllers/WidgetFileController.php`, registry row in
+  `Widgets_model::install()`, example in `assets/js/widget-examples.js`.
+  Run `WidgetsController/install` once to add the `file_upload` row.
+
 ## 5. Full Session-to-Widget Mapping (Weeks 1–8)
 
 | Session | Concept Portion | Hands-On Activity | Widget |

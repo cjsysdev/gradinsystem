@@ -175,3 +175,15 @@ dropdown's example JSON (`widgetExamples.chapter_worksheet`) is the full
 Worksheet 1 "The Problem" chapter, ready to use as-is — Worksheets 2–10
 from the same pack reuse this same widget with a different config JSON
 each (not yet authored).
+Another widget, **File Upload** (`file_upload` widget_key, see plan doc §4
+"Widget L"), lets students attach files (C sources, documents, text,
+images, PDFs) plus an optional note, individually or as a group (a grouping
+assessment renders it in `group_workspace.php`, and every member's uploads
+sync into one shared list). It's the one widget with its own backend
+endpoints: files go over AJAX to `WidgetFileController::upload()` as soon as
+they're picked, and only their metadata is stored in `classworks.code`, so
+the submit endpoints stay unchanged. Files are served only through
+`WidgetFileController::download()` (access-checked, from a deny-all folder),
+never by direct `uploads/` URL. `files` is an id-keyed object with
+`removed: 1` tombstones, not a list, so the group leaf-merge sync works.
+Not auto-graded.
