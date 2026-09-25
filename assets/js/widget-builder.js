@@ -189,8 +189,32 @@
         };
     }
 
+    // A single nested object (e.g. code_snippet's `rubric`): a fixed set of
+    // sub-fields serialized back into one { key: value } object.
+    function buildGroup(spec, value) {
+        value = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
+        var wrap = el('div', { class: 'form-group mb-2 p-2 border rounded' });
+        if (spec.label) wrap.appendChild(el('label', { class: 'small font-weight-bold mb-1 d-block', text: spec.label }));
+        if (spec.help) wrap.appendChild(el('small', { class: 'form-text text-muted mb-1 d-block', text: spec.help }));
+        var getters = [];
+        spec.fields.forEach(function (sub) {
+            var built = buildField(sub, value[sub.key]);
+            wrap.appendChild(built.el);
+            getters.push({ key: sub.key, getValue: built.getValue });
+        });
+        return {
+            el: wrap,
+            getValue: function () {
+                var o = {};
+                getters.forEach(function (g) { o[g.key] = g.getValue(); });
+                return o;
+            }
+        };
+    }
+
     function buildField(spec, value) {
         switch (spec.type) {
+            case 'group': return buildGroup(spec, value);
             case 'checkbox': return buildCheckbox(spec, value);
             case 'list': return buildList(spec, value);
             case 'group_list': return buildGroupList(spec, value);

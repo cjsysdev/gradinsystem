@@ -196,6 +196,19 @@ class AdminAssessmentController extends Admin_Controller
     // widget/given) lives on the shared master; editing it updates every
     // section sharing that master. Per-section fields (due/status/
     // is_groupings) only ever touch the one section being edited.
+    // Code Snippet needs a problem statement — it's the whole assessment.
+    // Returns an error message, or null when the config is fine / not this widget.
+    private function _code_snippet_config_error($widget, $config)
+    {
+        if (!$widget || $widget['widget_key'] !== 'code_snippet') {
+            return null;
+        }
+        if (trim((string) ($config['problem'] ?? '')) === '') {
+            return 'Widget config not saved — "' . $widget['name'] . '" needs a non-empty "problem".';
+        }
+        return null;
+    }
+
     public function save_assessment()
     {
         $post = $this->input->post();
@@ -223,9 +236,14 @@ class AdminAssessmentController extends Admin_Controller
         // up with the assessment's own max. Derived server-side, not trusted
         // from the posted "Max Score" field, since the modal JS's auto-fill
         // could be stale (e.g. topic file edited after the form loaded).
+        // Code Snippet is graded participation-style: every enrolled student
+        // needs a submission row to receive a verdict, so blank rows are
+        // created regardless of the "auto-create submissions" checkbox.
+        $force_roster = false;
         if ($master_fields['widget_id']) {
             $this->load->model('Widgets_model');
             $widget = $this->Widgets_model->get($master_fields['widget_id']);
+            $force_roster = $widget && $widget['widget_key'] === 'code_snippet';
             if ($widget && in_array($widget['widget_key'], ['iq_discussion', 'iq_micro'], true)) {
                 $is_micro = $widget['widget_key'] === 'iq_micro';
 
@@ -321,6 +339,12 @@ class AdminAssessmentController extends Admin_Controller
                     $master_fields['given'] = json_encode(['questions' => $this->Widgets_model->quiz_questions($config)]);
                 }
 
+                if ($msg = $this->_code_snippet_config_error($widget, $config)) {
+                    $this->session->set_flashdata('error', $msg);
+                    redirect('manage_assessments' . (!empty($post['schedule_id']) ? '?schedule_id=' . $post['schedule_id'] : ''));
+                    return;
+                }
+
                 // Same idea as the topic branch above: a config JSON that names
                 // itself (title/description/max_score) fills whichever of those
                 // form fields the admin left blank.
@@ -328,7 +352,7 @@ class AdminAssessmentController extends Admin_Controller
             }
         }
 
-        $auto_create = !empty($post['auto_create_submissions']);
+        $auto_create = !empty($post['auto_create_submissions']) || $force_roster;
         $section_fields = [
             'due'          => $post['due'],
             'status'       => (int) $status,
@@ -513,8 +537,15 @@ class AdminAssessmentController extends Admin_Controller
             ]);
         }
 
+        $roster_widget = $this->db->select('w.widget_key')
+            ->from('assessments m')
+            ->join('widgets w', 'w.widget_id = m.widget_id')
+            ->where('m.assessment_id', $master_id)
+            ->get()->row_array();
+        $force_roster = $roster_widget && $roster_widget['widget_key'] === 'code_snippet';
+
         $flash = 'Section assigned to the shared assessment.';
-        if (!empty($post['auto_create_submissions'])) {
+        if (!empty($post['auto_create_submissions']) || $force_roster) {
             $created = $this->classworks->create_blank_for_schedule($section_id, $schedule_id);
             $flash .= $created > 0 ? " Created $created blank submission(s) for the section." : '';
         }
@@ -741,6 +772,12 @@ class AdminAssessmentController extends Admin_Controller
                 }
                 if (in_array($widget['widget_key'], ['quiz', 'secure_quiz'], true) && !isset($config['questions'])) {
                     $master_fields['given'] = json_encode(['questions' => $this->Widgets_model->quiz_questions($config)]);
+                }
+
+                if ($msg = $this->_code_snippet_config_error($widget, $config)) {
+                    $this->session->set_flashdata('error', $msg);
+                    redirect('class_assessments' . ($class_id ? '?class_id=' . $class_id : ''));
+                    return;
                 }
 
                 $this->_fill_blank_fields($master_fields, $this->_widget_config_meta($config));

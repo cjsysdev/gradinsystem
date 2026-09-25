@@ -187,3 +187,16 @@ the submit endpoints stay unchanged. Files are served only through
 never by direct `uploads/` URL. `files` is an id-keyed object with
 `removed: 1` tombstones, not a list, so the group leaf-merge sync works.
 Not auto-graded.
+Another widget, **Code Snippet** (`code_snippet` widget_key, see plan doc §4
+"Widget M"), is participation-style live-checked coding classwork: the
+instructor checks each student's program on their PC and taps RUN / EFFORT /
+ERROR on the submission card (rubric = percent of `max_score`, default
+100/70/40). The verdict is never stored — `Widgets_model::code_snippet_verdict()`
+derives it from `classworks.score`, and `code_snippet_points()` is the only
+rubric→points calculation. Saving the assessment always creates a blank
+`classworks` row per enrolled student (even without the auto-create checkbox),
+so absent students stay NULL/ungraded; that is also why Unsubmit is hidden
+for it. Student code is an optional `{"code": "..."}` attachment that may be
+added or updated after grading and regardless of the due date —
+`AssessmentController::submit_classwork()` updates only `code` in that case,
+never the score. Individual only (no grouping support).

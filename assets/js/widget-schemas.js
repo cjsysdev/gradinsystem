@@ -20,6 +20,7 @@
  *   { key, type:'select',   label, help, options:[...], default }
  *   { key, type:'list',     label, help, itemLabel, placeholder }   // array of strings
  *   { key, type:'group_list', label, help, itemLabel, fields:[...] } // array of objects
+ *   { key, type:'group',      label, help, fields:[...] }            // one nested object
  */
 window.widgetSchemas = {
     worksheet: {
@@ -124,6 +125,24 @@ window.widgetSchemas = {
             { key: 'note_label', type: 'text', label: 'Note box label',
               default: 'Notes for your instructor (optional)', help: 'Clear this to hide the note box entirely.' },
             { key: 'require_note', type: 'checkbox', label: 'Require a note', default: false }
+        ]
+    },
+
+    code_snippet: {
+        title: 'Code Snippet (live check)',
+        fields: [
+            { key: 'problem', type: 'textarea', label: 'Problem', rows: 4,
+              placeholder: 'What should the program do?', help: 'Required.' },
+            { key: 'language', type: 'select', label: 'Language', options: ['c', 'cpp', 'java', 'csharp'], default: 'c' },
+            { key: 'starter_code', type: 'textarea', label: 'Starter code (optional)', rows: 5 },
+            { key: 'sample_input', type: 'textarea', label: 'Sample input (optional)', rows: 2 },
+            { key: 'sample_output', type: 'textarea', label: 'Expected output (optional)', rows: 2 },
+            { key: 'rubric', type: 'group', label: 'Rubric: percent of Max Score', fields: [
+                { key: 'run', type: 'number', label: 'RUN %', default: 100, min: 0 },
+                { key: 'effort', type: 'number', label: 'EFFORT %', default: 70, min: 0 },
+                { key: 'error', type: 'number', label: 'ERROR %', default: 40, min: 0 }
+            ] },
+            { key: 'allow_code_submission', type: 'checkbox', label: 'Let students attach their code (optional for them)', default: true }
         ]
     }
 };

@@ -133,39 +133,24 @@ class Schema_guard
         }
 
         $ok  = true;
-        $out = "-- Schema_guard pre-install backup
-";
-        $out .= '-- label: ' . $safe_label . "
-";
-        $out .= '-- taken: ' . date('Y-m-d H:i:s') . "
-";
-        $out .= '-- by admin session: ' . (string) $this->CI->session->userdata('student_id') . "
-";
-        $out .= "-- Restore: mysql -u root -p <db> < this_file.sql
-";
-        $out .= "SET FOREIGN_KEY_CHECKS=0;
-
-";
+        $out = "-- Schema_guard pre-install backup\n";
+        $out .= '-- label: ' . $safe_label . "\n";
+        $out .= '-- taken: ' . date('Y-m-d H:i:s') . "\n";
+        $out .= '-- by admin session: ' . (string) $this->CI->session->userdata('student_id') . "\n";
+        $out .= "-- Restore: mysql -u root -p <db> < this_file.sql\n";
+        $out .= "SET FOREIGN_KEY_CHECKS=0;\n\n";
         $ok = $ok && fwrite($fh, $out) !== false;
 
         foreach ($tables as $table) {
             if (!$this->CI->db->table_exists($table)) {
-                $ok = $ok && fwrite($fh, "-- (table `$table` did not exist at backup time)
-
-") !== false;
+                $ok = $ok && fwrite($fh, "-- (table `$table` did not exist at backup time)\n\n") !== false;
                 continue;
             }
 
             $create = $this->CI->db->query('SHOW CREATE TABLE `' . $table . '`')->row_array();
-            $out  = "--
--- Table: $table
---
-";
-            $out .= 'DROP TABLE IF EXISTS `' . $table . "`;
-";
-            $out .= (isset($create['Create Table']) ? $create['Create Table'] : '') . ";
-
-";
+            $out  = "--\n-- Table: $table\n--\n";
+            $out .= 'DROP TABLE IF EXISTS `' . $table . "`;\n";
+            $out .= (isset($create['Create Table']) ? $create['Create Table'] : '') . ";\n\n";
             $ok = $ok && fwrite($fh, $out) !== false;
 
             $count = (int) $this->CI->db->count_all($table);
@@ -173,9 +158,7 @@ class Schema_guard
                 log_message('error', "Schema_guard: backing up large table $table ($count rows)");
             }
             if ($count === 0) {
-                $ok = $ok && fwrite($fh, "-- (no rows)
-
-") !== false;
+                $ok = $ok && fwrite($fh, "-- (no rows)\n\n") !== false;
                 continue;
             }
 
@@ -197,16 +180,13 @@ class Schema_guard
                 $vals = array_map(function ($v) {
                     return $v === null ? 'NULL' : $this->CI->db->escape($v);
                 }, array_values($row));
-                $ok = $ok && fwrite($fh, 'INSERT INTO `' . $table . '` (' . $cols . ') VALUES (' . implode(',', $vals) . ");
-") !== false;
+                $ok = $ok && fwrite($fh, 'INSERT INTO `' . $table . '` (' . $cols . ') VALUES (' . implode(',', $vals) . ");\n") !== false;
             }
             $result->free();
-            $ok = $ok && fwrite($fh, "
-") !== false;
+            $ok = $ok && fwrite($fh, "\n") !== false;
         }
 
-        $ok = $ok && fwrite($fh, "SET FOREIGN_KEY_CHECKS=1;
-") !== false;
+        $ok = $ok && fwrite($fh, "SET FOREIGN_KEY_CHECKS=1;\n") !== false;
         fclose($fh);
 
         if (!$ok) {

@@ -130,6 +130,46 @@ class Widgets_model extends CI_Model
         // auto-graded, same manual-score-entry pattern as Worksheet Form.
         $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
             VALUES ('file_upload', 'File Upload', 'widgets/file_upload', NULL)");
+        // Code Snippet: a coding problem the instructor checks live on the
+        // student's PC and marks RUN / EFFORT / ERROR. Students may attach
+        // their code (optionally, even after grading). Participation-style:
+        // a blank submission row is created for every enrolled student.
+        $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
+            VALUES ('code_snippet', 'Code Snippet', 'widgets/code_snippet', NULL)");
+    }
+
+    // ── Code Snippet rubric ─────────────────────────────────────────────
+    // The RUN / EFFORT / ERROR verdict is NOT stored: it is derived from
+    // classworks.score against the rubric, so a label can never disagree
+    // with the score. This is the one place that derivation lives.
+    const CODE_SNIPPET_DEFAULT_RUBRIC = ['run' => 100, 'effort' => 70, 'error' => 40];
+
+    /** Points awarded per verdict: percent of $max_score, rounded to 2 dp. */
+    public function code_snippet_points($config, $max_score)
+    {
+        $rubric = is_array($config['rubric'] ?? null) ? $config['rubric'] : [];
+        $points = [];
+        foreach (self::CODE_SNIPPET_DEFAULT_RUBRIC as $key => $default_pct) {
+            $pct = isset($rubric[$key]) && is_numeric($rubric[$key]) && $rubric[$key] >= 0
+                ? (float) $rubric[$key]
+                : $default_pct;
+            $points[$key] = round($pct * (float) $max_score / 100, 2);
+        }
+        return $points;
+    }
+
+    /** 'run' | 'effort' | 'error' | 'custom' | null (ungraded). */
+    public function code_snippet_verdict($config, $max_score, $score)
+    {
+        if ($score === null || $score === '') {
+            return null;
+        }
+        foreach ($this->code_snippet_points($config, $max_score) as $key => $pts) {
+            if (abs((float) $score - $pts) < 0.005) {
+                return $key;
+            }
+        }
+        return 'custom';
     }
 
     public function get_all()

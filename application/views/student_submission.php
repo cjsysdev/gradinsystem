@@ -224,6 +224,9 @@
             'readonly'      => true,
             'existing'      => json_decode($classwork['code'] ?? '', true) ?: [],
             'assessment_id' => $classwork['assessment_id'],
+            // Code Snippet only: lets the widget show the derived RUN/EFFORT/ERROR badge.
+            'score'         => $classwork['score'],
+            'max_score'     => $classwork['assessments'][0]->max_score,
             // Timed/Secure Quiz only: students reviewing their own attempt see
             // just the items they missed, not the full answer key. Admins who
             // open this page keep the complete item-by-item view.
@@ -322,20 +325,28 @@
     <div class="card-footer text-center">
       <?php
       $noEditWidgets = ['quiz', 'secure_quiz', 'iq_discussion', 'iq_micro', 'brainstorm'];
-      $canEdit = $classwork['score'] === null
+      // Code Snippet stays editable after grading: the code is an optional
+      // attachment (submit_classwork() then updates only `code`, never the score).
+      $isCodeSnippet = !empty($widget) && $widget['widget_key'] === 'code_snippet';
+      $canEdit = ($classwork['score'] === null || $isCodeSnippet)
           && !empty($widget)
           && !in_array($widget['widget_key'], $noEditWidgets, true);
       ?>
       <?php if ($canEdit): ?>
-        <a href="<?= base_url('assessment/' . $classwork['assessment_id']) ?>" class="btn btn-outline-primary btn-block">Edit / Continue</a>
+        <a href="<?= base_url('assessment/' . $classwork['assessment_id']) ?>" class="btn btn-outline-primary btn-block"><?= $isCodeSnippet ? 'Add / Update my code' : 'Edit / Continue' ?></a>
+        <?php if ($isCodeSnippet && $classwork['score'] !== null): ?>
+          <p class="text-muted small mt-2 mb-0">Updating your code does not change your score.</p>
+        <?php endif; ?>
       <?php endif; ?>
+      <?php // Unsubmit would delete the roster row Code Snippet grading relies on. ?>
       <?php if (
+        !$isCodeSnippet && (
         $classwork['status'] === 'submitted' &&
-        $classwork['score'] <= 0 ||  $classwork['score'] == null
+        $classwork['score'] <= 0 ||  $classwork['score'] == null)
       ): ?>
         <button id="unsubmit" class="btn btn-outline-secondary btn-block" onclick="unsubmitWork(<?= $classwork['classwork_id'] ?>)">Unsubmit</button>
       <?php endif; ?>
-      <p class="text-muted mt-3">Work cannot be turned in after the due date.</p>
+      <?php if (!$isCodeSnippet): ?><p class="text-muted mt-3">Work cannot be turned in after the due date.</p><?php endif; ?>
     </div>
   </div>
 </div>

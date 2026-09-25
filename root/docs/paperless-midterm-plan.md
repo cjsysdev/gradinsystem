@@ -571,6 +571,78 @@ patterns. Build 6 reusable widgets, not 16 custom interfaces.
   `Widgets_model::install()`, example in `assets/js/widget-examples.js`.
   Run `WidgetsController/install` once to add the `file_upload` row.
 
+### Widget M — Code Snippet, live-checked (added outside original scope)
+- **Why:** individual coding classwork (CC104 / C programming) is graded by
+  the instructor walking the lab and checking each program run on the
+  student's own PC. It works like participation: everyone on the roster gets a
+  verdict whether or not they turned anything in. The student's code is an
+  optional attachment they can add later, not a requirement for grading.
+- **Verdict rubric (instructor-only):**
+  - **RUN**: compiles, runs completely and solves the problem.
+  - **EFFORT**: close, but has a bug or a few errors.
+  - **ERROR**: doesn't compile or run, or is far from the answer.
+- **Config (`assessments.given`):**
+  ```json
+  {
+    "problem": "Write a program that reads N and prints the sum of 1..N.",
+    "language": "c",
+    "starter_code": "#include <stdio.h>\nint main() {\n\n}",
+    "sample_input": "5",
+    "sample_output": "15",
+    "rubric": { "run": 100, "effort": 70, "error": 40 },
+    "allow_code_submission": true
+  }
+  ```
+  Only `problem` is required. `rubric` values are **percent of `max_score`**
+  (defaults 100 / 70 / 40). `allow_code_submission` (default true) shows the
+  optional code editor to students; false turns the widget into problem-only.
+- **Submission (`classworks.code`):** `{"code": "..."}`, or NULL / `""` when
+  the student never attached code. That is normal, not an error.
+- **Roster rows:** saving an assessment with this widget always creates a
+  blank row for every enrolled student (the existing
+  `classworks::create_blank_for_schedule()`, forced on regardless of the
+  "auto-create submissions" checkbox). Every student then has a card on the
+  submissions page to receive a verdict, with no student action needed.
+- **Grading:** each submission card on `admin/all_submission.php` gets three
+  large **RUN / EFFORT / ERROR** buttons (sized for grading from a phone while
+  walking the lab). A click writes `round(pct × max_score / 100, 2)` through
+  `classworks::set_score()`, the only sanctioned score write path. Manual
+  entry still works. **No verdict column:** the label is derived from the
+  score by matching it against the three rubric values; anything else shows
+  as "Custom", so a label and a score can never disagree. An ungraded student
+  stays NULL (counts as 0 and shows as pending, per CLAUDE.md).
+- **Student view:** problem + sample I/O, optional CodeMirror editor
+  pre-filled with `starter_code`; the review page shows their code (or "No
+  code attached") plus the verdict badge once graded. Turn In does not require
+  code.
+- **Submit code later:** unlike every other widget, a graded submission can
+  still be updated with code. `submit_classwork()` gets a `code_snippet`
+  exception: when `score` is already set it updates **only `code`**, never
+  `score`/`status`. The "Edit / Continue" link in `student_submission.php`
+  stays visible for this widget after grading. **The due date does not gate
+  this widget.** Checking is live, so attaching code works before or after
+  `due`.
+- **Absent students:** no ABSENT button. They are simply left ungraded (NULL).
+- **Implemented:** registry row + `code_snippet_points()` /
+  `code_snippet_verdict()` in `Widgets_model` (the ONE place the
+  rubric-to-points and score-to-verdict derivation lives, shared by the admin
+  cards and the student review page);
+  `application/views/widgets/code_snippet.php` (input + readonly; takes
+  optional `$score`/`$max_score` for the badge; an untouched starter template
+  is saved as no code); RUN/EFFORT/ERROR buttons + live badge refresh in
+  `admin/all_submission.php` (they call the existing `addScore()` →
+  `add_score`, so `classworks::set_score()` stays the write path); forced
+  blank-row creation and a non-empty `problem` check in
+  `AdminAssessmentController` (`save_assessment()`, `assign_master()`,
+  `update_class_assessment_master()`); the code-only update exception in
+  `AssessmentController::submit_classwork()`; "Add / Update my code" and no
+  Unsubmit (it would delete the roster row) in `student_submission.php`;
+  example in `widget-examples.js`; builder schema in `widget-schemas.js`
+  (plus a nested `group` field type in `widget-builder.js` for `rubric`).
+  Run `WidgetsController/install` once to add the `code_snippet` row.
+  Blank config is **not** allowed: the problem text is required.
+- **Deviation:** not supported as a *grouping* assessment (individual only).
+
 ## 5. Full Session-to-Widget Mapping (Weeks 1–8)
 
 | Session | Concept Portion | Hands-On Activity | Widget |

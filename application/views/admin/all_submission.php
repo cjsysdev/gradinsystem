@@ -213,6 +213,33 @@
                                         ]); ?>
                                     </template>
                                 <?php endif; ?>
+                                <?php if ($widget && $widget['widget_key'] === 'code_snippet'):
+                                    // Live-check grading: three one-tap verdicts. Points are the
+                                    // rubric % of max_score; the verdict itself is never stored —
+                                    // it is derived from the score (Widgets_model::code_snippet_verdict).
+                                    $cs_pts = $this->Widgets_model->code_snippet_points($widget_config, $row['max_score']);
+                                    $cs_now = $this->Widgets_model->code_snippet_verdict($widget_config, $row['max_score'], $row['score']);
+                                    $cs_has_code = trim((string) (json_decode($row['code'] ?? '', true)['code'] ?? '')) !== '';
+                                ?>
+                                    <div class="cs-grade" data-classwork-id="<?= $row['classwork_id'] ?>">
+                                        <div class="mb-2">
+                                            <span class="cs-verdict-badge badge badge-<?= ['run' => 'success', 'effort' => 'warning', 'error' => 'danger', 'custom' => 'secondary'][$cs_now] ?? 'light' ?>" style="font-size:0.95em;">
+                                                <?= $cs_now ? strtoupper($cs_now) : 'NOT CHECKED' ?>
+                                            </span>
+                                            <small class="text-muted ml-1"><i class="fa fa-paperclip"></i> <?= $cs_has_code ? 'code attached' : 'no code attached' ?></small>
+                                        </div>
+                                        <div class="d-flex mb-3">
+                                            <?php foreach (['run' => 'success', 'effort' => 'warning', 'error' => 'danger'] as $k => $cls): ?>
+                                                <button type="button" class="btn btn-<?= $cls ?> flex-fill mr-2 font-weight-bold cs-verdict-btn<?= $cs_now === $k ? ' active' : '' ?>"
+                                                        style="padding:14px 6px;font-size:16px;line-height:1.1;"
+                                                        data-verdict="<?= $k ?>" data-points="<?= $cs_pts[$k] ?>"
+                                                        onclick="addScore(<?= $row['classwork_id'] ?>, <?= $cs_pts[$k] ?>)">
+                                                    <?= strtoupper($k) ?><small class="d-block font-weight-normal" style="opacity:.85"><?= $cs_pts[$k] ?> pts</small>
+                                                </button>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
                                 <div class="score-entry" data-classwork-id="<?= $row['classwork_id'] ?>">
                                     <div class="input-group mb-3">
                                         <button type="button" class="btn btn-outline-secondary mr-1 ml-1" onclick="addScore(<?= $row['classwork_id'] ?>, 5)">Late</button>
@@ -791,6 +818,26 @@
         setTimeout(() => { $(alertDiv).alert('close'); }, 2000);
     }
 
+    // Code Snippet cards only: re-derive the RUN/EFFORT/ERROR badge and the
+    // pressed button from the saved score, mirroring
+    // Widgets_model::code_snippet_verdict() (match a rubric value, else custom).
+    function refreshVerdictUI(card, score) {
+        const badge = card.querySelector('.cs-verdict-badge');
+        if (!badge) return;
+        const btns = card.querySelectorAll('.cs-verdict-btn');
+        let verdict = 'custom';
+        btns.forEach(b => {
+            b.classList.remove('active');
+            if (Math.abs(parseFloat(score) - parseFloat(b.dataset.points)) < 0.005 && verdict === 'custom') {
+                verdict = b.dataset.verdict;
+                b.classList.add('active');
+            }
+        });
+        const cls = { run: 'success', effort: 'warning', error: 'danger', custom: 'secondary' }[verdict];
+        badge.className = 'cs-verdict-badge badge badge-' + cls;
+        badge.textContent = verdict.toUpperCase();
+    }
+
     function addRandScoreIncremental(classwork_id, points = 2) {
         fetch('<?= base_url('AdminController/add_rand_score_incremental/') ?>' + classwork_id + '/' + points, {
                 method: 'POST'
@@ -808,6 +855,7 @@
                     if (currentScoreEl) currentScoreEl.textContent = data.score;
                     const manualInput = card.querySelector('.manual-score-input');
                     if (manualInput) manualInput.value = data.score;
+                    refreshVerdictUI(card, data.score);
                 }
                 const student = allStudents.find(s => String(s.classwork_id) === String(classwork_id));
                 if (student) student.score = data.score;
@@ -839,6 +887,7 @@
                     if (currentScoreEl) currentScoreEl.textContent = score;
                     const manualInput = card.querySelector('.manual-score-input');
                     if (manualInput) manualInput.value = score;
+                    refreshVerdictUI(card, score);
                 }
                 const student = allStudents.find(s => String(s.classwork_id) === String(classwork_id));
                 if (student) student.score = score;

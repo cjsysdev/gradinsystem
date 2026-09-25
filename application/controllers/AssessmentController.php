@@ -260,6 +260,7 @@ class AssessmentController extends CI_Controller
                     // them back, instead of writing to a file like plain text.
                     $submission_data['code'] = $post['code'];
                     $submission_data['file_upload'] = null;
+                    $is_code_snippet = !empty($widget) && $widget['widget_key'] === 'code_snippet';
                 }
             } else {
                 // Handle textarea submission: save code as a text file and store filename
@@ -294,6 +295,16 @@ class AssessmentController extends CI_Controller
             // overwrite the graded answers/score — the student-facing "Edit /
             // Continue" link only appears while score is null, but this guard
             // is the authoritative check (URL access bypasses the view gate).
+            if ($existing_submission->score !== null && !empty($is_code_snippet)) {
+                // Code Snippet is graded live, and the code is only an optional
+                // attachment students may add or update later (regardless of
+                // the due date). Touch nothing but the code — never the score,
+                // status or timestamps.
+                $this->classworks->update(['code' => $submission_data['code']], $existing_submission->classwork_id);
+                $this->session->set_flashdata('success', 'Your code was saved. Your score is unchanged.');
+                redirect('student_submission/' . $existing_submission->classwork_id);
+                return;
+            }
             if ($existing_submission->score !== null) {
                 $this->session->set_flashdata('warning', 'This work has already been graded and can no longer be edited.');
                 redirect('student_submission/' . $existing_submission->classwork_id);

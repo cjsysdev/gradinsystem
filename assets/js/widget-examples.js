@@ -382,5 +382,17 @@ const widgetExamples = {
             note_label: 'How to compile/run it, and anything unfinished (optional)',
             require_note: false
         }
+    },
+    code_snippet: {
+        hint: 'A coding problem you check LIVE on each student\'s PC and mark RUN / EFFORT / ERROR (three one-tap buttons on the submissions page). Every enrolled student gets a submission row automatically, so absent students simply stay ungraded. "rubric" values are percent of Max Score (default 100 / 70 / 40). Students may attach or update their code anytime, even after grading; it never changes the score. Set "allow_code_submission" to false for a problem-only activity. "problem" is required.',
+        example: {
+            problem: 'Write a C program that reads a positive integer N and prints the sum of all integers from 1 to N.\nUse a loop; do not use the formula n(n+1)/2.',
+            language: 'c',
+            starter_code: '#include <stdio.h>\n\nint main() {\n    int n;\n\n    return 0;\n}',
+            sample_input: '5',
+            sample_output: '15',
+            rubric: { run: 100, effort: 70, error: 40 },
+            allow_code_submission: true
+        }
     }
 };
