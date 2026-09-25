@@ -123,47 +123,94 @@ class Schema_guard
         $safe_label = preg_replace('/[^A-Za-z0-9_-]/', '', $label);
         $path = $dir . $safe_label . '_' . date('Ymd_His') . '.sql';
 
-        $out  = "-- Schema_guard pre-install backup\n";
-        $out .= '-- label: ' . $safe_label . "\n";
-        $out .= '-- taken: ' . date('Y-m-d H:i:s') . "\n";
-        $out .= '-- by admin session: ' . (string) $this->CI->session->userdata('student_id') . "\n";
-        $out .= "-- Restore: mysql -u root -p <db> < this_file.sql\n";
-        $out .= "SET FOREIGN_KEY_CHECKS=0;\n\n";
+        // Stream to disk instead of building one string: classworks holds
+        // whole submissions (code/JSON blobs), and loading the table with
+        // result_array() plus the growing $out blew past memory_limit.
+        $fh = @fopen($path, 'wb');
+        if (!$fh) {
+            log_message('error', 'Schema_guard: failed writing backup to ' . $path);
+            return false;
+        }
+
+        $ok  = true;
+        $out = "-- Schema_guard pre-install backup
+";
+        $out .= '-- label: ' . $safe_label . "
+";
+        $out .= '-- taken: ' . date('Y-m-d H:i:s') . "
+";
+        $out .= '-- by admin session: ' . (string) $this->CI->session->userdata('student_id') . "
+";
+        $out .= "-- Restore: mysql -u root -p <db> < this_file.sql
+";
+        $out .= "SET FOREIGN_KEY_CHECKS=0;
+
+";
+        $ok = $ok && fwrite($fh, $out) !== false;
 
         foreach ($tables as $table) {
             if (!$this->CI->db->table_exists($table)) {
-                $out .= "-- (table `$table` did not exist at backup time)\n\n";
+                $ok = $ok && fwrite($fh, "-- (table `$table` did not exist at backup time)
+
+") !== false;
                 continue;
             }
 
             $create = $this->CI->db->query('SHOW CREATE TABLE `' . $table . '`')->row_array();
-            $out .= "--\n-- Table: $table\n--\n";
-            $out .= 'DROP TABLE IF EXISTS `' . $table . "`;\n";
-            $out .= (isset($create['Create Table']) ? $create['Create Table'] : '') . ";\n\n";
+            $out  = "--
+-- Table: $table
+--
+";
+            $out .= 'DROP TABLE IF EXISTS `' . $table . "`;
+";
+            $out .= (isset($create['Create Table']) ? $create['Create Table'] : '') . ";
+
+";
+            $ok = $ok && fwrite($fh, $out) !== false;
 
             $count = (int) $this->CI->db->count_all($table);
             if ($count > self::BACKUP_ROW_WARN) {
                 log_message('error', "Schema_guard: backing up large table $table ($count rows)");
             }
             if ($count === 0) {
-                $out .= "-- (no rows)\n\n";
+                $ok = $ok && fwrite($fh, "-- (no rows)
+
+") !== false;
                 continue;
             }
 
-            $rows = $this->CI->db->get($table)->result_array();
-            foreach ($rows as $row) {
-                $cols = array_map(function ($c) { return '`' . $c . '`'; }, array_keys($row));
+            // Unbuffered read: rows are pulled from the server one at a time
+            // rather than copied into PHP memory. It must be fully consumed
+            // and freed before the connection runs another query.
+            $result = $this->CI->db->conn_id->query('SELECT * FROM `' . $table . '`', MYSQLI_USE_RESULT);
+            if ($result === false) {
+                log_message('error', "Schema_guard: could not read $table for backup");
+                $ok = false;
+                break;
+            }
+
+            $cols = null;
+            while ($row = $result->fetch_assoc()) {
+                if ($cols === null) {
+                    $cols = implode(',', array_map(function ($c) { return '`' . $c . '`'; }, array_keys($row)));
+                }
                 $vals = array_map(function ($v) {
                     return $v === null ? 'NULL' : $this->CI->db->escape($v);
                 }, array_values($row));
-                $out .= 'INSERT INTO `' . $table . '` (' . implode(',', $cols) . ') VALUES (' . implode(',', $vals) . ");\n";
+                $ok = $ok && fwrite($fh, 'INSERT INTO `' . $table . '` (' . $cols . ') VALUES (' . implode(',', $vals) . ");
+") !== false;
             }
-            $out .= "\n";
+            $result->free();
+            $ok = $ok && fwrite($fh, "
+") !== false;
         }
 
-        $out .= "SET FOREIGN_KEY_CHECKS=1;\n";
+        $ok = $ok && fwrite($fh, "SET FOREIGN_KEY_CHECKS=1;
+") !== false;
+        fclose($fh);
 
-        if (@file_put_contents($path, $out) === false) {
+        if (!$ok) {
+            @unlink($path);
             log_message('error', 'Schema_guard: failed writing backup to ' . $path);
             return false;
         }

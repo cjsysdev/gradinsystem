@@ -109,5 +109,21 @@ window.widgetSchemas = {
               placeholder: 'The question students brainstorm around' },
             { key: 'max_votes_per_student', type: 'number', label: 'Max votes per student', default: 3, min: 1 }
         ]
+    },
+
+    file_upload: {
+        title: 'File Upload',
+        fields: [
+            { key: 'instructions', type: 'textarea', label: 'Instructions', rows: 3,
+              placeholder: 'What should students upload?' },
+            { key: 'allowed_extensions', type: 'list', label: 'Allowed file types', itemLabel: 'Extension',
+              placeholder: 'e.g. c', help: 'Extensions without the dot. Leave empty to accept any safe file type.' },
+            { key: 'max_files', type: 'number', label: 'Max files per student/group', default: 5, min: 1 },
+            { key: 'max_size_mb', type: 'number', label: 'Max size per file (MB)', default: 10, min: 1,
+              help: 'Capped at 50 MB regardless.' },
+            { key: 'note_label', type: 'text', label: 'Note box label',
+              default: 'Notes for your instructor (optional)', help: 'Clear this to hide the note box entirely.' },
+            { key: 'require_note', type: 'checkbox', label: 'Require a note', default: false }
+        ]
     }
 };

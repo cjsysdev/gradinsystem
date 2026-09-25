@@ -1249,7 +1249,10 @@ document.getElementById('assessmentForm').addEventListener('submit', function (e
 
     const raw = document.getElementById('modal_given').value.trim();
     let problem = '';
-    if (!raw) {
+    if (!raw && selectedWidgetKey() === 'file_upload') {
+        // Every File Upload option has a default — blank config is valid.
+        document.getElementById('modal_given').value = '{}';
+    } else if (!raw) {
         problem = 'the config is empty';
     } else {
         try {

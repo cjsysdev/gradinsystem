@@ -292,8 +292,15 @@ class AdminAssessmentController extends Admin_Controller
                 // invalid/empty JSON here instead of storing it silently and
                 // only breaking when a student opens the assessment.
                 $given = trim((string) ($master_fields['given'] ?? ''));
+                // File Upload has a default for every option, so a blank config is
+                // valid — store {} instead of forcing the admin to type JSON.
+                $config_optional = $widget['widget_key'] === 'file_upload';
+                if ($config_optional && $given === '') {
+                    $given = '{}';
+                    $master_fields['given'] = $given;
+                }
                 $config = $given !== '' ? json_decode($given, true) : null;
-                if (!is_array($config) || empty($config)) {
+                if (!is_array($config) || (empty($config) && !$config_optional)) {
                     if ($given === '') {
                         $reason = 'an empty config';
                     } elseif (json_last_error() !== JSON_ERROR_NONE) {
@@ -712,8 +719,15 @@ class AdminAssessmentController extends Admin_Controller
                 $this->_fill_blank_fields($master_fields, $found_meta);
             } elseif ($widget) {
                 $given = trim((string) ($master_fields['given'] ?? ''));
+                // File Upload has a default for every option, so a blank config is
+                // valid — store {} instead of forcing the admin to type JSON.
+                $config_optional = $widget['widget_key'] === 'file_upload';
+                if ($config_optional && $given === '') {
+                    $given = '{}';
+                    $master_fields['given'] = $given;
+                }
                 $config = $given !== '' ? json_decode($given, true) : null;
-                if (!is_array($config) || empty($config)) {
+                if (!is_array($config) || (empty($config) && !$config_optional)) {
                     if ($given === '') {
                         $reason = 'an empty config';
                     } elseif (json_last_error() !== JSON_ERROR_NONE) {

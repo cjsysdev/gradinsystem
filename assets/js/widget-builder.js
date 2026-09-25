@@ -63,7 +63,7 @@
             input.value = value != null ? value : (spec.default != null ? spec.default : '');
         } else { // text
             input = el('input', { type: 'text', class: 'form-control form-control-sm' });
-            input.value = value != null ? value : '';
+            input.value = value != null ? value : (spec.default != null ? spec.default : '');
         }
         if (spec.placeholder) input.placeholder = spec.placeholder;
         group.appendChild(input);

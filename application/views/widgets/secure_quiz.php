@@ -97,9 +97,9 @@ $results = $readonly ? ($existing ?: []) : [];
                             Your answer: <strong><?= htmlspecialchars((string) ($r['user_answer'] ?? '')) ?></strong>
                         </p>
                         <?php if (empty($r['is_correct'])): ?>
-                            <p class="mb-0 text-success">
+                            <!-- <p class="mb-0 text-success">
                                 <i class="fas fa-check"></i> Correct answer: <strong><?= htmlspecialchars((string) ($r['correct_answer'] ?? '')) ?></strong>
-                            </p>
+                            </p> -->
                         <?php endif; ?>
                     </div>
                 </div>
