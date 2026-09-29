@@ -176,6 +176,7 @@ class assessments extends MY_Model
                 cl.class_code,
                 ag.set_id AS grouping_set_id,
                 w.name AS widget_name,
+                w.widget_key AS widget_key,
                 COUNT(cw.classwork_id) AS submission_count,
                 SUM(CASE WHEN cw.classwork_id IS NOT NULL AND cw.score IS NULL THEN 1 ELSE 0 END) AS unscored_count,
                 -- DISTINCT + NOT NULL: class_student holds at least one junk row

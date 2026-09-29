@@ -232,6 +232,9 @@
             // open this page keep the complete item-by-item view.
             'wrong_only'    => ($widget['widget_key'] ?? '') === 'secure_quiz'
                 && $this->session->userdata('role') !== 'admin',
+            // Code Snippet timed batches only: shows the TIME'S UP / on-time
+            // badge. Null for an untimed assessment or any other widget.
+            'timer'         => $widget_timer ?? null,
         ]);
         ?>
       <?php elseif ($classwork['file_upload']): ?>
@@ -327,16 +330,24 @@
       $noEditWidgets = ['quiz', 'secure_quiz', 'iq_discussion', 'iq_micro', 'brainstorm'];
       // Code Snippet stays editable after grading: the code is an optional
       // attachment (submit_classwork() then updates only `code`, never the score).
+      // Exception: once a timed batch has closed, the code is locked —
+      // AssessmentController::submit_classwork()'s can_submit() gate already
+      // refuses the write server-side; this just stops the link from being
+      // offered in the first place.
       $isCodeSnippet = !empty($widget) && $widget['widget_key'] === 'code_snippet';
+      $isTimedClosed = $isCodeSnippet && !empty($widget_timer) && $widget_timer['phase'] === 'closed';
       $canEdit = ($classwork['score'] === null || $isCodeSnippet)
           && !empty($widget)
-          && !in_array($widget['widget_key'], $noEditWidgets, true);
+          && !in_array($widget['widget_key'], $noEditWidgets, true)
+          && !$isTimedClosed;
       ?>
       <?php if ($canEdit): ?>
         <a href="<?= base_url('assessment/' . $classwork['assessment_id']) ?>" class="btn btn-outline-primary btn-block"><?= $isCodeSnippet ? 'Add / Update my code' : 'Edit / Continue' ?></a>
         <?php if ($isCodeSnippet && $classwork['score'] !== null): ?>
           <p class="text-muted small mt-2 mb-0">Updating your code does not change your score.</p>
         <?php endif; ?>
+      <?php elseif ($isTimedClosed): ?>
+        <p class="text-muted small mb-0"><i class="fa fa-lock"></i> Time is up for your batch — your code is locked.</p>
       <?php endif; ?>
       <?php // Unsubmit would delete the roster row Code Snippet grading relies on. ?>
       <?php if (

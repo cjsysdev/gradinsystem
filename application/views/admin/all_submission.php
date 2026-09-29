@@ -141,6 +141,13 @@
                             </a>
                         </div>
                     <?php endif; ?>
+                    <?php if (!empty($widget) && $widget['widget_key'] === 'code_snippet'): ?>
+                        <div class="mb-3">
+                            <a href="<?= base_url('AdminAssessmentController/snippet_batches/' . $selected_assessment_id) ?>" class="btn btn-sm btn-outline-primary">
+                                <i class="fa fa-clock"></i> Batches &amp; Timer &mdash; PC-limited lab? Split this into timed batches &rarr;
+                            </a>
+                        </div>
+                    <?php endif; ?>
                 <?php endif; ?>
                 <div class="input-group mb-3">
                     <input type="text" class="form-control" id="studentSearchInput"
@@ -219,9 +226,29 @@
                                     // it is derived from the score (Widgets_model::code_snippet_verdict).
                                     $cs_pts = $this->Widgets_model->code_snippet_points($widget_config, $row['max_score']);
                                     $cs_now = $this->Widgets_model->code_snippet_verdict($widget_config, $row['max_score'], $row['score']);
-                                    $cs_has_code = trim((string) (json_decode($row['code'] ?? '', true)['code'] ?? '')) !== '';
+                                    $cs_code_decoded = json_decode($row['code'] ?? '', true) ?: [];
+                                    $cs_has_code = trim((string) ($cs_code_decoded['code'] ?? '')) !== '';
+                                    // Timed batches: per-student, since each student can be in a
+                                    // different batch with a different window.
+                                    $cs_timer = !empty($widget_timer_config)
+                                        ? $this->Widgets_model->code_snippet_timer($widget_timer_config, $row['trans_no'])
+                                        : null;
+                                    $cs_timer_state = $cs_timer ? $this->Widgets_model->code_snippet_effective_state($cs_code_decoded, $cs_timer) : null;
+                                    $cs_timer_labels = ['submitted' => ['On time', 'success'], 'timesup' => ["TIME'S UP", 'danger'], 'draft' => ['In progress', 'secondary']];
                                 ?>
                                     <div class="cs-grade" data-classwork-id="<?= $row['classwork_id'] ?>">
+                                        <?php if ($cs_timer): ?>
+                                            <div class="mb-1">
+                                                <?php if (!empty($cs_timer['batch'])): ?>
+                                                    <span class="badge badge-secondary">Batch <?= (int) $cs_timer['batch'] ?></span>
+                                                <?php else: ?>
+                                                    <span class="badge badge-light border" title="No batch assigned">Unassigned</span>
+                                                <?php endif; ?>
+                                                <?php if ($cs_timer_state && isset($cs_timer_labels[$cs_timer_state])): ?>
+                                                    <span class="badge badge-<?= $cs_timer_labels[$cs_timer_state][1] ?>"><?= $cs_timer_labels[$cs_timer_state][0] ?></span>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endif; ?>
                                         <div class="mb-2">
                                             <span class="cs-verdict-badge badge badge-<?= ['run' => 'success', 'effort' => 'warning', 'error' => 'danger', 'custom' => 'secondary'][$cs_now] ?? 'light' ?>" style="font-size:0.95em;">
                                                 <?= $cs_now ? strtoupper($cs_now) : 'NOT CHECKED' ?>

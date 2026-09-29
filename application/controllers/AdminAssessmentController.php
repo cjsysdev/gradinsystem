@@ -918,6 +918,121 @@ class AdminAssessmentController extends Admin_Controller
         echo json_encode(['success' => true]);
     }
 
+    // Code Snippet timed batches — lets an admin split a PC-limited section's
+    // roster into batches (e.g. Batch 1 / Batch 2), each with its own
+    // start/end window, so a class that only has enough PCs for half the
+    // section at a time can still run a timed activity. Lives on
+    // assessment_section.timer_config (per-section, since the roster/PC split
+    // is a per-section fact — see Widgets_model::install()), read/written
+    // ONLY through assessments::update_section() (never the assessment_full
+    // view). $section_id is an assessment_section_id, same as every other
+    // method here. GET renders the form; POST saves it.
+    public function snippet_batches($section_id = null)
+    {
+        $section_id = (int) $section_id;
+        $assessment = $this->assessments->as_array()->get($section_id);
+        if (!$assessment) {
+            $this->session->set_flashdata('error', 'Assessment not found.');
+            redirect('manage_assessments');
+            return;
+        }
+
+        $this->load->model('Widgets_model');
+        $widget = !empty($assessment['widget_id']) ? $this->Widgets_model->get($assessment['widget_id']) : null;
+        if (!$widget || $widget['widget_key'] !== 'code_snippet') {
+            $this->session->set_flashdata('error', 'Batches & Timer is only available for Code Snippet assessments.');
+            redirect('all_submissions/' . $section_id);
+            return;
+        }
+
+        // timer_config is added by Widgets_model::install() — on a database
+        // where that hasn't been (re-)run since this feature landed, the
+        // column simply doesn't exist yet. Writing to it would silently fail
+        // (db_debug is off — see CLAUDE.md) instead of erroring, so check
+        // first and say so plainly.
+        if (!$this->db->field_exists('timer_config', 'assessment_section')) {
+            $this->session->set_flashdata('error', 'Batches & Timer needs a one-time schema update — run WidgetsController/install as admin first.');
+            redirect('all_submissions/' . $section_id);
+            return;
+        }
+
+        if ($this->input->method() === 'post') {
+            $post = $this->input->post();
+
+            if (!empty($post['clear_timer'])) {
+                $this->assessments->update_section($section_id, ['timer_config' => null]);
+                $this->session->set_flashdata('success', 'Timer removed — this assessment is untimed again.');
+                redirect('AdminAssessmentController/snippet_batches/' . $section_id);
+                return;
+            }
+
+            // batch_start_N / batch_end_N, N = 1, 2, 3... — stops at the first
+            // gap, so "Add batch" on the form is just appending another N.
+            $batches = [];
+            $n = 1;
+            while (isset($post['batch_start_' . $n]) || isset($post['batch_end_' . $n])) {
+                $start = trim((string) ($post['batch_start_' . $n] ?? ''));
+                $end   = trim((string) ($post['batch_end_' . $n] ?? ''));
+                if ($start === '' || $end === '') {
+                    $this->session->set_flashdata('error', "Batch $n needs both a start and an end time.");
+                    redirect('AdminAssessmentController/snippet_batches/' . $section_id);
+                    return;
+                }
+                // <input type="datetime-local"> posts "Y-m-d\THH:MM" — normalize
+                // to the DATETIME string format everything else here uses.
+                $start_ts = strtotime($start);
+                $end_ts   = strtotime($end);
+                if ($start_ts === false || $end_ts === false || $end_ts <= $start_ts) {
+                    $this->session->set_flashdata('error', "Batch $n's end time must be after its start time.");
+                    redirect('AdminAssessmentController/snippet_batches/' . $section_id);
+                    return;
+                }
+                $batches[] = ['start' => date('Y-m-d H:i:s', $start_ts), 'end' => date('Y-m-d H:i:s', $end_ts)];
+                $n++;
+            }
+
+            if (empty($batches)) {
+                $this->session->set_flashdata('error', 'Add at least one batch, or use "Remove timer" to go untimed.');
+                redirect('AdminAssessmentController/snippet_batches/' . $section_id);
+                return;
+            }
+
+            $members = [];
+            $posted_members = is_array($post['student_batch'] ?? null) ? $post['student_batch'] : [];
+            foreach ($posted_members as $student_id => $batch_no) {
+                $batch_no = (int) $batch_no;
+                if ($batch_no >= 1 && $batch_no <= count($batches)) {
+                    $members[(string) (int) $student_id] = $batch_no;
+                }
+            }
+
+            $this->assessments->update_section($section_id, [
+                'timer_config' => json_encode(['batches' => $batches, 'members' => $members]),
+            ]);
+
+            $this->session->set_flashdata('success', 'Saved ' . count($batches) . ' batch(es), ' . count($members) . ' student(s) assigned.');
+            redirect('AdminAssessmentController/snippet_batches/' . $section_id);
+            return;
+        }
+
+        $roster = $this->class_student->roster_for_schedule($assessment['schedule_id']);
+        $timer_config = json_decode($assessment['timer_config'] ?? '', true) ?: [];
+
+        // assessment_full carries schedule_id but not the section label
+        // itself (that's a class_schedule join get_all_for_admin() does —
+        // MY_Model's plain get() here doesn't), so fetch it separately.
+        $schedule = $this->class_schedule->as_array()->get($assessment['schedule_id']);
+
+        $this->load->view('admin/snippet_batches', [
+            'assessment' => $assessment,
+            'section'    => $schedule['section'] ?? '',
+            'section_id' => $section_id,
+            'roster'     => $roster,
+            'batches'    => $timer_config['batches'] ?? [],
+            'members'    => $timer_config['members'] ?? [],
+        ]);
+    }
+
     // Delete button on manage_assessments. Two-step: without `force`, a
     // pending student submission blocks the delete and reports how many exist
     // (so the modal JS can re-confirm with the admin using a fresh count —

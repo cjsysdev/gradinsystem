@@ -3,9 +3,11 @@ paths:
   - "application/views/widgets/**"
   - "application/models/widgets_model.php"
   - "application/controllers/AssessmentController.php"
+  - "application/controllers/AdminAssessmentController.php"
   - "application/controllers/BrainstormController.php"
   - "application/controllers/WidgetsController.php"
   - "application/views/admin/manage_assessments.php"
+  - "application/views/admin/snippet_batches.php"
   - "root/docs/paperless-midterm-plan.md"
 ---
 
@@ -200,3 +202,25 @@ for it. Student code is an optional `{"code": "..."}` attachment that may be
 added or updated after grading and regardless of the due date —
 `AssessmentController::submit_classwork()` updates only `code` in that case,
 never the score. Individual only (no grouping support).
+**Optional timed batches** (2026-09, outside the original spec): for a
+PC-limited lab, `AdminAssessmentController::snippet_batches()`
+(`views/admin/snippet_batches.php`) splits a section's roster into batches,
+each with its own start/end, stored as `assessment_section.timer_config`
+(**per section**, not on the shared `assessments.given` master — a `NULL`/
+empty value is untimed, unchanged behavior). Every phase/deadline decision
+(`unassigned`/`waiting`/`open`/`closed`, and what a submit gets accepted or
+stamped with) is computed ONLY by `Widgets_model::code_snippet_timer()` /
+`code_snippet_can_submit()` / `code_snippet_submit_state()` /
+`code_snippet_effective_state()`, off the server clock — never the
+student's PC clock, and never a client-posted flag. `classworks.code` gains
+`state` (`draft`/`submitted`/`timesup`) + `saved_at` for a timed submission.
+The widget renders `waiting` (countdown card, no editor), `open` (editor +
+sticky countdown + 20s AJAX autosave to `AssessmentController::
+snippet_autosave()` + auto `submitForm()` at 0:00), or `closed`
+(`assessment_view_code()` redirects to the read-only review — code is locked
+there, `can_submit()` refuses any further write). A `draft` whose window has
+closed reads back as `timesup` (covers a dead tab/PC — the last autosave IS
+the auto-submission). The flag is display-only; it never touches the
+RUN/EFFORT/ERROR score. `assessment_full` exposes `timer_config` — both the
+column and the view's `CREATE OR REPLACE` live in `Widgets_model::install()`,
+so re-run `WidgetsController/install` after pulling this change.

@@ -75,6 +75,33 @@ class class_student extends MY_Model
         ]);
     }
 
+    // The official roster for a schedule (CLAUDE.md: schedule_id + enrolled +
+    // active semester), with names — for anything that needs to list actual
+    // students on a section rather than just count/check them, e.g.
+    // AdminAssessmentController::snippet_batches()'s batch-assignment table.
+    // LEFT JOIN on student_master for the same reason as
+    // classworks::get_missing_submissions(): a roster slot whose
+    // student_master row was deleted is still a real enrollment to show.
+    public function roster_for_schedule($schedule_id)
+    {
+        $sql = "
+            SELECT cst.student_id,
+                   COALESCE(sm.firstname, '') AS firstname,
+                   COALESCE(sm.lastname, CONCAT('[no student record #', cst.student_id, ']')) AS lastname
+            FROM class_student cst
+            JOIN class_schedule sched ON sched.schedule_id = cst.schedule_id
+            JOIN semester_master sem ON sem.trans_no = sched.semester_id AND sem.is_active = 1
+            LEFT JOIN student_master sm ON sm.trans_no = cst.student_id
+            WHERE cst.schedule_id = ?
+              AND cst.status = 'enrolled'
+              AND cst.student_id IS NOT NULL
+            ORDER BY lastname, firstname
+        ";
+
+        $query = $this->db->query($sql, [$schedule_id]);
+        return $query ? $query->result_array() : [];
+    }
+
     public function is_enrolled_in_schedule($student_id, $schedule_id)
     {
         return $this->db

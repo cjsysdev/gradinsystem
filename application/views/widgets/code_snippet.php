@@ -8,6 +8,13 @@
 // Not auto-graded. The verdict is never stored; it is derived from
 // classworks.score by Widgets_model::code_snippet_verdict().
 //
+// Optional timed batches (PC-limited lab sessions split into e.g. Batch 1 /
+// Batch 2, each with its own admin-set start/end window — see
+// AdminAssessmentController::snippet_batches()). Fully backward compatible:
+// an assessment with no timer_config behaves exactly as before. All phase/
+// deadline decisions are made server-side (Widgets_model::code_snippet_*) —
+// this view only renders what it's told and syncs its clock to the server's.
+//
 // $config — [
 //   'problem'               => '...',             // required
 //   'language'              => 'c',               // optional, CodeMirror mode hint, default 'c'
@@ -18,15 +25,21 @@
 //   'allow_code_submission' => bool,              // optional, default true; false = problem only
 // ]
 // $readonly — bool
-// $existing — ['code' => '...'] or null
+// $existing — ['code' => '...', 'state' => 'draft'|'submitted'|'timesup', 'saved_at' => '...'] or null
 // $score, $max_score — optional (student review page): shows the verdict badge
+// $assessment_id — the assessment_section_id, needed for the autosave endpoint
+// $timer — Widgets_model::code_snippet_timer()'s return for this student, or
+//          null when the assessment is untimed (or, in readonly mode, when
+//          the caller didn't compute one). {batch, start_ts, end_ts, phase}
 
 $this->load->model('Widgets_model');
 
-$readonly   = $readonly ?? false;
-$existing   = is_array($existing ?? null) ? $existing : [];
-$score      = $score ?? null;
-$max_score  = $max_score ?? null;
+$readonly      = $readonly ?? false;
+$existing      = is_array($existing ?? null) ? $existing : [];
+$score         = $score ?? null;
+$max_score     = $max_score ?? null;
+$assessment_id = $assessment_id ?? null;
+$timer         = is_array($timer ?? null) ? $timer : null;
 
 $problem       = (string) ($config['problem'] ?? '');
 $starter       = (string) ($config['starter_code'] ?? '');
@@ -41,6 +54,18 @@ $verdict = ($readonly && $score !== null && $max_score !== null)
     ? $this->Widgets_model->code_snippet_verdict($config, $max_score, $score)
     : null;
 $verdict_label = ['run' => 'RUN', 'effort' => 'EFFORT', 'error' => 'ERROR', 'custom' => 'CUSTOM'];
+
+// Timed-batch state for the badge, readonly mode only (editable mode shows
+// the live countdown instead — see below).
+$timer_state = ($readonly && $timer) ? $this->Widgets_model->code_snippet_effective_state($existing, $timer) : null;
+$timer_state_label = [
+    'submitted' => ['Submitted on time', 'success'],
+    'timesup'   => ["TIME'S UP", 'danger'],
+    'draft'     => ['Still in progress', 'secondary'],
+];
+
+$is_waiting = !$readonly && $timer && $timer['phase'] === 'waiting';
+$is_open_timed = !$readonly && $timer && $timer['phase'] === 'open';
 ?>
 <style>
     .cs-widget { text-align: left; }
@@ -59,10 +84,42 @@ $verdict_label = ['run' => 'RUN', 'effort' => 'EFFORT', 'error' => 'ERROR', 'cus
     .cs-verdict-effort { background: #e0a800; color: #212529; }
     .cs-verdict-error  { background: #dc3545; }
     .cs-verdict-custom { background: #6c757d; }
+    .cs-timer-badge { display: inline-block; font-weight: bold; font-size: 12px; padding: 4px 10px; border-radius: 4px; letter-spacing: .03em; margin-bottom: 10px; }
+    .cs-timer-badge-success { background: #28a745; color: #fff; }
+    .cs-timer-badge-danger  { background: #dc3545; color: #fff; }
+    .cs-timer-badge-secondary { background: #6c757d; color: #fff; }
+    .cs-timer-bar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 10px; background: #1e2a38; color: #fff; border-radius: 6px; padding: 10px 16px; margin-bottom: 14px; font-weight: bold; }
+    .cs-timer-bar .cs-timer-clock { font-variant-numeric: tabular-nums; font-size: 20px; }
+    .cs-timer-bar.cs-timer-warn { background: #a86a00; }
+    .cs-timer-bar.cs-timer-danger { background: #a11d2e; animation: cs-pulse 1s infinite; }
+    @keyframes cs-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .75; } }
+    .cs-waiting-card { border: 1px dashed #357abd; border-radius: 8px; padding: 24px; text-align: center; background: #f2f7fd; }
+    .cs-waiting-card .cs-waiting-clock { font-size: 28px; font-weight: bold; font-variant-numeric: tabular-nums; margin: 10px 0; color: #357abd; }
+    .cs-autosave-status { font-size: 12px; color: #6c757d; margin-top: 6px; }
 </style>
 <div class="cs-widget"<?= $readonly ? '' : ' id="cs-widget"' ?>>
     <?php if ($verdict): ?>
         <p class="mb-3">Verdict: <span class="cs-verdict cs-verdict-<?= $verdict ?>"><?= $verdict_label[$verdict] ?></span></p>
+    <?php endif; ?>
+
+    <?php if ($readonly && $timer): ?>
+        <div>
+            <?php if (!empty($timer['batch'])): ?>
+                <span class="cs-timer-badge cs-timer-badge-secondary">Batch <?= (int) $timer['batch'] ?></span>
+            <?php endif; ?>
+            <?php if ($timer_state && isset($timer_state_label[$timer_state])): ?>
+                <span class="cs-timer-badge cs-timer-badge-<?= $timer_state_label[$timer_state][1] ?>"><?= $timer_state_label[$timer_state][0] ?></span>
+            <?php elseif ($timer['phase'] === 'unassigned'): ?>
+                <span class="cs-timer-badge cs-timer-badge-secondary">Not assigned to a batch</span>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
+
+    <?php if ($is_open_timed): ?>
+        <div class="cs-timer-bar" id="cs-timer-bar">
+            <span>Batch <?= (int) $timer['batch'] ?></span>
+            <span class="cs-timer-clock" id="cs-timer-clock">--:--</span>
+        </div>
     <?php endif; ?>
 
     <div class="cs-problem">
@@ -85,9 +142,18 @@ $verdict_label = ['run' => 'RUN', 'effort' => 'EFFORT', 'error' => 'ERROR', 'cus
                 <div class="cs-nocode"><i class="fa fa-desktop"></i> No code attached. Checked live on the student's PC.</div>
             <?php endif; ?>
         <?php endif; ?>
+    <?php elseif ($is_waiting): ?>
+        <div class="cs-waiting-card" id="cs-waiting-card">
+            <div><i class="fa fa-hourglass-half"></i> Batch <?= (int) $timer['batch'] ?> hasn't started yet</div>
+            <div class="cs-waiting-clock" id="cs-waiting-clock">--:--:--</div>
+            <div class="text-muted small">Starts at <?= htmlspecialchars(date('g:i A', $timer['start_ts'])) ?>. This page will open automatically.</div>
+        </div>
     <?php elseif ($allow_code): ?>
         <div class="cs-optional"><i class="fa fa-paperclip"></i> Your code <em>(optional &mdash; your instructor checks it live, and you can add it later)</em></div>
         <textarea id="cs-editor" class="form-control" rows="10"><?= htmlspecialchars($saved_code !== '' ? $saved_code : $starter) ?></textarea>
+        <?php if ($is_open_timed): ?>
+            <div class="cs-autosave-status" id="cs-autosave-status"></div>
+        <?php endif; ?>
     <?php else: ?>
         <div class="cs-nocode"><i class="fa fa-desktop"></i> Your instructor will check this live on your PC. Nothing to submit.</div>
     <?php endif; ?>
@@ -98,7 +164,24 @@ $verdict_label = ['run' => 'RUN', 'effort' => 'EFFORT', 'error' => 'ERROR', 'cus
     const widget = document.getElementById('cs-widget');
     const ta = document.getElementById('cs-editor');
     const starter = <?= json_encode($starter) ?>;
+    const timer = <?= json_encode($timer) ?>; // null (untimed), or {batch,start_ts,end_ts,phase}
+    const assessmentId = <?= json_encode($assessment_id) ?>;
     let cm = null;
+
+    // Sync to the SERVER's clock, not the student's PC — a wrong PC clock
+    // must never affect the countdown or when auto-submit fires. Re-anchored
+    // on every autosave response below (see doAutosave()).
+    let clockOffsetMs = <?= json_encode(time()) ?> * 1000 - Date.now();
+    function serverNowMs() { return Date.now() + clockOffsetMs; }
+
+    function fmtClock(totalSeconds) {
+        totalSeconds = Math.max(0, Math.round(totalSeconds));
+        const h = Math.floor(totalSeconds / 3600);
+        const m = Math.floor((totalSeconds % 3600) / 60);
+        const s = totalSeconds % 60;
+        const pad = n => String(n).padStart(2, '0');
+        return h > 0 ? (pad(h) + ':' + pad(m) + ':' + pad(s)) : (pad(m) + ':' + pad(s));
+    }
 
     // footer.php (which loads CodeMirror) renders after this view, so wait
     // for the page to finish parsing. Falls back to the plain textarea.
@@ -143,6 +226,72 @@ $verdict_label = ['run' => 'RUN', 'effort' => 'EFFORT', 'error' => 'ERROR', 'cus
         const codeField = document.getElementById('widget-code-value');
         if (codeField) codeField.value = window.getWidgetState();
     };
+
+    // ── Waiting for the batch to start: reload once the server-computed
+    // start time arrives. No editor is rendered yet, so nothing else to do. ──
+    const waitingClock = document.getElementById('cs-waiting-clock');
+    if (timer && timer.phase === 'waiting' && waitingClock) {
+        const turnInBtn = document.getElementById('turn-in-btn');
+        if (turnInBtn) turnInBtn.style.display = 'none';
+
+        const startMs = timer.start_ts * 1000;
+        const tickWaiting = function () {
+            const remain = (startMs - serverNowMs()) / 1000;
+            if (remain <= 0) { location.reload(); return; }
+            waitingClock.textContent = fmtClock(remain);
+            setTimeout(tickWaiting, 1000);
+        };
+        tickWaiting();
+        return; // nothing below applies while waiting
+    }
+
+    // ── Open batch with a timer: countdown bar + autosave + auto-submit. ──
+    if (!timer || timer.phase !== 'open') return;
+
+    let endMs = timer.end_ts * 1000;
+    const clockEl = document.getElementById('cs-timer-clock');
+    const barEl = document.getElementById('cs-timer-bar');
+    const statusEl = document.getElementById('cs-autosave-status');
+    let autoSubmitted = false;
+
+    function tickCountdown() {
+        if (!clockEl) return;
+        const remainSec = (endMs - serverNowMs()) / 1000;
+        clockEl.textContent = fmtClock(remainSec);
+        if (barEl) {
+            barEl.classList.toggle('cs-timer-warn', remainSec <= 300 && remainSec > 60);
+            barEl.classList.toggle('cs-timer-danger', remainSec <= 60);
+        }
+        if (remainSec <= 0 && !autoSubmitted) {
+            autoSubmitted = true;
+            clearInterval(countdownInterval);
+            if (statusEl) statusEl.textContent = "Time's up — submitting your code...";
+            if (typeof window.submitForm === 'function') {
+                window.submitForm();
+            }
+        }
+    }
+    const countdownInterval = setInterval(tickCountdown, 1000);
+    tickCountdown();
+
+    function doAutosave() {
+        if (autoSubmitted || !assessmentId) return;
+        const body = new URLSearchParams({ assessment_id: assessmentId, code: window.getWidgetState() });
+        fetch(<?= json_encode(base_url('AssessmentController/snippet_autosave')) ?>, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: body
+        }).then(function (r) { return r.json(); }).then(function (data) {
+            if (!data) return;
+            if (data.server_now) clockOffsetMs = data.server_now * 1000 - Date.now();
+            if (data.end_ts) endMs = data.end_ts * 1000; // picks up a mid-session extension
+            if (data.locked) { autoSubmitted = true; clearInterval(countdownInterval); return; }
+            if (statusEl && data.ok) {
+                statusEl.textContent = 'Autosaved at ' + new Date().toLocaleTimeString();
+            }
+        }).catch(function () { /* best-effort — the 3s localStorage draft is the fallback */ });
+    }
+    setInterval(doAutosave, 20000);
 })();
 </script>
 <?php endif; ?>

@@ -33,10 +33,17 @@ class AdminSubmissionController extends Admin_Controller
             $data['selected_assessment_id'] = $assessment_id;
 
             $assessment = $this->assessments->as_array()->get($assessment_id);
+            $data['widget_timer_config'] = null;
             if (!empty($assessment['widget_id'])) {
                 $this->load->model('Widgets_model');
                 $data['widget'] = $this->Widgets_model->get($assessment['widget_id']);
                 $data['widget_config'] = json_decode($assessment['given'] ?? '', true) ?: [];
+                // Code Snippet timed batches: the view computes each row's own
+                // timer/state per-student (Widgets_model::code_snippet_timer()
+                // takes a student_id) — see all_submission.php.
+                if (!empty($data['widget']) && $data['widget']['widget_key'] === 'code_snippet') {
+                    $data['widget_timer_config'] = $assessment['timer_config'] ?? null;
+                }
             }
 
             // The randomizer's round, rendered on first paint so a refresh

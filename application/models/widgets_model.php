@@ -41,6 +41,36 @@ class Widgets_model extends CI_Model
         // WidgetsController/install (see classworks::has_switch_count()).
         $this->_add_column_if_missing('classworks', 'switch_count', 'SMALLINT UNSIGNED DEFAULT NULL');
 
+        // Code Snippet timed batches: per-SECTION timer config (batches +
+        // start/end times + student->batch assignment), so the shared master
+        // (assessments.given) stays common across sections while each
+        // section's PC-limited class can run its own batch schedule. Lives on
+        // assessment_section (not assessments) because the schedule is a
+        // per-section fact, same as due/status — see
+        // AdminAssessmentController::snippet_batches().
+        if ($this->db->table_exists('assessment_section')) {
+            $this->_add_column_if_missing('assessment_section', 'timer_config', 'LONGTEXT DEFAULT NULL');
+
+            // assessment_full is the read-only compat view nearly every query
+            // site reads through (see Assessment_normalize_model + CLAUDE.md)
+            // — re-create it here to also expose timer_config, so readers see
+            // it without bypassing the view. Mirrors the view definition from
+            // Assessment_normalize_model::install() Step 6 exactly, plus
+            // s.timer_config. CREATE OR REPLACE VIEW is safe to re-run.
+            $this->db->query("
+                CREATE OR REPLACE VIEW assessment_full AS
+                SELECT s.assessment_section_id AS assessment_id,
+                       m.assessment_id AS master_id,
+                       m.class_id,
+                       s.schedule_id,
+                       m.iotype_id, m.term, m.title, m.description, m.max_score,
+                       m.widget_id, m.given, m.pdf_file_path, m.json_file_path,
+                       s.status, s.is_groupings, s.due, s.timer_config, s.created_at, s.updated_at
+                FROM assessment_section s
+                JOIN assessments m ON m.assessment_id = s.assessment_id
+            ");
+        }
+
         // widget_key rows get added when their input_view actually exists, so
         // the admin dropdown never offers a widget with no view behind it.
         $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
@@ -170,6 +200,105 @@ class Widgets_model extends CI_Model
             }
         }
         return 'custom';
+    }
+
+    // ── Code Snippet timed batches ──────────────────────────────────────
+    // The PC lab only fits half a section at once, so a timed Code Snippet
+    // run is split into batches, each with its own admin-set start/end
+    // window (assessment_section.timer_config — see
+    // AdminAssessmentController::snippet_batches()). Every phase/deadline
+    // decision lives HERE, and only here, so the student page, the submit
+    // endpoint, the autosave endpoint and the admin submission list can never
+    // disagree about whether a batch is open. Always driven by the server's
+    // own clock (PHP time()) — a wrong PC clock must never affect the result.
+    //
+    // Grace window after a batch's `end`: lets an auto-submit fired by the
+    // client's own countdown (which necessarily reaches 0 a moment before the
+    // server-computed deadline, network latency being what it is) still land
+    // as an on-time-ish submit instead of being rejected outright.
+    const CODE_SNIPPET_GRACE_SECONDS = 30;
+
+    /**
+     * Decodes timer_config and resolves ONE student's phase against it.
+     *
+     * @param  string|array|null $timer_config assessment_section.timer_config
+     * @param  int|string        $student_id
+     * @param  int|null          $now          unix timestamp; defaults to time()
+     * @return array|null {batch, start_ts, end_ts, phase} where phase is one
+     *                     of 'unassigned' | 'waiting' | 'open' | 'closed', or
+     *                     NULL when the assessment has no timer at all
+     *                     (untimed — today's behavior, no gating).
+     */
+    public function code_snippet_timer($timer_config, $student_id, $now = null)
+    {
+        $config = is_array($timer_config) ? $timer_config : (json_decode((string) $timer_config, true) ?: null);
+        $batches = $config['batches'] ?? null;
+        if (empty($config) || empty($batches) || !is_array($batches)) {
+            return null; // untimed
+        }
+
+        $now = $now ?? time();
+        $batch_no = $config['members'][(string) $student_id] ?? null;
+        $def = $batch_no ? ($batches[$batch_no - 1] ?? null) : null;
+
+        if (!$batch_no || !$def || empty($def['start']) || empty($def['end'])) {
+            return ['batch' => null, 'start_ts' => null, 'end_ts' => null, 'phase' => 'unassigned'];
+        }
+
+        $start_ts = strtotime($def['start']);
+        $end_ts   = strtotime($def['end']);
+        $phase    = $now < $start_ts ? 'waiting' : ($now <= $end_ts ? 'open' : 'closed');
+
+        return ['batch' => (int) $batch_no, 'start_ts' => $start_ts, 'end_ts' => $end_ts, 'phase' => $phase];
+    }
+
+    /**
+     * The state a student's submission should be READ as, reconciling the
+     * stored `code` blob's own {"state": ...} against the timer. A `draft`
+     * (or missing state — pre-timer data) whose window has already closed is
+     * reported as 'timesup': the last autosave IS the auto-submission, for a
+     * student whose tab/PC died before the timer's own auto-submit could fire.
+     *
+     * @param  string|array|null $code_json  classworks.code
+     * @param  array|null        $timer      code_snippet_timer()'s return
+     * @return string|null  'draft' | 'submitted' | 'timesup', or NULL when
+     *                       $timer is null (untimed — no state to report).
+     */
+    public function code_snippet_effective_state($code_json, $timer)
+    {
+        if (!$timer) {
+            return null;
+        }
+        $data  = is_array($code_json) ? $code_json : (json_decode((string) $code_json, true) ?: []);
+        $state = $data['state'] ?? null;
+
+        if ($timer['phase'] === 'closed' && $state !== 'submitted' && $state !== 'timesup') {
+            return 'timesup';
+        }
+        return $state ?: 'draft';
+    }
+
+    /** Whether a code_snippet submit should be accepted right now. */
+    public function code_snippet_can_submit($timer, $now = null)
+    {
+        if (!$timer) {
+            return true; // untimed — unchanged behavior
+        }
+        if ($timer['phase'] === 'unassigned') {
+            return false;
+        }
+        $now = $now ?? time();
+        return $now >= $timer['start_ts'] && $now <= $timer['end_ts'] + self::CODE_SNIPPET_GRACE_SECONDS;
+    }
+
+    /** The state a currently-accepted submit should be stamped with. */
+    public function code_snippet_submit_state($timer, $now = null)
+    {
+        if (!$timer) {
+            return 'submitted';
+        }
+        $now = $now ?? time();
+        return $now > $timer['end_ts'] ? 'timesup' : 'submitted';
     }
 
     public function get_all()

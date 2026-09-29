@@ -112,6 +112,7 @@ class AssessmentController extends CI_Controller
         // (a list), not the {'answers': ...} shape input mode expects — see
         // the $existing contract documented in widgets/quiz.php.
         $widget_existing = null;
+        $prior = null;
         if ($widget && $widget['widget_key'] !== 'quiz') {
             $prior = $this->classworks->where([
                 'student_id'    => $this->session->student_id,
@@ -120,12 +121,33 @@ class AssessmentController extends CI_Controller
             $widget_existing = $prior ? (json_decode($prior->code ?? '', true) ?: null) : null;
         }
 
+        // Code Snippet timed batches — gate on the SERVER clock only (see
+        // Widgets_model::code_snippet_timer()). $timer is null for an
+        // untimed code_snippet assessment (today's behavior, unchanged) and
+        // for every other widget.
+        $timer = null;
+        if ($widget && $widget['widget_key'] === 'code_snippet' && !empty($classwork['timer_config'])) {
+            $timer = $this->Widgets_model->code_snippet_timer($classwork['timer_config'], $this->session->student_id);
+        }
+        if ($timer && $timer['phase'] === 'unassigned') {
+            $this->session->set_flashdata('warning', "You're not assigned to a batch for this activity yet — ask your instructor.");
+            redirect('classwork');
+            return;
+        }
+        if ($timer && $timer['phase'] === 'closed') {
+            // Whatever the student had (draft or submitted) is now final —
+            // send them to the read-only review instead of the editor.
+            redirect($prior ? 'student_submission/' . $prior->classwork_id : 'classwork');
+            return;
+        }
+
         $data = [
             'classwork' => $classwork,
             'is_cleared' => clearance_allows($classwork),
             'widget' => $widget,
             'widget_config' => $widget ? (json_decode($classwork['given'] ?? '', true) ?: []) : [],
             'widget_existing' => $widget_existing,
+            'widget_timer' => $timer,
         ];
 
         $this->load->view('assessment_view_code', $data);
@@ -258,9 +280,37 @@ class AssessmentController extends CI_Controller
                     // Widget submissions are structured JSON — keep them in the
                     // code column so student_submission.php / grading can read
                     // them back, instead of writing to a file like plain text.
-                    $submission_data['code'] = $post['code'];
-                    $submission_data['file_upload'] = null;
                     $is_code_snippet = !empty($widget) && $widget['widget_key'] === 'code_snippet';
+
+                    if ($is_code_snippet) {
+                        // Timed batches (Widgets_model::code_snippet_timer()) —
+                        // $timer is null for an untimed assessment, in which
+                        // case can_submit()/submit_state() behave exactly as
+                        // before this feature existed.
+                        $timer = $this->Widgets_model->code_snippet_timer($assessment['timer_config'] ?? null, $student_id);
+                        if (!$this->Widgets_model->code_snippet_can_submit($timer)) {
+                            $message = $timer['phase'] === 'waiting'
+                                ? 'Your batch has not started yet.'
+                                : 'Time is over for your batch — your last autosaved code was recorded.';
+                            $this->session->set_flashdata('error', $message);
+                            $existing_row = $this->classworks->where([
+                                'student_id' => $student_id, 'assessment_id' => $assessment_id,
+                            ])->get();
+                            redirect($existing_row ? 'student_submission/' . $existing_row->classwork_id : 'classwork');
+                            return;
+                        }
+
+                        $code_data = json_decode($post['code'], true);
+                        if (!is_array($code_data)) {
+                            $code_data = ['code' => (string) $post['code']];
+                        }
+                        $code_data['state'] = $this->Widgets_model->code_snippet_submit_state($timer);
+                        $code_data['saved_at'] = date('Y-m-d H:i:s');
+                        $submission_data['code'] = json_encode($code_data);
+                    } else {
+                        $submission_data['code'] = $post['code'];
+                    }
+                    $submission_data['file_upload'] = null;
                 }
             } else {
                 // Handle textarea submission: save code as a text file and store filename
@@ -299,7 +349,9 @@ class AssessmentController extends CI_Controller
                 // Code Snippet is graded live, and the code is only an optional
                 // attachment students may add or update later (regardless of
                 // the due date). Touch nothing but the code — never the score,
-                // status or timestamps.
+                // status or timestamps. If this assessment has a timer, the
+                // can_submit() gate above already ran before we got here —
+                // this branch is unreached once a batch is closed.
                 $this->classworks->update(['code' => $submission_data['code']], $existing_submission->classwork_id);
                 $this->session->set_flashdata('success', 'Your code was saved. Your score is unchanged.');
                 redirect('student_submission/' . $existing_submission->classwork_id);
@@ -324,6 +376,77 @@ class AssessmentController extends CI_Controller
         }
 
         redirect('classwork');
+    }
+
+    // AJAX autosave for the Code Snippet widget's timed batches (see
+    // widgets/code_snippet.php's saveDraft(), called every 20s while a batch
+    // is open). Writes ONLY classworks.code, and only while the timer says
+    // the batch is actually 'open' (Widgets_model::code_snippet_timer()) —
+    // it can never touch score/status/timestamps, and it never regresses an
+    // already-submitted/timesup row back to a draft. Returns the batch's
+    // end_ts so a running countdown picks up a mid-session admin extension,
+    // and server_now so the client can re-anchor its clock offset.
+    public function snippet_autosave()
+    {
+        header('Content-Type: application/json');
+
+        $student_id = $this->session->student_id;
+        $assessment_id = $this->input->post('assessment_id');
+        $code = $this->input->post('code');
+
+        if (clearance_gate_json($assessment_id)) return;
+
+        if (empty($student_id) || empty($assessment_id)) {
+            echo json_encode(['ok' => false, 'error' => 'missing_params']);
+            return;
+        }
+
+        $assessment = $this->assessments->as_array()->get($assessment_id);
+        if (empty($assessment) || empty($assessment['widget_id'])) {
+            echo json_encode(['ok' => false, 'error' => 'not_found']);
+            return;
+        }
+
+        $this->load->model('Widgets_model');
+        $widget = $this->Widgets_model->get($assessment['widget_id']);
+        if (empty($widget) || $widget['widget_key'] !== 'code_snippet') {
+            echo json_encode(['ok' => false, 'error' => 'wrong_widget']);
+            return;
+        }
+
+        $timer = $this->Widgets_model->code_snippet_timer($assessment['timer_config'] ?? null, $student_id);
+        if ($timer && $timer['phase'] !== 'open') {
+            echo json_encode(['ok' => false, 'error' => 'not_open', 'phase' => $timer['phase']]);
+            return;
+        }
+
+        $existing = $this->classworks->where([
+            'student_id' => $student_id, 'assessment_id' => $assessment_id,
+        ])->get();
+        if (!$existing) {
+            echo json_encode(['ok' => false, 'error' => 'no_submission_row']);
+            return;
+        }
+
+        $current = json_decode($existing->code ?? '', true) ?: [];
+        if (in_array($current['state'] ?? null, ['submitted', 'timesup'], true)) {
+            // Already finalized (e.g. the student explicitly hit Turn In) —
+            // autosave only ever advances a draft, never regresses a final
+            // state, so just report the current deadline back.
+            echo json_encode(['ok' => true, 'end_ts' => $timer['end_ts'] ?? null, 'server_now' => time(), 'locked' => true]);
+            return;
+        }
+
+        $code_data = json_decode((string) $code, true);
+        if (!is_array($code_data)) {
+            $code_data = ['code' => (string) $code];
+        }
+        $code_data['state'] = 'draft';
+        $code_data['saved_at'] = date('Y-m-d H:i:s');
+
+        $this->classworks->update(['code' => json_encode($code_data)], $existing->classwork_id);
+
+        echo json_encode(['ok' => true, 'end_ts' => $timer['end_ts'] ?? null, 'server_now' => time()]);
     }
 
     public function upload_pdf()

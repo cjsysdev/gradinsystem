@@ -642,6 +642,44 @@ patterns. Build 6 reusable widgets, not 16 custom interfaces.
   Run `WidgetsController/install` once to add the `code_snippet` row.
   Blank config is **not** allowed: the problem text is required.
 - **Deviation:** not supported as a *grouping* assessment (individual only).
+- **Optional timed batches (added outside original scope, 2026-09):** for a
+  section whose lab only has enough PCs for half the class at once. The admin
+  splits the roster into batches (Batch 1, Batch 2, ...), each with its own
+  start/end window, via `AdminAssessmentController::snippet_batches()`
+  (`views/admin/snippet_batches.php`, linked from `all_submissions` and
+  `manage_assessments` when the widget is `code_snippet`). Stored as
+  `assessment_section.timer_config` (a JSON `{"batches":[{"start","end"},...],
+  "members":{"<student_id>":<batch_no>}}`) — **per SECTION, not on the shared
+  master** (`assessments.given`), since the PC/batch split is a per-section
+  fact, same as `due`/`status`. `NULL`/no batches = untimed, today's original
+  behavior, unchanged. Every phase/deadline decision (`unassigned` | `waiting`
+  | `open` | `closed`, plus the accept/reject and draft/submitted/timesup
+  state a submit gets stamped with) is computed ONLY by
+  `Widgets_model::code_snippet_timer()` / `code_snippet_can_submit()` /
+  `code_snippet_submit_state()` / `code_snippet_effective_state()` — always
+  off the SERVER clock (`time()`/`strtotime()`), never the client's, so a
+  wrong PC clock can't affect a deadline. `classworks.code` gains `state`
+  (`draft`/`submitted`/`timesup`) and `saved_at` alongside `code`, for a timed
+  submission only. The widget view renders one of three modes for the current
+  student's phase: `waiting` (a countdown-to-start card, no editor, Turn In
+  hidden), `open` (the normal editor plus a sticky countdown bar, a 20s AJAX
+  autosave to `AssessmentController::snippet_autosave()`, and an automatic
+  `submitForm()` call at 0:00 — the state that submit lands with, `timesup` vs
+  `submitted`, is still decided server-side from the deadline, not by a client
+  flag), or `closed` (`assessment_view_code()` redirects straight to the
+  read-only review). A `draft` state whose window has since closed is read
+  back as `timesup` too (`code_snippet_effective_state()`), covering a
+  tab/PC that died before the client-side auto-submit could fire — the last
+  autosave IS the auto-submission. Once closed, the code is locked: the
+  can_submit() gate in `submit_classwork()` (and `snippet_autosave()`) refuses
+  any further write regardless of graded state, which is also why
+  `student_submission.php` stops offering "Add / Update my code" once closed.
+  The TIME'S UP flag is display-only — it never affects the RUN/EFFORT/ERROR
+  score. `assessment_full` (the compat view) exposes `timer_config` alongside
+  `due`/`status` — re-created by `Widgets_model::install()`, which also adds
+  the column; a `field_exists()` guard in `snippet_batches()` tells the admin
+  to (re-)run `WidgetsController/install` if it hasn't happened yet on that
+  database.
 
 ## 5. Full Session-to-Widget Mapping (Weeks 1–8)
 

@@ -79,7 +79,7 @@ if (empty($widget) && ($classwork['iotype_id'] == '4' || $classwork['iotype_id']
                          CodeMirror to that id on every page, which would render an
                          empty editor box next to the widget. -->
                     <input type="hidden" id="widget-code-value" name="code">
-                    <?php $this->load->view($widget['input_view'], ['config' => $widget_config, 'readonly' => false, 'existing' => $widget_existing ?? null, 'assessment_id' => $classwork['assessment_id']]); ?>
+                    <?php $this->load->view($widget['input_view'], ['config' => $widget_config, 'readonly' => false, 'existing' => $widget_existing ?? null, 'assessment_id' => $classwork['assessment_id'], 'timer' => $widget_timer ?? null]); ?>
                 <?php else: ?>
                     <!-- Option to choose between code input or file upload -->
                     <div class="mb-4">
@@ -108,7 +108,7 @@ if (empty($widget) && ($classwork['iotype_id'] == '4' || $classwork['iotype_id']
                     </div>
                 <?php endif; ?>
                 <div class="text-center">
-                    <button type="button" class="btn btn-primary btn-block" onclick="confirmSubmission()">Turn
+                    <button type="button" id="turn-in-btn" class="btn btn-primary btn-block" onclick="confirmSubmission()">Turn
                         In</button>
                 </div>
             </form>

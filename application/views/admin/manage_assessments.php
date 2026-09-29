@@ -215,6 +215,13 @@
                                         <i class="fas fa-layer-group"></i>
                                     </a>
                                 <?php endif; ?>
+                                <?php if (($a['widget_key'] ?? null) === 'code_snippet'): ?>
+                                    <a href="<?= base_url('AdminAssessmentController/snippet_batches/' . $a['assessment_id']) ?>"
+                                       class="btn btn-sm btn-outline-primary"
+                                       title="Batches &amp; Timer">
+                                        <i class="fa fa-clock"></i>
+                                    </a>
+                                <?php endif; ?>
                                 <button class="btn btn-sm btn-outline-danger"
                                         onclick="deleteAssessment(<?= (int) $a['assessment_id'] ?>, <?= htmlspecialchars(json_encode($a['title']), ENT_QUOTES) ?>)"
                                         title="Delete">
