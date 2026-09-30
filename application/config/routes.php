@@ -272,6 +272,10 @@ $route['admin/save_semester'] = 'AdminStudentController/save_semester';
 $route['admin/activate_semester/(:num)'] = 'AdminStudentController/activate_semester/$1';
 $route['admin/toggle_semester_release/(:num)'] = 'AdminStudentController/toggle_semester_release/$1';
 
+// Settings — show/hide student and admin nav-bar links (Global_setting::NAV_LINKS).
+$route['admin/settings'] = 'AdminController/settings';
+$route['admin/save_nav_settings'] = 'AdminController/save_nav_settings';
+
 // Class Materials. Admin uploads course/demo files into assets/materials/
 // {CLASS_CODE}/ and assigns them to class_schedule sections; students see only
 // the ones assigned to a section they are enrolled in (student route below, in

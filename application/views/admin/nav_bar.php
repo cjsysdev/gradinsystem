@@ -1,32 +1,53 @@
+<?php
+// Admin-controlled on/off switches (admin/settings). Dashboard and Settings
+// are always shown so hiding links can never lock the admin out.
+// Loaded through get_instance(): a model loaded via $this inside a view lands
+// on the controller and stays null on $this (see views/nav_bar.php).
+$CI =& get_instance();
+$CI->load->model('Global_setting');
+$anav = $CI->Global_setting->nav_flags('admin');
+?>
 <div class="container mt-3" id="nav-bar-container">
     <div class="form-group row">
         <a href="<?= base_url(
                         'dashboard'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Dashboard"><i class="fa fa-tachometer-alt"></i></a>
+        <?php if ($anav['admin_nav_assessments']): ?>
           <a href="<?= base_url(
                         'manage_assessments'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Assessments"><i class="fa fa-tasks"></i></a>
+        <?php endif; ?>
+        <?php if ($anav['admin_nav_class_assessments']): ?>
         <a href="<?= base_url(
                         'class_assessments'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Class Assessments"><i class="fa fa-layer-group"></i></a>
+        <?php endif; ?>
+        <?php if ($anav['admin_nav_classwork']): ?>
         <a href="<?= base_url(
                         'all_submissions/1'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Classwork"><i class="fa fa-folder-open"></i></a>
+        <?php endif; ?>
         <!-- <a href="<?= base_url(
                         'group_submissions/1'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Group Submissions"><i class="fa fa-user-group"></i></a> -->
         <!-- <a href="<?= base_url(
                         'AdminController/student_submissions'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Submissions"><i class="fa fa-file-alt"></i></a> -->
+        <?php if ($anav['admin_nav_section_monitoring']): ?>
         <a href="<?= base_url(
                         'view_attendance'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Section Monitoring"><i class="fa fa-calendar-check"></i></a>
+        <?php endif; ?>
+        <?php if ($anav['admin_nav_emergency_contacts']): ?>
         <a href="<?= base_url(
                         'admin/emergency_contacts'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Emergency Contacts"><i class="fa fa-phone"></i></a>
+        <?php endif; ?>
+        <?php if ($anav['admin_nav_student_violations']): ?>
         <a href="<?= base_url(
                         'admin/student_violations'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Student Violations"><i class="fa fa-exclamation-triangle"></i></a>
+        <?php endif; ?>
         <!-- <a href="<?= base_url(
                         'AdminController/manage_discussions'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Discussions"><i class="fa fa-comments"></i></a> -->
@@ -36,15 +57,22 @@
         <a href="<?= base_url(
                         'interactive_quiz/manage_topics'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="IQ Topics"><i class="fa fa-book"></i></a> -->
+        <?php if ($anav['admin_nav_students_by_section']): ?>
         <a href="<?= base_url(
                         'admin/students_by_section'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Students by Section"><i class="fa fa-users"></i></a>
+        <?php endif; ?>
+        <?php if ($anav['admin_nav_semesters']): ?>
         <a href="<?= base_url(
                         'admin/semesters'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Semesters"><i class="fa fa-calendar-alt"></i></a>
+        <?php endif; ?>
+        <?php if ($anav['admin_nav_student_requests']): ?>
         <a href="<?= base_url(
                         'admin/student_requests'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Student Requests"><i class="fa fa-hand"></i></a>
+        <?php endif; ?>
+        <?php if ($anav['admin_nav_password_resets']): ?>
         <?php $pw_pending = $this->db->table_exists('password_reset_requests') ? $this->password_reset_request->count_pending() : 0; ?>
         <a href="<?= base_url(
                         'admin/password_resets'
@@ -53,25 +81,38 @@
                 <span class="badge badge-danger position-absolute" style="top:0; right:0; transform:translate(25%,-25%);"><?= $pw_pending ?></span>
             <?php endif; ?>
         </a>
+        <?php endif; ?>
+        <?php if ($anav['admin_nav_polls']): ?>
         <a href="<?= base_url(
                         'poll/dashboard'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Polls"><i class="fa fa-poll"></i></a>
+        <?php endif; ?>
+        <?php if ($anav['admin_nav_groupings']): ?>
         <a href="<?= base_url(
                         'Groupings'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Groupings"><i class="fa fa-people-group"></i></a>
+        <?php endif; ?>
+        <?php if ($anav['admin_nav_project_logs']): ?>
         <a href="<?= base_url(
                         'admin/project_logs'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Project Logs"><i class="fa fa-diagram-project"></i></a>
+        <?php endif; ?>
+        <?php if ($anav['admin_nav_worksheet_generator']): ?>
         <a href="<?= base_url(
                         'admin/worksheet_generator'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Worksheet Generator"><i class="fa fa-wand-magic-sparkles"></i></a>
+        <?php endif; ?>
+        <?php if ($anav['admin_nav_sms_announcements']): ?>
         <a href="<?= base_url(
                         'admin/announcements'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="SMS Announcements"><i class="fa fa-bullhorn"></i></a>
+        <?php endif; ?>
         <!-- fa-folder-tree, not fa-folder-open: that one already means Classwork above. -->
+        <?php if ($anav['admin_nav_class_materials']): ?>
         <a href="<?= base_url(
                         'admin/materials'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Class Materials"><i class="fa fa-folder-tree"></i></a>
+        <?php endif; ?>
         <?php $over_max_count = $this->classworks->count_scores_exceeding_max(); ?>
         <!-- <a href="<?= base_url(
                         'admin/score_integrity'
@@ -80,8 +121,13 @@
                 <span class="badge badge-danger position-absolute" style="top:0; right:0; transform:translate(25%,-25%);"><?= $over_max_count ?></span>
             <?php endif; ?>
         </a> -->
+        <?php if ($anav['admin_nav_uncleared_students']): ?>
         <a href="<?= base_url(
                         'uncleared_students'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Uncleared Students"><i class="fa fa-user-times"></i></a>
+        <?php endif; ?>
+        <a href="<?= base_url(
+                        'admin/settings'
+                    ) ?>" class="btn btn-outline-secondary col m-2" title="Settings"><i class="fa fa-gear"></i></a>
     </div>
 </div>

@@ -225,6 +225,32 @@ class AdminController extends Admin_Controller
         redirect('dashboard');
     }
 
+    // Settings — show/hide links on the student and admin nav bars
+    // (Global_setting::NAV_LINKS).
+    public function settings()
+    {
+        $this->load->model('Global_setting');
+        $data['student_nav'] = $this->Global_setting->nav_links('student');
+        $data['admin_nav']   = $this->Global_setting->nav_links('admin');
+        $this->load->view('admin/settings', $data);
+    }
+
+    // Save one nav bar's switches. Unchecked boxes aren't posted, so every
+    // link in the group that isn't in enabled[] is saved as hidden.
+    public function save_nav_settings()
+    {
+        if ($this->input->method() !== 'post') {
+            redirect('admin/settings');
+        }
+        $this->load->model('Global_setting');
+        $group = $this->input->post('group');
+        if (isset(Global_setting::NAV_LINKS[$group])) {
+            $this->Global_setting->save_nav_links($group, (array) $this->input->post('enabled'));
+            $this->session->set_flashdata('success', ucfirst($group) . ' nav bar saved.');
+        }
+        redirect('admin/settings');
+    }
+
     // Section Monitoring — one row per enrolled student on a schedule, with
     // their term grades and their attendance tallies, either half toggleable.
     // Replaces the old view_attendance sheet, which filtered on the section
