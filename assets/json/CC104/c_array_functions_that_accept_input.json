@@ -1,0 +1,232 @@
+{
+    "topic": "c_array_functions_that_accept_input",
+    "title": "C: Array Functions That Accept Input",
+    "description": "Writing functions that read keyboard input and store it directly into an array.",
+    "congratsText": "Well done. You can now write a function that fills an array from input, explain why it works without a return, and reuse the same shape elsewhere.",
+    "objectives": [
+        "Write a function that fills an array from user input",
+        "Trace how a smaller size limits which slots get filled",
+        "Explain why array parameters update main() without a return",
+        "Apply the same fill-loop shape to a new array or a new rule"
+    ],
+    "recap": [
+        "void means nothing is handed back; the function still changes the array directly.",
+        "size controls how many slots the loop asks for; skipped slots keep old leftover memory.",
+        "Array parameters share the same memory as the caller's array; plain int parameters only get a copy.",
+        "The same loop shape — void, array, size, scanf with & — reuses cleanly across different arrays and rules."
+    ],
+    "sections": [
+        {
+            "id": 0,
+            "title": "A Function That Fills an Array",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "The first word of the function is its <span class=\"highlight\">return type</span>. <span class=\"code-inline\">void fillScores(...)</span> means nothing is handed back to whoever called it.",
+                    "check": {
+                        "question": "What does the word void at the front of a function tell you?",
+                        "options": [
+                            "It sends nothing back",
+                            "It only takes whole numbers in"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Inside the loop, <span class=\"code-inline\">scanf(\"%d\", &arr[i]);</span> needs the <span class=\"highlight\">&</span> so it knows the address to store into, not just a value.",
+                    "check": {
+                        "question": "What does the & in front of arr[i] give scanf?",
+                        "options": [
+                            "The address of that slot",
+                            "The value already inside that slot"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "The call <span class=\"code-inline\">fillScores(scores, 5);</span> runs the whole loop once. Since <span class=\"code-inline\">arr</span> and <span class=\"code-inline\">scores</span> point at the same memory, main() sees the typed numbers right away.",
+                    "check": {
+                        "question": "After fillScores(scores, 5); runs, does main() need to do anything else to see the typed numbers?",
+                        "options": [
+                            "No, scores already holds them",
+                            "Yes, it must return them first"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "code": "void fillScores(int arr[], int size) {\n    int i;\n    for (i = 0; i < size; i++) {\n        scanf(\"%d\", &arr[i]);\n    }\n}\n\nint scores[5];\nfillScores(scores, 5);\nprintf(\"%d\", scores[4]);",
+                "question": "The user types 10, 20, 30, 40, 50 in order. What does this print?",
+                "options": [
+                    "50, the fifth number typed",
+                    "5, the size that was passed in",
+                    "10, the first number typed",
+                    "An address, since arr[] holds one"
+                ],
+                "correct": 0
+            }
+        },
+        {
+            "id": 1,
+            "title": "Same Function, Fewer Slots",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "The <span class=\"highlight\">size</span> you pass decides how many times the loop asks for input. Same array, smaller size, fewer questions asked.",
+                    "check": {
+                        "question": "The array holds 5 slots but you call fillScores(scores, 3). How many numbers does it ask for?",
+                        "options": [
+                            "Three",
+                            "Five"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Slots the loop never reaches keep whatever was already in memory — not zero, not blank, just <span class=\"highlight\">leftover</span> bytes from before.",
+                    "check": {
+                        "question": "fillScores(scores, 3) runs. What is inside scores[4] afterward?",
+                        "options": [
+                            "Whatever was already there",
+                            "Automatically zero"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Two separate arrays can share the exact same function. <span class=\"code-inline\">fillAges(ages, 5);</span> reuses the identical loop shape fillScores used, just on a different array.",
+                    "check": {
+                        "question": "Does fillAges need its own new loop logic, different from fillScores?",
+                        "options": [
+                            "No, the same shape works",
+                            "Yes, every array needs its own logic"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "type",
+                "code": "int scores[5];\nfillScores(scores, 3);\n// user types 7, 8, 9\nprintf(\"%d\", scores[1]);",
+                "question": "Type the number this prints.",
+                "acceptedAnswers": [
+                    "8"
+                ]
+            }
+        },
+        {
+            "id": 2,
+            "title": "Why This Works Without a Return",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "An array parameter like <span class=\"code-inline\">int arr[]</span> is really the <span class=\"highlight\">same address</span> as the array in main() — there is only one array, viewed from two names.",
+                    "check": {
+                        "question": "Inside fillScores, is arr[] a brand new copy of the array?",
+                        "options": [
+                            "No, it's the same memory as scores",
+                            "Yes, a fresh copy is made"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "A plain <span class=\"code-inline\">int score</span> parameter is different: C copies the <span class=\"highlight\">value</span> in, so changes made inside the function never reach main().",
+                    "check": {
+                        "question": "You pass a plain int into a void function and change it inside. Does main()'s copy change too?",
+                        "options": [
+                            "No, only the local copy changes",
+                            "Yes, the original updates too"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "This quietly compiles either way — right or wrong, the Compile Log stays clean. A clean build only means the code is <span class=\"highlight\">legal</span>, not that it does what you meant.",
+                    "check": {
+                        "question": "Your program builds with no errors. Does that prove the array got filled correctly?",
+                        "options": [
+                            "Not always, check it yourself",
+                            "Yes, a clean build proves it"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "arrange",
+                "question": "Arrange the tokens to build a function that fills an array of ages.",
+                "tokens": [
+                    "}",
+                    "int i;\n    for (i = 0; i < size; i++) {\n        scanf(\"%d\", &arr[i]);\n    }",
+                    "void fillAges(int arr[], int size)",
+                    "{"
+                ],
+                "correctOrder": [
+                    "void fillAges(int arr[], int size)",
+                    "{",
+                    "int i;\n    for (i = 0; i < size; i++) {\n        scanf(\"%d\", &arr[i]);\n    }",
+                    "}"
+                ]
+            }
+        },
+        {
+            "id": 3,
+            "title": "One More Rule, Same Shape",
+            "callback": true,
+            "refSection": "0, 1 & 2",
+            "chunks": [
+                {
+                    "text": "Add one more rule and the shape barely changes: <span class=\"code-inline\">fillPositive(arr, size)</span> keeps asking until the number typed is <span class=\"highlight\">zero or higher</span>.",
+                    "check": {
+                        "question": "Why can fillPositive reuse the same void, array, size shape as fillScores?",
+                        "options": [
+                            "The core pattern (loop + scanf + &) doesn't change",
+                            "Rules always require a brand new return type"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "The & is still doing the exact same job here — giving scanf an <span class=\"highlight\">address</span> to write into, rule or no rule.",
+                    "check": {
+                        "question": "Does adding the zero-or-higher rule change why & is needed?",
+                        "options": [
+                            "No, & still means: store the address here",
+                            "Yes, rules need scanf to skip the &"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "If you call <span class=\"code-inline\">fillPositive(prices, 3)</span> on a 5-slot array, prices[3] and prices[4] are left holding whatever was already there — the same leftover-memory gap as before.",
+                    "check": {
+                        "question": "fillPositive(prices, 3) runs on a 5-slot array. What's inside prices[4] afterward?",
+                        "options": [
+                            "Leftover memory, same as any skipped slot",
+                            "Automatically the highest value typed"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "code": "void fillPositive(int arr[], int size) {\n    int i;\n    for (i = 0; i < size; i++) {\n        do {\n            scanf(\"%d\", &arr[i]);\n        } while (arr[i] < 0);\n    }\n}\n\nint prices[4];\nfillPositive(prices, 4);\nprintf(\"%d\", prices[2]);",
+                "question": "The user types -5, 20, 15, 8, 3 in that order (the -5 gets rejected). What does this print?",
+                "options": [
+                    "8, the third accepted number",
+                    "15, the second accepted number",
+                    "20, the first accepted number",
+                    "-5, since prices[2] never asked again"
+                ],
+                "correct": 0
+            }
+        }
+    ]
+}

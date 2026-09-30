@@ -260,7 +260,48 @@ class StudentController extends CI_Controller
     {
         $student_id = $this->session->student_id;
         $data['contacts'] = $this->emergency_contact->get_by_student($student_id);
+        $data['student']  = $this->student_master->get_student_info($student_id);
         $this->load->view('emergency_contacts', $data);
+    }
+
+    /**
+     * The student's own mobile number, used for class announcements.
+     *
+     * Ownership comes from the session, never from a posted id — same rule as
+     * save_emergency_contact() below. The number is normalised before storage
+     * so the SMS gateway never has to guess: '0917 123 4567' and
+     * '+639171234567' both land as '09171234567'.
+     */
+    public function save_my_number()
+    {
+        $student_id = $this->session->student_id;
+
+        if (!$student_id) {
+            redirect('login');
+            return;
+        }
+
+        $this->load->library('sms_message');
+        $raw = trim((string) $this->input->post('contact_no'));
+
+        if ($raw === '') {
+            $this->session->set_flashdata('error', 'Enter your mobile number.');
+            redirect('emergency_contacts');
+            return;
+        }
+
+        $national = Sms_message::to_national($raw);
+
+        if ($national === null) {
+            $this->session->set_flashdata('error',
+                'That does not look like a Philippine mobile number. Use the format 09171234567.');
+            redirect('emergency_contacts');
+            return;
+        }
+
+        $this->student_master->set_contact_no($student_id, $national);
+        $this->session->set_flashdata('success', 'Mobile number saved as ' . $national . '.');
+        redirect('emergency_contacts');
     }
 
     public function save_emergency_contact()
@@ -561,5 +602,41 @@ class StudentController extends CI_Controller
         ];
 
         $this->load->view('performance_sheet', $data);
+    }
+
+    /**
+     * Class Materials: the demo files / handouts an admin uploaded for the
+     * sections this student is enrolled in. Upload side is
+     * AdminMaterialController; visibility rules live in Class_material.
+     *
+     * The session check is inline on purpose — this class has no constructor,
+     * so there is no shared gate to inherit (every other method here does its
+     * own check too). Do not assume a logged-in session in anything added here.
+     */
+    public function materials()
+    {
+        if (!isset($_SESSION['online'])) {
+            redirect('login');
+        }
+
+        $this->load->model('Class_material');
+
+        // Returns [] rather than throwing when the tables don't exist yet, so
+        // the page is safe to hit before admin/materials_install has been run.
+        $materials = $this->Class_material->get_for_student($this->session->student_id);
+
+        // Group by category for rendering. The SQL already sorted categories
+        // with the NULL/blank ones last, so insertion order is render order and
+        // "General" naturally lands at the bottom.
+        $grouped = [];
+        foreach ($materials as $m) {
+            $key = ($m['category'] !== null && $m['category'] !== '') ? $m['category'] : 'General';
+            $grouped[$key][] = $m;
+        }
+
+        $this->load->view('materials', [
+            'grouped' => $grouped,
+            'total'   => count($materials),
+        ]);
     }
 }

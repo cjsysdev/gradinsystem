@@ -35,6 +35,7 @@ class GradesController extends CI_Controller
                 'final'             => null,
                 'overall'           => null,
                 'recommendations'   => [],
+                'estimator'         => NULL,
                 'no_enrollment'     => TRUE,
             ]);
             return;
@@ -52,6 +53,7 @@ class GradesController extends CI_Controller
             'io_types'        => $result['io_types'],
             'no_enrollment'   => FALSE,
             'recommendations' => $this->buildRecommendations($result),
+            'estimator'       => $this->_estimator_payload($result),
         ];
 
         $this->load->view('home', $data);
@@ -91,6 +93,46 @@ class GradesController extends CI_Controller
             'attendance'       => $sem_id ? $this->student_master->get_attendance_summary($student_id, $sem_id) : null,
         ];
         $this->load->view('my_records', $data);
+    }
+
+    /**
+     * Everything the front-end estimator needs, and nothing it could use to
+     * invent a rule of its own.
+     *
+     * This is a projection of numbers Grade_calculator already produced — no
+     * arithmetic happens here. The estimator re-runs the POLICY layer in the
+     * browser over slider values; it gets the weights, the passing rate and the
+     * policy bundle from this payload so it never hardcodes a constant.
+     *
+     * Purely a display aid: nothing derived from it is ever posted back or
+     * persisted, and the real grade on the page is still the server's.
+     */
+    private function _estimator_payload(array $result): array
+    {
+        $shape = function (array $components) {
+            $out = [];
+            foreach ($components as $c) {
+                $out[] = [
+                    'iotype_id'         => (int) $c['iotype_id'],
+                    'iotype_name'       => $c['iotype_name'],
+                    'iotype_percentage' => (float) $c['iotype_percentage'],
+                    'total_score'       => $c['total_score'],
+                    'total_max_score'   => $c['total_max_score'],
+                    'percentage'        => $c['percentage'],
+                    'n_assessments'     => (int) $c['n_assessments'],
+                    'n_ungraded'        => (int) $c['n_ungraded'],
+                ];
+            }
+            return $out;
+        };
+
+        return [
+            'passing_rate'     => $result['passing_rate'],
+            'required_iotypes' => $result['required_iotypes'],
+            'policy'           => $result['policy'],
+            'midterm'          => $shape($result['midterm_components']),
+            'final'            => $shape($result['final_components']),
+        ];
     }
 
     // ------------------------------------------------------------------
@@ -229,23 +271,15 @@ class GradesController extends CI_Controller
         });
     }
 
-    /** Human-readable explanation of why a term is INC. */
+    /**
+     * Human-readable explanation of why a term is INC.
+     *
+     * Delegates to the model so the sheets and the printable slips word it
+     * identically — the wording is part of the grade report, so it has one home.
+     */
     private function _inc_reason(array $term, array $io_types)
     {
-        if ($term['status'] === 'ok') {
-            return '';
-        }
-        if (($term['reason'] ?? '') === 'missing_components' && !empty($term['missing_iotypes'])) {
-            $names = [];
-            foreach ($term['missing_iotypes'] as $id) {
-                $names[] = $io_types[$id]['type'] ?? "io_type $id";
-            }
-            return 'No ' . implode(', ', $names) . ' recorded yet';
-        }
-        if (($term['reason'] ?? '') === 'below_passing') {
-            return 'Below passing';
-        }
-        return 'Incomplete';
+        return $this->Grade_calculator->inc_reason($term, $io_types);
     }
 
     // ------------------------------------------------------------------

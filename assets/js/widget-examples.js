@@ -188,7 +188,7 @@ const widgetExamples = {
         }
     },
     case_dossier: {
-        hint: 'Hook question + read-only framework explainer + multiple parallel case dossiers (each rated 1-5 per factor with a cited-evidence text field) + reflection questions. Not auto-graded. This example is the full Session 2.1 "Innovation Triangle" worksheet (GCash/Kodak/Friendster) — ready to use as-is.',
+        hint: 'Hook question + read-only framework explainer + multiple parallel case dossiers (each factor answered by citing a fact from that dossier) + reflection questions. Not auto-graded. This example is the full Session 2.1 "Innovation Triangle" worksheet (GCash/Kodak/Friendster) — ready to use as-is.',
         example: {
             meta: {
                 eyebrow: 'Session 2.1 · Field Notebook',
@@ -370,6 +370,43 @@ const widgetExamples = {
             project_types: ['C Programming', 'Web'],
             min_features: 4,
             require_all_crud: true
+        }
+    },
+    file_upload: {
+        hint: 'Students attach files (code, documents, text, images...) plus an optional note. Works for individual or group assessments — turn on Groupings for a group upload. "allowed_extensions" limits the file types ([] = any safe type); "max_size_mb" is per file (capped at 50); set "note_label" to "" to hide the note box. Not auto-graded — score it manually like Worksheet Form.',
+        example: {
+            instructions: 'Upload your C program source file(s) for this activity. Include every .c/.h file needed to compile it.',
+            allowed_extensions: ['c', 'h', 'txt', 'pdf', 'docx'],
+            max_files: 5,
+            max_size_mb: 10,
+            note_label: 'How to compile/run it, and anything unfinished (optional)',
+            require_note: false
+        }
+    },
+    code_snippet: {
+        hint: 'A coding problem you check LIVE on each student\'s PC and mark RUN / EFFORT / ERROR (three one-tap buttons on the submissions page). Every enrolled student gets a submission row automatically, so absent students simply stay ungraded. "rubric" values are percent of Max Score (default 100 / 70 / 40). Students may attach or update their code anytime, even after grading; it never changes the score. Set "allow_code_submission" to false for a problem-only activity. "problem" is required — OR give a "problems" list [{title, problem, starter_code, sample_input, sample_output}] and each student gets ONE of them at random (stable per student; pool entries inherit the top-level starter_code).',
+        example: {
+            // Problem pool: each student is given ONE of these at random.
+            // For a single shared problem, use "problem" (+ sample_input /
+            // sample_output) at the top level instead of "problems".
+            problems: [
+                {
+                    title: 'Sum 1 to N',
+                    problem: 'Write a C program that reads a positive integer N and prints the sum of all integers from 1 to N.\nUse a loop; do not use the formula n(n+1)/2.',
+                    sample_input: '5',
+                    sample_output: '15'
+                },
+                {
+                    title: 'Count the Even Numbers',
+                    problem: 'Write a C program that reads a positive integer N and prints how many even numbers there are from 1 to N.\nUse a loop and the % operator; do not compute it as N/2.',
+                    sample_input: '7',
+                    sample_output: '3'
+                }
+            ],
+            language: 'c',
+            starter_code: '#include <stdio.h>\n\nint main() {\n    int n;\n\n    return 0;\n}',
+            rubric: { run: 100, effort: 70, error: 40 },
+            allow_code_submission: true
         }
     }
 };

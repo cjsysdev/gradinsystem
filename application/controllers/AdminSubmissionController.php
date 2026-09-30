@@ -1,0 +1,781 @@
+<?php
+defined('BASEPATH') or exit('No direct script access allowed');
+
+/**
+ * Reading and scoring student submissions: the per-assessment submission
+ * lists, group submissions, active participation, and every score write.
+ *
+ * All score writes go through classworks::set_score(), which validates and
+ * clamps to max_score — never write classworks.score directly from here.
+ * Split out of AdminController; see Admin_Controller in
+ * application/core/MY_Controller.php.
+ */
+class AdminSubmissionController extends Admin_Controller
+{
+    public function all_submissions($assessment_id = null)
+    {
+        // Fetch all assessments for the dropdown
+
+        $day = date('D');
+        $class = $this->class_schedule->class_today($day);
+
+        $data['assessments'] = $this->assessments->get_for_schedule($class['schedule_id']);
+
+        // Fetch submissions for the selected assessment
+        $data['widget'] = null;
+        $data['widget_config'] = [];
+
+        if ($assessment_id) {
+            $data['submissions'] = $this->classworks->get_all_submissions(
+                $assessment_id
+            );
+            $data['missing_students'] = $this->classworks->get_missing_submissions($assessment_id);
+            $data['selected_assessment_id'] = $assessment_id;
+
+            $assessment = $this->assessments->as_array()->get($assessment_id);
+            $data['widget_timer_config'] = null;
+            if (!empty($assessment['widget_id'])) {
+                $this->load->model('Widgets_model');
+                $data['widget'] = $this->Widgets_model->get($assessment['widget_id']);
+                $data['widget_config'] = json_decode($assessment['given'] ?? '', true) ?: [];
+                // Code Snippet timed batches: the view computes each row's own
+                // timer/state per-student (Widgets_model::code_snippet_timer()
+                // takes a student_id) — see all_submission.php.
+                if (!empty($data['widget']) && $data['widget']['widget_key'] === 'code_snippet') {
+                    $data['widget_timer_config'] = $assessment['timer_config'] ?? null;
+                }
+            }
+
+            // The randomizer's round, rendered on first paint so a refresh
+            // visibly keeps its progress instead of starting over (it used to
+            // live in localStorage, which no other machine could see).
+            $data['randomizer'] = $this->_randomizer_state($assessment_id);
+        } else {
+            $data['submissions'] = [];
+            $data['missing_students'] = [];
+            $data['selected_assessment_id'] = null;
+            $data['randomizer'] = $this->_randomizer_state(null);
+        }
+
+        $this->load->view('admin/all_submission', $data);
+    }
+
+    // Class-wide item analysis for the two quiz widgets — "which questions did
+    // students get wrong most often, and what did they answer instead". The
+    // per-question data has always been there (Widgets_model::grade_quiz() writes
+    // {question,user_answer,correct_answer,is_correct} per item into
+    // classworks.code); this just reads across every submission instead of one.
+    //
+    // $assessment_id is an assessment_section_id, same as every other method here.
+    // $scope: 'section' = just this section, 'all' = every section sharing the
+    // same master assessment. Pooling matters because SecureQuizController serves
+    // each student a random slice of the bank, so a single section can leave an
+    // individual item with only a handful of data points.
+    public function quiz_stats($assessment_id = null, $scope = 'section')
+    {
+        $this->load->model('Widgets_model');
+
+        $data = [
+            'assessment'    => null,
+            'assessment_id' => $assessment_id,
+            'scope'         => $scope === 'all' ? 'all' : 'section',
+            'widget'        => null,
+            'section_count' => 1,
+            'stats'         => null,
+            'ranking'       => null,
+            'error'         => null,
+        ];
+
+        if (!$assessment_id) {
+            $data['error'] = 'No assessment selected.';
+            $this->load->view('admin/quiz_stats', $data);
+            return;
+        }
+
+        // Deliberately NOT using class_schedule->class_today() the way
+        // all_submissions() does — that returns null outside class hours and
+        // warns on ['schedule_id']. Everything needed is on the assessment.
+        $assessment = $this->assessments->as_array()->get($assessment_id);
+        if (!$assessment) {
+            $data['error'] = 'Assessment not found.';
+            $this->load->view('admin/quiz_stats', $data);
+            return;
+        }
+        $data['assessment'] = $assessment;
+
+        if (!empty($assessment['widget_id'])) {
+            $data['widget'] = $this->Widgets_model->get($assessment['widget_id']);
+        }
+
+        // Both quiz widgets are graded by the same grade_quiz(), so their stored
+        // blobs are identical in shape and one page serves both.
+        if (!$data['widget'] || !in_array($data['widget']['widget_key'], ['quiz', 'secure_quiz'], true)) {
+            $data['error'] = 'Item statistics are only available for the Multiple Choice Quiz and Timed/Secure Quiz widgets. '
+                . 'This assessment uses ' . ($data['widget']['name'] ?? 'no widget') . '.';
+            $this->load->view('admin/quiz_stats', $data);
+            return;
+        }
+
+        // Which section(s) to pool.
+        $master_id   = $this->assessments->master_id_for_section($assessment_id);
+        $sections    = $master_id
+            ? $this->assessments->sections_of_master($master_id)
+            : [['assessment_section_id' => $assessment_id, 'schedule_id' => null]];
+        $all_section_ids = array_column($sections, 'assessment_section_id');
+        $data['section_count'] = count($all_section_ids);
+
+        $section_ids = $data['scope'] === 'all' ? $all_section_ids : [$assessment_id];
+
+        // Section labels for the ranking tables — only worth a lookup when the
+        // pooled scope actually mixes students from more than one section.
+        $section_labels = [];
+        if (count($section_ids) > 1) {
+            $schedule_of = array_column($sections, 'schedule_id', 'assessment_section_id');
+            foreach ($section_ids as $sid) {
+                $schedule = !empty($schedule_of[$sid])
+                    ? $this->class_schedule->as_array()->get($schedule_of[$sid])
+                    : null;
+                $section_labels[$sid] = $schedule['section'] ?? null;
+            }
+        }
+
+        // Reuses the existing per-section query rather than adding a second one;
+        // a master has a handful of sections at most.
+        $result_lists  = [];
+        $switch_counts = [];
+        $rows          = [];
+        foreach ($section_ids as $sid) {
+            foreach ($this->classworks->get_all_submissions($sid) as $row) {
+                $decoded = json_decode($row['code'] ?? '', true);
+                if (is_array($decoded)) $result_lists[] = $decoded;
+                if (isset($row['switch_count']) && $row['switch_count'] !== null) {
+                    $switch_counts[] = (int) $row['switch_count'];
+                }
+                $row['section'] = $section_labels[$sid] ?? null;
+                $rows[] = $row;
+            }
+        }
+
+        $config = json_decode($assessment['given'] ?? '', true) ?: [];
+        $data['stats'] = $this->Widgets_model->quiz_item_stats($result_lists, $config);
+
+        // Per-student leaderboard over the same submissions — the whole cohort
+        // ranked, from the recorded score rather than a recount.
+        $data['ranking'] = $this->Widgets_model->quiz_score_ranking($rows);
+
+        // Soft proctoring readout — client-reported tab switches, recorded by
+        // SecureQuizController::submit(). Never an input to any score.
+        $data['switch'] = [
+            'tracked'  => count($switch_counts),
+            'flagged'  => count(array_filter($switch_counts, function ($n) { return $n > 0; })),
+            'max'      => $switch_counts ? max($switch_counts) : 0,
+        ];
+
+        $this->load->view('admin/quiz_stats', $data);
+    }
+
+    // Group-aware sibling of all_submissions(): shows one card per group with
+    // the group's single shared submission, instead of the flat per-student
+    // list (where a group submission appears N identical times). Group
+    // submissions are fanned out into one classworks row per member
+    // (GroupWorkController::submit_group), so membership is derived from the
+    // grouping tables and the submission content is read off any member's row.
+    public function group_submissions($assessment_id = null)
+    {
+        $this->load->model(['Grouping_model', 'Group_member_model', 'Live_state_model']);
+
+        $day   = date('D');
+        $class = $this->class_schedule->class_today($day);
+
+        // Dropdown lists only the group-enabled assessments for today's class.
+        $all_for_schedule    = $this->assessments->get_for_schedule($class['schedule_id']);
+        $data['assessments'] = array_values(array_filter($all_for_schedule, function ($a) {
+            return !empty($a['is_groupings']);
+        }));
+
+        $data['widget']                 = null;
+        $data['widget_config']          = [];
+        $data['groups']                 = [];
+        $data['missing_students']       = [];
+        $data['is_group_assessment']    = false;
+        $data['selected_assessment_id'] = $assessment_id ? (int) $assessment_id : null;
+
+        if ($assessment_id) {
+            $set_id     = $this->Grouping_model->get_set_for_assessment($assessment_id);
+            $assessment = $this->assessments->as_array()->get($assessment_id);
+
+            // A group view only makes sense when the assessment is linked to a
+            // grouping set; otherwise the view renders a notice + link back to
+            // the per-student page.
+            if ($set_id) {
+                $data['is_group_assessment'] = true;
+
+                // Widget resolution — copied from all_submissions().
+                if (!empty($assessment['widget_id'])) {
+                    $this->load->model('Widgets_model');
+                    $data['widget']        = $this->Widgets_model->get($assessment['widget_id']);
+                    $data['widget_config'] = json_decode($assessment['given'] ?? '', true) ?: [];
+                }
+
+                // The two topic-file widgets (iq_discussion, iq_micro) keep a
+                // shared live blob shaped nothing like the graded results list
+                // their readonly view renders — { v, sections: {...} } /
+                // { v, driver, answers: {"si:ci": ...} } vs a plain list of
+                // {question, chosen, correct_answer, is_correct}. Handing the
+                // raw blob to the widget view fataled on it, so translate the
+                // draft here through the same grader the group's own submit
+                // uses, and the widget renders it unchanged.
+                $iq_kind     = null;
+                $iq_sections = null;
+                if ($data['widget'] && in_array($data['widget']['widget_key'], ['iq_micro', 'iq_discussion'], true)) {
+                    $this->load->model('Iq_topic_model');
+                    $topic_data  = $this->Iq_topic_model->load_topic($data['widget_config']['topic'] ?? '');
+                    $iq_sections = $topic_data ? $topic_data['sections'] : null;
+                    // No resolvable topic file = nothing to grade a draft
+                    // against; the draft is then simply not shown.
+                    $iq_kind     = $iq_sections ? $data['widget']['widget_key'] : 'unrenderable';
+                }
+
+                // Index every fanned-out submission row by the member's trans_no.
+                $submissions = $this->classworks->get_all_submissions($assessment_id);
+                $by_student  = [];
+                foreach ($submissions as $s) {
+                    $by_student[$s['trans_no']] = $s;
+                }
+
+                // Build one entry per group: members annotated with their own
+                // row, plus the shared submission (identical across members).
+                $groups = $this->Grouping_model->get_groups_with_members($set_id);
+                foreach ($groups as &$g) {
+                    $submitted_count = 0;
+                    $shared          = null;
+                    $classwork_ids   = [];
+
+                    foreach ($g['members'] as &$m) {
+                        $row               = $by_student[$m['trans_no']] ?? null;
+                        $m['classwork_id'] = $row['classwork_id'] ?? null;
+                        $m['score']        = $row['score'] ?? null;
+                        $m['submitted']    = $row !== null;
+                        if ($row) {
+                            $submitted_count++;
+                            $classwork_ids[] = $row['classwork_id'];
+                            if ($shared === null) {
+                                $shared = $row; // first submitted member's content
+                            }
+                        }
+                    }
+                    unset($m);
+
+                    $g['submission']      = $shared;                 // null = no submission yet
+                    $g['member_count']    = count($g['members']);
+                    $g['submitted_count'] = $submitted_count;
+                    $g['classwork_ids']   = $classwork_ids;
+                    $g['score']           = $shared['score'] ?? null;
+                    $g['max_score']       = $shared['max_score'] ?? ($assessment['max_score'] ?? null);
+
+                    // In-progress shared draft (assessment_live_state) so the
+                    // instructor can watch a group's collaborative work before
+                    // it's submitted. Snapshot at page load; ungraded and
+                    // non-authoritative — surfaced only for groups still
+                    // drafting (no submission yet) with something actually filled.
+                    $g['live_draft']      = null;
+                    $g['live_edited_by']  = null;
+                    $g['live_updated_at'] = null;
+                    $g['live_progress']   = null;
+                    $g['live_score']      = null;
+                    if ($shared === null) {
+                        $live = $this->Live_state_model->get_state($assessment_id, $g['group_id']);
+                        if ($live && trim((string) $live['content']) !== '') {
+                            $decoded = json_decode($live['content'], true);
+                            $decoded = is_array($decoded) ? $decoded : null;
+
+                            if ($iq_kind === null) {
+                                $g['live_draft'] = $decoded;
+                            } elseif ($decoded !== null && $iq_kind !== 'unrenderable') {
+                                $graded = ($iq_kind === 'iq_micro')
+                                    ? $this->Iq_topic_model->grade_micro($iq_sections, $decoded['answers'] ?? [])
+                                    : $this->Iq_topic_model->grade_discussion($iq_sections, $decoded['sections'] ?? []);
+
+                                $answered = 0;
+                                foreach ($graded['results'] as $r) {
+                                    if (!empty($r['answered'])) {
+                                        $answered++;
+                                    }
+                                }
+
+                                // A blob with nothing answered yet (the group
+                                // opened the quiz but hasn't tapped anything)
+                                // is not worth a draft panel.
+                                if ($answered > 0) {
+                                    $g['live_draft']    = $graded['results'];
+                                    $g['live_score']    = $graded['score'];
+                                    $g['live_progress'] = [
+                                        'answered' => $answered,
+                                        'total'    => $graded['total'],
+                                        'empty'    => $graded['total'] - $answered,
+                                    ];
+                                }
+                            }
+
+                            if ($g['live_draft'] !== null) {
+                                $g['live_edited_by']  = $live['last_edited_by'];
+                                $g['live_updated_at'] = $live['updated_at'];
+                            }
+                        }
+                    }
+                }
+                unset($g);
+
+                $data['groups']           = $groups;
+                $data['missing_students'] = $this->classworks->get_missing_submissions($assessment_id);
+            }
+        }
+
+        $this->load->view('admin/group_submission', $data);
+    }
+
+    // Applies one score to a whole group: writes the same score to every
+    // member's classworks row for this assessment. Since a group submission is
+    // fanned out into per-member rows, grading it once has to update them all.
+    // Every write goes through classworks::set_score() (the single validated,
+    // max_score-clamped score-write path) — never raw score SQL.
+    public function add_group_score($assessment_id, $group_id, $score)
+    {
+        $this->load->model('Group_member_model');
+
+        $members     = $this->Group_member_model->get_members_by_group($group_id);
+        $student_ids = array_column($members, 'trans_no');
+
+        if (empty($student_ids)) {
+            echo json_encode([
+                'success'       => false,
+                'notice'        => 'This group has no members.',
+                'score'         => null,
+                'updated_count' => 0,
+            ]);
+            return;
+        }
+
+        // Resolve each member's classworks row for this assessment. Members who
+        // have no row yet (nobody in the group has submitted, or the row was
+        // never fanned out to them) are skipped and reported.
+        $rows = $this->db->select('classwork_id')
+            ->from('classworks')
+            ->where('assessment_id', $assessment_id)
+            ->where_in('student_id', $student_ids)
+            ->get()->result_array();
+
+        if (empty($rows)) {
+            echo json_encode([
+                'success'       => false,
+                'notice'        => 'No submissions to score for this group yet.',
+                'score'         => null,
+                'updated_count' => 0,
+            ]);
+            return;
+        }
+
+        $updated = 0;
+        $notice  = null;
+        $stored  = null;
+        foreach ($rows as $row) {
+            $err = null;
+            $ok  = $this->classworks->set_score($row['classwork_id'], $score, $err);
+            // set_score() still succeeds when it caps to max_score, carrying the
+            // cap notice in $err — so surface $err on success too, not just fail.
+            if ($err !== null) {
+                $notice = $err;
+            }
+            if ($ok) {
+                $updated++;
+                $stored = $this->db->select('score')
+                    ->where('classwork_id', $row['classwork_id'])
+                    ->get('classworks')
+                    ->row('score');
+            }
+        }
+
+        echo json_encode([
+            'success'       => $updated > 0,
+            'notice'        => $notice,
+            'score'         => $stored,
+            'updated_count' => $updated,
+            'skipped_count' => count($student_ids) - $updated,
+        ]);
+    }
+
+    public function view_student_submissions($student_id = null)
+    {
+        // Check if a student ID is provided
+        if (!$student_id) {
+            $this->session->set_flashdata('error', 'No student selected.');
+            redirect('AdminController/dashboard');
+        }
+
+        // Fetch student details
+        $data['student'] = $this->accounts->as_array()->get(['student_id' => $student_id]);
+
+        if (!$data['student']) {
+            $this->session->set_flashdata('error', 'Student not found.');
+            redirect('AdminController/dashboard');
+        }
+
+        // Fetch all classworks (submitted and missing) for the student
+        $this->load->model('classworks');
+        $this->load->model('assessments');
+        $submitted_classworks = $this->classworks->get_submissions_by_student($student_id);
+        $all_assessments = $this->assessments->get_all_assessments();
+
+        // Merge submitted classworks with missing ones
+        $classworks = [];
+        foreach ($all_assessments as $assessment) {
+            $found = false;
+            foreach ($submitted_classworks as $submission) {
+                if ($submission['assessment_id'] == $assessment['assessment_id']) {
+                    $classworks[] = $submission;
+                    $found = true;
+                    break;
+                }
+            }
+            if (!$found) {
+                $classworks[] = [
+                    'assessment_id' => $assessment['assessment_id'],
+                    'title' => $assessment['title'],
+                    'classwork_id' => null,
+                    'score' => null,
+                    'created_at' => null,
+                    'status' => 'missing',
+                ];
+            }
+        }
+
+        $data['classworks'] = $classworks;
+
+        // Load the view
+        $this->load->view('admin/student_submissions', $data);
+    }
+
+    public function student_submissions()
+    {
+        $student_id = $this->input->get('student_id');
+        $data['students'] = $this->student_master->get_all(); // Already correct
+
+        if ($student_id) {
+            // Fetch submissions for the selected student
+            $data['submissions'] = $this->classworks->get_submissions_by_student($student_id);
+        } else {
+            $data['submissions'] = [];
+        }
+
+        // Load the view
+        $this->load->view('admin/student_submissions', $data);
+    }
+
+    public function active_participation($assessment_id = null)
+    {
+        $section_id = $this->input->get('section_id');
+        $date = $this->input->get('date') ?? date('Y-m-d');
+
+        // Fetch all sections for the dropdown
+        $this->db->distinct();
+        $this->db->select('section');
+        $data['sections'] = $this->db->get('class_schedule')->result_array();
+
+        // Fetch present students if section and date are provided
+        if ($section_id) {
+            $this->load->model('attendance');
+            $data['students'] = $this->attendance->get_present_students($section_id, $date);
+            $data['selected_section_id'] = $section_id;
+            $data['date'] = $date;
+        } else {
+            $data['students'] = [];
+            $data['selected_section_id'] = null;
+            $data['date'] = $date;
+        }
+
+        // Pass the assessment ID for scoring
+        $data['assessment_id'] = $assessment_id;
+
+        // Load the view
+        $this->load->view('admin/active_participation', $data);
+    }
+
+    public function check_new_submissions_by_assessment($assessment_id)
+    {
+        // Fetch the latest submissions for the assessment
+        $submissions = $this->classworks->get_all_submissions($assessment_id);
+
+        // Return the data as JSON
+        echo json_encode($submissions);
+    }
+
+    public function increment_randomized_count($classwork_id)
+    {
+        $this->classworks->set('randomized_count', 'randomized_count+1', FALSE)
+            ->where('classwork_id', $classwork_id)
+            ->update('classwork');
+        echo json_encode(['success' => true]);
+    }
+
+    // ── Randomizer ──────────────────────────────────────────────────────────
+    //
+    // The All Submissions randomizer draws without replacement: every eligible
+    // student is called once before anyone repeats. The round used to live in
+    // the browser's localStorage, so a refresh on another machine restarted it
+    // at zero and nothing recorded who had actually had a turn. It now lives in
+    // randomizer_picks / randomizer_rounds (Randomizer_model), and the draw
+    // itself happens here rather than in the browser — which is also what stops
+    // two open tabs calling the same student twice.
+
+    /**
+     * Students still in play: they have a submission, and they are not yet
+     * scored to max. Same rule the page's JS eligibleStudents() applies, kept
+     * here so the pool the server draws from and the pool the page counts are
+     * one definition. Reuses get_all_submissions(), which already returns
+     * trans_no, score and max_score.
+     */
+    private function _randomizer_eligible($assessment_id)
+    {
+        $eligible = [];
+        foreach ($this->classworks->get_all_submissions($assessment_id) as $row) {
+            if ($row['score'] === null || (float) $row['score'] < (float) $row['max_score']) {
+                $eligible[] = $row;
+            }
+        }
+        return $eligible;
+    }
+
+    /**
+     * The round as the page needs it: current round number, who has been
+     * called in it, and the call-order history for the "who's had a turn"
+     * panel. Safe on a database where the installer hasn't run — `installed`
+     * comes back FALSE and the page shows a banner instead of breaking.
+     */
+    private function _randomizer_state($assessment_id)
+    {
+        $this->load->model('Randomizer_model');
+
+        if (!$assessment_id) {
+            return ['installed' => $this->Randomizer_model->installed(),
+                    'round' => 1, 'picked' => [], 'history' => []];
+        }
+
+        $round = $this->Randomizer_model->current_round($assessment_id);
+
+        $history = [];
+        foreach ($this->Randomizer_model->picks($assessment_id, $round) as $pick) {
+            $history[] = [
+                'student_id' => (int) $pick['student_id'],
+                'name'       => trim($pick['firstname']) !== ''
+                    ? $pick['lastname'] . ', ' . $pick['firstname']
+                    : $pick['lastname'],
+                'picked_at'  => $pick['picked_at'],
+            ];
+        }
+
+        return [
+            'installed' => $this->Randomizer_model->installed(),
+            'round'     => $round,
+            'picked'    => $this->Randomizer_model->picked_student_ids($assessment_id, $round),
+            'history'   => $history,
+        ];
+    }
+
+    /** JSON view of the same state — page-load uses the private helper. */
+    public function randomizer_state($assessment_id)
+    {
+        echo json_encode($this->_randomizer_state($assessment_id));
+    }
+
+    /**
+     * Draws the next student and records the turn.
+     *
+     * Everyone eligible is drawn once before the pool refills; when it empties,
+     * a new round starts automatically and the whole class goes through again.
+     * The insert is what makes a pick real: uq_turn refuses a student already
+     * called this round, so a lost race just means we draw again from the
+     * refreshed pool rather than calling anyone twice.
+     */
+    public function randomizer_draw($assessment_id)
+    {
+        $this->load->model('Randomizer_model');
+
+        $eligible = $this->_randomizer_eligible($assessment_id);
+        if (!$eligible) {
+            echo json_encode(['success' => false, 'message' => 'No eligible students.']);
+            return;
+        }
+
+        $admin_id  = $this->session->userdata('student_id');
+        $persisted = $this->Randomizer_model->installed();
+        $round     = $this->Randomizer_model->current_round($assessment_id);
+        $new_round = false;
+
+        // One retry is enough: the only way the insert is refused is that
+        // someone else took this student between our read and our write, and
+        // the re-read pool excludes them.
+        for ($attempt = 0; $attempt < 2; $attempt++) {
+            $picked = array_flip($this->Randomizer_model->picked_student_ids($assessment_id, $round));
+
+            $pool = array_values(array_filter($eligible, function ($row) use ($picked) {
+                return !isset($picked[(int) $row['trans_no']]);
+            }));
+
+            if (!$pool) {
+                $round     = $this->Randomizer_model->start_new_round($assessment_id, $admin_id);
+                $new_round = true;
+                $pool      = $eligible;
+                $picked    = [];
+            }
+
+            $pick = $pool[random_int(0, count($pool) - 1)];
+
+            if (!$persisted || $this->Randomizer_model->record_pick(
+                    $assessment_id, $round, $pick['trans_no'], $pick['classwork_id'], $admin_id)) {
+                echo json_encode([
+                    'success'   => true,
+                    'persisted' => $persisted,
+                    'round'     => (int) $round,
+                    'new_round' => $new_round,
+                    'called'    => count($picked) + 1,
+                    'remaining' => count($pool) - 1,
+                    'student'   => [
+                        'classwork_id' => (int) $pick['classwork_id'],
+                        'student_id'   => (int) $pick['trans_no'],
+                        'lastname'     => $pick['lastname'],
+                        'firstname'    => $pick['firstname'],
+                        'picked_at'    => date('Y-m-d H:i:s'),
+                    ],
+                ]);
+                return;
+            }
+        }
+
+        echo json_encode(['success' => false, 'message' => 'Could not record the draw — try again.']);
+    }
+
+    /**
+     * Starts a fresh round. Past picks are kept with their old round_no, so
+     * "who was called, and when" survives the reset.
+     */
+    public function randomizer_reset($assessment_id)
+    {
+        $this->load->model('Randomizer_model');
+
+        $round = $this->Randomizer_model->start_new_round(
+            $assessment_id, $this->session->userdata('student_id'));
+
+        echo json_encode([
+            'success'   => true,
+            'persisted' => $this->Randomizer_model->installed(),
+            'round'     => (int) $round,
+        ]);
+    }
+
+    /**
+     * One-time (idempotent) schema setup for the randomizer tracker.
+     * Confirmation + pre-flight backup: see Schema_guard.
+     */
+    public function randomizer_install()
+    {
+        $this->load->model('Randomizer_model');
+        $this->load->library('schema_guard');
+
+        $tables = [Randomizer_model::PICKS, Randomizer_model::ROUNDS];
+
+        if (!$this->schema_guard->confirmed('Randomizer tracker tables', 'admin/randomizer_install', $tables)) {
+            return;
+        }
+
+        $backup = $this->schema_guard->backup($tables, 'randomizer');
+        $this->Randomizer_model->install();
+
+        if ($this->schema_guard->failed()) {
+            $this->session->set_flashdata('error',
+                'Randomizer tracker setup failed: ' . implode(' | ', $this->schema_guard->failures()));
+        } else {
+            $this->session->set_flashdata('success',
+                'Randomizer tracker ready.' . ($backup ? ' Backup written to ' . basename($backup) . '.' : ''));
+        }
+
+        redirect('AdminController/all_submissions');
+    }
+
+    public function add_score($classwork_id, $score)
+    {
+        $error  = null;
+        $result = $this->classworks->set_score($classwork_id, $score, $error);
+
+        // A capped write still succeeds; $error carries the notice so the
+        // grading UI can show what was actually stored.
+        echo json_encode([
+            'success' => $result,
+            'notice'  => $error,
+            'score'   => $this->db->select('score')
+                ->where('classwork_id', $classwork_id)
+                ->get('classworks')
+                ->row('score'),
+        ]);
+    }
+
+    public function add_rand_score_incremental($classwork_id, $points = 2)
+    {
+        $points = (int) $points;
+        if ($points < 1) {
+            $points = 1;
+        }
+
+        $result = $this->db->query(
+            "UPDATE classworks c
+             JOIN assessment_full a ON a.assessment_id = c.assessment_id
+             SET c.score = LEAST(COALESCE(c.score, 0) + ?, a.max_score)
+             WHERE c.classwork_id = ?",
+            [$points, $classwork_id]
+        );
+
+        $score = $this->db->select('score')
+            ->where('classwork_id', $classwork_id)
+            ->get('classworks')
+            ->row('score');
+
+        echo json_encode(['success' => (bool)$result, 'score' => $score]);
+    }
+
+    /** Every classworks row currently scored above its assessment's max_score. */
+    public function score_integrity()
+    {
+        $violations = $this->classworks->get_scores_exceeding_max();
+
+        $this->load->view('admin/score_integrity', [
+            'violations' => $violations,
+        ]);
+    }
+
+    /**
+     * Cap one over-max row down to its assessment's max_score. Reuses
+     * set_score()'s own clamp — passing the row's current (over-max) score
+     * back in is what triggers the cap, so there is exactly one place that
+     * decides what "capped" means.
+     */
+    public function fix_score($classwork_id)
+    {
+        $row = $this->db->select('score')
+            ->where('classwork_id', $classwork_id)
+            ->get('classworks')
+            ->row_array();
+
+        if (!$row) {
+            echo json_encode(['success' => FALSE, 'message' => 'Submission not found.']);
+            return;
+        }
+
+        $error = null;
+        $ok = $this->classworks->set_score($classwork_id, $row['score'], $error);
+
+        echo json_encode([
+            'success' => $ok,
+            'message' => $error ?: 'Score capped.',
+            'score'   => $this->db->select('score')->where('classwork_id', $classwork_id)->get('classworks')->row('score'),
+        ]);
+    }
+}

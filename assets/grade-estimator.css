@@ -1,0 +1,99 @@
+/* Front-end grade estimator. Visual language deliberately differs from the
+   real grade blocks — an estimate must never be mistaken for a record. */
+
+.gc-estimate-controls {
+    display: flex;
+    gap: .5rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+}
+
+#gc-estimate-banner {
+    margin-top: .75rem;
+    border-left: 4px solid #f0ad4e;
+}
+
+.gc-component .gc-estimate,
+.gc-term-total .gc-estimate,
+.gc-overall .gc-estimate {
+    text-align: center;
+}
+
+.gc-est-head {
+    margin-bottom: .25rem;
+}
+
+.gc-est-weight {
+    color: #6c757d;
+}
+
+.gc-est-include {
+    display: block;
+    font-size: .875rem;
+    color: #6c757d;
+    margin-bottom: .25rem;
+    cursor: pointer;
+}
+
+.gc-est-include input {
+    margin-right: .35rem;
+}
+
+.gc-est-slider {
+    width: 100%;
+    margin: .5rem 0;
+    cursor: grab;
+}
+
+.gc-est-slider:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+}
+
+.gc-est-readout {
+    font-size: 1rem;
+}
+
+.gc-est-detail {
+    font-size: .8125rem;
+    color: #6c757d;
+    margin-top: .15rem;
+}
+
+.gc-est-sep {
+    opacity: .6;
+}
+
+.gc-est-flag {
+    font-style: italic;
+}
+
+/* Striped fill so an estimated bar never reads as a measured one. */
+.gc-est-bar {
+    background-color: #6f42c1;
+    background-image: linear-gradient(45deg,
+        rgba(255, 255, 255, .18) 25%, transparent 25%,
+        transparent 50%, rgba(255, 255, 255, .18) 50%,
+        rgba(255, 255, 255, .18) 75%, transparent 75%, transparent);
+    background-size: 1rem 1rem;
+    transition: width .12s linear;
+}
+
+.gc-est-inc {
+    font-weight: 700;
+    font-size: 1.15rem;
+}
+
+.gc-est-overall {
+    font-size: 1.5rem;
+}
+
+.gc-est-failing {
+    color: #b02a37;
+}
+
+.gc-est-inc-note {
+    font-size: .8125rem;
+    color: #b02a37;
+}

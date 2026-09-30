@@ -1,15 +1,36 @@
 <?php
 defined('BASEPATH') or exit('No direct script access allowed');
 
-class AdminController extends CI_Controller
+/**
+ * Admin dashboard, attendance (daily roll + the Section Monitoring sheet), and
+ * project-log browsing.
+ *
+ * The other admin screens live in AdminSubmissionController,
+ * AdminAssessmentController, AdminStudentController and AdminContentController;
+ * all five share Admin_Controller (application/core/MY_Controller.php) for the
+ * session gate and the topic/widget helper seams. Old AdminController/* URLs
+ * still resolve to whichever controller now owns them — see the legacy routes
+ * in application/config/routes.php.
+ */
+class AdminController extends Admin_Controller
 {
-    public function __construct()
-    {
-        parent::__construct();
-        if ($this->session->userdata('role') !== 'admin') {
-            redirect('login');
-        }
-    }
+    /**
+     * Decimal places for the grade columns on the Section Monitoring sheet and
+     * the .xlsx exported from it. Grade points only span 1.0 - 5.0, so one
+     * decimal is the whole meaningful range and keeps a wide sheet readable.
+     * Applies to that sheet only — print_slips() is a document that leaves the
+     * building and stays at two.
+     */
+    const MONITORING_GRADE_DECIMALS = 1;
+
+    /**
+     * How the Section Monitoring sheet names a student: two sortable columns,
+     * or one "Lastname, Firstname" column. Both are built from the same row —
+     * _monitoring_row() always carries all three keys and _monitoring_columns()
+     * picks — so switching cannot change which students are listed.
+     */
+    const NAME_SPLIT = 'split'; // Lastname | Firstname
+    const NAME_FULL  = 'full';  // Fullname ("Lastname, Firstname")
 
     // Read-only browse of students' project progress logs, optionally filtered
     // by course and/or section. Also carries the group-designation panel: for
@@ -17,9 +38,32 @@ class AdminController extends CI_Controller
     public function project_logs()
     {
         $this->load->model(['Project_log_model', 'classes']);
+        $this->load->library('pagination');
+        $this->load->helper('pagination');
 
         $class_id = $this->input->get('class_id') ?: null;
         $section  = $this->input->get('section') ?: null;
+
+        // Kanban column filter. Anything not in Project_log_model::STATUSES is
+        // dropped rather than filtering the browse down to nothing.
+        $status = $this->input->get('status') ?: null;
+        if ($status !== null && !in_array($status, Project_log_model::status_keys(), true)) {
+            $status = null;
+        }
+
+        // The team list is course-scoped, so a group_id belonging to another
+        // course (left over from a course switch, or hand-typed) is dropped
+        // rather than silently filtering everything away. 'none' — individual,
+        // team-less entries — is always valid.
+        $teams    = $this->Project_log_model->get_teams_for_class($class_id);
+        $group_id = $class_id ? ($this->input->get('group_id') ?: null) : null;
+        if ($group_id !== null && $group_id !== 'none'
+            && !in_array((int) $group_id, array_map('intval', array_column($teams, 'group_id')), true)) {
+            $group_id = null;
+        }
+
+        $per_page = 25;
+        $offset   = (int) $this->input->get('per_page');
 
         $all_courses = $this->classes->as_array()->order_by('class_code')->get_all();
 
@@ -32,12 +76,31 @@ class AdminController extends CI_Controller
             ];
         }
 
+        $total = $this->Project_log_model->count_all_for_admin($class_id, $section, $group_id, $status);
+        $this->pagination->initialize(
+            bs_pagination_config(base_url('admin/project_logs'), $total, $per_page)
+        );
+
         $data['courses']      = $this->Project_log_model->get_logged_courses();
         $data['sections']     = $this->class_schedule->get_sections();
+        $data['teams']        = $teams;
         $data['class_id']     = $class_id;
         $data['section']      = $section;
-        $data['logs']         = $this->Project_log_model->get_all_for_admin($class_id, $section);
+        $data['group_id']     = $group_id;
+        $data['status']       = $status;
+        $data['statuses']     = Project_log_model::statuses();
+        $data['status_counts'] = $this->Project_log_model->status_counts_for_admin($class_id, $section, $group_id);
+        $data['logs']         = $this->Project_log_model->get_all_for_admin($class_id, $section, $group_id, $per_page, $offset, $status);
         $data['designations'] = $designations;
+        // 'blocked' was added to STATUSES after the table already existed, and MySQL
+        // stores an out-of-list ENUM value as '' without raising anything
+        // (db_debug is off) — so warn here rather than let students' cards
+        // quietly refuse to move.
+        $data['missing_statuses'] = $this->Project_log_model->missing_status_labels();
+        $data['pagination']   = $this->pagination->create_links();
+        $data['total']        = $total;
+        $data['per_page']     = $per_page;
+        $data['offset']       = $offset;
 
         $this->load->view('admin/project_logs', $data);
     }
@@ -89,7 +152,6 @@ class AdminController extends CI_Controller
                 $data['attendance'] = [];
                 $data['lates'] = [];
                 $data['absents'] = [];
-                $data['chronic_absentees'] = $this->attendance->get_chronic_absentees(null, $today, 3);
                 $this->load->view('admin/dashboard', $data);
                 return;
             }
@@ -98,6 +160,7 @@ class AdminController extends CI_Controller
             $data['lates'] = $this->attendance->get_student_status($class['schedule_id'], $today, 'late');
             $data['absents'] = $this->attendance->get_student_status($class['schedule_id'], $today, 'absent');
             $data['chronic_absentees'] = $this->attendance->get_chronic_absentees($class['schedule_id'], $today, 3);
+            $data['acute_absentees'] = $this->attendance->get_chronic_absentees($class['schedule_id'], $today, 2);
 
             $this->load->view('admin/dashboard', $data);
             return;
@@ -162,515 +225,749 @@ class AdminController extends CI_Controller
         redirect('dashboard');
     }
 
-    public function all_submissions($assessment_id = null)
+    // Section Monitoring — one row per enrolled student on a schedule, with
+    // their term grades and their attendance tallies, either half toggleable.
+    // Replaces the old view_attendance sheet, which filtered on the section
+    // string and so joined class_student.section to class_schedule.section,
+    // ignoring semester and enrolment status and double-counting anyone
+    // enrolled in both a LEC and a LAB of the same section.
+    public function section_monitoring()
     {
-        // Fetch all assessments for the dropdown
+        $this->load->model('Grade_calculator');
 
-        $day = date('D');
-        $class = $this->class_schedule->class_today($day);
+        $f = $this->_monitoring_filters();
 
-        $data['assessments'] = $this->assessments->get_for_schedule($class['schedule_id']);
+        // Guard here, not inside _monitoring_rows(): schedule_id 0 would
+        // otherwise run three full grade passes over an empty roster.
+        $rows = $f['schedule_id']
+            ? $this->_monitoring_rows($f['schedule_id'], $f['grade_mode'])
+            : [];
 
-        // Fetch submissions for the selected assessment
-        $data['widget'] = null;
-        $data['widget_config'] = [];
+        $columns = $this->_monitoring_columns(
+            $f['show_grades'], $f['show_attendance'], $f['grade_mode'], $f['show_missing'],
+            $f['name_format']
+        );
 
-        if ($assessment_id) {
-            $data['submissions'] = $this->classworks->get_all_submissions(
-                $assessment_id
-            );
-            $data['missing_students'] = $this->classworks->get_missing_submissions($assessment_id);
-            $data['selected_assessment_id'] = $assessment_id;
+        // The unfiltered roster size, so the view can say "9 of 51" and can
+        // tell "nobody has anything outstanding" apart from "nobody enrolled".
+        $data['total_rows'] = count($rows);
+        $data['rows']       = $this->_monitoring_only_with_values(
+            $rows, $columns, $f['only_with_values']
+        );
 
-            $assessment = $this->assessments->as_array()->get($assessment_id);
-            if (!empty($assessment['widget_id'])) {
-                $this->load->model('Widgets_model');
-                $data['widget'] = $this->Widgets_model->get($assessment['widget_id']);
-                $data['widget_config'] = json_decode($assessment['given'] ?? '', true) ?: [];
-            }
-        } else {
-            $data['submissions'] = [];
-            $data['missing_students'] = [];
-            $data['selected_assessment_id'] = null;
-        }
+        $data['schedules']        = $this->class_schedule->get_all_active();
+        $data['schedule_id']      = $f['schedule_id'];
+        $data['show_grades']      = $f['show_grades'];
+        $data['show_attendance']  = $f['show_attendance'];
+        $data['show_missing']     = $f['show_missing'];
+        $data['only_with_values'] = $f['only_with_values'];
+        $data['grade_mode']       = $f['grade_mode'];
+        $data['name_format']      = $f['name_format'];
+        $data['columns']          = $columns;
 
-        $this->load->view('admin/all_submission', $data);
+        // Built here rather than reassembled in the view, so the Export link
+        // can never disagree with the filters the table was rendered from.
+        $data['export_query'] = [
+            'schedule_id'      => $f['schedule_id'],
+            'filters_applied'  => 1,
+            'show_grades'      => $f['show_grades'] ? 1 : 0,
+            'show_attendance'  => $f['show_attendance'] ? 1 : 0,
+            'show_missing'     => $f['show_missing'] ? 1 : 0,
+            'only_with_values' => $f['only_with_values'] ? 1 : 0,
+            'grade_mode'       => $f['grade_mode'],
+            'name_format'      => $f['name_format'],
+        ];
+
+        $this->load->view('admin/section_monitoring', $data);
     }
 
-    // Group-aware sibling of all_submissions(): shows one card per group with
-    // the group's single shared submission, instead of the flat per-student
-    // list (where a group submission appears N identical times). Group
-    // submissions are fanned out into one classworks row per member
-    // (GroupWorkController::submit_group), so membership is derived from the
-    // grouping tables and the submission content is read off any member's row.
-    public function group_submissions($assessment_id = null)
+    // The same rows and the same columns as the screen, as .xlsx — it reads
+    // the same GET params, so the download always matches what's on display.
+    public function export_section_monitoring()
     {
-        $this->load->model(['Grouping_model', 'Group_member_model', 'Live_state_model']);
+        $this->load->model('Grade_calculator');
 
-        $day   = date('D');
-        $class = $this->class_schedule->class_today($day);
+        $f = $this->_monitoring_filters();
 
-        // Dropdown lists only the group-enabled assessments for today's class.
-        $all_for_schedule    = $this->assessments->get_for_schedule($class['schedule_id']);
-        $data['assessments'] = array_values(array_filter($all_for_schedule, function ($a) {
-            return !empty($a['is_groupings']);
-        }));
-
-        $data['widget']                 = null;
-        $data['widget_config']          = [];
-        $data['groups']                 = [];
-        $data['missing_students']       = [];
-        $data['is_group_assessment']    = false;
-        $data['selected_assessment_id'] = $assessment_id ? (int) $assessment_id : null;
-
-        if ($assessment_id) {
-            $set_id     = $this->Grouping_model->get_set_for_assessment($assessment_id);
-            $assessment = $this->assessments->as_array()->get($assessment_id);
-
-            // A group view only makes sense when the assessment is linked to a
-            // grouping set; otherwise the view renders a notice + link back to
-            // the per-student page.
-            if ($set_id) {
-                $data['is_group_assessment'] = true;
-
-                // Widget resolution — copied from all_submissions().
-                if (!empty($assessment['widget_id'])) {
-                    $this->load->model('Widgets_model');
-                    $data['widget']        = $this->Widgets_model->get($assessment['widget_id']);
-                    $data['widget_config'] = json_decode($assessment['given'] ?? '', true) ?: [];
-                }
-
-                // The two topic-file widgets (iq_discussion, iq_micro) keep a
-                // shared live blob shaped nothing like the graded results list
-                // their readonly view renders — { v, sections: {...} } /
-                // { v, driver, answers: {"si:ci": ...} } vs a plain list of
-                // {question, chosen, correct_answer, is_correct}. Handing the
-                // raw blob to the widget view fataled on it, so translate the
-                // draft here through the same grader the group's own submit
-                // uses, and the widget renders it unchanged.
-                $iq_kind     = null;
-                $iq_sections = null;
-                if ($data['widget'] && in_array($data['widget']['widget_key'], ['iq_micro', 'iq_discussion'], true)) {
-                    $this->load->model('Iq_topic_model');
-                    $topic_data  = $this->Iq_topic_model->load_topic($data['widget_config']['topic'] ?? '');
-                    $iq_sections = $topic_data ? $topic_data['sections'] : null;
-                    // No resolvable topic file = nothing to grade a draft
-                    // against; the draft is then simply not shown.
-                    $iq_kind     = $iq_sections ? $data['widget']['widget_key'] : 'unrenderable';
-                }
-
-                // Index every fanned-out submission row by the member's trans_no.
-                $submissions = $this->classworks->get_all_submissions($assessment_id);
-                $by_student  = [];
-                foreach ($submissions as $s) {
-                    $by_student[$s['trans_no']] = $s;
-                }
-
-                // Build one entry per group: members annotated with their own
-                // row, plus the shared submission (identical across members).
-                $groups = $this->Grouping_model->get_groups_with_members($set_id);
-                foreach ($groups as &$g) {
-                    $submitted_count = 0;
-                    $shared          = null;
-                    $classwork_ids   = [];
-
-                    foreach ($g['members'] as &$m) {
-                        $row               = $by_student[$m['trans_no']] ?? null;
-                        $m['classwork_id'] = $row['classwork_id'] ?? null;
-                        $m['score']        = $row['score'] ?? null;
-                        $m['submitted']    = $row !== null;
-                        if ($row) {
-                            $submitted_count++;
-                            $classwork_ids[] = $row['classwork_id'];
-                            if ($shared === null) {
-                                $shared = $row; // first submitted member's content
-                            }
-                        }
-                    }
-                    unset($m);
-
-                    $g['submission']      = $shared;                 // null = no submission yet
-                    $g['member_count']    = count($g['members']);
-                    $g['submitted_count'] = $submitted_count;
-                    $g['classwork_ids']   = $classwork_ids;
-                    $g['score']           = $shared['score'] ?? null;
-                    $g['max_score']       = $shared['max_score'] ?? ($assessment['max_score'] ?? null);
-
-                    // In-progress shared draft (assessment_live_state) so the
-                    // instructor can watch a group's collaborative work before
-                    // it's submitted. Snapshot at page load; ungraded and
-                    // non-authoritative — surfaced only for groups still
-                    // drafting (no submission yet) with something actually filled.
-                    $g['live_draft']      = null;
-                    $g['live_edited_by']  = null;
-                    $g['live_updated_at'] = null;
-                    $g['live_progress']   = null;
-                    $g['live_score']      = null;
-                    if ($shared === null) {
-                        $live = $this->Live_state_model->get_state($assessment_id, $g['group_id']);
-                        if ($live && trim((string) $live['content']) !== '') {
-                            $decoded = json_decode($live['content'], true);
-                            $decoded = is_array($decoded) ? $decoded : null;
-
-                            if ($iq_kind === null) {
-                                $g['live_draft'] = $decoded;
-                            } elseif ($decoded !== null && $iq_kind !== 'unrenderable') {
-                                $graded = ($iq_kind === 'iq_micro')
-                                    ? $this->Iq_topic_model->grade_micro($iq_sections, $decoded['answers'] ?? [])
-                                    : $this->Iq_topic_model->grade_discussion($iq_sections, $decoded['sections'] ?? []);
-
-                                $answered = 0;
-                                foreach ($graded['results'] as $r) {
-                                    if (!empty($r['answered'])) {
-                                        $answered++;
-                                    }
-                                }
-
-                                // A blob with nothing answered yet (the group
-                                // opened the quiz but hasn't tapped anything)
-                                // is not worth a draft panel.
-                                if ($answered > 0) {
-                                    $g['live_draft']    = $graded['results'];
-                                    $g['live_score']    = $graded['score'];
-                                    $g['live_progress'] = [
-                                        'answered' => $answered,
-                                        'total'    => $graded['total'],
-                                        'empty'    => $graded['total'] - $answered,
-                                    ];
-                                }
-                            }
-
-                            if ($g['live_draft'] !== null) {
-                                $g['live_edited_by']  = $live['last_edited_by'];
-                                $g['live_updated_at'] = $live['updated_at'];
-                            }
-                        }
-                    }
-                }
-                unset($g);
-
-                $data['groups']           = $groups;
-                $data['missing_students'] = $this->classworks->get_missing_submissions($assessment_id);
-            }
-        }
-
-        $this->load->view('admin/group_submission', $data);
-    }
-
-    // Applies one score to a whole group: writes the same score to every
-    // member's classworks row for this assessment. Since a group submission is
-    // fanned out into per-member rows, grading it once has to update them all.
-    // Every write goes through classworks::set_score() (the single validated,
-    // max_score-clamped score-write path) — never raw score SQL.
-    public function add_group_score($assessment_id, $group_id, $score)
-    {
-        $this->load->model('Group_member_model');
-
-        $members     = $this->Group_member_model->get_members_by_group($group_id);
-        $student_ids = array_column($members, 'trans_no');
-
-        if (empty($student_ids)) {
-            echo json_encode([
-                'success'       => false,
-                'notice'        => 'This group has no members.',
-                'score'         => null,
-                'updated_count' => 0,
-            ]);
+        if (!$f['schedule_id']) {
+            $this->session->set_flashdata('error', 'Pick a section to export.');
+            redirect('view_attendance');
             return;
         }
 
-        // Resolve each member's classworks row for this assessment. Members who
-        // have no row yet (nobody in the group has submitted, or the row was
-        // never fanned out to them) are skipped and reported.
-        $rows = $this->db->select('classwork_id')
-            ->from('classworks')
-            ->where('assessment_id', $assessment_id)
-            ->where_in('student_id', $student_ids)
-            ->get()->result_array();
+        $rows    = $this->_monitoring_rows($f['schedule_id'], $f['grade_mode']);
+        $columns = $this->_monitoring_columns(
+            $f['show_grades'], $f['show_attendance'], $f['grade_mode'], $f['show_missing'],
+            $f['name_format']
+        );
+        // Filtered here too, so the download is the same sheet that was on
+        // screen when the link was clicked and not a quietly fuller one.
+        $rows = $this->_monitoring_only_with_values($rows, $columns, $f['only_with_values']);
 
         if (empty($rows)) {
-            echo json_encode([
-                'success'       => false,
-                'notice'        => 'No submissions to score for this group yet.',
-                'score'         => null,
-                'updated_count' => 0,
-            ]);
+            $this->session->set_flashdata('error', $f['only_with_values']
+                ? 'Nothing to export: no student on that section has anything outstanding.'
+                : 'No enrolled students on that section.');
+            redirect('view_attendance?schedule_id=' . $f['schedule_id']);
             return;
         }
 
-        $updated = 0;
-        $notice  = null;
-        $stored  = null;
-        foreach ($rows as $row) {
-            $err = null;
-            $ok  = $this->classworks->set_score($row['classwork_id'], $score, $err);
-            // set_score() still succeeds when it caps to max_score, carrying the
-            // cap notice in $err — so surface $err on success too, not just fail.
-            if ($err !== null) {
-                $notice = $err;
-            }
-            if ($ok) {
-                $updated++;
-                $stored = $this->db->select('score')
-                    ->where('classwork_id', $row['classwork_id'])
-                    ->get('classworks')
-                    ->row('score');
-            }
-        }
-
-        echo json_encode([
-            'success'       => $updated > 0,
-            'notice'        => $notice,
-            'score'         => $stored,
-            'updated_count' => $updated,
-            'skipped_count' => count($student_ids) - $updated,
-        ]);
-    }
-
-    public function manage_json_files()
-    {
-        $this->load->database();
-
-        if ($this->input->post()) {
-            $assessment_id = $this->input->post('assessment_id');
-            $json_file_path = $this->input->post('json_file_path');
-
-            $this->db->replace('assessment_files', [
-                'assessment_id' => $assessment_id,
-                'json_file_path' => $json_file_path
-            ]);
-
-            $this->session->set_flashdata('success', 'JSON file path updated successfully.');
-            redirect('AdminController/manage_json_files');
-        }
-
-        $data['assessments'] = $this->db->get('assessment_full')->result_array();
-        $data['json_files'] = $this->db->get('assessment_files')->result_array();
-
-        $this->load->view('manage_json_files', $data);
-    }
-
-    public function view_student_submissions($student_id = null)
-    {
-        // Check if a student ID is provided
-        if (!$student_id) {
-            $this->session->set_flashdata('error', 'No student selected.');
-            redirect('AdminController/dashboard');
-        }
-
-        // Fetch student details
-        $data['student'] = $this->accounts->as_array()->get(['student_id' => $student_id]);
-
-        if (!$data['student']) {
-            $this->session->set_flashdata('error', 'Student not found.');
-            redirect('AdminController/dashboard');
-        }
-
-        // Fetch all classworks (submitted and missing) for the student
-        $this->load->model('classworks');
-        $this->load->model('assessments');
-        $submitted_classworks = $this->classworks->get_submissions_by_student($student_id);
-        $all_assessments = $this->assessments->get_all_assessments();
-
-        // Merge submitted classworks with missing ones
-        $classworks = [];
-        foreach ($all_assessments as $assessment) {
-            $found = false;
-            foreach ($submitted_classworks as $submission) {
-                if ($submission['assessment_id'] == $assessment['assessment_id']) {
-                    $classworks[] = $submission;
-                    $found = true;
-                    break;
-                }
-            }
-            if (!$found) {
-                $classworks[] = [
-                    'assessment_id' => $assessment['assessment_id'],
-                    'title' => $assessment['title'],
-                    'classwork_id' => null,
-                    'score' => null,
-                    'created_at' => null,
-                    'status' => 'missing',
-                ];
-            }
-        }
-
-        $data['classworks'] = $classworks;
-
-        // Load the view
-        $this->load->view('admin/student_submissions', $data);
-    }
-
-    public function student_submissions()
-    {
-        $student_id = $this->input->get('student_id');
-        $data['students'] = $this->student_master->get_all(); // Already correct
-
-        if ($student_id) {
-            // Fetch submissions for the selected student
-            $data['submissions'] = $this->classworks->get_submissions_by_student($student_id);
-        } else {
-            $data['submissions'] = [];
-        }
-
-        // Load the view
-        $this->load->view('admin/student_submissions', $data);
-    }
-
-    public function emergency_contacts()
-    {
-        $this->load->library('pagination');
-
-        $student_id          = $this->input->get('student_id');
-        $data['student']     = null;
-        $data['contacts']    = [];
-        $data['pagination']  = '';
-        $data['total']       = 0;
-        $data['per_page']    = 20;
-        $data['offset']      = 0;
-        $data['selected_section'] = '';
-
-        if ($student_id) {
-            $data['student'] = $this->student_master->get_student_info($student_id);
-            if ($data['student']) {
-                $data['contacts'] = $this->emergency_contact->get_by_student($student_id);
-                $data['total']    = count($data['contacts']);
-            } else {
-                $this->session->set_flashdata('error', 'Student not found.');
-            }
-        } else {
-            $section  = trim((string) $this->input->get('section'));
-            $per_page = 20;
-            $offset   = (int)($this->input->get('per_page') ?? 0);
-            $total    = $this->emergency_contact->count_all_contacts($section ?: null);
-
-            $config = [
-                'base_url'             => base_url('admin/emergency_contacts'),
-                'total_rows'           => $total,
-                'per_page'             => $per_page,
-                'page_query_string'    => TRUE,
-                'query_string_segment' => 'per_page',
-                'reuse_query_string'   => TRUE,
-                'use_page_numbers'     => FALSE,
-                'full_tag_open'        => '<ul class="pagination pagination-sm mb-0">',
-                'full_tag_close'       => '</ul>',
-                'first_link'           => '&laquo;',
-                'first_tag_open'       => '<li class="page-item">',
-                'first_tag_close'      => '</li>',
-                'last_link'            => '&raquo;',
-                'last_tag_open'        => '<li class="page-item">',
-                'last_tag_close'       => '</li>',
-                'next_link'            => '&rsaquo;',
-                'next_tag_open'        => '<li class="page-item">',
-                'next_tag_close'       => '</li>',
-                'prev_link'            => '&lsaquo;',
-                'prev_tag_open'        => '<li class="page-item">',
-                'prev_tag_close'       => '</li>',
-                'num_tag_open'         => '<li class="page-item">',
-                'num_tag_close'        => '</li>',
-                'cur_tag_open'         => '<li class="page-item active"><a class="page-link" href="#">',
-                'cur_tag_close'        => '</a></li>',
-                'attributes'           => ['class' => 'page-link'],
-                'num_links'            => 4,
-            ];
-            $this->pagination->initialize($config);
-
-            $data['contacts']         = $this->emergency_contact->get_all_paged($per_page, $offset, $section ?: null);
-            $data['pagination']       = $this->pagination->create_links();
-            $data['total']            = $total;
-            $data['per_page']         = $per_page;
-            $data['offset']           = $offset;
-            $data['selected_section'] = $section;
-        }
-
-        $data['sections'] = $this->emergency_contact->get_exportable_sections();
-
-        $this->load->view('admin/emergency_contacts', $data);
-    }
-
-    // Downloads one section's roster as .xlsx in the fixed column order the
-    // school's emergency-contact form expects.
-    public function export_emergency_contacts()
-    {
-        $section = trim((string) $this->input->get('section'));
-
-        if ($section === '') {
-            $this->session->set_flashdata('error', 'Pick a section to export.');
-            redirect('admin/emergency_contacts');
-            return;
-        }
-
-        $students = $this->emergency_contact->get_by_section($section);
-
-        if (empty($students)) {
-            $this->session->set_flashdata('error', 'No students enrolled in section ' . $section . '.');
-            redirect('admin/emergency_contacts');
-            return;
-        }
+        $sched = $this->_monitoring_schedule($f['schedule_id'])
+            ?: ['section' => '', 'type' => '', 'class_code' => ''];
 
         $this->load->library('xlsx_writer');
 
         $this->xlsx_writer
-            ->set_sheet_name($section)
-            ->set_columns([18, 18, 8, 18, 30, 22, 22])
-            ->add_row([
-                'Lastname',
-                'Firstname',
-                'Middle Initial',
-                'Contact Number',
-                'Name of Parent/Guardian',
-                'Relationship with the Student',
-                'Contact Number of Parent / Guardian',
-            ], TRUE);
+            ->set_sheet_name(trim($sched['section'] . ' ' . $sched['class_code']))
+            ->set_columns(array_column($columns, 'width'))
+            // label_long where a column has one: the abbreviated headings that
+            // keep the screen narrow have a legend under the table, and a
+            // spreadsheet has none. Same reasoning as the grade headings.
+            ->add_row(array_map(function ($c) {
+                return isset($c['label_long']) ? $c['label_long'] : $c['label'];
+            }, $columns), TRUE);
 
-        foreach ($students as $s) {
-            $this->xlsx_writer->add_row([
-                $s['lastname'],
-                $s['firstname'],
-                $this->middle_initial($s['middlename']),
-                $s['student_contact'],
-                $s['guardian_name'],
-                $s['guardian_relationship'],
-                $s['guardian_contact'],
-            ]);
+        // Cells go in raw — Xlsx_writer::esc() escapes them itself, and
+        // pre-escaping here would write literal &amp; into the spreadsheet.
+        foreach ($rows as $row) {
+            $cells = [];
+            foreach ($columns as $c) {
+                $cells[] = $row[$c['key']];
+            }
+            $this->xlsx_writer->add_row($cells);
         }
 
-        $safe_section = preg_replace('/[^A-Za-z0-9_-]/', '_', $section);
-        $this->xlsx_writer->download('emergency_contacts_' . $safe_section . '_' . date('Y-m-d') . '.xlsx');
+        $safe = preg_replace(
+            '/[^A-Za-z0-9_-]/',
+            '_',
+            $sched['section'] . '_' . $sched['class_code'] . '_' . $sched['type']
+        );
+        // The filename says which grades are inside, so a provisional export
+        // sitting in a downloads folder cannot be mistaken for an official one.
+        $tag = ($f['grade_mode'] === Grade_calculator::MODE_CURRENT && $f['show_grades']) ? '_current' : '';
+        $this->xlsx_writer->download('section_monitoring_' . $safe . $tag . '_' . date('Y-m-d') . '.xlsx');
     }
 
-    private function middle_initial($middlename)
+    /**
+     * The printable Grade & Attendance slip: one 5.5in x 8.5in half sheet per
+     * student, two to a landscape sheet with a cut guide down the middle, or a
+     * single half sheet on its own when student_id is given.
+     *
+     * This path deliberately never calls _monitoring_filters(). A slip is a
+     * document that leaves the building, so it is always the official grade:
+     * with no grade_mode to read, no query string can put a provisional figure
+     * on paper. Every number renders through display_grade_point()'s default
+     * MODE_INC, and an incomplete term prints INC with its reason.
+     */
+    public function print_slips()
     {
-        $middlename = trim((string) $middlename);
-        if ($middlename === '') {
-            return '';
+        $this->load->model('Grade_calculator');
+
+        $schedule_id = (int) $this->input->get('schedule_id');
+        $student_id  = (int) $this->input->get('student_id');
+
+        // Whitelisted, so a mangled term can never reach the term column of
+        // raw_components() and quietly return an empty set that reads as INC.
+        $term = $this->input->get('term');
+        if (!in_array($term, ['midterm', 'tentative-final', 'final'], TRUE)) {
+            $term = 'midterm';
         }
-        return strtoupper(mb_substr($middlename, 0, 1, 'UTF-8')) . '.';
+
+        if (!$schedule_id) {
+            $this->session->set_flashdata('error', 'Pick a section to print slips for.');
+            redirect('view_attendance');
+            return;
+        }
+
+        $sched = $this->_monitoring_schedule($schedule_id);
+        if (!$sched) {
+            $this->session->set_flashdata('error', 'That section could not be found.');
+            redirect('view_attendance');
+            return;
+        }
+
+        $slips = $this->_slip_rows($schedule_id, $term, $student_id ?: NULL);
+        if (empty($slips)) {
+            $this->session->set_flashdata('error', $student_id
+                ? 'That student is not enrolled on this section for the active semester.'
+                : 'No enrolled students on that section.');
+            redirect('view_attendance?schedule_id=' . $schedule_id);
+            return;
+        }
+
+        $this->load->view('admin/slips_print', [
+            'slips'       => $slips,
+            'sched'       => $sched,
+            'term'        => $term,
+            'term_label'  => $this->_term_label($term),
+            'schedule_id' => $schedule_id,
+            'student_id'  => $student_id,
+            'single'      => (bool) $student_id,
+            // Stamped on every slip: a printout found later has to say what it
+            // was generated from and when, or it cannot be trusted as a record.
+            'generated'   => date('M d, Y g:i A'),
+            'printed_by'  => trim($this->session->firstname . ' ' . $this->session->lastname),
+        ]);
     }
 
-    public function view_attendance()
+    /**
+     * The Section Monitoring filter state, read identically by the screen and
+     * the export so the two can never disagree.
+     *
+     * Both checkboxes default to on, and an unticked checkbox sends no key at
+     * all — so "never submitted" and "deliberately unticked" look the same in
+     * the query string. The form's hidden filters_applied=1 marker separates
+     * them; without it, unticking a box would silently re-tick on reload.
+     *
+     * grade_mode needs no such marker — a <select> always submits a value — and
+     * anything other than an explicit 'current' falls back to the official INC
+     * rendering, so a mangled query string can never turn a submission sheet
+     * into provisional numbers by accident.
+     */
+    protected function _monitoring_filters()
     {
-        $active_semester = $this->db->where('is_active', 1)->get('semester_master')->row_array();
-        $default_start_date = ($active_semester['class_started'] ?? null) ?: date('Y-m-d');
+        $submitted = $this->input->get('filters_applied') !== NULL;
 
-        $section_id = $this->input->get('section_id');
-        $start_date = $this->input->get('start_date') ?: $default_start_date;
+        return [
+            'schedule_id'      => (int) $this->input->get('schedule_id'),
+            'show_grades'      => $submitted ? ($this->input->get('show_grades') === '1') : TRUE,
+            'show_attendance'  => $submitted ? ($this->input->get('show_attendance') === '1') : TRUE,
+            'show_missing'     => $submitted ? ($this->input->get('show_missing') === '1') : TRUE,
+            // Off unless asked for, and read without the $submitted marker for
+            // the same reason: this filter hides students, so it may only ever
+            // be on because the query string says so.
+            'only_with_values' => $this->input->get('only_with_values') === '1',
+            'grade_mode'       => $this->input->get('grade_mode') === Grade_calculator::MODE_CURRENT
+                ? Grade_calculator::MODE_CURRENT
+                : Grade_calculator::MODE_INC,
+            // Same shape as grade_mode: a <select> always submits, and anything
+            // unrecognised falls back to the two-column default rather than
+            // erroring, so a hand-edited query string degrades quietly.
+            'name_format'      => $this->input->get('name_format') === self::NAME_FULL
+                ? self::NAME_FULL
+                : self::NAME_SPLIT,
+        ];
+    }
 
-        // Fetch all sections for the dropdown
-        $data['sections'] = $this->class_schedule->get_sections();
+    /**
+     * The Section Monitoring row set for one schedule, in roster order
+     * (lastname, firstname — Grade_calculator::roster() already sorts it, and
+     * for_schedule() preserves that insertion order, so no usort is needed).
+     *
+     * Three for_schedule() passes is deliberate: for_schedule_final() covers
+     * midterm + final + overall but never touches 'tentative-final', and the
+     * alternative — one bespoke multi-term query — would be a fourth copy of
+     * the weighting rules, which is exactly what Grade_calculator exists to
+     * prevent. $with_attendance is FALSE on all of them: it saves three
+     * redundant queries and keeps the grading-derived `late` out of the data
+     * entirely, so the raw ENUM counts can't be confused with it.
+     */
+    protected function _monitoring_rows($schedule_id, $grade_mode = Grade_calculator::MODE_INC)
+    {
+        $gc = $this->Grade_calculator;
 
-        // Fetch attendance data once a section is picked (start date always
-        // has a value — defaults to the active semester's class_started).
-        if ($section_id) {
-            $data['attendance'] = $this->attendance->get_attendance_by_section($section_id, $start_date);
-            $data['selected_section_id'] = $section_id;
+        $finals    = $gc->for_schedule_final($schedule_id, FALSE);
+        $tentative = $gc->for_schedule($schedule_id, 'tentative-final', FALSE);
+        $counts    = $this->attendance->status_counts_for_schedule($schedule_id);
+        // One grouped query for the whole section, fetched unconditionally like
+        // the attendance counts: _monitoring_row() always carries every field,
+        // and _monitoring_columns() decides what is rendered. Fetched even when
+        // the Missing columns are hidden, because the INC override below reads
+        // the same data and must not depend on a display checkbox.
+        $missing   = $this->classworks->missing_counts_for_schedule($schedule_id);
+
+        $rows = [];
+        $n    = 0;
+        foreach ($finals['students'] as $sid => $s) {
+            // Same roster on all three passes, so this fallback should never
+            // fire; it carries grade_point because display_grade_point() reads
+            // that key once the status check lets it through, and no
+            // 'provisional' key so MODE_CURRENT falls through to 'INC' rather
+            // than inventing a standing for a student we have no data for.
+            $t = isset($tentative['students'][$sid]['term'])
+                ? $tentative['students'][$sid]['term']
+                : ['status' => 'inc', 'grade_point' => NULL];
+
+            $rows[] = $this->_monitoring_row(
+                ++$n,
+                $s,
+                $t,
+                isset($counts[$sid]) ? $counts[$sid] : NULL,
+                $grade_mode,
+                isset($missing[$sid]) ? $missing[$sid] : []
+            );
+        }
+
+        return $rows;
+    }
+
+    /**
+     * One Section Monitoring row. Always carries every field — which of them
+     * get rendered is _monitoring_columns()' job — and returns values raw, so
+     * each consumer escapes for its own medium.
+     *
+     * $s comes from for_schedule_final() and carries 'midterm', 'final' and
+     * 'overall'; $tentative is the 'tentative-final' term block. The Final
+     * Grade column is `overall` (the midterm/final blend), not the 'final'
+     * term on its own.
+     *
+     * Under MODE_CURRENT an incomplete grade renders as its provisional figure
+     * instead of 'INC'. Each such cell also gets a `<key>_provisional` flag so
+     * the screen can mark which numbers are not the official grade — the .xlsx
+     * ignores those keys and takes the mode from the column headings instead.
+     * `is_inc` keeps meaning "the overall grade on this sheet is INC" in both
+     * modes, so the mode never changes what that flag reports.
+     *
+     * $missing is [term => [iotype_id => count]] for this one student. It feeds
+     * two separate things: the Missing columns (all terms summed) and the
+     * display-only INC override in _missing_blocks_grade(), which is applied
+     * per column against the term that column actually reports on.
+     */
+    protected function _monitoring_row(
+        $n,
+        array $s,
+        array $tentative,
+        $counts,
+        $grade_mode = Grade_calculator::MODE_INC,
+        array $missing = []
+    ) {
+        $gc     = $this->Grade_calculator;
+        $counts = $counts ?: ['present' => 0, 'absent' => 0, 'late' => 0, 'excuse' => 0];
+
+        // One place, so the screen and the .xlsx built from these same rows
+        // cannot drift apart. number_format() pads rather than trims, so a
+        // whole grade point still reads '2.0' and every column stays aligned.
+        // The printed slips are a separate document and keep two decimals.
+        $decimals = self::MONITORING_GRADE_DECIMALS;
+
+        // Which columns the override blacks out. 'tentative' reports the
+        // tentative-final term; 'overall' is the midterm/final blend, so
+        // unsubmitted work in EITHER of those terms blocks it — the same way
+        // Grade_calculator::final_grade() propagates an INC from either term.
+        $blocked = [
+            'midterm'   => $this->_missing_blocks_grade($missing, ['midterm'], $grade_mode),
+            'tentative' => $this->_missing_blocks_grade($missing, ['tentative-final'], $grade_mode),
+            'overall'   => $this->_missing_blocks_grade($missing, ['midterm', 'final'], $grade_mode),
+        ];
+
+        $row = [
+            'n'                     => $n,
+            'student_id'            => $s['student_id'],
+            'lastname'              => $s['lastname'],
+            'firstname'             => $s['firstname'],
+            // Always built, whichever name columns are on show: the row carries
+            // every field and _monitoring_columns() decides what is rendered,
+            // the same contract the grade and attendance keys follow.
+            'fullname'              => trim($s['lastname'] . ', ' . $s['firstname']),
+            'midterm'               => $blocked['midterm']
+                ? 'INC' : $gc->display_grade_point($s['midterm'], $decimals, $grade_mode),
+            'tentative'             => $blocked['tentative']
+                ? 'INC' : $gc->display_grade_point($tentative, $decimals, $grade_mode),
+            'overall'               => $blocked['overall']
+                ? 'INC' : $gc->display_grade_point($s['overall'], $decimals, $grade_mode),
+            // A forced INC is not a provisional number, so the flag that draws
+            // the italic "* provisional" styling has to clear with it.
+            'midterm_provisional'   => !$blocked['midterm'] && $gc->is_provisional($s['midterm'], $grade_mode),
+            'tentative_provisional' => !$blocked['tentative'] && $gc->is_provisional($tentative, $grade_mode),
+            'overall_provisional'   => !$blocked['overall'] && $gc->is_provisional($s['overall'], $grade_mode),
+            'is_inc'                => $blocked['overall'] || $s['overall']['status'] !== 'ok',
+            'present'               => $counts['present'],
+            'absent'                => $counts['absent'],
+            'late'                  => $counts['late'],
+            'excuse'                => $counts['excuse'],
+            // Days the student was not in class, however it was recorded. Summed
+            // here rather than in the view or the SQL so the screen and the
+            // .xlsx cannot arrive at two different totals — the same reason the
+            // grade cells are formatted here.
+            'total_absent'          => (int) $counts['absent'] + (int) $counts['excuse'],
+        ];
+
+        // One key per io_type, always present even at zero, so a column lookup
+        // can never hit an undefined index on a student missing nothing. Summed
+        // across terms: these columns are a whole-semester backlog tally, and
+        // splitting them per term would double the width of the sheet.
+        foreach ($gc->io_types() as $iotype_id => $io) {
+            $n_missing = 0;
+            foreach ($missing as $per_iotype) {
+                $n_missing += (int) (isset($per_iotype[$iotype_id]) ? $per_iotype[$iotype_id] : 0);
+            }
+            $row['missing_' . $iotype_id] = $n_missing;
+        }
+
+        return $row;
+    }
+
+    /**
+     * TRUE when this student's unsubmitted work should black out a grade cell
+     * on the Section Monitoring sheet.
+     *
+     * This is a DISPLAY rule, not a grading rule, and it is the one deliberate
+     * exception to "grades are decided in Grade_calculator" in this controller.
+     * It computes nothing: the grade itself is untouched, and all this does is
+     * substitute the string 'INC' for a number Grade_calculator already
+     * produced. The official grade — GradesController submission sheets,
+     * printed slips, the student's own dashboard — still counts an unsubmitted
+     * item as a zero and is not affected. Nothing here may ever grow into
+     * arithmetic; if this rule should become official it belongs in
+     * Grade_calculator::term_grade() with parity vectors, not here.
+     *
+     * Which components block is config, not a literal: see
+     * `monitoring_inc_on_missing_iotypes` in config/grading.php.
+     *
+     * Only MODE_INC is overridden. MODE_CURRENT exists to answer "where does
+     * this student stand today" and must keep showing a number, so a sheet
+     * switched to Show current grade reports the standing regardless.
+     *
+     * @param  array  $missing    [term => [iotype_id => count]] for one student
+     * @param  array  $terms      the terms the column being rendered covers
+     * @param  string $grade_mode Grade_calculator::MODE_*
+     * @return bool
+     */
+    protected function _missing_blocks_grade(array $missing, array $terms, $grade_mode)
+    {
+        if ($grade_mode !== Grade_calculator::MODE_INC) {
+            return FALSE;
+        }
+
+        // grading.php is loaded into its own section (Grade_calculator's
+        // constructor does the same), so the item() lookup needs naming too —
+        // without the second argument this reads NULL and silently never fires.
+        // The load is idempotent; it guards against a caller that reached here
+        // without Grade_calculator having been constructed first.
+        $this->load->config('grading', TRUE);
+
+        $blocking = $this->config->item('monitoring_inc_on_missing_iotypes', 'grading');
+        if (!is_array($blocking) || empty($blocking)) {
+            return FALSE;
+        }
+
+        foreach ($terms as $term) {
+            foreach ($blocking as $iotype_id) {
+                if (!empty($missing[$term][(int) $iotype_id])) {
+                    return TRUE;
+                }
+            }
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * The ordered column spec the HTML table and the .xlsx both render from,
+     * so adding or reordering a column cannot desync the two outputs. Header
+     * text, the _monitoring_row() key and the spreadsheet width live together.
+     *
+     * The per-row View/Edit link is deliberately absent — it has no
+     * spreadsheet counterpart, so the view appends that column itself.
+     *
+     * The grade headings carry the display mode, which is the only way an
+     * exported .xlsx can say whether its numbers are official or provisional —
+     * a bare spreadsheet has no legend and outlives the query string that
+     * produced it.
+     */
+    protected function _monitoring_columns(
+        $show_grades,
+        $show_attendance,
+        $grade_mode = Grade_calculator::MODE_INC,
+        $show_missing = FALSE,
+        $name_format = self::NAME_SPLIT
+    ) {
+        $cols = [
+            ['key' => 'n', 'label' => '#', 'width' => 5],
+        ];
+
+        // One column or two, never both. Width is the two split widths plus the
+        // ", " that joins them, so the .xlsx column is sized for what it holds.
+        if ($name_format === self::NAME_FULL) {
+            $cols[] = ['key' => 'fullname', 'label' => 'Fullname', 'width' => 46];
         } else {
-            $data['attendance'] = [];
-            $data['selected_section_id'] = null;
+            $cols[] = ['key' => 'lastname',  'label' => 'Lastname',  'width' => 22];
+            $cols[] = ['key' => 'firstname', 'label' => 'Firstname', 'width' => 22];
         }
-        $data['start_date'] = $start_date;
 
-        $this->load->view('admin/view_attendance', $data);
+        if ($show_grades) {
+            $suffix = ($grade_mode === Grade_calculator::MODE_CURRENT) ? ' (current)' : '';
+            $grow   = ($grade_mode === Grade_calculator::MODE_CURRENT) ? 10 : 0;
+
+            $cols[] = ['key' => 'midterm',   'label' => 'Midterm' . $suffix,         'width' => 12 + $grow];
+            $cols[] = ['key' => 'tentative', 'label' => 'Tentative Final' . $suffix, 'width' => 16 + $grow];
+            $cols[] = ['key' => 'overall',   'label' => 'Final Grade' . $suffix,     'width' => 13 + $grow];
+        }
+
+        if ($show_attendance) {
+            $cols[] = ['key' => 'present', 'label' => 'Present', 'width' => 10];
+            // 'attention' is what _monitoring_only_with_values() filters on.
+            // Absent only: a late or an excused arrival is not an outstanding
+            // item to chase, and present is the opposite of one.
+            $cols[] = ['key' => 'absent',  'label' => 'Absent',  'width' => 10, 'attention' => TRUE];
+            $cols[] = ['key' => 'late',    'label' => 'Late',    'width' => 10];
+            $cols[] = ['key' => 'excuse',  'label' => 'Excused', 'width' => 10];
+            // Deliberately NOT 'attention': that flag decides which rows the
+            // "only rows with missing / absences" filter keeps, and Absent
+            // already carries it. Marking this one too would start showing
+            // students whose only days out were excused, which is exactly the
+            // row that filter is meant to hide.
+            $cols[] = [
+                'key'        => 'total_absent',
+                'label'      => 'Total Absences',
+                'label_long' => 'Total Absences (absent + excused)',
+                'width'      => 16,
+            ];
+        }
+
+        // Built from io_type rather than a fixed four, so a new component gets
+        // its column for free. Headings are abbreviated to keep four extra
+        // columns off the width of the sheet; 'kind' lets the view style a
+        // non-zero tally, and label_long carries the full name into the .xlsx.
+        if ($show_missing) {
+            foreach ($this->Grade_calculator->io_types() as $iotype_id => $io) {
+                $cols[] = [
+                    'key'        => 'missing_' . $iotype_id,
+                    'label'      => $this->_iotype_abbrev($io['type']),
+                    'label_long' => 'Missing ' . $io['type'],
+                    'kind'       => 'missing',
+                    'attention'  => TRUE,
+                    'width'      => 8,
+                ];
+            }
+        }
+
+        return $cols;
+    }
+
+    /**
+     * Short heading for an io_type. Display only — nothing keys off it.
+     *
+     * The four current components get hand-picked forms; anything added later
+     * falls back to initials (or the first three letters of a single word) so a
+     * new io_type still gets a usable column head without an edit here.
+     */
+    protected function _iotype_abbrev($type)
+    {
+        $known = [
+            'activity'         => 'ACT',
+            'performance task' => 'PT',
+            'major exam'       => 'EXM',
+            'quiz'             => 'QZ',
+        ];
+
+        $key = strtolower(trim($type));
+        if (isset($known[$key])) {
+            return $known[$key];
+        }
+
+        $words = preg_split('/[^a-z0-9]+/', $key, -1, PREG_SPLIT_NO_EMPTY);
+        if (count($words) > 1) {
+            $initials = '';
+            foreach ($words as $w) {
+                $initials .= $w[0];
+            }
+            return strtoupper($initials);
+        }
+
+        return strtoupper(substr($key, 0, 3));
+    }
+
+    /**
+     * Drops the students who have nothing outstanding — every 'attention'
+     * column in the current spec (the Missing tallies and Absent) sits at zero.
+     *
+     * Gated on the columns actually being rendered, so a row can always show
+     * why it survived the filter: untick Missing and the list narrows to
+     * absences alone. With neither shown there is nothing to judge on, so the
+     * roster comes back whole rather than empty.
+     *
+     * Runs after _monitoring_rows() has numbered the roster, so `n` keeps
+     * meaning "position on the full roster" and still matches the printed
+     * slips — the numbering is meant to go 3, 7, 12 here.
+     *
+     * @param  array $rows     _monitoring_rows() output
+     * @param  array $columns  _monitoring_columns() output
+     * @param  bool  $enabled
+     * @return array
+     */
+    protected function _monitoring_only_with_values(array $rows, array $columns, $enabled)
+    {
+        if (!$enabled) {
+            return $rows;
+        }
+
+        $keys = [];
+        foreach ($columns as $c) {
+            if (!empty($c['attention'])) {
+                $keys[] = $c['key'];
+            }
+        }
+
+        if (empty($keys)) {
+            return $rows;
+        }
+
+        return array_values(array_filter($rows, function ($row) use ($keys) {
+            foreach ($keys as $k) {
+                if (isset($row[$k]) && (int) $row[$k] > 0) {
+                    return TRUE;
+                }
+            }
+            return FALSE;
+        }));
+    }
+
+    /**
+     * One schedule's identity for a heading: section, type, subject, teacher,
+     * meeting time, plus the active semester row. Both the .xlsx export and the
+     * printable slips read it, so a heading can't say one thing on paper and
+     * another in the spreadsheet.
+     *
+     * @return array|null NULL when the schedule doesn't exist
+     */
+    protected function _monitoring_schedule($schedule_id)
+    {
+        $this->load->model('Grade_calculator');
+
+        $sched = $this->db->query("
+            SELECT sched.schedule_id, sched.section, sched.type, sched.day,
+                   sched.time_start, sched.time_end,
+                   cl.class_code, cl.class_name, cl.instructor
+            FROM class_schedule sched
+            JOIN classes cl ON cl.class_id = sched.class_id
+            WHERE sched.schedule_id = ?
+        ", [(int) $schedule_id])->row_array();
+
+        if (!$sched) {
+            return NULL;
+        }
+
+        // Read, never hardcoded: section_grades.php prints a literal
+        // "2nd Semester, S.Y 2024 - 2025" that has been wrong for two years.
+        $sched['semester'] = $this->db->where('is_active', 1)
+            ->get('semester_master')->row_array() ?: [];
+
+        $sched['schedule_text'] = $this->Grade_calculator->format_schedule($sched);
+
+        return $sched;
+    }
+
+    /**
+     * One printable slip per enrolled student, in the same roster order and
+     * with the same numbering as the Section Monitoring table.
+     *
+     * Everything grade-shaped comes straight off Grade_calculator::for_schedule()
+     * — components, weights, percentages, contributions, the term block and its
+     * remark. Nothing here recomputes a grade; the slip is a rendering of the
+     * engine's answer, and the mode is always the official MODE_INC.
+     *
+     * $only_student_id filters AFTER the numbering pass, so a single slip keeps
+     * the student's number on the section sheet instead of always reading #1.
+     */
+    protected function _slip_rows($schedule_id, $term, $only_student_id = NULL)
+    {
+        $gc = $this->Grade_calculator;
+
+        $result   = $gc->for_schedule($schedule_id, $term);
+        $counts   = $this->attendance->status_counts_for_schedule($schedule_id);
+        $absences = $this->attendance->absences_for_schedule($schedule_id);
+        $profiles = $this->_slip_profiles(array_keys($result['students']));
+
+        $slips = [];
+        $n     = 0;
+
+        foreach ($result['students'] as $sid => $s) {
+            $n++;
+            if ($only_student_id !== NULL && (int) $sid !== (int) $only_student_id) {
+                continue;
+            }
+
+            $t = $s['term'];
+            $c = isset($counts[$sid]) ? $counts[$sid] : ['present' => 0, 'absent' => 0, 'late' => 0, 'excuse' => 0];
+
+            // Recorded sessions, not "meetings held": a student enrolled late
+            // has fewer rows, and 'others' is not tallied by
+            // status_counts_for_schedule() so it stays out of the denominator
+            // here too. This is attendance reporting only — it never feeds a
+            // grade, and no grade rule reads it.
+            $sessions = $c['present'] + $c['absent'] + $c['late'] + $c['excuse'];
+
+            $components = [];
+            foreach ($s['components'] as $comp) {
+                $components[] = [
+                    'name'          => $comp['iotype_name'],
+                    'weight'        => $comp['iotype_percentage'],
+                    'score'         => $comp['total_score'],
+                    'max'           => $comp['total_max_score'],
+                    'percentage'    => $comp['percentage'],     // NULL when nothing measurable
+                    'contribution'  => $comp['weighted_grade'], // NULL likewise — never printed as 0
+                    'n_assessments' => $comp['n_assessments'],
+                    'n_ungraded'    => $comp['n_ungraded'],
+                ];
+            }
+
+            $middle = trim((string) $s['middlename']);
+
+            $slips[] = [
+                'n'             => $n,
+                'student_id'    => $sid,
+                'student_no'    => $s['student_no'],
+                'fullname'      => $s['lastname'] . ', ' . $s['firstname']
+                    . ($middle !== '' ? ' ' . strtoupper(substr($middle, 0, 1)) . '.' : ''),
+                'course'        => isset($profiles[$sid]['course']) ? $profiles[$sid]['course'] : '',
+                'grade_point'   => $gc->display_grade_point($t, 2),
+                'percentage'    => $gc->display_percentage($t, 2),
+                'remark'        => $gc->remark($t),
+                'inc_reason'    => $gc->inc_reason($t, $result['io_types']),
+                'pending_count' => (int) (isset($t['pending_count']) ? $t['pending_count'] : 0),
+                'components'    => $components,
+                'attendance'    => [
+                    'present'  => $c['present'],
+                    'absent'   => $c['absent'],
+                    'late'     => $c['late'],
+                    'excuse'   => $c['excuse'],
+                    'sessions' => $sessions,
+                    'rate'     => $sessions > 0 ? round(($c['present'] / $sessions) * 100) : NULL,
+                ],
+                // Same window and same filter as the absent tally above, so the
+                // list length always equals the Absent tile.
+                'absences'      => isset($absences[$sid]) ? $absences[$sid] : [],
+            ];
+        }
+
+        return $slips;
+    }
+
+    /**
+     * Course / year for the slip heading, one query for the whole section.
+     *
+     * A lookup, not a roster: the ids come from Grade_calculator::roster() via
+     * for_schedule(), so this cannot reintroduce the class_student.section =
+     * class_schedule.section join that ignored semester and enrolment status.
+     */
+    protected function _slip_profiles(array $student_ids)
+    {
+        if (empty($student_ids)) {
+            return [];
+        }
+
+        $rows = $this->db->select('trans_no, course, current_year, year_section')
+            ->from('student_master')
+            ->where_in('trans_no', $student_ids)
+            ->get()->result_array();
+
+        $out = [];
+        foreach ($rows as $r) {
+            $out[$r['trans_no']] = $r;
+        }
+        return $out;
+    }
+
+    /** The term enum as it should read on a printed heading. */
+    protected function _term_label($term)
+    {
+        $labels = [
+            'midterm'         => 'Midterm',
+            'tentative-final' => 'Tentative Final',
+            'final'           => 'Final',
+        ];
+        return isset($labels[$term]) ? $labels[$term] : ucfirst($term);
     }
 
     // Every attendance record for one student, across every class/schedule
@@ -693,2378 +990,11 @@ class AdminController extends CI_Controller
         $this->load->model('Semester_model');
         $sem_id = $this->Semester_model->resolve_id($this->input->get('sem'));
 
-        $data = $this->_semester_view_data($student_id, $sem_id);
+        $data = $this->Semester_model->view_data($student_id, $sem_id);
         $data['student']         = $student;
         $data['active_semester'] = $data['viewed_semester'];
         $data['records']         = $this->attendance->get_student_attendance_full($student_id, $sem_id);
 
         $this->load->view('admin/student_attendance', $data);
-    }
-
-    public function active_participation($assessment_id = null)
-    {
-        $section_id = $this->input->get('section_id');
-        $date = $this->input->get('date') ?? date('Y-m-d');
-
-        // Fetch all sections for the dropdown
-        $this->db->distinct();
-        $this->db->select('section');
-        $data['sections'] = $this->db->get('class_schedule')->result_array();
-
-        // Fetch present students if section and date are provided
-        if ($section_id) {
-            $this->load->model('attendance');
-            $data['students'] = $this->attendance->get_present_students($section_id, $date);
-            $data['selected_section_id'] = $section_id;
-            $data['date'] = $date;
-        } else {
-            $data['students'] = [];
-            $data['selected_section_id'] = null;
-            $data['date'] = $date;
-        }
-
-        // Pass the assessment ID for scoring
-        $data['assessment_id'] = $assessment_id;
-
-        // Load the view
-        $this->load->view('admin/active_participation', $data);
-    }
-
-    public function check_new_submissions_by_assessment($assessment_id)
-    {
-        // Fetch the latest submissions for the assessment
-        $submissions = $this->classworks->get_all_submissions($assessment_id);
-
-        // Return the data as JSON
-        echo json_encode($submissions);
-    }
-
-    public function uncleared_students_overview()
-    {
-        $this->load->model('class_student');
-        $data['sections'] = $this->class_student->get_sections_with_uncleared_counts();
-        $this->load->view('admin/uncleared_students_overview', $data);
-    }
-
-    public function uncleared_students($section)
-    {
-        $this->load->model('class_student');
-        $data['students'] = $this->class_student->get_uncleared_students_by_section($section);
-        $data['section'] = $section;
-        $this->load->view('admin/uncleared_students', $data);
-    }
-
-    public function clear_student($id, $section)
-    {
-        $this->load->model('class_student');
-        $this->class_student->clear_student($id);
-        redirect('uncleared_students/' . urlencode($section));
-    }
-
-    public function manage_assessments()
-    {
-        $this->load->library('pagination');
-
-        $schedule_id = $this->input->get('schedule_id');
-        // No schedule_id in the query string at all (first page load, not an
-        // explicit "All Sections" pick) — default the filter to whichever
-        // class is scheduled right now, same as all_submissions().
-        if ($schedule_id === null) {
-            $day = date('D');
-            $current_class = $this->class_schedule->class_today($day);
-            $schedule_id = $current_class['schedule_id'] ?? null;
-        }
-
-        // Search + filter set — applied identically to the list, the pager total,
-        // and the bulk-action id set (see assessments::_admin_filters_sql()).
-        $filters = [
-            'schedule_id' => $schedule_id ?: null,
-            'q'           => trim($this->input->get('q') ?? ''),
-            'iotype_id'   => $this->input->get('iotype_id') ?: null,
-            'term'        => $this->input->get('term') ?: null,
-            'status'      => ($this->input->get('status') !== null && $this->input->get('status') !== '') ? $this->input->get('status') : '',
-            'submission'  => $this->input->get('submission') ?: '',
-        ];
-
-        $per_page = 20;
-        $offset   = (int) $this->input->get('per_page');
-        $total    = $this->assessments->count_all_for_admin($filters);
-
-        // Preserve every active filter across page links.
-        $qs = [];
-        foreach (['schedule_id', 'q', 'iotype_id', 'term', 'status', 'submission'] as $k) {
-            if ($filters[$k] !== null && $filters[$k] !== '') $qs[] = $k . '=' . urlencode($filters[$k]);
-        }
-        $base_url = base_url('manage_assessments') . ($qs ? '?' . implode('&', $qs) : '');
-
-        $config = [
-            'base_url'             => $base_url,
-            'total_rows'           => $total,
-            'per_page'             => $per_page,
-            'page_query_string'    => TRUE,
-            'query_string_segment' => 'per_page',
-            'reuse_query_string'   => TRUE,
-            'use_page_numbers'     => FALSE,
-            'full_tag_open'        => '<ul class="pagination pagination-sm mb-0">',
-            'full_tag_close'       => '</ul>',
-            'first_link'           => '&laquo;',
-            'first_tag_open'       => '<li class="page-item">',
-            'first_tag_close'      => '</li>',
-            'last_link'            => '&raquo;',
-            'last_tag_open'        => '<li class="page-item">',
-            'last_tag_close'       => '</li>',
-            'next_link'            => '&rsaquo;',
-            'next_tag_open'        => '<li class="page-item">',
-            'next_tag_close'       => '</li>',
-            'prev_link'            => '&lsaquo;',
-            'prev_tag_open'        => '<li class="page-item">',
-            'prev_tag_close'       => '</li>',
-            'num_tag_open'         => '<li class="page-item">',
-            'num_tag_close'        => '</li>',
-            'cur_tag_open'         => '<li class="page-item active"><a class="page-link" href="#">',
-            'cur_tag_close'        => '</a></li>',
-            'attributes'           => ['class' => 'page-link'],
-            'num_links'            => 4,
-        ];
-        $this->pagination->initialize($config);
-
-        $rows = $this->assessments->get_all_for_admin($filters, $per_page, $offset);
-        // Rows are pre-sorted by master_id (see get_all_for_admin()) so every
-        // section sharing an assessment lands on consecutive rows within this
-        // page. Mark the first row of each run with _rowspan = run length —
-        // the view uses it to merge the shared content cells (title/type/
-        // widget/term/max score) across the group with a single <td rowspan>
-        // instead of repeating them per section.
-        $prev_master = null;
-        $group_start = null;
-        foreach ($rows as $i => $row) {
-            if ($row['master_id'] !== $prev_master) {
-                if ($group_start !== null) {
-                    $rows[$group_start]['_rowspan'] = $i - $group_start;
-                }
-                $group_start = $i;
-                $prev_master = $row['master_id'];
-            }
-        }
-        if ($group_start !== null) {
-            $rows[$group_start]['_rowspan'] = count($rows) - $group_start;
-        }
-
-        $data['assessments']         = $rows;
-        $data['all_assessment_ids']  = $this->assessments->get_all_ids_for_admin($filters);
-        $data['pagination']          = $this->pagination->create_links();
-        $data['total']               = $total;
-        $data['per_page']            = $per_page;
-        $data['offset']              = $offset;
-        $data['schedules'] = $this->class_schedule->get_all_active();
-        $data['io_types'] = $this->db->get('io_type')->result_array();
-        $data['selected_schedule']   = $schedule_id;
-        $data['search_q']            = $filters['q'];
-        $data['selected_iotype']     = $filters['iotype_id'];
-        $data['selected_term']       = $filters['term'];
-        $data['selected_status']     = $filters['status'];
-        $data['selected_submission'] = $filters['submission'];
-
-        // Distinct classes behind those active sections, for the "Entire Class" apply mode.
-        $seen_classes = [];
-        foreach ($data['schedules'] as $s) {
-            $seen_classes[$s['class_id']] = ['class_id' => $s['class_id'], 'class_code' => $s['class_code'], 'class_name' => $s['class_name']];
-        }
-        $data['classes'] = array_values($seen_classes);
-
-        $this->load->model('Grouping_model');
-        $data['grouping_sets'] = $this->Grouping_model->get_all_sets();
-
-        $this->load->model('Widgets_model');
-        $data['widgets'] = $this->Widgets_model->get_all();
-
-        $data['copyable_assessments']  = $this->assessments->get_copyable_for_active_semester();
-        $data['assignable_masters']    = $this->assessments->get_assignable_masters();
-
-        // Topics available to the topic-file widgets — the lesson+quiz format
-        // InteractiveQuizController::discussion() renders (sections[].quiz) and
-        // the microlearning format micro() renders (sections[].chunks), but not
-        // the multi-question sections[].questions format used by the older
-        // topics/analytics flow.
-        $data['iq_topics'] = [];
-        // Question count per topic — the modal JS auto-fills Max Score from
-        // this when a topic is picked, and save_assessment() re-derives it
-        // server-side as the source of truth.
-        $data['iq_topic_question_counts'] = [];
-        // 'discussion' | 'micro' per topic — the modal JS uses it to offer only
-        // the topics the selected widget's renderer can actually handle (a
-        // micro topic's arrange/type checkpoints would fail the discussion
-        // template's validator, and vice versa).
-        $data['iq_topic_formats'] = [];
-        // Class code per topic (its assets/json/{CLASS_CODE}/ folder, '' for
-        // legacy/unfiled root files) — the modal JS filters the Topic dropdown
-        // to the section/class selected above so admins can't pick a topic
-        // that belongs to a different course.
-        $data['iq_topic_classes'] = [];
-        // Title/description straight from the topic JSON, keyed by slug — the
-        // modal JS auto-fills the assessment's Title/Description fields from
-        // this when a topic is picked, same as it does for Max Score.
-        $data['iq_topic_meta'] = [];
-        foreach ($this->_glob_json_topics() as $file) {
-            $meta = json_decode(file_get_contents($file), true);
-            if (!$meta || empty($meta['sections'])) {
-                continue;
-            }
-            $is_discussion_format = true;
-            foreach ($meta['sections'] as $s) {
-                if (isset($s['questions'])) {
-                    $is_discussion_format = false;
-                    break;
-                }
-            }
-            if ($is_discussion_format) {
-                $slug = basename($file, '.json');
-                $title = $meta['title'] ?? ucwords(str_replace('_', ' ', $slug));
-                $format = $this->_iq_topic_format($meta);
-                $data['iq_topics'][$slug] = $title;
-                $data['iq_topic_formats'][$slug] = $format;
-                $data['iq_topic_question_counts'][$slug] = $format === 'micro'
-                    ? $this->_count_micro_topic_items($meta)
-                    : $this->_count_iq_topic_questions($meta);
-                $data['iq_topic_classes'][$slug] = $this->_topic_class_code_from_path($file);
-                $data['iq_topic_meta'][$slug] = [
-                    'title'       => $title,
-                    'description' => $meta['description'] ?? '',
-                ];
-            }
-        }
-
-        $this->load->view('admin/manage_assessments', $data);
-    }
-
-    // Number of gradable questions in a discussion-format topic — one per
-    // section that actually has a quiz (sections can be lesson-only). Shared
-    // by manage_assessments() (for the JS auto-fill) and save_assessment()
-    // (server-side max_score derivation, the authoritative source).
-    private function _count_iq_topic_questions(array $topic_meta)
-    {
-        $count = 0;
-        foreach (($topic_meta['sections'] ?? []) as $s) {
-            if (!empty($s['quiz'])) {
-                $count++;
-            }
-        }
-        return $count;
-    }
-
-    // Which renderer a topic-file belongs to. Any section carrying `chunks` is
-    // the microlearning format (discussions/_interactive_micro_template.php);
-    // everything else is the plain lesson+quiz format. Callers have already
-    // excluded the legacy sections[].questions format before reaching here.
-    private function _iq_topic_format(array $topic_meta)
-    {
-        foreach (($topic_meta['sections'] ?? []) as $s) {
-            if (!empty($s['chunks'])) {
-                return 'micro';
-            }
-        }
-        return 'discussion';
-    }
-
-    // Number of gradable items in a microlearning topic — 1 per chunk
-    // micro-check plus 1 per section checkpoint, matching the scoring in
-    // _interactive_micro_template.php exactly (objectives/recap screens are
-    // not graded). Same role as _count_iq_topic_questions() for the other
-    // format: shared by the modal's Max Score auto-fill and the authoritative
-    // server-side derivation in save_assessment().
-    private function _count_micro_topic_items(array $topic_meta)
-    {
-        $count = 0;
-        foreach (($topic_meta['sections'] ?? []) as $s) {
-            $count += count($s['chunks'] ?? []);
-            if (!empty($s['quiz'])) {
-                $count++;
-            }
-        }
-        return $count;
-    }
-
-    // $assessment_id posted here is always a SECTION id (assessment_section_id)
-    // — the id space consumers see everywhere (URLs, classworks.assessment_id,
-    // etc.) never changed across the master/assessment_section split (see
-    // Assessment_normalize_model). Content (title/description/max_score/term/
-    // widget/given) lives on the shared master; editing it updates every
-    // section sharing that master. Per-section fields (due/status/
-    // is_groupings) only ever touch the one section being edited.
-    public function save_assessment()
-    {
-        $post = $this->input->post();
-        $section_id = !empty($post['assessment_id']) ? (int)$post['assessment_id'] : null;
-        $apply_mode = $post['apply_mode'] ?? 'section';
-
-        $status = isset($post['status']) ? $post['status'] : 0;
-        if ($status === 'open' || $status === 'closed') {
-            $status = $status === 'open' ? '1' : '0';
-        }
-
-        $master_fields = [
-            'iotype_id'   => $post['iotype_id'],
-            'title'       => $post['title'],
-            'description' => $post['description'],
-            'max_score'   => $post['max_score'],
-            'term'        => $post['term'],
-            'widget_id'   => !empty($post['widget_id']) ? (int) $post['widget_id'] : null,
-            'given'       => !empty($post['widget_id']) ? ($post['given'] ?? null) : null,
-        ];
-
-        // Interactive Discussion/Quiz: max_score isn't hand-entered — it's the
-        // number of questions in the chosen topic (one per section.quiz), so a
-        // student's raw quiz score (1 point per correct answer) always lines
-        // up with the assessment's own max. Derived server-side, not trusted
-        // from the posted "Max Score" field, since the modal JS's auto-fill
-        // could be stale (e.g. topic file edited after the form loaded).
-        if ($master_fields['widget_id']) {
-            $this->load->model('Widgets_model');
-            $widget = $this->Widgets_model->get($master_fields['widget_id']);
-            if ($widget && in_array($widget['widget_key'], ['iq_discussion', 'iq_micro'], true)) {
-                $is_micro = $widget['widget_key'] === 'iq_micro';
-
-                // "Paste new JSON": write the file first so the lookup below
-                // finds it and derives max_score the same way it would for any
-                // other topic. A validation/collision failure here has already
-                // flashed its own error.
-                $pasted = $this->_resolve_iq_paste($post, $widget);
-                if ($pasted === false) {
-                    redirect('manage_assessments' . (!empty($post['schedule_id']) ? '?schedule_id=' . $post['schedule_id'] : ''));
-                    return;
-                }
-                if ($pasted) {
-                    $master_fields['given'] = json_encode(['topic' => $pasted]);
-                }
-
-                $topic = json_decode($master_fields['given'] ?? '', true)['topic'] ?? '';
-                $topic_found = false;
-                $wrong_format = false;
-                if ($topic) {
-                    foreach ($this->_glob_json_topics() as $file) {
-                        if (basename($file, '.json') !== $topic) {
-                            continue;
-                        }
-                        $meta = json_decode(file_get_contents($file), true) ?: [];
-                        // A topic authored for the other renderer would 422 the
-                        // moment a student opened it, so reject it at save time.
-                        if (($this->_iq_topic_format($meta) === 'micro') !== $is_micro) {
-                            $wrong_format = true;
-                            break;
-                        }
-                        $master_fields['max_score'] = max(1, $is_micro
-                            ? $this->_count_micro_topic_items($meta)
-                            : $this->_count_iq_topic_questions($meta));
-                        $topic_found = true;
-                        break;
-                    }
-                }
-                if ($wrong_format) {
-                    $this->session->set_flashdata('error', $is_micro
-                        ? 'Microlearning Quiz needs a topic in the microlearning format (sections with "chunks") — the selected topic is a plain lesson+quiz topic, so use the Interactive Discussion/Quiz widget for it.'
-                        : 'Interactive Discussion/Quiz needs a plain lesson+quiz topic — the selected topic is in the microlearning format (sections with "chunks"), so use the Microlearning Quiz widget for it.');
-                    redirect('manage_assessments' . (!empty($post['schedule_id']) ? '?schedule_id=' . $post['schedule_id'] : ''));
-                    return;
-                }
-                if (!$topic_found) {
-                    $this->session->set_flashdata('error', $widget['name'] . ' needs a topic — pick one from the Topic dropdown (the selected topic file could not be found).');
-                    redirect('manage_assessments' . (!empty($post['schedule_id']) ? '?schedule_id=' . $post['schedule_id'] : ''));
-                    return;
-                }
-            } elseif ($widget) {
-                // All other widgets keep their config as a JSON string in
-                // assessments.given (the standard — see CLAUDE.md). Reject
-                // invalid/empty JSON here instead of storing it silently and
-                // only breaking when a student opens the assessment.
-                $given = trim((string) ($master_fields['given'] ?? ''));
-                $config = $given !== '' ? json_decode($given, true) : null;
-                if (!is_array($config) || empty($config)) {
-                    if ($given === '') {
-                        $reason = 'an empty config';
-                    } elseif (json_last_error() !== JSON_ERROR_NONE) {
-                        $reason = 'invalid JSON (' . json_last_error_msg() . ')';
-                    } else {
-                        $reason = 'JSON that is not an object';
-                    }
-                    $this->session->set_flashdata('error', 'Widget config not saved — "' . $widget['name'] . '" needs a JSON config, but the form contained ' . $reason . '.');
-                    redirect('manage_assessments' . (!empty($post['schedule_id']) ? '?schedule_id=' . $post['schedule_id'] : ''));
-                    return;
-                }
-
-                // Quiz widgets accept a bare list of questions [ {...}, {...} ] as
-                // well as the canonical { "questions":[...] }; canonicalize on save
-                // so the stored config is always the object shape every reader (and
-                // the visual builder) expects. Already-correct configs are untouched.
-                if (in_array($widget['widget_key'], ['quiz', 'secure_quiz'], true) && !isset($config['questions'])) {
-                    $master_fields['given'] = json_encode(['questions' => $this->Widgets_model->quiz_questions($config)]);
-                }
-            }
-        }
-
-        $auto_create = !empty($post['auto_create_submissions']);
-        $section_fields = [
-            'due'          => $post['due'],
-            'status'       => (int) $status,
-            'is_groupings' => !empty($post['is_groupings']) ? 1 : 0,
-        ];
-
-        // "Entire class" mode is shared by manage_assessments.php and
-        // class_assessments.php's Add modals — class_assessments.php posts
-        // this hidden field so the redirect lands back on the class it came
-        // from instead of the section-scoped manage_assessments page.
-        $class_return_url = !empty($post['return_class_id'])
-            ? 'class_assessments?class_id=' . (int) $post['return_class_id']
-            : 'manage_assessments';
-
-        // "Draft" anchors a master to a class with NO section assigned yet —
-        // the class_assessments page's way of authoring an assessment before
-        // deciding which section(s) get it. Unlike "class" mode below, this
-        // never touches assessment_section; the master persists indefinitely
-        // as an unassigned draft (see assessments::delete_section()'s
-        // class_id guard) until assigned via assign_master() or explicitly
-        // deleted.
-        if (!$section_id && $apply_mode === 'draft' && !empty($post['class_id'])) {
-            $master_fields['class_id'] = (int) $post['class_id'];
-            $this->assessments->create_master($master_fields);
-
-            $this->session->set_flashdata('success', 'Draft assessment created — not yet assigned to any section.');
-            redirect('class_assessments?class_id=' . (int) $post['class_id']);
-        }
-
-        // "Entire class" creates ONE shared master, assigned to every section
-        // of that class in the target semester, instead of a full duplicate
-        // row per section. Only offered for brand-new assessments — an
-        // existing assessment is already tied to a master. Group Submission
-        // isn't offered in this mode since grouping sets are section-scoped
-        // (see manage_assessments.php JS). class_assessments.php posts its
-        // own selected semester_id so this fans out to whichever semester the
-        // admin is viewing; manage_assessments.php doesn't post one, so this
-        // falls back to the truly active semester (unchanged behavior there).
-        if (!$section_id && $apply_mode === 'class' && !empty($post['class_id'])) {
-            $schedules = $this->class_schedule->get_active_schedules_by_class(
-                (int) $post['class_id'],
-                !empty($post['semester_id']) ? (int) $post['semester_id'] : null
-            );
-            if (empty($schedules)) {
-                $this->session->set_flashdata('error', 'That class has no sections in that semester.');
-                redirect($class_return_url);
-            }
-
-            $master_fields['class_id'] = (int) $post['class_id'];
-            $master_id = $this->assessments->create_master($master_fields);
-
-            $created_count = 0;
-            $submissions_created = 0;
-            foreach ($schedules as $sched) {
-                $new_section_id = $this->assessments->assign_to_schedule($master_id, $sched['schedule_id'], [
-                    'due'          => $post['due'],
-                    'status'       => (int) $status,
-                    'is_groupings' => 0,
-                ]);
-                $created_count++;
-
-                if ($auto_create) {
-                    $submissions_created += $this->classworks->create_blank_for_schedule($new_section_id, $sched['schedule_id']);
-                }
-            }
-
-            $flash = "Created 1 assessment, assigned to $created_count section(s).";
-            if ($auto_create) {
-                $flash .= " Created $submissions_created blank submission(s) across those sections.";
-            }
-            $this->session->set_flashdata('success', $flash);
-            redirect($class_return_url);
-        }
-
-        if ($section_id) {
-            $master_id = $this->assessments->master_id_for_section($section_id);
-            if (!$master_id) {
-                $this->session->set_flashdata('error', 'Assessment not found — please try again.');
-                redirect('manage_assessments');
-                return;
-            }
-            // Backfill class_id for masters created before save_assessment()
-            // started populating it (or via the old flow) — never overwrite
-            // an already-set class_id just because a section got re-pointed.
-            $existing_class_id = $this->db->select('class_id')->where('assessment_id', $master_id)->get('assessments')->row('class_id');
-            if (!$existing_class_id) {
-                $master_fields['class_id'] = $this->db->select('class_id')->where('schedule_id', $post['schedule_id'])->get('class_schedule')->row('class_id');
-            }
-            // Content edits propagate to every section sharing this master —
-            // that's the point of sharing (see CLAUDE.md widget config rule).
-            // schedule_id is included here too: the modal's Section dropdown
-            // stays editable on Edit (re-pointing a single section is a
-            // supported correction), guarded by the same UNIQUE(assessment_id,
-            // schedule_id) constraint that stops "class" mode from double-
-            // assigning a section.
-            $this->assessments->update_master($master_id, $master_fields);
-            $this->assessments->update_section($section_id, $section_fields + ['schedule_id' => $post['schedule_id']]);
-            $flash = 'Assessment updated successfully.';
-        } else {
-            $master_fields['class_id'] = $this->db->select('class_id')->where('schedule_id', $post['schedule_id'])->get('class_schedule')->row('class_id');
-            $master_id = $this->assessments->create_master($master_fields);
-            $section_id = $this->assessments->assign_to_schedule($master_id, $post['schedule_id'], $section_fields);
-            $flash = 'Assessment added successfully.';
-        }
-
-        $grouping_set_id = !empty($post['grouping_set_id']) ? (int) $post['grouping_set_id'] : null;
-        $this->db->where('assessment_id', $section_id)->delete('assessment_groupings');
-        if ($section_fields['is_groupings'] && $grouping_set_id) {
-            $this->db->insert('assessment_groupings', [
-                'assessment_id' => $section_id,
-                'set_id'        => $grouping_set_id,
-            ]);
-        }
-
-        // Participation-style assessments: pre-create a blank (no score/code)
-        // classworks row for every enrolled student in the section so the
-        // admin can grade/randomize directly instead of students submitting.
-        if ($auto_create) {
-            $created = $this->classworks->create_blank_for_schedule($section_id, $post['schedule_id']);
-            $flash .= $created > 0
-                ? " Created $created blank submission(s) for the section."
-                : ' All enrolled students already have a submission for this assessment.';
-        }
-
-        $this->session->set_flashdata('success', $flash);
-
-        $qs = !empty($post['schedule_id']) ? '?schedule_id=' . $post['schedule_id'] : '';
-        redirect('manage_assessments' . $qs);
-    }
-
-    // Attaches an EXISTING assessment (master) to an additional section,
-    // instead of cloning its content into a new one — the true "shared
-    // across sections" flow. Distinct from save_assessment()'s "Entire
-    // Class" mode (which creates one master for every active section up
-    // front) and from "Copy from existing assessment" (which pre-fills a
-    // brand-new, independent master). Content fields aren't posted here at
-    // all — only the target section and that section's own due/status/
-    // grouping, since the master's content is fixed.
-    public function assign_master()
-    {
-        $post = $this->input->post();
-        $master_id = !empty($post['master_id']) ? (int) $post['master_id'] : null;
-        $schedule_id = !empty($post['schedule_id']) ? $post['schedule_id'] : null;
-
-        // class_assessments.php posts its own class_id so a save from there
-        // lands back on that class's page instead of manage_assessments.
-        $return_url = !empty($post['return_class_id'])
-            ? 'class_assessments?class_id=' . (int) $post['return_class_id']
-            : 'manage_assessments';
-
-        if (!$master_id || !$schedule_id) {
-            $this->session->set_flashdata('error', 'Pick both an assessment and a target section.');
-            redirect($return_url);
-            return;
-        }
-
-        // UNIQUE(assessment_id, schedule_id) would reject this anyway, but a
-        // friendly flash message beats a silently-failed insert (db_debug is
-        // off — see CLAUDE.md).
-        $existing = $this->db->where(['assessment_id' => $master_id, 'schedule_id' => $schedule_id])
-            ->get('assessment_section')->row_array();
-        if ($existing) {
-            $this->session->set_flashdata('error', 'That section is already assigned to this assessment.');
-            redirect($return_url);
-            return;
-        }
-
-        $status = isset($post['status']) ? (int) $post['status'] : 0;
-        $section_fields = [
-            'due'          => $post['due'],
-            'status'       => $status,
-            'is_groupings' => !empty($post['is_groupings']) ? 1 : 0,
-        ];
-
-        $section_id = $this->assessments->assign_to_schedule($master_id, $schedule_id, $section_fields);
-
-        $grouping_set_id = !empty($post['grouping_set_id']) ? (int) $post['grouping_set_id'] : null;
-        if ($section_fields['is_groupings'] && $grouping_set_id) {
-            $this->db->insert('assessment_groupings', [
-                'assessment_id' => $section_id,
-                'set_id'        => $grouping_set_id,
-            ]);
-        }
-
-        $flash = 'Section assigned to the shared assessment.';
-        if (!empty($post['auto_create_submissions'])) {
-            $created = $this->classworks->create_blank_for_schedule($section_id, $schedule_id);
-            $flash .= $created > 0 ? " Created $created blank submission(s) for the section." : '';
-        }
-
-        $this->session->set_flashdata('success', $flash);
-        redirect($return_url);
-    }
-
-    // Read-only per-class assessment monitoring/management — every master
-    // belonging to a class, INCLUDING drafts with no section assigned yet
-    // (see assessments::get_for_class()). Complements manage_assessments()
-    // (which is per-section and only ever shows assigned assessments) with
-    // a per-class view that also surfaces unassigned drafts.
-    public function class_assessments()
-    {
-        $this->load->model('classes');
-
-        $class_id = $this->input->get('class_id') ?: null;
-
-        // Semester filter — defaults to whichever semester is currently
-        // active, but the admin can switch to a past one to see (and, via
-        // "One Section"/"Assign", still act on) that semester's assignments.
-        // Drafts (class_id set, no section yet) aren't tied to any semester
-        // and always show regardless of this filter — see get_for_class().
-        $data['semesters'] = $this->db->order_by('trans_no', 'DESC')->get('semester_master')->result_array();
-        $active_semester = $this->db->where('is_active', 1)->get('semester_master')->row_array();
-        $semester_id = $this->input->get('semester_id') ?: ($active_semester['trans_no'] ?? null);
-        $data['selected_semester_id'] = $semester_id;
-
-        $data['all_classes'] = $this->classes->as_array()->order_by('class_code')->get_all();
-        $data['class_id'] = $class_id;
-        $data['selected_class'] = null;
-        $data['assessments'] = [];
-        $data['sections'] = [];
-        $data['copyable_assessments'] = [];
-        $class_code = null;
-
-        if ($class_id && $semester_id) {
-            $data['selected_class'] = $this->classes->as_array()->get($class_id);
-            $data['assessments'] = $this->assessments->get_for_class($class_id, $semester_id);
-            // Full section labels (not just schedule_id, unlike
-            // get_active_schedules_by_class() — that method only feeds the
-            // "assign to every section" fan-out in save_assessment(), which
-            // doesn't need labels) for the Section/Assign dropdowns below,
-            // scoped to the selected semester (not always the active one).
-            $data['sections'] = $this->db->select('cs.schedule_id, cs.section, cs.type')
-                ->from('class_schedule cs')
-                ->where('cs.class_id', $class_id)
-                ->where('cs.semester_id', $semester_id)
-                ->order_by('cs.section')
-                ->get()->result_array();
-
-            // "Copy from" is scoped to this class only here (unlike
-            // manage_assessments, which filters dynamically by JS as the
-            // admin switches sections/classes in one shared modal) — this
-            // page never changes class without a full reload, so the filter
-            // can just happen once, server-side.
-            $class_code = $data['selected_class']['class_code'] ?? null;
-            $data['copyable_assessments'] = array_values(array_filter(
-                $this->assessments->get_copyable_for_active_semester(),
-                function ($ca) use ($class_code) {
-                    return $ca['class_code'] === $class_code;
-                }
-            ));
-        }
-
-        $data['io_types'] = $this->db->get('io_type')->result_array();
-
-        $this->load->model('Widgets_model');
-        $data['widgets'] = $this->Widgets_model->get_all();
-
-        $this->load->model('Grouping_model');
-        $data['grouping_sets'] = $this->Grouping_model->get_all_sets();
-
-        // Same topic-library scan as manage_assessments(), but pre-filtered
-        // to topics belonging to this class's class_code (plus legacy/unfiled
-        // topics, class_code '') — see the copyable_assessments filter above
-        // for why this can happen server-side here instead of via JS.
-        $data['iq_topics'] = [];
-        $data['iq_topic_question_counts'] = [];
-        $data['iq_topic_formats'] = [];
-        $data['iq_topic_meta'] = [];
-        foreach ($this->_glob_json_topics() as $file) {
-            $meta = json_decode(file_get_contents($file), true);
-            if (!$meta || empty($meta['sections'])) {
-                continue;
-            }
-            $is_discussion_format = true;
-            foreach ($meta['sections'] as $s) {
-                if (isset($s['questions'])) {
-                    $is_discussion_format = false;
-                    break;
-                }
-            }
-            if (!$is_discussion_format) {
-                continue;
-            }
-            $topic_class = $this->_topic_class_code_from_path($file);
-            if ($topic_class !== '' && $topic_class !== $class_code) {
-                continue;
-            }
-            $slug = basename($file, '.json');
-            $title = $meta['title'] ?? ucwords(str_replace('_', ' ', $slug));
-            $format = $this->_iq_topic_format($meta);
-            $data['iq_topics'][$slug] = $title;
-            $data['iq_topic_formats'][$slug] = $format;
-            $data['iq_topic_question_counts'][$slug] = $format === 'micro'
-                ? $this->_count_micro_topic_items($meta)
-                : $this->_count_iq_topic_questions($meta);
-            $data['iq_topic_meta'][$slug] = [
-                'title'       => $title,
-                'description' => $meta['description'] ?? '',
-            ];
-        }
-
-        $this->load->view('admin/class_assessments', $data);
-    }
-
-    // Edits a master's shared content ONLY (title/description/iotype/term/
-    // max_score/widget/given) — no due/status/is_groupings, since those are
-    // per-section and a master on class_assessments may have zero, one, or
-    // several sections with different values. Distinct from save_assessment()'s
-    // edit branch, which always requires and edits exactly one target
-    // section. Same widget/given validation as save_assessment() (duplicated
-    // rather than shared — the validation is short and the two callers'
-    // surrounding flow/redirects differ enough that extracting a helper
-    // would need its own parameter surface for little real reuse).
-    public function update_class_assessment_master()
-    {
-        $post = $this->input->post();
-        $master_id = !empty($post['master_id']) ? (int) $post['master_id'] : null;
-        $class_id = !empty($post['class_id']) ? (int) $post['class_id'] : null;
-
-        if (!$master_id) {
-            $this->session->set_flashdata('error', 'Assessment not found — please try again.');
-            redirect('class_assessments' . ($class_id ? '?class_id=' . $class_id : ''));
-            return;
-        }
-
-        $master_fields = [
-            'iotype_id'   => $post['iotype_id'],
-            'title'       => $post['title'],
-            'description' => $post['description'],
-            'max_score'   => $post['max_score'],
-            'term'        => $post['term'],
-            'widget_id'   => !empty($post['widget_id']) ? (int) $post['widget_id'] : null,
-            'given'       => !empty($post['widget_id']) ? ($post['given'] ?? null) : null,
-        ];
-
-        if ($master_fields['widget_id']) {
-            $this->load->model('Widgets_model');
-            $widget = $this->Widgets_model->get($master_fields['widget_id']);
-            if ($widget && in_array($widget['widget_key'], ['iq_discussion', 'iq_micro'], true)) {
-                $is_micro = $widget['widget_key'] === 'iq_micro';
-
-                $pasted = $this->_resolve_iq_paste($post, $widget);
-                if ($pasted === false) {
-                    redirect('class_assessments' . ($class_id ? '?class_id=' . $class_id : ''));
-                    return;
-                }
-                if ($pasted) {
-                    $master_fields['given'] = json_encode(['topic' => $pasted]);
-                }
-
-                $topic = json_decode($master_fields['given'] ?? '', true)['topic'] ?? '';
-                $topic_found = false;
-                $wrong_format = false;
-                if ($topic) {
-                    foreach ($this->_glob_json_topics() as $file) {
-                        if (basename($file, '.json') !== $topic) {
-                            continue;
-                        }
-                        $meta = json_decode(file_get_contents($file), true) ?: [];
-                        if (($this->_iq_topic_format($meta) === 'micro') !== $is_micro) {
-                            $wrong_format = true;
-                            break;
-                        }
-                        $master_fields['max_score'] = max(1, $is_micro
-                            ? $this->_count_micro_topic_items($meta)
-                            : $this->_count_iq_topic_questions($meta));
-                        $topic_found = true;
-                        break;
-                    }
-                }
-                if ($wrong_format) {
-                    $this->session->set_flashdata('error', $is_micro
-                        ? 'Microlearning Quiz needs a topic in the microlearning format (sections with "chunks") — the selected topic is a plain lesson+quiz topic, so use the Interactive Discussion/Quiz widget for it.'
-                        : 'Interactive Discussion/Quiz needs a plain lesson+quiz topic — the selected topic is in the microlearning format (sections with "chunks"), so use the Microlearning Quiz widget for it.');
-                    redirect('class_assessments' . ($class_id ? '?class_id=' . $class_id : ''));
-                    return;
-                }
-                if (!$topic_found) {
-                    $this->session->set_flashdata('error', $widget['name'] . ' needs a topic — pick one from the Topic dropdown (the selected topic file could not be found).');
-                    redirect('class_assessments' . ($class_id ? '?class_id=' . $class_id : ''));
-                    return;
-                }
-            } elseif ($widget) {
-                $given = trim((string) ($master_fields['given'] ?? ''));
-                $config = $given !== '' ? json_decode($given, true) : null;
-                if (!is_array($config) || empty($config)) {
-                    if ($given === '') {
-                        $reason = 'an empty config';
-                    } elseif (json_last_error() !== JSON_ERROR_NONE) {
-                        $reason = 'invalid JSON (' . json_last_error_msg() . ')';
-                    } else {
-                        $reason = 'JSON that is not an object';
-                    }
-                    $this->session->set_flashdata('error', 'Widget config not saved — "' . $widget['name'] . '" needs a JSON config, but the form contained ' . $reason . '.');
-                    redirect('class_assessments' . ($class_id ? '?class_id=' . $class_id : ''));
-                    return;
-                }
-                if (in_array($widget['widget_key'], ['quiz', 'secure_quiz'], true) && !isset($config['questions'])) {
-                    $master_fields['given'] = json_encode(['questions' => $this->Widgets_model->quiz_questions($config)]);
-                }
-            }
-        }
-
-        $this->assessments->update_master($master_id, $master_fields);
-
-        $this->session->set_flashdata('success', 'Assessment updated successfully.');
-        redirect('class_assessments' . ($class_id ? '?class_id=' . $class_id : ''));
-    }
-
-    // One-time/idempotent maintenance action: backfills class_id on masters
-    // created before save_assessment() started populating it on write (see
-    // assessments::backfill_class_id()). Safe to run repeatedly — only
-    // touches rows where class_id IS NULL.
-    public function backfill_assessment_class_id()
-    {
-        $count = $this->assessments->backfill_class_id();
-        $this->session->set_flashdata('success', "Backfilled class_id on $count assessment(s).");
-        redirect('class_assessments' . ($this->input->post('class_id') ? '?class_id=' . (int) $this->input->post('class_id') : ''));
-    }
-
-    // Full delete of a draft or assigned master and everything under it
-    // (sections, groupings, live state, and — if it has submissions —
-    // classworks rows too). Distinct from delete_assessment(), which only
-    // ever removes ONE section; this removes the whole assessment across
-    // every section it's on, for the class_assessments page's "Delete"
-    // action. Same two-step force-confirm pattern as delete_assessment().
-    public function delete_class_assessment($master_id)
-    {
-        header('Content-Type: application/json');
-
-        if ($this->input->method() !== 'post') {
-            echo json_encode(['success' => false, 'error' => 'Invalid request method.']);
-            return;
-        }
-
-        $master_id = (int) $master_id;
-        $master = $this->db->where('assessment_id', $master_id)->get('assessments')->row_array();
-        if (!$master) {
-            echo json_encode(['success' => false, 'error' => 'Assessment not found.']);
-            return;
-        }
-
-        $section_ids = array_column($this->assessments->sections_of_master($master_id), 'assessment_section_id');
-        $submission_count = $section_ids
-            ? (int) $this->db->where_in('assessment_id', $section_ids)->count_all_results('classworks')
-            : 0;
-
-        $force = $this->input->post('force') === '1';
-
-        if ($submission_count > 0 && !$force) {
-            echo json_encode(['success' => false, 'blocked' => true, 'submission_count' => $submission_count]);
-            return;
-        }
-
-        if ($submission_count > 0) {
-            $this->db->where_in('assessment_id', $section_ids)->delete('classworks');
-        }
-        // assessment_section rows (and their assessment_groupings/
-        // assessment_live_state) cascade via FK to the master.
-        $this->assessments->delete_master($master_id);
-
-        echo json_encode(['success' => true]);
-    }
-
-    // Renders a widget's own input_view against admin-authored "given" JSON so
-    // the Add/Edit Assessment modal can show a live preview underneath the
-    // config textarea — same view file the student sees, just with
-    // readonly=false/existing=null (a blank, unsubmitted form).
-    public function preview_widget()
-    {
-        $widget_id = $this->input->post('widget_id');
-        $given = $this->input->post('given');
-
-        if (empty($widget_id)) {
-            echo '<p class="text-muted mb-0">Select a widget above to see a preview.</p>';
-            return;
-        }
-
-        $this->load->model('Widgets_model');
-        $widget = $this->Widgets_model->get((int) $widget_id);
-        if (!$widget) {
-            echo '<p class="text-danger mb-0">Unknown widget.</p>';
-            return;
-        }
-
-        $config = [];
-        if (trim((string) $given) !== '') {
-            $config = json_decode($given, true);
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                echo '<p class="text-danger mb-0"><i class="fas fa-exclamation-triangle"></i> Invalid JSON &mdash; fix the config above to see a preview.</p>';
-                return;
-            }
-        }
-
-        echo $this->load->view($widget['input_view'], [
-            'config'   => $config ?: [],
-            'readonly' => false,
-            'existing' => null,
-        ], true);
-    }
-
-    public function update_assessment_status()
-    {
-        $assessment_id = (int)$this->input->post('assessment_id');
-        $status = $this->input->post('status');
-
-        if ($status === 'open' || $status === 'closed') {
-            $status = $status === 'open' ? '1' : '0';
-        }
-
-        if (!$assessment_id || !in_array($status, ['0', '1'], true)) {
-            echo json_encode(['success' => false]);
-            return;
-        }
-
-        $this->db->where('assessment_section_id', $assessment_id)->update('assessment_section', ['status' => (int)$status]);
-        echo json_encode(['success' => true]);
-    }
-
-    // Bulk open/close — used by the "Open All" / "Close All" buttons on
-    // manage_assessments, applied only to the assessment_ids currently shown
-    // in the table (i.e. respecting the Section filter).
-    public function bulk_update_assessment_status()
-    {
-        $status = $this->input->post('status');
-        $assessment_ids = $this->input->post('assessment_ids');
-        $assessment_ids = is_array($assessment_ids) ? array_filter(array_map('intval', $assessment_ids)) : [];
-
-        if (!in_array($status, ['0', '1'], true) || empty($assessment_ids)) {
-            echo json_encode(['success' => false]);
-            return;
-        }
-
-        $this->db->where_in('assessment_section_id', $assessment_ids)->update('assessment_section', ['status' => (int)$status]);
-        echo json_encode(['success' => true]);
-    }
-
-    // Delete button on manage_assessments. Two-step: without `force`, a
-    // pending student submission blocks the delete and reports how many exist
-    // (so the modal JS can re-confirm with the admin using a fresh count —
-    // never trusting the row count already rendered in the table, which can
-    // go stale between page load and click). Only with `force=1` does it
-    // cascade-delete the classworks rows too; otherwise a zero-submission
-    // assessment is removed outright.
-    public function delete_assessment($id)
-    {
-        header('Content-Type: application/json');
-
-        if ($this->input->method() !== 'post') {
-            echo json_encode(['success' => false, 'error' => 'Invalid request method.']);
-            return;
-        }
-
-        $assessment_id = (int) $id;
-        if (!$assessment_id || !$this->assessments->get($assessment_id)) {
-            echo json_encode(['success' => false, 'error' => 'Assessment not found.']);
-            return;
-        }
-
-        $submission_count = (int) $this->db
-            ->where('assessment_id', $assessment_id)
-            ->count_all_results('classworks');
-
-        if ($submission_count > 0) {
-            echo json_encode(['success' => false, 'blocked' => true, 'submission_count' => $submission_count]);
-            return;
-        }
-
-        // assessment_groupings/assessment_live_state cascade-delete via their
-        // FK to assessment_section — delete_section() handles both that and
-        // deleting the now-orphaned master if this was its last section.
-        $this->assessments->delete_section($assessment_id);
-
-        echo json_encode(['success' => true]);
-    }
-
-    public function increment_randomized_count($classwork_id)
-    {
-        $this->classworks->set('randomized_count', 'randomized_count+1', FALSE)
-            ->where('classwork_id', $classwork_id)
-            ->update('classwork');
-        echo json_encode(['success' => true]);
-    }
-
-    public function add_score($classwork_id, $score)
-    {
-        $error  = null;
-        $result = $this->classworks->set_score($classwork_id, $score, $error);
-
-        // A capped write still succeeds; $error carries the notice so the
-        // grading UI can show what was actually stored.
-        echo json_encode([
-            'success' => $result,
-            'notice'  => $error,
-            'score'   => $this->db->select('score')
-                ->where('classwork_id', $classwork_id)
-                ->get('classworks')
-                ->row('score'),
-        ]);
-    }
-
-    public function add_rand_score_incremental($classwork_id, $points = 2)
-    {
-        $points = (int) $points;
-        if ($points < 1) {
-            $points = 1;
-        }
-
-        $result = $this->db->query(
-            "UPDATE classworks c
-             JOIN assessment_full a ON a.assessment_id = c.assessment_id
-             SET c.score = LEAST(COALESCE(c.score, 0) + ?, a.max_score)
-             WHERE c.classwork_id = ?",
-            [$points, $classwork_id]
-        );
-
-        $score = $this->db->select('score')
-            ->where('classwork_id', $classwork_id)
-            ->get('classworks')
-            ->row('score');
-
-        echo json_encode(['success' => (bool)$result, 'score' => $score]);
-    }
-
-    /** Every classworks row currently scored above its assessment's max_score. */
-    public function score_integrity()
-    {
-        $violations = $this->classworks->get_scores_exceeding_max();
-
-        $this->load->view('admin/score_integrity', [
-            'violations' => $violations,
-        ]);
-    }
-
-    /**
-     * Cap one over-max row down to its assessment's max_score. Reuses
-     * set_score()'s own clamp — passing the row's current (over-max) score
-     * back in is what triggers the cap, so there is exactly one place that
-     * decides what "capped" means.
-     */
-    public function fix_score($classwork_id)
-    {
-        $row = $this->db->select('score')
-            ->where('classwork_id', $classwork_id)
-            ->get('classworks')
-            ->row_array();
-
-        if (!$row) {
-            echo json_encode(['success' => FALSE, 'message' => 'Submission not found.']);
-            return;
-        }
-
-        $error = null;
-        $ok = $this->classworks->set_score($classwork_id, $row['score'], $error);
-
-        echo json_encode([
-            'success' => $ok,
-            'message' => $error ?: 'Score capped.',
-            'score'   => $this->db->select('score')->where('classwork_id', $classwork_id)->get('classworks')->row('score'),
-        ]);
-    }
-
-    public function student_violations()
-    {
-        $student_id = $this->input->get('student_id');
-        $status_filter = $this->input->get('status');
-        $severity_filter = $this->input->get('severity');
-        $data['students'] = json_decode(json_encode($this->student_master->get_all() ?: []), true);
-        $data['violation_types'] = $this->violation->get_violation_types() ?: [];
-        $data['violations'] = [];
-        $data['selected_student_id'] = $student_id;
-        $data['selected_status'] = $status_filter;
-        $data['selected_severity'] = $severity_filter;
-        $data['student'] = null;
-
-        if ($student_id) {
-            $data['student'] = $this->student_master->get_student_info($student_id);
-            $filters = ['student_id' => $student_id];
-            if ($status_filter) $filters['status'] = $status_filter;
-            if ($severity_filter) $filters['severity'] = $severity_filter;
-            $data['violations'] = $this->violation->get_all_violations($filters) ?: [];
-            $data['violation_summary'] = $this->violation->get_violation_summary_by_student($student_id) ?: [];
-        } else {
-            $filters = [];
-            if ($status_filter) $filters['status'] = $status_filter;
-            if ($severity_filter) $filters['severity'] = $severity_filter;
-            $data['violations'] = $this->violation->get_all_violations($filters) ?: [];
-        }
-
-        $this->load->view('admin/student_violations', $data);
-    }
-
-    public function add_violation()
-    {
-        if ($this->input->post()) {
-            $student_id = $this->input->post('student_id');
-            $violation_type = $this->input->post('violation_type');
-            $description = $this->input->post('description');
-            $severity = $this->input->post('severity');
-            $date_of_violation = $this->input->post('date_of_violation');
-            $reported_by = $this->input->post('reported_by') ?: 'Admin';
-            $notes = $this->input->post('notes');
-
-            if (!$student_id || !$violation_type || !$date_of_violation) {
-                $this->session->set_flashdata('error', 'Please fill in all required fields.');
-                redirect('admin/student_violations?student_id=' . $student_id);
-                return;
-            }
-
-            $this->violation->add_violation($student_id, $violation_type, $description, $severity, $date_of_violation, $reported_by, $notes);
-            $this->session->set_flashdata('success', 'Violation recorded successfully.');
-            redirect('admin/student_violations?student_id=' . $student_id);
-        } else {
-            $data['violation_types'] = $this->violation->get_violation_types() ?: [];
-            $data['students'] = json_decode(json_encode($this->student_master->get_all() ?: []), true);
-            $this->load->view('admin/add_violation', $data);
-        }
-    }
-
-    public function update_violation_status()
-    {
-        if ($this->input->post()) {
-            $violation_id = $this->input->post('violation_id');
-            $status = $this->input->post('status');
-            $notes = $this->input->post('notes');
-
-            if (!$violation_id || !$status) {
-                echo json_encode(['success' => false, 'message' => 'Missing required fields']);
-                return;
-            }
-
-            $this->violation->update_violation_status($violation_id, $status, $notes);
-            echo json_encode(['success' => true, 'message' => 'Violation status updated']);
-        } else {
-            echo json_encode(['success' => false, 'message' => 'Invalid request']);
-        }
-    }
-
-    public function students_by_section()
-    {
-        $this->load->model('class_student');
-        $section = $this->input->get('section');
-        $data['sections'] = $this->class_student->get_sections_with_counts();
-        $data['selected_section'] = $section;
-        $data['students'] = [];
-
-        if ($section) {
-            $data['students'] = $this->class_student->get_students_with_profile_by_section($section);
-        }
-
-        $this->load->view('admin/students_by_section', $data);
-    }
-
-    public function student_summary($student_id = null)
-    {
-        if (!$student_id) {
-            redirect('admin/students_by_section');
-        }
-
-        $student = $this->student_master->get_student_info($student_id);
-        if (!$student) {
-            $this->session->set_flashdata('error', 'Student not found.');
-            redirect('admin/students_by_section');
-        }
-
-        $account = $this->accounts->as_array()->get(['student_id' => $student_id]);
-
-        $this->load->model(['classworks', 'Semester_model', 'Grade_calculator']);
-        $sem_id = $this->Semester_model->resolve_id($this->input->get('sem'));
-        $data = array_merge($data ?? [], $this->_semester_view_data($student_id, $sem_id));
-        $data['history']           = $this->Grade_calculator->history_for_student($student_id);
-        $data['history_link_base'] = base_url('admin/student_summary/' . (int) $student_id);
-        $data['student']      = $student;
-        $data['profile_pic']  = $account ? $account['profile_pic'] : null;
-        $data['has_account']  = $account && $account['role'] === 'student';
-        $data['attendance']   = $this->student_master->get_attendance_summary($student_id, $sem_id);
-        $data['classworks']   = $this->classworks->get_submissions_by_student($student_id, $sem_id);
-        $data['violations']   = $this->violation->get_all_violations(['student_id' => $student_id]);
-        $data['vio_summary']  = $this->violation->get_violation_summary_by_student($student_id);
-        $data['contacts']     = $this->emergency_contact->get_by_student($student_id);
-
-        $this->load->view('admin/student_summary', $data);
-    }
-
-    // Admin-only "log in as" this student, for testing features from the
-    // student's point of view. Stashes the admin's own account_id in
-    // session['impersonator'] first so AuthenticationController::return_to_admin()
-    // can restore it — otherwise the admin would be stuck as the student
-    // once their own session data is overwritten below.
-    public function login_as_student($student_id = null)
-    {
-        if (!$student_id) {
-            redirect('admin/students_by_section');
-        }
-
-        $user = $this->accounts->with_student()->get(['student_id' => $student_id, 'role' => 'student']);
-        if (!$user) {
-            $this->session->set_flashdata('error', 'This student has no login account to log in as.');
-            redirect('admin/student_summary/' . $student_id);
-        }
-
-        $active_semester = $this->db->where('is_active', 1)->get('semester_master')->row_array();
-        $enrollment = null;
-        if ($active_semester) {
-            $enrollment = $this->class_student->get([
-                'student_id'  => $user->student_id,
-                'semester_id' => $active_semester['trans_no'],
-            ]);
-        }
-
-        if (!$this->session->userdata('impersonator')) {
-            $this->session->set_userdata('impersonator', [
-                'account_id' => $this->session->userdata('account_id'),
-                'username'   => $this->session->userdata('username'),
-            ]);
-        }
-
-        $this->session->set_userdata([
-            'account_id'   => $user->account_id,
-            'student_id'   => $user->student_id,
-            'student_no'   => $user->student->student_no,
-            'lastname'     => $user->student->lastname,
-            'firstname'    => $user->student->firstname,
-            'course'       => $user->student->course,
-            'current_year' => $user->student->current_year,
-            'section'      => $enrollment ? $enrollment->section : null,
-            'role'         => $user->role,
-            'username'     => $user->username,
-            'profile_pic'  => $user->profile_pic,
-            'online'       => true,
-            'exam_term'    => false,
-            'exam_review'  => false,
-        ]);
-
-        redirect($enrollment ? 'attendance' : 'student/add_section');
-    }
-
-    public function register_student()
-    {
-        $data['schedules'] = $this->class_schedule->get_all_active();
-        $data['active_semester'] = $this->db->where('is_active', 1)->get('semester_master')->row_array();
-
-        if ($this->input->post()) {
-            $student_no = trim($this->input->post('student_no'));
-            $lastname   = trim($this->input->post('lastname'));
-            $firstname  = trim($this->input->post('firstname'));
-            $middlename = trim($this->input->post('middlename'));
-            $username   = trim($this->input->post('username'));
-            $password   = $this->input->post('password');
-            $confirm    = $this->input->post('confirm_password');
-
-            if ($password !== $confirm) {
-                $this->session->set_flashdata('error', 'Passwords do not match.');
-                $this->load->view('admin/register_student', $data);
-                return;
-            }
-
-            if ($this->db->where('student_no', $student_no)->count_all_results('student_master')) {
-                $this->session->set_flashdata('error', "Student number {$student_no} is already registered.");
-                $this->load->view('admin/register_student', $data);
-                return;
-            }
-
-            if ($this->db->where('username', $username)->count_all_results('accounts')) {
-                $this->session->set_flashdata('error', "Username \"{$username}\" is already taken.");
-                $this->load->view('admin/register_student', $data);
-                return;
-            }
-
-            if ($this->db->where('lastname', $lastname)
-                         ->where('firstname', $firstname)
-                         ->where('middlename', $middlename)
-                         ->count_all_results('student_master')) {
-                $this->session->set_flashdata('error', "A student named \"{$firstname} {$middlename} {$lastname}\" is already registered.");
-                $this->load->view('admin/register_student', $data);
-                return;
-            }
-
-            $student_data = [
-                'student_no'    => $student_no,
-                'lastname'      => $lastname,
-                'firstname'     => $firstname,
-                'middlename'    => $middlename,
-                'extname'       => trim($this->input->post('extname')),
-                'gender'        => $this->input->post('gender'),
-                'birthday'      => $this->input->post('birthday') ?: null,
-                'course'        => trim($this->input->post('course')),
-                'current_year'  => (int)$this->input->post('current_year'),
-                'year_section'  => trim($this->input->post('year_section')),
-                'SY'            => trim($this->input->post('SY')),
-                'contact_no'    => trim($this->input->post('contact_no')),
-                'email'         => trim($this->input->post('email')),
-                'allowed_to_enroll' => 'Y',
-                'status'        => 'E',
-                'created_dt'    => date('Y-m-d H:i:s'),
-            ];
-            $this->db->insert('student_master', $student_data);
-            $student_id = $this->db->insert_id();
-
-            $this->db->insert('accounts', [
-                'student_id'  => $student_id,
-                'username'    => $username,
-                'password'    => password_hash($password, PASSWORD_DEFAULT),
-                'role'        => 'student',
-                'created_at'  => date('Y-m-d'),
-            ]);
-
-            $schedule_id = (int)$this->input->post('schedule_id');
-            if ($schedule_id) {
-                $sched = $this->db->where('schedule_id', $schedule_id)->get('class_schedule')->row_array();
-                if ($sched) {
-                    $sem_id = $data['active_semester'] ? $data['active_semester']['trans_no'] : $sched['semester_id'];
-                    $this->db->insert('class_student', [
-                        'student_id'  => $student_id,
-                        'class_id'    => $sched['class_id'],
-                        'schedule_id' => $sched['schedule_id'],
-                        'section'     => $sched['section'],
-                        'semester_id' => $sem_id,
-                        'status'      => 'enrolled',
-                        'is_cleared'  => 0,
-                    ]);
-                }
-            }
-
-            $this->session->set_flashdata('success', "Student {$firstname} {$lastname} registered successfully.");
-            redirect('admin/register_student');
-            return;
-        }
-
-        $this->load->view('admin/register_student', $data);
-    }
-
-    public function semesters()
-    {
-        $data['semesters'] = $this->db->order_by('trans_no', 'DESC')->get('semester_master')->result_array();
-        $edit_id = $this->input->get('edit');
-        $data['editing'] = null;
-        if ($edit_id) {
-            $data['editing'] = $this->db->where('trans_no', (int)$edit_id)->get('semester_master')->row_array();
-        }
-        $this->load->view('admin/semesters', $data);
-    }
-
-    public function save_semester()
-    {
-        $post        = $this->input->post();
-        $trans_no    = !empty($post['trans_no']) ? (int)$post['trans_no'] : null;
-
-        $data = [
-            'semcode'      => trim($post['semcode']),
-            'description'  => trim($post['description']),
-            'semtype'      => (int)$post['semtype'],
-            'semyear'      => (int)$post['semyear'],
-            'class_started'=> $post['class_started'] ?: null,
-            'passing_rate' => (int)$post['passing_rate'],
-        ];
-
-        if ($trans_no) {
-            $this->db->where('trans_no', $trans_no)->update('semester_master', $data);
-            $this->session->set_flashdata('success', 'Semester updated.');
-        } else {
-            $this->db->insert('semester_master', $data);
-            $this->session->set_flashdata('success', 'Semester added.');
-        }
-
-        redirect('admin/semesters');
-    }
-
-    public function activate_semester($id)
-    {
-        $this->db->update('semester_master', ['is_active' => null]);
-        $this->db->where('trans_no', (int)$id)->update('semester_master', ['is_active' => 1]);
-        $this->session->set_flashdata('success', 'Semester activated. Students without an enrollment record for this semester will be prompted to enroll on next login.');
-        redirect('admin/semesters');
-    }
-
-    // Shared by the per-student admin pages: the semester dropdown options
-    // (this student's semesters, plus the active one) and the archived flag.
-    private function _semester_view_data($student_id, $sem_id)
-    {
-        $options = [];
-        foreach ($this->Semester_model->for_student($student_id) as $sem) {
-            $options[$sem['trans_no']] = $sem;
-        }
-        $active = $this->Semester_model->active();
-        if ($active && !isset($options[$active['trans_no']])) {
-            $options[$active['trans_no']] = $active;
-            krsort($options);
-        }
-        return [
-            'semester_options' => array_values($options),
-            'viewed_semester'  => $this->Semester_model->get($sem_id),
-            'viewing_archived' => !$this->Semester_model->is_active($sem_id),
-        ];
-    }
-
-    // Toggle whether students may see a past semester's grades/submissions.
-    public function toggle_semester_release($id)
-    {
-        $this->load->model('Semester_model');
-        $sem = $this->Semester_model->get($id);
-        if (!$sem) {
-            redirect('admin/semesters');
-        }
-        if ($this->Semester_model->set_released($id, empty($sem['grades_released']))) {
-            $this->session->set_flashdata('success', 'Release setting updated.');
-        } else {
-            $this->session->set_flashdata('error', 'Run scripts/semester_release_migration.sql first.');
-        }
-        redirect('admin/semesters');
-    }
-
-    public function check_student_no()
-    {
-        header('Content-Type: application/json');
-        $student_no = $this->input->get('student_no');
-        $exists = $student_no && $this->db->where('student_no', $student_no)->count_all_results('student_master') > 0;
-        echo json_encode(['exists' => $exists]);
-    }
-
-    public function check_username()
-    {
-        header('Content-Type: application/json');
-        $username = $this->input->get('username');
-        $exists = $username && $this->db->where('username', $username)->count_all_results('accounts') > 0;
-        echo json_encode(['exists' => $exists]);
-    }
-
-    public function student_requests()
-    {
-        $this->load->library('pagination');
-
-        $status   = $this->input->get('status') ?: null;
-        $type     = $this->input->get('type')   ?: null;
-        $per_page = 15;
-        $total    = $this->student_request->count_requests($status, $type);
-        $offset   = (int)$this->input->get('per_page') ?: 0;
-
-        $qs_parts = [];
-        if ($status) $qs_parts[] = 'status=' . urlencode($status);
-        if ($type)   $qs_parts[] = 'type='   . urlencode($type);
-        $base_url = base_url('admin/student_requests') . '?' . ($qs_parts ? implode('&', $qs_parts) . '&' : '');
-
-        $config = [
-            'base_url'              => $base_url,
-            'total_rows'            => $total,
-            'per_page'              => $per_page,
-            'page_query_string'     => TRUE,
-            'query_string_segment'  => 'per_page',
-            'reuse_query_string'    => TRUE,
-            'use_page_numbers'      => FALSE,
-            'full_tag_open'         => '<ul class="pagination pagination-sm mb-0">',
-            'full_tag_close'        => '</ul>',
-            'first_link'            => '&laquo;',
-            'first_tag_open'        => '<li class="page-item">',
-            'first_tag_close'       => '</li>',
-            'last_link'             => '&raquo;',
-            'last_tag_open'         => '<li class="page-item">',
-            'last_tag_close'        => '</li>',
-            'next_link'             => '&rsaquo;',
-            'next_tag_open'         => '<li class="page-item">',
-            'next_tag_close'        => '</li>',
-            'prev_link'             => '&lsaquo;',
-            'prev_tag_open'         => '<li class="page-item">',
-            'prev_tag_close'        => '</li>',
-            'num_tag_open'          => '<li class="page-item">',
-            'num_tag_close'         => '</li>',
-            'cur_tag_open'          => '<li class="page-item active"><a class="page-link" href="#">',
-            'cur_tag_close'         => '</a></li>',
-            'attributes'            => ['class' => 'page-link'],
-            'num_links'             => 4,
-        ];
-        $this->pagination->initialize($config);
-
-        $data['requests']        = $this->student_request->get_all_requests($status, $type, $per_page, $offset);
-        $data['selected_status'] = $status;
-        $data['selected_type']   = $type;
-        $data['pagination']      = $this->pagination->create_links();
-        $data['total']           = $total;
-        $data['per_page']        = $per_page;
-        $data['offset']          = $offset;
-        $this->load->view('admin/student_requests', $data);
-    }
-
-    public function process_student_request()
-    {
-        $post        = $this->input->post();
-        $request_id  = (int)($post['request_id'] ?? 0);
-        $action      = $post['action'] ?? '';
-        $admin_notes = trim($post['admin_notes'] ?? '');
-
-        if (!$request_id || !in_array($action, ['approved', 'rejected'])) {
-            $this->session->set_flashdata('error', 'Invalid request.');
-            redirect('admin/student_requests');
-            return;
-        }
-
-        $request = $this->db->get_where('student_requests', ['request_id' => $request_id])->row_array();
-        if (!$request) {
-            $this->session->set_flashdata('error', 'Request not found.');
-            redirect('admin/student_requests');
-            return;
-        }
-
-        $this->db->where('request_id', $request_id)->update('student_requests', [
-            'status'      => $action,
-            'admin_notes' => $admin_notes,
-            'updated_at'  => date('Y-m-d H:i:s'),
-        ]);
-
-        if ($action === 'approved' && $request['type'] === 'absence') {
-            $this->db
-                ->where('student_id', $request['student_id'])
-                ->where('schedule_id', $request['schedule_id'])
-                ->where('DATE(date)', $request['request_date'])
-                ->update('attendance', ['status' => 'excuse', 'reason' => $request['reason']]);
-        }
-
-        $this->session->set_flashdata('success', 'Request ' . $action . '.');
-        redirect('admin/student_requests');
-    }
-
-    // ── Password Reset Requests ──────────────────────────────────────────────
-
-    public function password_resets()
-    {
-        $this->password_reset_request->install();
-
-        $status = $this->input->get('status') ?: null;
-        $data['requests']        = $this->password_reset_request->get_all($status);
-        $data['selected_status'] = $status;
-        $this->load->view('admin/password_resets', $data);
-    }
-
-    public function process_password_reset()
-    {
-        $post        = $this->input->post();
-        $request_id  = (int) ($post['request_id'] ?? 0);
-        $action      = $post['action'] ?? '';
-        $admin_notes = trim($post['admin_notes'] ?? '');
-
-        if (!$request_id || !in_array($action, ['approved', 'rejected'])) {
-            $this->session->set_flashdata('error', 'Invalid request.');
-            redirect('admin/password_resets');
-            return;
-        }
-
-        $request = $this->db->get_where('password_reset_requests', ['request_id' => $request_id])->row_array();
-        if (!$request || $request['status'] !== 'pending') {
-            $this->session->set_flashdata('error', 'Request not found or already processed.');
-            redirect('admin/password_resets');
-            return;
-        }
-
-        $update = [
-            'status'      => $action,
-            'admin_notes' => $admin_notes,
-            'updated_at'  => date('Y-m-d H:i:s'),
-        ];
-
-        if ($action === 'approved') {
-            $account = $this->db->get_where('accounts', ['student_id' => $request['student_id']])->row_array();
-            if (!$account) {
-                $this->session->set_flashdata('error', 'No account linked to that student.');
-                redirect('admin/password_resets');
-                return;
-            }
-
-            $default = $request['student_no'];
-
-            // Default username = student number, unless another account already
-            // uses it — then keep the existing username and reset the password only.
-            $username_taken = $this->db
-                ->where('username', $default)
-                ->where('account_id !=', $account['account_id'])
-                ->count_all_results('accounts') > 0;
-            $new_username = $username_taken ? $account['username'] : $default;
-
-            $this->db->where('account_id', $account['account_id'])->update('accounts', [
-                'username'             => $new_username,
-                'password'             => password_hash($default, PASSWORD_DEFAULT),
-                'must_change_password' => 1,
-            ]);
-
-            $update['default_username'] = $new_username;
-            $update['default_password'] = $default;
-        }
-
-        $this->db->where('request_id', $request_id)->update('password_reset_requests', $update);
-
-        $this->session->set_flashdata('success', 'Password reset request ' . $action . '.');
-        redirect('admin/password_resets');
-    }
-
-    // ── Discussion Management ────────────────────────────────────────────────
-
-    public function manage_discussions()
-    {
-        $this->load->model('discussions');
-
-        $filter_class_id = $this->input->get('class_id') ?: '';
-        $filter_type      = $this->input->get('type') ?: '';
-        $filter_q         = trim($this->input->get('q') ?? '');
-
-        $this->db->select('*')->from('discussions');
-        if ($filter_class_id !== '') {
-            $this->db->where('class_id', (int) $filter_class_id);
-        }
-        if ($filter_type === 'static' || $filter_type === 'interactive') {
-            $this->db->where('type', $filter_type);
-        }
-        if ($filter_q !== '') {
-            $this->db->group_start()
-                ->like('title', $filter_q)
-                ->or_like('description', $filter_q)
-                ->or_like('link', $filter_q)
-                ->group_end();
-        }
-        $data['discussions'] = $this->db
-            ->order_by('class_id', 'asc')
-            ->order_by('type', 'asc')
-            ->order_by('created_at', 'desc')
-            ->get()
-            ->result_array();
-
-        $data['selected_class_id'] = $filter_class_id;
-        $data['selected_type']     = $filter_type;
-        $data['search_q']          = $filter_q;
-
-        $data['classes'] = $this->db->order_by('class_id')->get('classes')->result_array();
-
-        // Build topic list: slug, title, and section count from each JSON file
-        $data['json_topics'] = [];
-        foreach ($this->_glob_json_topics() as $f) {
-            $slug = basename($f, '.json');
-            $meta = json_decode(file_get_contents($f), true);
-            $data['json_topics'][] = [
-                'slug'     => $slug,
-                'title'    => $meta['title'] ?? ucwords(str_replace('_', ' ', $slug)),
-                'sections' => count($meta['sections'] ?? []),
-            ];
-        }
-        usort($data['json_topics'], function($a, $b) { return strcmp($a['title'], $b['title']); });
-
-        // Static topic files, grouped by subfolder (application/views/discussions/{folder}/*.php)
-        $discussions_view_path = APPPATH . 'views/discussions/';
-        $data['static_topics'] = [];
-        foreach (glob($discussions_view_path . '*', GLOB_ONLYDIR) ?: [] as $dir) {
-            $folder = basename($dir);
-            $files = [];
-            foreach (glob($dir . '/*.php') ?: [] as $f) {
-                $base = basename($f, '.php');
-                $files[] = [
-                    'path'  => "DiscussionController/topic/{$folder}/{$base}",
-                    'label' => $base,
-                ];
-            }
-            usort($files, function($a, $b) { return strcmp($a['label'], $b['label']); });
-            if ($files) {
-                $data['static_topics'][$folder] = $files;
-            }
-        }
-        ksort($data['static_topics']);
-
-        $this->load->view('admin/manage_discussions', $data);
-    }
-
-    public function save_discussion()
-    {
-        $this->load->model('discussions');
-
-        $id       = (int) $this->input->post('id');
-        $type     = $this->input->post('type') === 'interactive' ? 'interactive' : 'static';
-        $link     = trim($this->input->post('link') ?? '');
-        $class_id = (int) $this->input->post('class_id');
-
-        if ($type === 'interactive') {
-            if ($this->input->post('json_source') === 'new') {
-                $slug = $this->_save_pasted_topic_json(
-                    $class_id,
-                    trim($this->input->post('new_slug') ?? ''),
-                    $this->input->post('json_text') ?? ''
-                );
-                if ($slug === false) {
-                    redirect('AdminController/manage_discussions');
-                    return;
-                }
-                $link = $slug;
-            } else {
-                // Existing topic — the link field holds the slug — strip any accidental path prefix
-                $link = preg_replace('/[^a-z0-9_]/', '', strtolower($link));
-            }
-        }
-
-        $row = [
-            'class_id'     => $class_id,
-            'type'         => $type,
-            'title'        => trim($this->input->post('title')),
-            'description'  => trim($this->input->post('description') ?? ''),
-            'link'         => $link,
-            'display_date' => $this->input->post('display_date') ?: null,
-            'updated_at'   => date('Y-m-d H:i:s'),
-        ];
-
-        if ($id) {
-            // MY_Model::update() takes (data, where) — NOT (where, data).
-            $this->discussions->update($row, $id);
-            $this->session->set_flashdata('success', 'Discussion updated.');
-        } else {
-            $row['created_at'] = date('Y-m-d H:i:s');
-            $this->discussions->insert($row);
-            $this->session->set_flashdata('success', 'Discussion added.');
-        }
-
-        redirect('AdminController/manage_discussions');
-    }
-
-    // JSON topic files live either directly in assets/json/ (legacy/unfiled)
-    // or one level down in a class-code folder (assets/json/{CLASS_CODE}/) —
-    // see _save_pasted_topic_json(). Topic slugs stay globally unique and
-    // unaware of the folder, so callers just need every *.json under either.
-    private function _glob_json_topics()
-    {
-        $json_path = FCPATH . 'assets/json/';
-        $root      = glob($json_path . '*.json') ?: [];
-        $nested    = glob($json_path . '*/*.json') ?: [];
-        return array_merge($root, $nested);
-    }
-
-    // Class code a topic file belongs to, derived from its parent folder
-    // under assets/json/ (see _save_pasted_topic_json(), which writes new
-    // topics to assets/json/{CLASS_CODE}/). Returns '' for legacy/unfiled
-    // files sitting directly in assets/json/, meaning "available to every class".
-    private function _topic_class_code_from_path($file)
-    {
-        $json_path = rtrim(FCPATH . 'assets/json', '/\\');
-        $parent    = rtrim(dirname($file), '/\\');
-        return ($parent === $json_path) ? '' : basename($parent);
-    }
-
-    // Destination class for a pasted topic file (see _resolve_iq_paste()).
-    // Both save_assessment() (which posts schedule_id in "section" apply_mode,
-    // or class_id in "class"/"draft" mode) and update_class_assessment_master()
-    // (which only ever posts class_id, no apply_mode/schedule_id) route through
-    // here so the class-folder logic isn't duplicated a third time.
-    private function _class_id_from_post($post)
-    {
-        $mode = $post['apply_mode'] ?? 'section';
-        if ($mode !== 'class' && $mode !== 'draft' && !empty($post['schedule_id'])) {
-            $class_id = $this->db->select('class_id')->where('schedule_id', $post['schedule_id'])
-                ->get('class_schedule')->row('class_id');
-            if ($class_id) {
-                return (int) $class_id;
-            }
-        }
-        return (int) ($post['class_id'] ?? $post['return_class_id'] ?? 0);
-    }
-
-    // Runs the assessment modal's "Paste new JSON" flow for a topic widget.
-    // Returns null when the admin instead chose "Reuse existing topic" (the
-    // caller's normal _glob_json_topics() lookup handles that case unchanged),
-    // false on validation/collision failure (flashdata already set by
-    // _save_pasted_topic_json()), or the newly-saved slug on success — callers
-    // fold that slug into $master_fields['given'] before their existing
-    // topic-lookup loop runs, so max_score derivation doesn't need to change.
-    private function _resolve_iq_paste($post, $widget)
-    {
-        if (($post['iq_source'] ?? 'existing') !== 'new') {
-            return null;
-        }
-        return $this->_save_pasted_topic_json(
-            $this->_class_id_from_post($post),
-            trim($post['iq_new_slug'] ?? ''),
-            $post['iq_new_json'] ?? '',
-            $widget['widget_key'] === 'iq_micro' ? 'micro' : 'discussion',
-            false
-        );
-    }
-
-    // Validates a pasted topic JSON template and writes it to
-    // assets/json/{CLASS_CODE}/{slug}.json (falls back to assets/json/{slug}.json
-    // if the class can't be resolved). Returns the slug on success, or false
-    // (with a flashdata error already set) on failure.
-    // $format: 'discussion' (default, manage_discussions' only caller today) or
-    // 'micro' (the assessment-modal "Paste new JSON" flow — see _resolve_iq_paste()).
-    // $allow_overwrite: manage_discussions has always silently overwritten an
-    // existing slug; the assessment-modal flow passes false because a topic
-    // file is shared by every assessment pointing at it, so clobbering one
-    // could change an already-graded quiz out from under another section.
-    private function _save_pasted_topic_json($class_id, $slug, $json_text, $format = 'discussion', $allow_overwrite = true)
-    {
-        $slug = preg_replace('/[^a-z0-9_]/', '', strtolower($slug));
-        if (!preg_match('/^[a-z0-9_]{1,100}$/', $slug)) {
-            $this->session->set_flashdata('error', 'Slug is required and may only contain lowercase letters, digits, and underscores.');
-            return false;
-        }
-
-        $data = json_decode(trim($json_text), true);
-        if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
-            $this->session->set_flashdata('error', 'Invalid JSON: ' . ($data === null ? json_last_error_msg() : 'must decode to an object.'));
-            return false;
-        }
-
-        $this->load->model('Iq_topic_model');
-        $validation_error = $this->Iq_topic_model->validate_structure($data, $format);
-        if ($validation_error) {
-            $this->session->set_flashdata('error', $validation_error);
-            return false;
-        }
-
-        $json_path = FCPATH . 'assets/json/';
-        if (!is_writable($json_path)) {
-            $this->session->set_flashdata('error', 'assets/json/ is not writable. Contact your administrator.');
-            return false;
-        }
-
-        if (!$allow_overwrite) {
-            foreach ($this->_glob_json_topics() as $existing) {
-                if (basename($existing, '.json') === $slug) {
-                    $where = $this->_topic_class_code_from_path($existing);
-                    $this->session->set_flashdata('error', 'Topic slug "' . $slug . '" already exists'
-                        . ($where ? " (class {$where})" : ' (unfiled)')
-                        . ' — pick another slug, or select that topic from the dropdown.');
-                    return false;
-                }
-            }
-        }
-
-        $dest_dir = $json_path;
-        if ($class_id) {
-            $class = $this->db->select('class_code')->where('class_id', $class_id)->get('classes')->row_array();
-            if (!empty($class['class_code'])) {
-                $folder = preg_replace('/[^A-Za-z0-9_-]/', '_', $class['class_code']);
-                $candidate = $json_path . $folder . '/';
-                if (is_dir($candidate) || @mkdir($candidate, 0775, true)) {
-                    $dest_dir = $candidate;
-                }
-            }
-        }
-
-        $data['topic'] = $slug;
-        $pretty = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-
-        $dest = $dest_dir . $slug . '.json';
-        $overwrite = file_exists($dest);
-        if (file_put_contents($dest, $pretty) === false) {
-            $this->session->set_flashdata('error', 'Failed to save JSON file. Check directory permissions.');
-            return false;
-        }
-
-        $this->session->set_flashdata('success', $overwrite
-            ? "Topic file \"{$slug}.json\" overwritten."
-            : "Topic file \"{$slug}.json\" created.");
-        return $slug;
-    }
-
-    public function delete_discussion($id)
-    {
-        if ($this->input->method() !== 'post') {
-            redirect('AdminController/manage_discussions');
-            return;
-        }
-
-        $this->load->model('discussions');
-        $this->discussions->delete((int) $id);
-        $this->session->set_flashdata('success', 'Discussion deleted.');
-        redirect('AdminController/manage_discussions');
-    }
-
-    public function search_students()
-    {
-        header('Content-Type: application/json');
-        $q      = $this->input->get('q');
-        $search = $this->input->get('search');
-        $term   = $q ?: $search;
-        $results = [];
-
-        if (!empty($term)) {
-            /** @var CI_DB_query_builder $db */
-            $db = $this->db;
-            $db->select('trans_no, firstname, lastname');
-            $db->like('firstname', $term);
-            $db->or_like('lastname', $term);
-            $db->or_like('trans_no', $term);
-            $db->limit(20);
-            $rows = $db->get('student_master')->result_array();
-
-            if ($q) {
-                foreach ($rows as $student) {
-                    $results[] = [
-                        'id'   => $student['trans_no'],
-                        'text' => $student['firstname'] . ' ' . $student['lastname'] . ' (' . $student['trans_no'] . ')',
-                    ];
-                }
-            } else {
-                $results = $rows;
-            }
-        }
-
-        echo json_encode($results);
-    }
-
-    // ------------------------------------------------------------------
-    // Worksheet Generator — Claude-powered content generator. Produces
-    // widget/discussion config JSON for the instructor to review and copy
-    // into the existing, already-validated authoring flows (Widget textarea
-    // in manage_assessments.php / discussion paste-to-file). Never writes to
-    // assessments.given or assets/json itself — copy-to-clipboard only.
-    // ------------------------------------------------------------------
-
-    public function worksheet_generator()
-    {
-        $data['schedules'] = $this->class_schedule->get_all_active();
-        $this->load->view('admin/worksheet_generator', $data);
-    }
-
-    // Populates the assessment picker for a chosen course/section — used by
-    // the "From existing assessment" source mode on quiz_from_worksheet, so
-    // the instructor can ground a generated quiz in real classwork instead of
-    // hand-pasting JSON.
-    public function worksheet_assessments_for_schedule()
-    {
-        header('Content-Type: application/json');
-
-        $schedule_id = (int) $this->input->post('schedule_id');
-        if (!$schedule_id) {
-            echo json_encode(['ok' => false, 'error' => 'Missing schedule_id.']);
-            return;
-        }
-
-        $rows = $this->assessments->get_all_for_admin(['schedule_id' => $schedule_id]);
-        $out  = [];
-        foreach ($rows as $r) {
-            $out[] = [
-                'assessment_id'    => (int) $r['assessment_id'],
-                'title'            => $r['title'],
-                'iotype'           => $r['iotype'] ?? '',
-                'term'             => $r['term'] ?? '',
-                'submission_count' => (int) ($r['submission_count'] ?? 0),
-            ];
-        }
-
-        echo json_encode(['ok' => true, 'assessments' => $out]);
-    }
-
-    // Compiles a text "source" block from an existing assessment (title,
-    // description, widget config) and, optionally, an anonymized sample of
-    // student classwork submissions — so a generated quiz can be grounded in
-    // content students actually worked with. Never forwards student names or
-    // trans_no to the model; classworks::get_all_submissions() rows are
-    // stripped down to just submission content + score before use.
-    public function worksheet_source_from_assessment()
-    {
-        header('Content-Type: application/json');
-
-        $assessment_ids       = $this->input->post('assessment_ids');
-        $assessment_ids       = is_array($assessment_ids) ? array_values(array_unique(array_filter(array_map('intval', $assessment_ids)))) : [];
-        $include_submissions  = (bool) $this->input->post('include_submissions');
-
-        if (empty($assessment_ids)) {
-            echo json_encode(['ok' => false, 'error' => 'Select at least one assessment.']);
-            return;
-        }
-
-        $blocks = [];
-        $titles = [];
-
-        foreach ($assessment_ids as $assessment_id) {
-            $row = $this->db->select('a.assessment_id, a.title, a.description, a.given, a.term, cl.class_code, cl.class_name, cs.section, w.name AS widget_name')
-                ->from('assessment_full a')
-                ->join('class_schedule cs', 'cs.schedule_id = a.schedule_id')
-                ->join('classes cl', 'cl.class_id = cs.class_id')
-                ->join('widgets w', 'w.widget_id = a.widget_id', 'left')
-                ->where('a.assessment_id', $assessment_id)
-                ->get()->row_array();
-
-            if (!$row) {
-                continue;
-            }
-
-            $titles[] = $row['title'];
-
-            $lines   = [];
-            $lines[] = '=== Assessment: ' . $row['title'] . ' ===';
-            $lines[] = 'Course: ' . $row['class_code'] . ' - ' . $row['class_name'] . ', Section ' . $row['section'] . ' (' . $row['term'] . ')';
-            if (!empty($row['widget_name'])) {
-                $lines[] = 'Activity type: ' . $row['widget_name'];
-            }
-            if (!empty($row['description'])) {
-                $lines[] = "Description:\n" . $row['description'];
-            }
-            if (!empty($row['given'])) {
-                $given_decoded = json_decode($row['given'], true);
-                $given_pretty  = ($given_decoded !== null) ? json_encode($given_decoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : $row['given'];
-                $lines[]       = "Assessment content/config:\n" . $given_pretty;
-            }
-
-            if ($include_submissions) {
-                $subs   = $this->classworks->get_all_submissions($assessment_id);
-                $sample = array_slice($subs, 0, 15);
-                if (!empty($sample)) {
-                    $lines[] = "Sample student submissions (anonymized, for grounding only):";
-                    $n = 0;
-                    foreach ($sample as $s) {
-                        $content = trim((string) ($s['code'] ?? ''));
-                        if ($content === '') continue;
-                        $n++;
-                        $decoded_content = json_decode($content, true);
-                        $pretty_content  = ($decoded_content !== null) ? json_encode($decoded_content, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : $content;
-                        $pretty_content  = mb_substr($pretty_content, 0, 2000);
-                        $lines[]         = "--- Submission #{$n} ---\n" . $pretty_content;
-                    }
-                } else {
-                    $lines[] = "(No student submissions yet for this assessment.)";
-                }
-            }
-
-            $blocks[] = implode("\n\n", $lines);
-        }
-
-        if (empty($blocks)) {
-            echo json_encode(['ok' => false, 'error' => 'None of the selected assessments could be found.']);
-            return;
-        }
-
-        $combined_title = implode(' & ', $titles);
-        if (mb_strlen($combined_title) > 120) {
-            $combined_title = mb_substr($combined_title, 0, 117) . '…';
-        }
-
-        echo json_encode(['ok' => true, 'title' => $combined_title, 'source' => implode("\n\n\n", $blocks)]);
-    }
-
-    public function worksheet_generate()
-    {
-        header('Content-Type: application/json');
-
-        // Larger requests (e.g. a 60-question quiz) take Claude noticeably
-        // longer to generate than the default script/cURL timeouts allow for.
-        set_time_limit(240);
-
-        $this->load->library('anthropic_client');
-
-        $type   = $this->input->post('type');
-        $topic  = trim((string) $this->input->post('topic'));
-        $params = [
-            'course'      => trim((string) $this->input->post('course')),
-            'count'       => max(1, min(60, (int) $this->input->post('count'))) ?: 5,
-            'duration'    => trim((string) $this->input->post('duration')),
-        ];
-        $source       = trim((string) $this->input->post('source'));
-        $requirements = trim((string) $this->input->post('requirements'));
-
-        if ($topic === '' && $type !== 'quiz_from_worksheet') {
-            echo json_encode(['ok' => false, 'error' => 'Topic is required.']);
-            return;
-        }
-
-        switch ($type) {
-            case 'lab_worksheet':
-                list($system, $user) = $this->_wg_prompt_lab_worksheet($topic, $params);
-                break;
-            case 'worksheet_table':
-                list($system, $user) = $this->_wg_prompt_worksheet_table($topic, $params);
-                break;
-            case 'discussion':
-                list($system, $user) = $this->_wg_prompt_discussion($topic, $params);
-                break;
-            case 'quiz_from_worksheet':
-                if ($source === '') {
-                    echo json_encode(['ok' => false, 'error' => 'Provide source content: pick an existing assessment or paste worksheet JSON to generate a quiz from.']);
-                    return;
-                }
-                list($system, $user) = $this->_wg_prompt_quiz_from_worksheet($topic, $source, $params);
-                break;
-            default:
-                echo json_encode(['ok' => false, 'error' => 'Unknown output type.']);
-                return;
-        }
-
-        if ($requirements !== '') {
-            $user .= "\n\nAdditional requirements from the instructor (follow these carefully, but never deviate from the required JSON shape above):\n{$requirements}";
-        }
-
-        // Scale the output budget with how many items were requested — a flat
-        // 8000 truncates well before 60 quiz questions or 60 discussion
-        // sections finish generating. ~350 tokens/item covers even the more
-        // verbose types (lab_worksheet HTML instructions, discussion lesson
-        // HTML), floored at 6000 for small requests, capped at 32000 (Opus
-        // 4.8 supports up to 128K but this is a synchronous, non-streaming
-        // cURL call — keep it well under the 240s time limit above).
-        $max_tokens = min(32000, max(6000, $params['count'] * 350 + 2000));
-
-        $result = $this->anthropic_client->generate($system, $user, $max_tokens);
-
-        if (!$result['ok']) {
-            echo json_encode(['ok' => false, 'error' => $result['error']]);
-            return;
-        }
-
-        $json_text = $this->_wg_strip_fences($result['text']);
-        $data = json_decode($json_text, true);
-
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            echo json_encode(['ok' => false, 'error' => 'Model did not return valid JSON: ' . json_last_error_msg(), 'raw' => $json_text]);
-            return;
-        }
-
-        $validation_error = null;
-        switch ($type) {
-            case 'lab_worksheet':
-                $validation_error = $this->_wg_validate_lab_worksheet($data);
-                break;
-            case 'worksheet_table':
-                $validation_error = $this->_wg_validate_worksheet_table($data);
-                break;
-            case 'discussion':
-                $validation_error = $this->_wg_validate_discussion($data);
-                break;
-            case 'quiz_from_worksheet':
-                $validation_error = $this->_wg_validate_quiz($data);
-                break;
-        }
-
-        if ($validation_error) {
-            echo json_encode(['ok' => false, 'error' => 'Generated JSON has an invalid shape: ' . $validation_error, 'raw' => $json_text]);
-            return;
-        }
-
-        $pretty = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-
-        $preview_html = '';
-        if ($type === 'lab_worksheet') {
-            $preview_html = $this->load->view('widgets/lab_worksheet', ['config' => $data, 'readonly' => true, 'existing' => null], true);
-        } elseif ($type === 'worksheet_table') {
-            $config = $data;
-            $preview_html = $this->load->view('widgets/worksheet', ['config' => $config, 'readonly' => true, 'existing' => null], true);
-        } elseif ($type === 'discussion') {
-            $preview_html = $this->load->view('admin/_worksheet_preview', ['mode' => 'discussion', 'data' => $data], true);
-        } elseif ($type === 'quiz_from_worksheet') {
-            $preview_html = $this->load->view('admin/_worksheet_preview', ['mode' => 'quiz', 'data' => $data], true);
-        }
-
-        echo json_encode(['ok' => true, 'json' => $pretty, 'preview_html' => $preview_html]);
-    }
-
-    private function _wg_strip_fences($text)
-    {
-        $text = trim($text);
-        $text = preg_replace('/^```(?:json)?\s*/i', '', $text);
-        $text = preg_replace('/\s*```$/', '', $text);
-        return trim($text);
-    }
-
-    private function _wg_slug($topic)
-    {
-        $slug = strtolower(trim($topic));
-        $slug = preg_replace('/[^a-z0-9]+/', '_', $slug);
-        return trim($slug, '_') ?: 'topic';
-    }
-
-    private function _wg_prompt_lab_worksheet($topic, $params)
-    {
-        $count = $params['count'];
-        $system = <<<SYS
-You generate config JSON for the "lab_worksheet" classwork widget in a CodeIgniter LMS (Predict/Observe/Explain lab activities). Output ONLY raw JSON, no markdown fences, no commentary, matching EXACTLY this shape:
-
-{
-  "intro": "<p>optional HTML shown above the experiments (objectives, timeline, etc.)</p>",
-  "experiments": [
-    {
-      "title": "Experiment 1.1 — short descriptive title",
-      "instructions": "<p>...</p><pre><code>...</code></pre>",
-      "warning": false,
-      "hint": "optional nudge for the whole experiment",
-      "prompts": [
-        {"tag": "predict", "label": "PREDICT", "text": "What do you think will happen?", "hint": "optional nudge for this prompt"},
-        {"tag": "observe", "label": "OBSERVE", "text": "What actually happened?"},
-        {"tag": "explain", "label": "EXPLAIN", "text": "Why did that happen?"}
-      ],
-      "note": "optional short note shown after the prompts"
-    }
-  ],
-  "exit_question": "optional single free-text question shown after all experiments",
-  "exit_question_hint": "optional nudge for the exit question"
-}
-
-Rules:
-- "instructions" is trusted HTML — use <p>, <pre><code>...</code></pre> for code snippets, <ul>/<li> as needed. Escape HTML entities inside <code> blocks (&lt; &gt; &amp;).
-- Allowed "tag" values: predict, observe, explain, bonus. Most experiments use predict+observe+explain; use "bonus" sparingly for an optional stretch prompt.
-- Set "warning": true only for an experiment that deliberately breaks something to illustrate a concept ("breaking it on purpose").
-- "note" and "exit_question" are optional — omit the key entirely if not needed, do not use null.
-- Every "hint" is optional and PLAIN TEXT (no HTML — it is escaped). It renders collapsed behind a small (?) the student taps, so it must nudge toward the reasoning, never state the answer. Add one only where a student can realistically get stuck; most prompts need none. Omit the key entirely otherwise.
-- Order experiments so difficulty ramps up gradually.
-SYS;
-        $user = "Generate a lab worksheet (Predict/Observe/Explain, {$count} experiments) about: {$topic}."
-            . ($params['course'] !== '' ? " Course context: {$params['course']}." : '')
-            . ($params['duration'] !== '' ? " Target duration: {$params['duration']}." : '')
-            . " Output raw JSON only.";
-        return [$system, $user];
-    }
-
-    private function _wg_prompt_worksheet_table($topic, $params)
-    {
-        $count = $params['count'];
-        $system = <<<SYS
-You generate config JSON for the "worksheet" classwork widget in a CodeIgniter LMS — a repeatable-row table activity. Output ONLY raw JSON, no markdown fences, no commentary, matching EXACTLY this shape:
-
-{
-  "widget": "worksheet",
-  "columns": ["Column A", "Column B", "Column C"],
-  "min_rows": 5,
-  "allow_add_rows": true
-}
-
-Rules:
-- "columns" is a PLAIN ARRAY OF STRINGS (column headers) — NOT an array of objects with key/label/type.
-- "min_rows" is an integer — how many empty rows the student starts with.
-- "allow_add_rows" is a boolean — whether the student may add more rows beyond min_rows.
-- Choose columns that fit a table-style activity for the given topic (comparison, categorization, timeline, etc.).
-SYS;
-        $user = "Generate a worksheet table (around {$count} suggested min_rows, 3-6 columns) about: {$topic}."
-            . ($params['course'] !== '' ? " Course context: {$params['course']}." : '')
-            . " Output raw JSON only.";
-        return [$system, $user];
-    }
-
-    private function _wg_prompt_discussion($topic, $params)
-    {
-        $slug = $this->_wg_slug($topic);
-        $count = max(3, $params['count']) ?: 10;
-        $system = <<<SYS
-You generate interactive-discussion topic JSON for a CodeIgniter LMS. Output ONLY raw JSON, no markdown fences, no commentary, matching EXACTLY this shape:
-
-{
-  "topic": "snake_case_slug",
-  "title": "Human-readable title",
-  "description": "One sentence description.",
-  "congratsText": "Encouraging completion message.",
-  "sections": [
-    {
-      "id": 0,
-      "title": "Objectives",
-      "quiz": null,
-      "lesson": "<div class=\\"lesson-title\\">...</div><div class=\\"lesson-text\\">...</div>"
-    },
-    {
-      "id": 1,
-      "title": "Section title",
-      "quiz": {
-        "question": "A question about this section's content.",
-        "code": "optional code snippet, HTML-entity-encoded",
-        "options": ["Option A", "Option B", "Option C", "Option D"],
-        "correct": 0
-      },
-      "lesson": "<div class=\\"lesson-title\\">...</div><div class=\\"lesson-text\\">...</div>"
-    }
-  ]
-}
-
-Rules:
-- "id" is 0-based and increments by 1 per section.
-- Section 0 is always "Objectives" (3 bullet points in the lesson HTML) with "quiz": null.
-- The LAST section is always "Recap" with "quiz": null.
-- All other (middle) sections MUST have a "quiz" object — never null for them.
-- "correct" is a ZERO-BASED index into "options" for the correct choice.
-- "code" inside "quiz" is optional — omit the key entirely if there is no code snippet; when present, HTML-encode angle brackets and quotes (&lt; &gt; &amp; &quot;).
-- "lesson" is trusted HTML using ONLY these CSS classes where relevant: lesson-title, lesson-text, highlight, code-block, comparison, comparison-col, comparison-label.
-- Generate exactly {$count} sections total (including Objectives and Recap).
-SYS;
-        $user = "Generate an interactive discussion topic (slug: {$slug}, {$count} sections) about: {$topic}."
-            . ($params['course'] !== '' ? " Course context: {$params['course']}." : '')
-            . " Output raw JSON only.";
-        return [$system, $user];
-    }
-
-    private function _wg_prompt_quiz_from_worksheet($topic, $source, $params)
-    {
-        $slug = $this->_wg_slug($topic !== '' ? $topic : 'worksheet');
-        $count = max(5, $params['count']) ?: 15;
-        $system = <<<SYS
-You generate a Bloom's Taxonomy multiple-choice quiz JSON derived from source content, for a CodeIgniter LMS. The source content may be an instructor's worksheet/activity config JSON, a plain description of an assessment, and/or anonymized excerpts of real student submissions for that assessment. Output ONLY raw JSON, no markdown fences, no commentary, matching EXACTLY this shape:
-
-{
-  "topic": "snake_case_slug",
-  "title": "Quiz Title — Bloom's Taxonomy Quiz",
-  "questions": [
-    {
-      "id": 1,
-      "bloomLevel": "Remember",
-      "question": "Question text.",
-      "code": "optional code snippet",
-      "choices": ["Choice A", "Choice B", "Choice C", "Choice D"],
-      "answer": "Choice A",
-      "topic": "snake_case_slug",
-      "type": "multiple_choice"
-    }
-  ]
-}
-
-Rules:
-- "id" starts at 1 and increments by 1.
-- "bloomLevel" is one of: Remember, Understand, Apply, Analyze, Evaluate, Create. Distribute across levels, weighted toward Remember/Understand/Apply.
-- "answer" MUST be the EXACT STRING of the correct choice (not an index).
-- "code" is optional — omit the key entirely when not needed.
-- Every question's content must be grounded in the source content given below — do not introduce unrelated topics.
-- When the source includes "Sample student submissions", prefer questions that build on the concepts, patterns, or common mistakes actually visible in those submissions, so students recognize their own classwork in the quiz. Never reference or imply any specific student's identity — the submissions are anonymized and must stay that way in your output.
-- Generate exactly {$count} questions.
-SYS;
-        $user = "Source content (base the quiz on this):\n\n{$source}\n\n"
-            . "Generate a {$count}-question Bloom's Taxonomy quiz (slug: {$slug}) derived from the above."
-            . ($topic !== '' ? " Focus/title hint: {$topic}." : '')
-            . " Output raw JSON only.";
-        return [$system, $user];
-    }
-
-    private function _wg_validate_lab_worksheet($data)
-    {
-        if (!is_array($data)) return 'not a JSON object';
-        if (!isset($data['experiments']) || !is_array($data['experiments'])) return 'missing "experiments" array';
-        foreach ($data['experiments'] as $i => $exp) {
-            if (!is_array($exp)) return "experiments[{$i}] is not an object";
-            if (empty($exp['title'])) return "experiments[{$i}] missing \"title\"";
-            if (isset($exp['prompts']) && !is_array($exp['prompts'])) return "experiments[{$i}].prompts must be an array";
-        }
-        return null;
-    }
-
-    private function _wg_validate_worksheet_table($data)
-    {
-        if (!is_array($data)) return 'not a JSON object';
-        if (!isset($data['columns']) || !is_array($data['columns'])) return 'missing "columns" array';
-        foreach ($data['columns'] as $col) {
-            if (!is_string($col)) return '"columns" must be an array of plain strings';
-        }
-        return null;
-    }
-
-    private function _wg_validate_discussion($data)
-    {
-        if (!is_array($data)) return 'not a JSON object';
-        if (empty($data['topic']) || !is_string($data['topic'])) return 'missing "topic" slug';
-        if (!isset($data['sections']) || !is_array($data['sections']) || empty($data['sections'])) return 'missing "sections" array';
-        foreach ($data['sections'] as $i => $s) {
-            if (!is_array($s)) return "sections[{$i}] is not an object";
-            if (!array_key_exists('lesson', $s)) return "sections[{$i}] missing \"lesson\"";
-            if (!array_key_exists('quiz', $s)) return "sections[{$i}] missing \"quiz\" key (use null if none)";
-        }
-        return null;
-    }
-
-    private function _wg_validate_quiz($data)
-    {
-        if (!is_array($data)) return 'not a JSON object';
-        if (empty($data['topic']) || !is_string($data['topic'])) return 'missing "topic" slug';
-        if (!isset($data['questions']) || !is_array($data['questions']) || empty($data['questions'])) return 'missing "questions" array';
-        foreach ($data['questions'] as $i => $q) {
-            if (!is_array($q)) return "questions[{$i}] is not an object";
-            if (empty($q['question'])) return "questions[{$i}] missing \"question\"";
-            if (!isset($q['choices']) || !is_array($q['choices'])) return "questions[{$i}] missing \"choices\" array";
-            if (!array_key_exists('answer', $q)) return "questions[{$i}] missing \"answer\"";
-            if (!in_array($q['answer'], $q['choices'], true)) return "questions[{$i}].answer does not exactly match one of its choices";
-        }
-        return null;
     }
 }

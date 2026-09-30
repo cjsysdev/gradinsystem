@@ -50,6 +50,10 @@ class ClassworkController extends CI_Controller
             return;
         }
 
+        // Same gate as AssessmentController::submit_classwork() — this is the
+        // second POST path into classworks. See clearance_helper.php.
+        if (clearance_gate($post['assessment_id'] ?? null, 'classwork')) return;
+
         $value = $this->classworks->where(
             [
                 'student_id' => $this->session->student_id,
@@ -128,14 +132,27 @@ class ClassworkController extends CI_Controller
         }
 
         $widget = null;
+        $timer = null;
         if (!empty($submission['assessments'][0]->widget_id)) {
             $this->load->model('Widgets_model');
             $widget = $this->Widgets_model->get($submission['assessments'][0]->widget_id);
+
+            // Code Snippet timed batches — computed for the SUBMISSION'S OWN
+            // student (not the viewing session), so an admin opening this page
+            // sees the same badge the student would. Widgets_model::
+            // code_snippet_timer() returns null for an untimed assessment.
+            if ($widget && $widget['widget_key'] === 'code_snippet' && !empty($submission['assessments'][0]->timer_config)) {
+                $timer = $this->Widgets_model->code_snippet_timer(
+                    $submission['assessments'][0]->timer_config,
+                    $submission['student_id']
+                );
+            }
         }
 
         $data = [
             'classwork' => $submission,
             'widget' => $widget,
+            'widget_timer' => $timer,
         ];
 
         $this->load->view('student_submission', $data);

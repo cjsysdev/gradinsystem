@@ -15,6 +15,13 @@ function convert_datetime($datetime)
     ];
 }
 
+function convert_due_date_week($datetime)
+{
+    $date = new DateTime($datetime);
+    $week = (int) ceil($date->format('j') / 7);
+    return sprintf('W%d/%s/%s', $week, $date->format('m'), $date->format('y'));
+}
+
 function convert_time($time)
 {
     $newtime = new DateTime($time);

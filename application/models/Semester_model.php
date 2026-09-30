@@ -100,4 +100,27 @@ class Semester_model extends CI_Model
         ", [$assessment_id])->row_array();
         return $row ? (int) $row['semester_id'] : null;
     }
+
+    /**
+     * Data for views/semester_switcher on a per-student page: the dropdown
+     * options (the student's semesters plus the active one), the viewed
+     * semester row, and whether it is archived.
+     */
+    public function view_data($student_id, $sem_id)
+    {
+        $options = [];
+        foreach ($this->for_student($student_id) as $sem) {
+            $options[$sem['trans_no']] = $sem;
+        }
+        $active = $this->active();
+        if ($active && !isset($options[$active['trans_no']])) {
+            $options[$active['trans_no']] = $active;
+            krsort($options);
+        }
+        return [
+            'semester_options' => array_values($options),
+            'viewed_semester'  => $this->get($sem_id),
+            'viewing_archived' => !$this->is_active($sem_id),
+        ];
+    }
 }

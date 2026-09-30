@@ -3,9 +3,11 @@ paths:
   - "application/views/widgets/**"
   - "application/models/widgets_model.php"
   - "application/controllers/AssessmentController.php"
+  - "application/controllers/AdminAssessmentController.php"
   - "application/controllers/BrainstormController.php"
   - "application/controllers/WidgetsController.php"
   - "application/views/admin/manage_assessments.php"
+  - "application/views/admin/snippet_batches.php"
   - "root/docs/paperless-midterm-plan.md"
 ---
 
@@ -103,6 +105,33 @@ list: `AdminController::group_submissions()` grades the draft before handing it
 to the widget view, which renders drafts and submissions identically apart from
 an `is_draft` wording flag. JSON topic files for this format are authored by
 the `interactive-quiz-microlearning` skill.
+**Timed/Secure Quiz** (`secure_quiz` widget_key) is the `quiz` widget's
+lockdown sibling: same `{question, choices, answer}` config in
+`assessments.given`, same server-side `Widgets_model::grade_quiz()`, same
+`{question, user_answer, correct_answer, is_correct}` results array in
+`classworks.code` — but taken in a dedicated fullscreen/timer/tab-switch page
+(`SecureQuizController` → `views/secure_quiz_view.php`) rather than an inline
+card form, so `AssessmentController::assessment_view_code()` redirects there
+and `widgets/secure_quiz.php` only ever renders the readonly/preview modes.
+**`SecureQuizController::index()` shuffles the bank, slices it to `max_score`,
+shuffles each question's choices, and destroys the drawn set at submit** — so
+every student sees a different subset in a different order, and an array index
+into `classworks.code` means nothing across two submissions. Anything
+aggregating across submissions must key on the **trimmed question text**; the
+config has no question ids. `classworks.switch_count` holds the client-reported
+tab-switch tally (NULL = not recorded, which is not the same as 0); it is a soft
+proctoring hint shown as a badge in `admin/all_submission.php`, never an input
+to a score. Class-wide item analysis for BOTH quiz widgets lives in
+`Widgets_model::quiz_item_stats()` (beside `grade_quiz()`, so reader and writer
+of the result shape can't drift) → `AdminController::quiz_stats()` →
+`views/admin/quiz_stats.php`, reachable from the submissions page or
+`admin/quiz_stats/{section_id}[/section|/all]` — `all` pools every section of
+the master, which matters because the per-student sampling leaves individual
+items thin in a single section. That model **trusts the stored `is_correct` and
+never re-grades against the current config** (the bank may have been edited
+since, and re-deriving would contradict the recorded `classworks.score`); it
+produces descriptive statistics only, never a grade, so `Grade_calculator` stays
+uninvolved.
 A fourth widget, **Case Study Worksheet** (`case_study` widget_key, not in
 the original 6-widget plan — see plan doc §4 "Widget I"), covers narrative
 case-study activities (e.g. "Meet Maria the calamansi farmer," Session 1.2):
@@ -115,12 +144,13 @@ as Worksheet Form/Lab Worksheet. Renders inline via the standard
 special-case redirect needed). The admin "Widget" dropdown's example JSON
 for this widget (`manage_assessments.php`'s `widgetExamples.case_study`) is
 the full Session 1.2 "Meet Maria" worksheet, ready to save as-is.
-A fifth widget, **Case Dossier Rating** (`case_dossier` widget_key, not in
+A fifth widget, **Case Dossier** (`case_dossier` widget_key, not in
 the original 6-widget plan — see plan doc §4 "Widget J"), covers comparative
 case-study activities (e.g. "Why Inventions Fail: The Innovation Triangle,"
 Session 2.1): a hook question, a read-only conceptual-framework explainer,
-then multiple parallel case dossiers (e.g. GCash/Kodak/Friendster) each
-rated 1-5 per factor with a required cited-evidence text field, then
+then multiple parallel case dossiers (e.g. GCash/Kodak/Friendster) where
+each factor is answered by citing a fact from that dossier (a single
+evidence textarea per factor — there is no rating scale), then
 reflection questions. Every authored dossier renders to every student —
 there's no per-student/group case assignment. Not auto-graded — same
 manual-score-entry pattern as the other worksheet-style widgets. Renders
@@ -147,3 +177,63 @@ dropdown's example JSON (`widgetExamples.chapter_worksheet`) is the full
 Worksheet 1 "The Problem" chapter, ready to use as-is — Worksheets 2–10
 from the same pack reuse this same widget with a different config JSON
 each (not yet authored).
+Another widget, **File Upload** (`file_upload` widget_key, see plan doc §4
+"Widget L"), lets students attach files (C sources, documents, text,
+images, PDFs) plus an optional note, individually or as a group (a grouping
+assessment renders it in `group_workspace.php`, and every member's uploads
+sync into one shared list). It's the one widget with its own backend
+endpoints: files go over AJAX to `WidgetFileController::upload()` as soon as
+they're picked, and only their metadata is stored in `classworks.code`, so
+the submit endpoints stay unchanged. Files are served only through
+`WidgetFileController::download()` (access-checked, from a deny-all folder),
+never by direct `uploads/` URL. `files` is an id-keyed object with
+`removed: 1` tombstones, not a list, so the group leaf-merge sync works.
+Not auto-graded.
+Another widget, **Code Snippet** (`code_snippet` widget_key, see plan doc §4
+"Widget M"), is participation-style live-checked coding classwork: the
+instructor checks each student's program on their PC and taps RUN / EFFORT /
+ERROR on the submission card (rubric = percent of `max_score`, default
+100/70/40). The verdict is never stored — `Widgets_model::code_snippet_verdict()`
+derives it from `classworks.score`, and `code_snippet_points()` is the only
+rubric→points calculation. Saving the assessment always creates a blank
+`classworks` row per enrolled student (even without the auto-create checkbox),
+so absent students stay NULL/ungraded; that is also why Unsubmit is hidden
+for it. Student code is an optional `{"code": "..."}` attachment that may be
+added or updated after grading and regardless of the due date —
+`AssessmentController::submit_classwork()` updates only `code` in that case,
+never the score. Individual only (no grouping support).
+**Optional problem pool** (2026-09-30): `given` may carry `problems:
+[{title, problem, starter_code, sample_input, sample_output}]` instead of
+`problem`; each student sees ONE. `Widgets_model::code_snippet_problems()`
+normalizes both shapes (legacy = one-item pool; empty `problems: []` = no
+pool) and `code_snippet_problem_index()` is the only picker: the index pinned
+in `classworks.code.problem` wins, otherwise an md5(section:student) pick.
+Submit and autosave stamp `problem` server-side (never client-posted). The
+admin preview (no `$student_id`) lists the whole pool; the submissions page
+shows a "Problem N of M" badge per card. On a timed assessment a
+non-admin sees no problem text or starter code while their batch is
+`waiting`/`unassigned` (neither the waiting page nor the read-only review
+renders it, and the starter isn't in the page JS); it appears on the
+auto-reload when the batch opens.
+**Optional timed batches** (2026-09, outside the original spec): for a
+PC-limited lab, `AdminAssessmentController::snippet_batches()`
+(`views/admin/snippet_batches.php`) splits a section's roster into batches,
+each with its own start/end, stored as `assessment_section.timer_config`
+(**per section**, not on the shared `assessments.given` master — a `NULL`/
+empty value is untimed, unchanged behavior). Every phase/deadline decision
+(`unassigned`/`waiting`/`open`/`closed`, and what a submit gets accepted or
+stamped with) is computed ONLY by `Widgets_model::code_snippet_timer()` /
+`code_snippet_can_submit()` / `code_snippet_submit_state()` /
+`code_snippet_effective_state()`, off the server clock — never the
+student's PC clock, and never a client-posted flag. `classworks.code` gains
+`state` (`draft`/`submitted`/`timesup`) + `saved_at` for a timed submission.
+The widget renders `waiting` (countdown card, no editor), `open` (editor +
+sticky countdown + 20s AJAX autosave to `AssessmentController::
+snippet_autosave()` + auto `submitForm()` at 0:00), or `closed`
+(`assessment_view_code()` redirects to the read-only review — code is locked
+there, `can_submit()` refuses any further write). A `draft` whose window has
+closed reads back as `timesup` (covers a dead tab/PC — the last autosave IS
+the auto-submission). The flag is display-only; it never touches the
+RUN/EFFORT/ERROR score. `assessment_full` exposes `timer_config` — both the
+column and the view's `CREATE OR REPLACE` live in `Widgets_model::install()`,
+so re-run `WidgetsController/install` after pulling this change.

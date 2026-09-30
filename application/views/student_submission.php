@@ -224,6 +224,19 @@
             'readonly'      => true,
             'existing'      => json_decode($classwork['code'] ?? '', true) ?: [],
             'assessment_id' => $classwork['assessment_id'],
+            // Code Snippet only: which pool problem this student got.
+            'student_id'    => $classwork['student_id'],
+            // Code Snippet only: lets the widget show the derived RUN/EFFORT/ERROR badge.
+            'score'         => $classwork['score'],
+            'max_score'     => $classwork['assessments'][0]->max_score,
+            // Timed/Secure Quiz only: students reviewing their own attempt see
+            // just the items they missed, not the full answer key. Admins who
+            // open this page keep the complete item-by-item view.
+            'wrong_only'    => ($widget['widget_key'] ?? '') === 'secure_quiz'
+                && $this->session->userdata('role') !== 'admin',
+            // Code Snippet timed batches only: shows the TIME'S UP / on-time
+            // badge. Null for an untimed assessment or any other widget.
+            'timer'         => $widget_timer ?? null,
         ]);
         ?>
       <?php elseif ($classwork['file_upload']): ?>
@@ -249,8 +262,8 @@
 
         <?php if (
           isset($classwork['code']) &&
-          !$this->session->exam_term
-          // $classwork['status'] !== 'viewed'
+          !$this->session->exam_term &&
+          $classwork['status'] !== 'viewed'
         ):
         ?>
           <?php $this->classworks->update(['status' => 'viewed'], $classwork['classwork_id']); ?>
@@ -317,20 +330,36 @@
     <div class="card-footer text-center">
       <?php
       $noEditWidgets = ['quiz', 'secure_quiz', 'iq_discussion', 'iq_micro', 'brainstorm'];
-      $canEdit = $classwork['score'] === null
+      // Code Snippet stays editable after grading: the code is an optional
+      // attachment (submit_classwork() then updates only `code`, never the score).
+      // Exception: once a timed batch has closed, the code is locked —
+      // AssessmentController::submit_classwork()'s can_submit() gate already
+      // refuses the write server-side; this just stops the link from being
+      // offered in the first place.
+      $isCodeSnippet = !empty($widget) && $widget['widget_key'] === 'code_snippet';
+      $isTimedClosed = $isCodeSnippet && !empty($widget_timer) && $widget_timer['phase'] === 'closed';
+      $canEdit = ($classwork['score'] === null || $isCodeSnippet)
           && !empty($widget)
-          && !in_array($widget['widget_key'], $noEditWidgets, true);
+          && !in_array($widget['widget_key'], $noEditWidgets, true)
+          && !$isTimedClosed;
       ?>
       <?php if ($canEdit): ?>
-        <a href="<?= base_url('assessment/' . $classwork['assessment_id']) ?>" class="btn btn-outline-primary btn-block">Edit / Continue</a>
+        <a href="<?= base_url('assessment/' . $classwork['assessment_id']) ?>" class="btn btn-outline-primary btn-block"><?= $isCodeSnippet ? 'Add / Update my code' : 'Edit / Continue' ?></a>
+        <?php if ($isCodeSnippet && $classwork['score'] !== null): ?>
+          <p class="text-muted small mt-2 mb-0">Updating your code does not change your score.</p>
+        <?php endif; ?>
+      <?php elseif ($isTimedClosed): ?>
+        <p class="text-muted small mb-0"><i class="fa fa-lock"></i> Time is up for your batch — your code is locked.</p>
       <?php endif; ?>
+      <?php // Unsubmit would delete the roster row Code Snippet grading relies on. ?>
       <?php if (
+        !$isCodeSnippet && (
         $classwork['status'] === 'submitted' &&
-        $classwork['score'] <= 0 ||  $classwork['score'] == null
+        $classwork['score'] <= 0 ||  $classwork['score'] == null)
       ): ?>
         <button id="unsubmit" class="btn btn-outline-secondary btn-block" onclick="unsubmitWork(<?= $classwork['classwork_id'] ?>)">Unsubmit</button>
       <?php endif; ?>
-      <p class="text-muted mt-3">Work cannot be turned in after the due date.</p>
+      <?php if (!$isCodeSnippet): ?><p class="text-muted mt-3">Work cannot be turned in after the due date.</p><?php endif; ?>
     </div>
   </div>
 </div>

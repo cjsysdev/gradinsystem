@@ -1,0 +1,233 @@
+{
+    "topic": "c_array_functions_that_accept_names",
+    "title": "C: Array Functions That Accept Names",
+    "description": "Reading a name from the keyboard into a char array, and passing it to a function.",
+    "congratsText": "Well done. You can now store a name in a char array, explain why it needs no &, and reuse the same shape for any text.",
+    "objectives": [
+        "Declare a char array that can hold a name",
+        "Explain why scanf needs no & for a char array",
+        "Predict what scanf keeps when a space is typed",
+        "Apply the same name-reading shape to a new function"
+    ],
+    "recap": [
+        "A name is an array of letters; %s prints the whole word and %c prints one letter.",
+        "An array name is already an address, so scanf takes it without an &.",
+        "scanf(\"%s\") stops at the first space and keeps only one word.",
+        "The same shape — void, char array, scanf with no & — works for any short text."
+    ],
+    "sections": [
+        {
+            "id": 0,
+            "title": "A Name Is an Array of Letters",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "<span class=\"code-inline\">char name[20];</span> makes <span class=\"highlight\">20 letter-slots</span> in a row — the same idea as an int array, only each slot holds one letter.",
+                    "check": {
+                        "question": "What does char name[20]; give you?",
+                        "options": [
+                            "Twenty slots for letters",
+                            "One slot holding twenty words"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Because it is an array, <span class=\"code-inline\">name[0]</span> is just the <span class=\"highlight\">first letter</span> — exactly like <span class=\"code-inline\">scores[0]</span> was the first number.",
+                    "check": {
+                        "question": "The name holds Maria. What is inside name[0]?",
+                        "options": [
+                            "The letter M",
+                            "The whole word Maria"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Two different printf codes: <span class=\"code-inline\">%s</span> prints the <span class=\"highlight\">whole word</span>, while <span class=\"code-inline\">%c</span> prints one single letter.",
+                    "check": {
+                        "question": "You want the full name printed. Which code do you use?",
+                        "options": [
+                            "%s, for the whole word",
+                            "%c, for the whole word"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "code": "char name[20] = \"Maria\";\nprintf(\"%c\", name[0]);",
+                "question": "What does this print?",
+                "options": [
+                    "M, the first letter only",
+                    "Maria, the whole stored word",
+                    "20, the size of the array",
+                    "0, since that index was used"
+                ],
+                "correct": 0
+            }
+        },
+        {
+            "id": 1,
+            "title": "Reading a Name With No &",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "For a number you wrote <span class=\"code-inline\">scanf(\"%d\", &amp;score);</span>. For a name you write <span class=\"code-inline\">scanf(\"%s\", name);</span> — with <span class=\"highlight\">no &amp;</span> at all.",
+                    "check": {
+                        "question": "Which scanf line correctly reads into char name[20]?",
+                        "options": [
+                            "scanf(\"%s\", name);",
+                            "scanf(\"%s\", &name);"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "The reason is simple: an array's name is <span class=\"highlight\">already an address</span>. The &amp; would ask for an address of an address, which scanf cannot use.",
+                    "check": {
+                        "question": "Why is no & needed for a char array?",
+                        "options": [
+                            "The array name is already an address",
+                            "Letters are too small to need one"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Passing it to a function changes nothing. <span class=\"code-inline\">getName(name);</span> hands over that same address, so the function fills the <span class=\"highlight\">real</span> array in main().",
+                    "check": {
+                        "question": "After getName(name); runs, does main()'s name hold what was typed?",
+                        "options": [
+                            "Yes, the same array was filled",
+                            "No, it must be returned first"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "arrange",
+                "question": "Arrange the tokens to build a function that reads a course into a char array.",
+                "tokens": [
+                    "}",
+                    "printf(\"Enter a course: \");\n    scanf(\"%s\", text);",
+                    "void getCourse(char text[])",
+                    "{"
+                ],
+                "correctOrder": [
+                    "void getCourse(char text[])",
+                    "{",
+                    "printf(\"Enter a course: \");\n    scanf(\"%s\", text);",
+                    "}"
+                ]
+            }
+        },
+        {
+            "id": 2,
+            "title": "Why Only One Word Gets In",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "<span class=\"code-inline\">scanf(\"%s\", name);</span> stops reading at the <span class=\"highlight\">first space</span>. Type Maria Clara and only Maria is stored.",
+                    "check": {
+                        "question": "You type Maria Clara into scanf(\"%s\"). What is stored?",
+                        "options": [
+                            "Maria only",
+                            "Maria Clara, both words"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "The word you lost is not deleted — it <span class=\"highlight\">waits in line</span> and jumps into the very next scanf without asking you again.",
+                    "check": {
+                        "question": "After typing two words, the next scanf runs. What does it do?",
+                        "options": [
+                            "Takes the leftover word straight away",
+                            "Stops and waits for fresh typing"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "None of this shows up as an error. The build stays <span class=\"highlight\">clean</span>, so a quiet Compile Log never proves your input arrived correctly.",
+                    "check": {
+                        "question": "Your program builds with no errors. Does that prove the full name got stored?",
+                        "options": [
+                            "Not always, check it yourself",
+                            "Yes, a clean build proves it"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "type",
+                "code": "char name[20] = \"none\";\nscanf(\"%s\", name);\n/* user types: Maria Clara */\nprintf(\"%s\", name);",
+                "question": "Type the exact word this prints.",
+                "acceptedAnswers": [
+                    "Maria",
+                    "maria"
+                ]
+            }
+        },
+        {
+            "id": 3,
+            "title": "Same Shape, Any Text",
+            "callback": true,
+            "refSection": "0, 1 & 2",
+            "chunks": [
+                {
+                    "text": "One function shape covers every short text: <span class=\"code-inline\">void getCity(char text[])</span> reads a city exactly the way <span class=\"code-inline\">getName</span> read a name.",
+                    "check": {
+                        "question": "Why can getCity reuse the same shape as getName?",
+                        "options": [
+                            "Both read one word into a char array",
+                            "Both send the finished word back"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Because a char array is passed as an <span class=\"highlight\">address</span>, no <span class=\"code-inline\">return</span> is ever needed — the caller's array is the one being filled.",
+                    "check": {
+                        "question": "Does getCity need a return line to hand the city back?",
+                        "options": [
+                            "No, it filled the real array",
+                            "Yes, or the city is lost"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "The space rule follows along too. <span class=\"code-inline\">getCity</span> given <span class=\"highlight\">Tagbilaran City</span> keeps only the first word, just like any other <span class=\"code-inline\">%s</span> read.",
+                    "check": {
+                        "question": "A user types Tagbilaran City into getCity. What is stored?",
+                        "options": [
+                            "Tagbilaran, the first word",
+                            "Tagbilaran City, both words"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "code": "void getCity(char text[]) {\n    printf(\"Enter a city: \");\n    scanf(\"%s\", text);\n}\n\nchar city[20] = \"none\";\ngetCity(city);\n/* user types: Cebu City */\nprintf(\"%s\", city);",
+                "question": "What does this print?",
+                "options": [
+                    "Cebu, up to the space",
+                    "none, since nothing was stored",
+                    "Cebu City, the full entry",
+                    "City, the last word typed in"
+                ],
+                "correct": 0
+            }
+        }
+    ]
+}

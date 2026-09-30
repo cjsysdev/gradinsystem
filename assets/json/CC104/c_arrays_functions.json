@@ -1,0 +1,233 @@
+{
+    "topic": "c_arrays_functions",
+    "title": "C: Arrays & Functions",
+    "description": "How to hand a whole array to a function, and why the original array changes.",
+    "congratsText": "Nice work. You can now pass an array into a function, say why the original changes, and explain why the size has to go with it.",
+    "objectives": [
+        "Write a function that takes an array plus its size",
+        "Explain why a function can change the caller's array",
+        "Identify why an array's size must be passed in",
+        "Choose between a void function and one that returns a value"
+    ],
+    "recap": [
+        "An array function takes two parameters: the array and how many items it holds.",
+        "A function receives an array's address, not a copy, so edits reach the original.",
+        "Inside a function, sizeof measures an address, so the size must be passed in.",
+        "void functions change the array in place; a return type hands one value back."
+    ],
+    "sections": [
+        {
+            "id": 0,
+            "title": "Passing an Array to a Function",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "A function that works on an array needs <span class=\"highlight\">two</span> things: the array itself, and how many items it holds. That is why the parameter list reads <span class=\"code-inline\">int arr[], int size</span>.",
+                    "check": {
+                        "question": "Why does the function ask for a size as well as the array?",
+                        "options": [
+                            "The array alone does not say how long it is",
+                            "The size is only there to make the code readable"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Inside the function the array has a different name. In <span class=\"code-inline\">main()</span> it is <span class=\"code-inline\">scores</span>. Inside the function it is <span class=\"code-inline\">arr</span>. Same array, two names.",
+                    "check": {
+                        "question": "Does the function need a variable called scores to work?",
+                        "options": [
+                            "No, it works through its own name arr",
+                            "Yes, the two names have to match exactly"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "You call it with the array's name and the count. No brackets, no <span class=\"code-inline\">&amp;</span>: <span class=\"code-inline\">showScores(scores, 5);</span>.",
+                    "check": {
+                        "question": "Which call hands the whole array to the function?",
+                        "options": [
+                            "showScores(scores, 5);",
+                            "showScores(scores[5], 5);"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "code": "void showScores(int arr[], int size) {\n    int i;\n    for (i = 0; i < size; i++) {\n        printf(\"%d \", arr[i]);\n    }\n}\n\nint main() {\n    int scores[5] = {90, 85, 78, 92, 88};\n    showScores(scores, 3);\n    return 0;\n}",
+                "question": "What does this program print?",
+                "options": [
+                    "90 85 78",
+                    "90 85 78 92 88",
+                    "78 92 88",
+                    "85 78 92"
+                ],
+                "correct": 0
+            }
+        },
+        {
+            "id": 1,
+            "title": "Why the Original Array Changes",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "Hand a function a plain <span class=\"code-inline\">int</span> and it gets a <span class=\"highlight\">copy</span>. Changing that copy leaves the original alone.",
+                    "check": {
+                        "question": "After bumpValue(x) runs v = 999 inside, what is x back in main()?",
+                        "options": [
+                            "Still whatever it was before",
+                            "Now 999, the same as v"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Hand a function an array and it gets the <span class=\"highlight\">address</span> of the first item instead. No copy of the items is made.",
+                    "check": {
+                        "question": "What does the function receive when you pass scores?",
+                        "options": [
+                            "The address of the first item",
+                            "A fresh copy of all five items"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Holding the address means the function reaches the real array. So <span class=\"code-inline\">arr[0] = 55;</span> changes the caller's array, with nothing returned.",
+                    "check": {
+                        "question": "bumpFirst() sets arr[0] = 55 and returns nothing. Does scores[0] change?",
+                        "options": [
+                            "Yes, it is the same array",
+                            "No, nothing was returned"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "arrange",
+                "question": "Arrange the tokens to build a function that sets the first item of an array to 0.",
+                "tokens": [
+                    "arr[0] = 0;",
+                    "}",
+                    "void zeroFirst(int arr[])",
+                    "{"
+                ],
+                "correctOrder": [
+                    "void zeroFirst(int arr[])",
+                    "{",
+                    "arr[0] = 0;",
+                    "}"
+                ]
+            }
+        },
+        {
+            "id": 2,
+            "title": "Why the Size Has to Travel With It",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "In <span class=\"code-inline\">main()</span>, <span class=\"code-inline\">sizeof(scores)</span> measures the whole block: 5 ints at 4 bytes each.",
+                    "check": {
+                        "question": "What does sizeof(scores) give you inside main()?",
+                        "options": [
+                            "20, the size of the whole block",
+                            "5, the number of items in it"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Inside the function, <span class=\"code-inline\">arr</span> is only an address. So <span class=\"code-inline\">sizeof(arr)</span> measures an address, not the array.",
+                    "check": {
+                        "question": "Inside the function, what is sizeof(arr) actually measuring?",
+                        "options": [
+                            "How big a single address is",
+                            "How many items the array holds"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "That is why the size has to be passed in. Leave the argument out and the compiler stops you with <span class=\"highlight\">too few arguments</span>.",
+                    "check": {
+                        "question": "You call showScores(scores); with no size. What happens?",
+                        "options": [
+                            "It does not compile at all",
+                            "It compiles and assumes 5"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "type",
+                "code": "int scores[5] = {90, 85, 78, 92, 88};\nprintf(\"%d\\n\", sizeof(scores));",
+                "question": "This runs inside main() on Dev-C++, where an int is 4 bytes. Type the number it prints.",
+                "acceptedAnswers": [
+                    "20",
+                    "20 bytes"
+                ]
+            }
+        },
+        {
+            "id": 3,
+            "title": "Reading vs. Changing an Array",
+            "callback": true,
+            "refSection": "0, 1 & 2",
+            "chunks": [
+                {
+                    "text": "The same <span class=\"code-inline\">arr[], size</span> shape works for changing items, not just printing them: <span class=\"code-inline\">arr[i] = arr[i] + 5;</span> inside a loop.",
+                    "check": {
+                        "question": "Does a function that changes every item need to return the array?",
+                        "options": [
+                            "No, it edits the real one",
+                            "Yes, or the edits are lost"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "A function that only <span class=\"highlight\">reads</span> the array works the same way, but sends one value back with <span class=\"code-inline\">return</span>.",
+                    "check": {
+                        "question": "Which of these two needs a return value?",
+                        "options": [
+                            "A function that totals the items",
+                            "A function that adds 5 to each item"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "So the return type tells you the job. <span class=\"code-inline\">void</span> changes the array in place. <span class=\"code-inline\">int</span> hands one number back.",
+                    "check": {
+                        "question": "You see int total(int arr[], int size). What is this function for?",
+                        "options": [
+                            "Working out one value from the array",
+                            "Editing the items inside the array"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "code": "void addBonus(int arr[], int size) {\n    int i;\n    for (i = 0; i < size; i++) {\n        arr[i] = arr[i] + 5;\n    }\n}\n\nint main() {\n    int marks[3] = {70, 80, 90};\n    addBonus(marks, 3);\n    return 0;\n}",
+                "question": "addBonus() returns nothing. What does main() hold after the call?",
+                "options": [
+                    "marks is {75, 85, 95}, changed in place by the loop",
+                    "marks is {70, 80, 90}, since the function got a copy",
+                    "marks is {75, 80, 90}, since only arr[0] is reachable",
+                    "marks is unusable, because nothing was returned to it"
+                ],
+                "correct": 0
+            }
+        }
+    ]
+}
