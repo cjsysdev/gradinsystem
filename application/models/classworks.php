@@ -255,8 +255,10 @@ class classworks extends MY_Model
     // prior-semester and non-enrolled rows. This model now owns submission
     // CRUD only — it does not compute grades.
 
-    public function get_submissions_by_student($student_id)
+    public function get_submissions_by_student($student_id, $semester_id = null)
     {
+        $this->load->model('Semester_model');
+        $semester_id = $this->Semester_model->resolve_id($semester_id);
         $sql = "
             SELECT 
                 c.*, 
@@ -278,14 +280,14 @@ class classworks extends MY_Model
             JOIN
                 class_schedule cs ON a.schedule_id = cs.schedule_id
             JOIN
-                semester_master sem ON cs.semester_id = sem.trans_no AND sem.is_active = 1
+                semester_master sem ON cs.semester_id = sem.trans_no AND sem.trans_no = ?
             WHERE 
                 c.student_id = ?
             ORDER BY 
                 c.created_at ASC, c.submitted_at ASC
         ";
 
-        $query = $this->db->query($sql, [$student_id]);
+        $query = $this->db->query($sql, [$semester_id, $student_id]);
 
         return $query->result_array();
     }

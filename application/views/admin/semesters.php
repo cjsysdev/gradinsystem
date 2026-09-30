@@ -120,6 +120,13 @@
                                        class="btn btn-sm btn-outline-secondary" title="Edit">
                                         <i class="fa fa-edit"></i>
                                     </a>
+                                    <?php if (!$sem['is_active'] && array_key_exists('grades_released', $sem)): ?>
+                                        <a href="<?= base_url('admin/toggle_semester_release/' . $sem['trans_no']) ?>"
+                                           class="btn btn-sm <?= $sem['grades_released'] ? 'btn-info' : 'btn-outline-info' ?> ml-1"
+                                           title="Whether students can view this semester's grades and submissions">
+                                            <i class="fa fa-eye"></i> <?= $sem['grades_released'] ? 'Released' : 'Hidden' ?>
+                                        </a>
+                                    <?php endif; ?>
                                     <?php if (!$sem['is_active']): ?>
                                         <a href="<?= base_url('admin/activate_semester/' . $sem['trans_no']) ?>"
                                            class="btn btn-sm btn-outline-success ml-1"

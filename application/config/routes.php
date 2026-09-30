@@ -81,6 +81,7 @@ $route['student/section'] = 'StudentController/section';
 
 // Grades Routes
 $route['grades'] = 'GradesController/grades';
+$route['my_records'] = 'GradesController/records';
 $route['grades/all'] = 'GradesController/AllSectionGrades';
 $route['sectiongrades/(:any)'] = 'GradesController/sectionGrades/$1';
 $route['sectionFinalGrades/(:any)'] = 'GradesController/sectionFinalGrades/$1';
@@ -215,6 +216,7 @@ $route['admin/check_username'] = 'AdminController/check_username';
 $route['admin/semesters'] = 'AdminController/semesters';
 $route['admin/save_semester'] = 'AdminController/save_semester';
 $route['admin/activate_semester/(:num)'] = 'AdminController/activate_semester/$1';
+$route['admin/toggle_semester_release/(:num)'] = 'AdminController/toggle_semester_release/$1';
 $route['admin/worksheet_generator'] = 'AdminController/worksheet_generator';
 $route['admin/worksheet_generate'] = 'AdminController/worksheet_generate';
 $route['admin/worksheet_assessments_for_schedule'] = 'AdminController/worksheet_assessments_for_schedule';

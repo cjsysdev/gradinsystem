@@ -19,6 +19,8 @@
         <a href="<?= base_url('view_attendance') ?>" class="btn btn-outline-secondary btn-sm">Back to Attendance</a>
     </div>
 
+    <?php $this->load->view('semester_switcher'); ?>
+
     <?php if (!empty($records)): ?>
         <table class="table table-bordered">
             <thead>

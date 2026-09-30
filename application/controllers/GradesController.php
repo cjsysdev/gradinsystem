@@ -57,6 +57,42 @@ class GradesController extends CI_Controller
         $this->load->view('home', $data);
     }
 
+    /**
+     * Read-only "My Records": grade history plus one semester's submissions
+     * and attendance. Past semesters are visible only once an admin has
+     * released them (Semester_model::is_released).
+     */
+    public function records()
+    {
+        if ($this->is_offline) redirect();
+
+        $this->load->model(['Semester_model']);
+        $student_id = $this->session->student_id;
+
+        $options = array_values(array_filter(
+            $this->Semester_model->for_student($student_id),
+            function ($sem) { return $this->Semester_model->is_released($sem['trans_no']); }
+        ));
+
+        $requested = $this->input->get('sem');
+        $sem_id    = $this->Semester_model->resolve_id($requested);
+        $allowed   = array_column($options, 'trans_no');
+        if (!in_array($sem_id, array_map('intval', $allowed), true)) {
+            $sem_id = $options ? (int) $options[0]['trans_no'] : null;
+        }
+
+        $data = [
+            'semester_options' => $options,
+            'viewed_semester'  => $sem_id ? $this->Semester_model->get($sem_id) : null,
+            'viewing_archived' => $sem_id && !$this->Semester_model->is_active($sem_id),
+            'history'          => $this->Grade_calculator->history_for_student($student_id, true),
+            'history_link_base' => base_url('my_records'),
+            'classworks'       => $sem_id ? $this->classworks->get_submissions_by_student($student_id, $sem_id) : [],
+            'attendance'       => $sem_id ? $this->student_master->get_attendance_summary($student_id, $sem_id) : null,
+        ];
+        $this->load->view('my_records', $data);
+    }
+
     // ------------------------------------------------------------------
     // Section sheets
     // ------------------------------------------------------------------
@@ -65,7 +101,7 @@ class GradesController extends CI_Controller
     public function sectionGrades($section)
     {
         $term      = 'midterm';
-        $schedules = $this->Grade_calculator->schedules_for_section($section);
+        $schedules = $this->Grade_calculator->schedules_for_section($section, $this->input->get('sem'));
 
         $studentsGrades = [];
         foreach ($schedules as $sched) {
@@ -107,7 +143,7 @@ class GradesController extends CI_Controller
     /** Midterm + final + overall sheet for one section. */
     public function sectionFinalGrades($section)
     {
-        $schedules      = $this->Grade_calculator->schedules_for_section($section);
+        $schedules      = $this->Grade_calculator->schedules_for_section($section, $this->input->get('sem'));
         $studentsGrades = [];
 
         foreach ($schedules as $sched) {
@@ -134,7 +170,7 @@ class GradesController extends CI_Controller
     {
         $studentsGrades = [];
 
-        foreach ($this->Grade_calculator->active_schedules() as $sched) {
+        foreach ($this->Grade_calculator->schedules_for_semester($this->input->get('sem')) as $sched) {
             $result = $this->Grade_calculator->for_schedule_final($sched['schedule_id']);
             foreach ($result['students'] as $s) {
                 $studentsGrades[] = $this->_final_row($s, $sched);

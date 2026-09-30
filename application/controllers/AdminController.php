@@ -690,11 +690,13 @@ class AdminController extends CI_Controller
             return;
         }
 
-        $active_semester = $this->db->where('is_active', 1)->get('semester_master')->row_array();
+        $this->load->model('Semester_model');
+        $sem_id = $this->Semester_model->resolve_id($this->input->get('sem'));
 
+        $data = $this->_semester_view_data($student_id, $sem_id);
         $data['student']         = $student;
-        $data['active_semester'] = $active_semester;
-        $data['records']         = $this->attendance->get_student_attendance_full($student_id);
+        $data['active_semester'] = $data['viewed_semester'];
+        $data['records']         = $this->attendance->get_student_attendance_full($student_id, $sem_id);
 
         $this->load->view('admin/student_attendance', $data);
     }
@@ -1867,12 +1869,16 @@ class AdminController extends CI_Controller
 
         $account = $this->accounts->as_array()->get(['student_id' => $student_id]);
 
-        $this->load->model('classworks');
+        $this->load->model(['classworks', 'Semester_model', 'Grade_calculator']);
+        $sem_id = $this->Semester_model->resolve_id($this->input->get('sem'));
+        $data = array_merge($data ?? [], $this->_semester_view_data($student_id, $sem_id));
+        $data['history']           = $this->Grade_calculator->history_for_student($student_id);
+        $data['history_link_base'] = base_url('admin/student_summary/' . (int) $student_id);
         $data['student']      = $student;
         $data['profile_pic']  = $account ? $account['profile_pic'] : null;
         $data['has_account']  = $account && $account['role'] === 'student';
-        $data['attendance']   = $this->student_master->get_attendance_summary($student_id);
-        $data['classworks']   = $this->classworks->get_submissions_by_student($student_id);
+        $data['attendance']   = $this->student_master->get_attendance_summary($student_id, $sem_id);
+        $data['classworks']   = $this->classworks->get_submissions_by_student($student_id, $sem_id);
         $data['violations']   = $this->violation->get_all_violations(['student_id' => $student_id]);
         $data['vio_summary']  = $this->violation->get_violation_summary_by_student($student_id);
         $data['contacts']     = $this->emergency_contact->get_by_student($student_id);
@@ -2069,6 +2075,42 @@ class AdminController extends CI_Controller
         $this->db->update('semester_master', ['is_active' => null]);
         $this->db->where('trans_no', (int)$id)->update('semester_master', ['is_active' => 1]);
         $this->session->set_flashdata('success', 'Semester activated. Students without an enrollment record for this semester will be prompted to enroll on next login.');
+        redirect('admin/semesters');
+    }
+
+    // Shared by the per-student admin pages: the semester dropdown options
+    // (this student's semesters, plus the active one) and the archived flag.
+    private function _semester_view_data($student_id, $sem_id)
+    {
+        $options = [];
+        foreach ($this->Semester_model->for_student($student_id) as $sem) {
+            $options[$sem['trans_no']] = $sem;
+        }
+        $active = $this->Semester_model->active();
+        if ($active && !isset($options[$active['trans_no']])) {
+            $options[$active['trans_no']] = $active;
+            krsort($options);
+        }
+        return [
+            'semester_options' => array_values($options),
+            'viewed_semester'  => $this->Semester_model->get($sem_id),
+            'viewing_archived' => !$this->Semester_model->is_active($sem_id),
+        ];
+    }
+
+    // Toggle whether students may see a past semester's grades/submissions.
+    public function toggle_semester_release($id)
+    {
+        $this->load->model('Semester_model');
+        $sem = $this->Semester_model->get($id);
+        if (!$sem) {
+            redirect('admin/semesters');
+        }
+        if ($this->Semester_model->set_released($id, empty($sem['grades_released']))) {
+            $this->session->set_flashdata('success', 'Release setting updated.');
+        } else {
+            $this->session->set_flashdata('error', 'Run scripts/semester_release_migration.sql first.');
+        }
         redirect('admin/semesters');
     }
 

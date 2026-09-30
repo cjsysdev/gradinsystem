@@ -53,10 +53,20 @@ Three layers, kept strictly separate:
    `for_all_schedules_final()`. Controllers call these and only map to views.
 
 Rules that are easy to break:
-- **Roster = `class_student.schedule_id` + `status='enrolled'` + active
-  semester.** Never join `class_student.section = class_schedule.section` —
+- **Roster = `class_student.schedule_id` + `status='enrolled'`.** A schedule
+  belongs to exactly one semester, so this is semester-correct for archived
+  semesters too. Never join `class_student.section = class_schedule.section` —
   that ignores semester and enrolment status (it rendered 90 students on a
   51-student section).
+- **Viewing other semesters is read-only and never touches `is_active`.**
+  `semester_master.is_active` only decides where NEW writes go. Reads take an
+  optional `$semester_id` (default = active) resolved via
+  `Semester_model::resolve_id()`; the UI passes it as `?sem=<trans_no>` and
+  shows `views/semester_switcher.php`. Past semesters are visible to students
+  only when `semester_master.grades_released = 1` (migration:
+  `scripts/semester_release_migration.sql`). Submit/unsubmit endpoints reject
+  assessments outside the active semester. Per-student history comes from
+  `Grade_calculator::history_for_student()`.
 - **A NULL `classworks.score` counts as 0** and is reported separately as
   `pending_count`. Do not "fix" this without a decision — it changes grades.
 - **A term is INC unless every `io_type` has at least one assessment.** Weights

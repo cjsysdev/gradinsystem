@@ -418,8 +418,10 @@ class attendance extends MY_Model
     // Every attendance row for one student across the active semester (all
     // classes/schedules they're enrolled in) — used by the admin's
     // per-student attendance view/edit page.
-    public function get_student_attendance_full($student_id)
+    public function get_student_attendance_full($student_id, $semester_id = null)
     {
+        $this->load->model('Semester_model');
+        $semester_id = $this->Semester_model->resolve_id($semester_id);
         $sql = "
             SELECT
                 a.attendance_id,
@@ -436,11 +438,11 @@ class attendance extends MY_Model
             JOIN classes c ON cs.class_id = c.class_id
             JOIN semester_master sem ON cs.semester_id = sem.trans_no
             WHERE a.student_id = ?
-            AND sem.is_active = 1
+            AND sem.trans_no = ?
             ORDER BY a.date DESC
         ";
 
-        $query = $this->db->query($sql, [$student_id]);
+        $query = $this->db->query($sql, [$student_id, $semester_id]);
 
         return $query->result_array();
     }

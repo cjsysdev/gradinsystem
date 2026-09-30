@@ -37,8 +37,14 @@
         </div>
     </div>
 
+    <?php $this->load->view('semester_switcher'); ?>
+
     <!-- Attendance summary -->
-    <h5 class="mt-4">Attendance</h5>
+    <h5 class="mt-4">Attendance
+        <?php if (!empty($viewed_semester)): ?>
+            <small class="text-muted"><?= htmlspecialchars($viewed_semester['description'] ?: $viewed_semester['semcode']) ?></small>
+        <?php endif; ?>
+    </h5>
     <div class="row">
         <div class="col-6 col-md-3 mb-3">
             <div class="card text-center shadow-sm">
@@ -173,6 +179,10 @@
             </table>
         </div>
     <?php endif; ?>
+
+    <!-- Academic history (grades per semester) -->
+    <h5 class="mt-4">Academic History</h5>
+    <?php $this->load->view('semester_history'); ?>
 
     <!-- Emergency contacts -->
     <h5 class="mt-4">Emergency Contacts</h5>
