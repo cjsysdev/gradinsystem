@@ -202,6 +202,104 @@ class Widgets_model extends CI_Model
         return 'custom';
     }
 
+    // ── Code Snippet language ───────────────────────────────────────────
+    // The ONE place a `language` value turns into editor mode + labels +
+    // whether the problem is a web problem. Unknown/missing → 'c' (the
+    // original behaviour), so old assessments render unchanged.
+    //   web     — expected output is a page: shown rendered (sandboxed) + source
+    //   preview — 'html'|'css'|'js' when the student's own code can be run in
+    //             the browser; null otherwise (PHP needs a server → XAMPP)
+
+    /**
+     * @param  array $config assessments.given, decoded
+     * @return array {key, label, cm_mode, web, preview, input_label, output_label}
+     */
+    public function code_snippet_language($config)
+    {
+        $console = ['web' => false, 'preview' => null,
+                    'input_label' => 'Sample input', 'output_label' => 'Expected output'];
+        $langs = [
+            'c'          => ['label' => 'C',          'cm_mode' => 'text/x-csrc'] + $console,
+            'cpp'        => ['label' => 'C++',        'cm_mode' => 'text/x-c++src'] + $console,
+            'java'       => ['label' => 'Java',       'cm_mode' => 'text/x-java'] + $console,
+            'csharp'     => ['label' => 'C#',         'cm_mode' => 'text/x-csharp'] + $console,
+            'php'        => ['label' => 'PHP',        'cm_mode' => 'application/x-httpd-php',
+                             'web' => true, 'preview' => null,
+                             'input_label' => 'Sample input (submitted form)', 'output_label' => 'Expected output'],
+            'html'       => ['label' => 'HTML',       'cm_mode' => 'htmlmixed',
+                             'web' => true, 'preview' => 'html',
+                             'input_label' => 'Given data', 'output_label' => 'Expected output (the page)'],
+            'css'        => ['label' => 'CSS',        'cm_mode' => 'css',
+                             'web' => true, 'preview' => 'css',
+                             'input_label' => 'Starting HTML', 'output_label' => 'Expected output (the page)'],
+            'javascript' => ['label' => 'JavaScript', 'cm_mode' => 'javascript',
+                             'web' => true, 'preview' => 'js',
+                             'input_label' => 'Starting HTML', 'output_label' => 'Expected output (the page)'],
+        ];
+        $key = strtolower(trim((string) (is_array($config) ? ($config['language'] ?? 'c') : 'c')));
+        if ($key === 'js') {
+            $key = 'javascript';
+        }
+        if (!isset($langs[$key])) {
+            $key = 'c';
+        }
+        return ['key' => $key] + $langs[$key];
+    }
+
+    /**
+     * A web problem's sample_input as form fields, so the view can draw it as
+     * an HTML form instead of a console box. Accepts the way instructors write
+     * it — `first_name=Ana, age=19, subjects[]=WS101, subjects[]=CC104` — and
+     * also `&`-joined / one-per-line / leading-`?` query-string style. A comma
+     * only splits where the next thing looks like `name=`, so commas inside a
+     * value survive. Returns [{name, multi, values[]}] (repeated names and
+     * `name[]` collect into one multi-value field), or null when the text isn't
+     * pure key=value data (the view then falls back to the plain box).
+     */
+    public function code_snippet_parse_form($text)
+    {
+        $text = ltrim(trim((string) $text), '?');
+        if ($text === '') {
+            return null;
+        }
+        $parts = preg_split('/(?:\s*,\s*|\s*&\s*|\r?\n)(?=[A-Za-z_][\w.\-]*(?:\[\])?=)/', $text);
+        $fields = [];
+        $at = [];
+        foreach ($parts as $part) {
+            if (!preg_match('/^([A-Za-z_][\w.\-]*)(\[\])?=(.*)$/s', trim($part), $m)) {
+                return null;
+            }
+            if (!isset($at[$m[1]])) {
+                $at[$m[1]] = count($fields);
+                $fields[] = ['name' => $m[1], 'multi' => false, 'values' => []];
+            }
+            $fields[$at[$m[1]]]['values'][] = trim($m[3]);
+            if ($m[2] !== '') {
+                $fields[$at[$m[1]]]['multi'] = true;
+            }
+        }
+        return $fields ?: null;
+    }
+
+    /** Best-guess <input> type for a sample value: email|number|date|textarea|text. */
+    public function code_snippet_field_type($name, $value)
+    {
+        $value = (string) $value;
+        if (preg_match('/^[^@\s]+@[^@\s]+\.[^@\s]+$/', $value)) {
+            return 'email';
+        }
+        if (preg_match('/^-?\d+(\.\d+)?$/', $value)) {
+            return 'number';
+        }
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+            return 'date';
+        }
+        if (strlen($value) > 60 || preg_match('/comment|message|description|remarks|feedback|address|notes?$/i', $name)) {
+            return 'textarea';
+        }
+        return 'text';
+    }
+
     // ── Code Snippet problem pool ───────────────────────────────────────
     // A config may carry a `problems` list instead of (or besides) the single
     // top-level `problem`; each student then gets ONE problem from the pool.
@@ -303,6 +401,14 @@ class Widgets_model extends CI_Model
         $batch_no = $config['members'][(string) $student_id] ?? null;
         $def = $batch_no ? ($batches[$batch_no - 1] ?? null) : null;
 
+        // A batch is defined by a length in minutes and gets its start/end
+        // stamped when the admin presses Start (snippet_batches screen). Until
+        // then it has no clock at all: 'waiting' with null start_ts/end_ts.
+        // Older configs carry explicit start/end and no `minutes` — still valid.
+        if ($batch_no && $def && empty($def['start']) && (int) ($def['minutes'] ?? 0) > 0) {
+            return ['batch' => (int) $batch_no, 'start_ts' => null, 'end_ts' => null, 'phase' => 'waiting'];
+        }
+
         if (!$batch_no || !$def || empty($def['start']) || empty($def['end'])) {
             return ['batch' => null, 'start_ts' => null, 'end_ts' => null, 'phase' => 'unassigned'];
         }
@@ -346,8 +452,8 @@ class Widgets_model extends CI_Model
         if (!$timer) {
             return true; // untimed — unchanged behavior
         }
-        if ($timer['phase'] === 'unassigned') {
-            return false;
+        if ($timer['phase'] === 'unassigned' || $timer['start_ts'] === null) {
+            return false; // no batch, or the admin hasn't pressed Start yet
         }
         $now = $now ?? time();
         return $now >= $timer['start_ts'] && $now <= $timer['end_ts'] + self::CODE_SNIPPET_GRACE_SECONDS;

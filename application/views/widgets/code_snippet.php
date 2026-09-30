@@ -73,8 +73,14 @@ if ($hide_problem) {
 $starter       = $hide_problem ? '' : $active['starter_code'];
 $allow_code    = !array_key_exists('allow_code_submission', $config) || !empty($config['allow_code_submission']);
 $saved_code    = (string) ($existing['code'] ?? '');
-$cm_modes      = ['c' => 'text/x-csrc', 'cpp' => 'text/x-c++src', 'java' => 'text/x-java', 'csharp' => 'text/x-csharp'];
-$cm_mode       = $cm_modes[strtolower((string) ($config['language'] ?? 'c'))] ?? 'text/x-csrc';
+// Editor mode, labels and web/preview flags all come from one registry so a
+// new language is added in exactly one place.
+$lang          = $this->Widgets_model->code_snippet_language($config);
+$cm_mode       = $lang['cm_mode'];
+$preview_kind  = $lang['preview'];   // 'html'|'css'|'js', or null (C-family, PHP)
+// The problem's sample_input doubles as the "starting HTML" that css/js code
+// runs against in the preview. Never expose it before a timed batch opens.
+$preview_start = $hide_problem ? '' : (string) $active['sample_input'];
 
 $verdict = ($readonly && $score !== null && $max_score !== null)
     ? $this->Widgets_model->code_snippet_verdict($config, $max_score, $score)
@@ -122,9 +128,31 @@ $is_open_timed = !$readonly && $timer && $timer['phase'] === 'open';
     .cs-waiting-card { border: 1px dashed #357abd; border-radius: 8px; padding: 24px; text-align: center; background: #f2f7fd; }
     .cs-waiting-card .cs-waiting-clock { font-size: 28px; font-weight: bold; font-variant-numeric: tabular-nums; margin: 10px 0; color: #357abd; }
     .cs-autosave-status { font-size: 12px; color: #6c757d; margin-top: 6px; }
+    .cs-widget .cs-formsample { flex: 1 1 260px; }
+    .cs-widget .cs-fakeform { background: #fff; border: 1px solid #ced4da; border-top: 3px solid #357abd; border-radius: 4px; padding: 12px 14px; }
+    .cs-widget .cs-ff-row { margin-bottom: 10px; }
+    .cs-widget .cs-ff-row:last-child { margin-bottom: 0; }
+    .cs-widget .cs-ff-row > label { display: block; font-size: 13px; font-weight: 600; color: #343a40; margin-bottom: 3px; }
+    .cs-widget .cs-ff-row > label code { font-weight: normal; font-size: 11px; color: #6c757d; margin-left: 4px; }
+    .cs-widget .cs-ff-row .cs-ff-check { display: inline-block; font-weight: normal; margin-right: 14px; margin-bottom: 0; }
+    .cs-widget .cs-ff-row .form-control:disabled { background: #f8f9fa; color: #212529; }
+    .cs-widget .cs-result { background: #f2f9f3; border: 1px solid #cfe6d3; border-left: 4px solid #28a745; border-radius: 4px; padding: 8px 12px; font-size: 14px; min-height: 36px; }
+    .cs-widget .cs-web-out { flex: 2 1 320px; }
+    .cs-widget .cs-tabs { float: right; }
+    .cs-widget .cs-tab { border: 1px solid #ced4da; background: #fff; color: #495057; font-size: 12px; padding: 1px 10px; cursor: pointer; }
+    .cs-widget .cs-tab:first-child { border-radius: 4px 0 0 4px; }
+    .cs-widget .cs-tab:last-child { border-radius: 0 4px 4px 0; margin-left: -1px; }
+    .cs-widget .cs-tab.active { background: #357abd; border-color: #357abd; color: #fff; }
+    .cs-widget iframe.cs-frame { width: 100%; height: 180px; border: 1px solid #ced4da; border-radius: 4px; background: #fff; display: block; }
+    .cs-widget .cs-preview-wrap { display: none; margin-top: 10px; }
+    .cs-widget .cs-preview-wrap iframe.cs-frame { height: 240px; }
+    .cs-widget .cs-console { background: #1e1e1e; color: #d4d4d4; border-radius: 4px; padding: 6px 10px; font: 12px/1.4 monospace; margin-top: 6px; max-height: 120px; overflow: auto; white-space: pre-wrap; display: none; }
+    .cs-widget .cs-console .cs-c-error { color: #f48771; }
+    .cs-widget .cs-console .cs-c-warn { color: #e5c07b; }
+    .cs-widget .cs-php-note { font-size: 13px; color: #6c757d; margin-top: 6px; }
     .cs-widget .cs-pool-note { font-size: 13px; color: #357abd; background: #f2f7fd; border: 1px dashed #357abd; border-radius: 6px; padding: 8px 12px; margin-bottom: 12px; }
 </style>
-<div class="cs-widget"<?= $readonly ? '' : ' id="cs-widget"' ?>>
+<div class="cs-widget"<?= $readonly ? '' : ' id="cs-widget"' ?><?= $preview_kind ? ' data-cs-preview="' . $preview_kind . '" data-cs-start="' . htmlspecialchars($preview_start, ENT_QUOTES) . '"' : '' ?>>
     <?php if ($verdict): ?>
         <p class="mb-3">Verdict: <span class="cs-verdict cs-verdict-<?= $verdict ?>"><?= $verdict_label[$verdict] ?></span></p>
     <?php endif; ?>
@@ -163,17 +191,74 @@ $is_open_timed = !$readonly && $timer && $timer['phase'] === 'open';
             <?= htmlspecialchars($p['problem']) ?>
         </div>
         <?php if ($p['sample_input'] !== '' || $p['sample_output'] !== ''): ?>
-            <div class="cs-io">
-                <div><div class="cs-io-label">Sample input</div><pre class="cs-io-box"><?= htmlspecialchars($p['sample_input']) ?></pre></div>
-                <div><div class="cs-io-label">Expected output</div><pre class="cs-io-box"><?= htmlspecialchars($p['sample_output']) ?></pre></div>
-            </div>
+            <?php if (!$lang['web']): ?>
+                <div class="cs-io">
+                    <div><div class="cs-io-label">Sample input</div><pre class="cs-io-box"><?= htmlspecialchars($p['sample_input']) ?></pre></div>
+                    <div><div class="cs-io-label">Expected output</div><pre class="cs-io-box"><?= htmlspecialchars($p['sample_output']) ?></pre></div>
+                </div>
+            <?php else: ?>
+                <?php
+                // PHP sample input written as `field=value, field=value` is drawn as
+                // the form a user would have filled in (disabled controls: it is an
+                // example, not something to type into). Anything that isn't pure
+                // key=value data keeps the plain box.
+                $form_fields = $lang['key'] === 'php' ? $this->Widgets_model->code_snippet_parse_form($p['sample_input']) : null;
+                // PHP problems often expect a result message ("1 row inserted…"), not
+                // markup; only render as a page when the output actually contains tags.
+                $out_is_html = $lang['key'] !== 'php' || preg_match('/<[a-z!\/][^>]*>/i', $p['sample_output']);
+                ?>
+                <div class="cs-io">
+                    <?php if ($form_fields): ?>
+                        <div class="cs-formsample">
+                            <div class="cs-io-label"><?= htmlspecialchars($lang['input_label']) ?></div>
+                            <div class="cs-fakeform">
+                                <?php foreach ($form_fields as $f): ?>
+                                    <div class="cs-ff-row">
+                                        <label><?= htmlspecialchars(ucwords(str_replace(['_', '.', '-'], ' ', $f['name']))) ?> <code><?= htmlspecialchars($f['name'] . ($f['multi'] ? '[]' : '')) ?></code></label>
+                                        <?php if ($f['multi']): ?>
+                                            <?php foreach ($f['values'] as $v): ?>
+                                                <label class="cs-ff-check"><input type="checkbox" checked disabled> <?= htmlspecialchars($v) ?></label>
+                                            <?php endforeach; ?>
+                                        <?php else:
+                                            $v = $f['values'][0];
+                                            $t = $this->Widgets_model->code_snippet_field_type($f['name'], $v); ?>
+                                            <?php if ($t === 'textarea'): ?>
+                                                <textarea class="form-control form-control-sm" rows="3" disabled><?= htmlspecialchars($v) ?></textarea>
+                                            <?php else: ?>
+                                                <input type="<?= $t ?>" class="form-control form-control-sm" value="<?= htmlspecialchars($v, ENT_QUOTES) ?>" disabled>
+                                            <?php endif; ?>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    <?php elseif ($p['sample_input'] !== ''): ?>
+                        <div><div class="cs-io-label"><?= htmlspecialchars($lang['input_label']) ?></div><pre class="cs-io-box"><?= htmlspecialchars($p['sample_input']) ?></pre></div>
+                    <?php endif; ?>
+                    <?php if ($p['sample_output'] !== '' && !$out_is_html): ?>
+                        <div><div class="cs-io-label"><?= htmlspecialchars($lang['output_label']) ?></div><div class="cs-result"><?= nl2br(htmlspecialchars($p['sample_output'])) ?></div></div>
+                    <?php elseif ($p['sample_output'] !== ''): ?>
+                        <div class="cs-web-out">
+                            <div class="cs-io-label">
+                                <?= htmlspecialchars($lang['output_label']) ?>
+                                <span class="cs-tabs">
+                                    <button type="button" class="cs-tab active" data-cs-tab="rendered">Rendered</button><button type="button" class="cs-tab" data-cs-tab="source">Source</button>
+                                </span>
+                            </div>
+                            <?php /* Expected output is authored HTML. sandbox="" = no scripts, no forms, unique origin: it can only draw. */ ?>
+                            <iframe class="cs-frame" data-cs-pane="rendered" sandbox="" srcdoc="<?= htmlspecialchars($p['sample_output'], ENT_QUOTES) ?>" title="Expected output, rendered"></iframe>
+                            <pre class="cs-io-box" data-cs-pane="source" style="display:none"><?= htmlspecialchars($p['sample_output']) ?></pre>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
         <?php endif; ?>
     <?php endforeach; ?>
     <?php if ($hide_problem && $readonly): ?>
         <div class="cs-waiting-card mb-3">
             <i class="fa fa-lock"></i>
             <?php if ($timer['phase'] === 'waiting'): ?>
-                Your problem will be shown when Batch <?= (int) $timer['batch'] ?> starts at <?= htmlspecialchars(date('g:i A', $timer['start_ts'])) ?>.
+                Your problem will be shown when Batch <?= (int) $timer['batch'] ?> starts<?= $timer['start_ts'] ? ' at ' . htmlspecialchars(date('g:i A', $timer['start_ts'])) : '' ?>.
             <?php else: ?>
                 Your problem will be shown once your instructor assigns you to a batch.
             <?php endif; ?>
@@ -185,6 +270,10 @@ $is_open_timed = !$readonly && $timer && $timer['phase'] === 'open';
             <div class="cs-optional">Submitted code</div>
             <?php if (trim($saved_code) !== ''): ?>
                 <pre class="cs-code"><?= htmlspecialchars($saved_code) ?></pre>
+                <?php if ($preview_kind): ?>
+                    <button type="button" class="btn btn-sm btn-outline-primary mt-2" data-cs-run="1"><i class="fa fa-play"></i> Preview submitted page</button>
+                    <?php $this->load->view('widgets/_code_snippet_preview_panel'); ?>
+                <?php endif; ?>
             <?php else: ?>
                 <div class="cs-nocode"><i class="fa fa-desktop"></i> No code attached. Checked live on the student's PC.</div>
             <?php endif; ?>
@@ -192,12 +281,23 @@ $is_open_timed = !$readonly && $timer && $timer['phase'] === 'open';
     <?php elseif ($is_waiting): ?>
         <div class="cs-waiting-card" id="cs-waiting-card">
             <div><i class="fa fa-hourglass-half"></i> Batch <?= (int) $timer['batch'] ?> hasn't started yet</div>
-            <div class="cs-waiting-clock" id="cs-waiting-clock">--:--:--</div>
-            <div class="text-muted small">Starts at <?= htmlspecialchars(date('g:i A', $timer['start_ts'])) ?>. Your problem will appear and this page will open automatically.</div>
+            <?php if ($timer['start_ts']): ?>
+                <div class="cs-waiting-clock" id="cs-waiting-clock">--:--:--</div>
+                <div class="text-muted small">Starts at <?= htmlspecialchars(date('g:i A', $timer['start_ts'])) ?>. Your problem will appear and this page will open automatically.</div>
+            <?php else: ?>
+                <div class="cs-waiting-clock" id="cs-waiting-clock">Waiting for your instructor to start</div>
+                <div class="text-muted small">Your problem will appear and this page will open automatically as soon as the batch starts.</div>
+            <?php endif; ?>
         </div>
     <?php elseif ($allow_code): ?>
         <div class="cs-optional"><i class="fa fa-paperclip"></i> Your code <em>(optional &mdash; your instructor checks it live, and you can add it later)</em></div>
         <textarea id="cs-editor" class="form-control" rows="10"><?= htmlspecialchars($saved_code !== '' ? $saved_code : $starter) ?></textarea>
+        <?php if ($preview_kind): ?>
+            <button type="button" class="btn btn-sm btn-outline-primary mt-2" data-cs-run="1"><i class="fa fa-play"></i> Preview</button>
+            <?php $this->load->view('widgets/_code_snippet_preview_panel'); ?>
+        <?php elseif ($lang['key'] === 'php'): ?>
+            <div class="cs-php-note"><i class="fa fa-server"></i> PHP runs on a server, so it can't be previewed here. Test it at <code>localhost</code> in XAMPP &mdash; your instructor checks it live.</div>
+        <?php endif; ?>
         <?php if ($is_open_timed): ?>
             <div class="cs-autosave-status" id="cs-autosave-status"></div>
         <?php endif; ?>
@@ -205,6 +305,83 @@ $is_open_timed = !$readonly && $timer && $timer['phase'] === 'open';
         <div class="cs-nocode"><i class="fa fa-desktop"></i> Your instructor will check this live on your PC. Nothing to submit.</div>
     <?php endif; ?>
 </div>
+<?php /* Shared by editable + read-only mode (tabs on expected output, Preview button). Delegated and guarded so several widgets on one page don't double-bind. */ ?>
+<script>
+(function () {
+    if (window.__csWebInit) return;
+    window.__csWebInit = true;
+
+    // Console shim injected into the preview document: forwards console.* and
+    // uncaught errors to the parent, which shows them under the frame.
+    var SHIM = '<script>(function(){function s(t,a){parent.postMessage({csConsole:1,t:t,m:Array.prototype.map.call(a,String).join(" ")},"*");}'
+        + '["log","warn","error"].forEach(function(k){var o=console[k];console[k]=function(){s(k,arguments);o.apply(console,arguments);};});'
+        + 'window.onerror=function(m,u,l){s("error",[m+" (line "+l+")"]);};})();<\/script>';
+
+    function noCloseScript(code) { return code.replace(/<\/script/gi, '<\\/script'); }
+
+    // kind: 'html' | 'css' | 'js'. css/js run against the problem's starting HTML.
+    function buildDoc(kind, code, startHtml) {
+        if (kind === 'css') {
+            return '<!doctype html><html><head><meta charset="utf-8"><style>' + code.replace(/<\/style/gi, '<\\/style')
+                + '</style></head><body>' + startHtml + '</body></html>';
+        }
+        if (kind === 'js') {
+            return '<!doctype html><html><head><meta charset="utf-8"></head><body>' + startHtml + SHIM
+                + '<script>' + noCloseScript(code) + '<\/script></body></html>';
+        }
+        return SHIM + code; // html: the student's own document, shim first
+    }
+
+    document.addEventListener('click', function (e) {
+        var root, tab = e.target.closest('[data-cs-tab]');
+        if (tab) {
+            var out = tab.closest('.cs-web-out');
+            out.querySelectorAll('[data-cs-tab]').forEach(function (b) { b.classList.toggle('active', b === tab); });
+            out.querySelectorAll('[data-cs-pane]').forEach(function (p) {
+                p.style.display = p.getAttribute('data-cs-pane') === tab.getAttribute('data-cs-tab') ? '' : 'none';
+            });
+            return;
+        }
+
+        var run = e.target.closest('[data-cs-run]');
+        if (!run) return;
+        root = run.closest('.cs-widget');
+        var kind = root.getAttribute('data-cs-preview');
+        var code;
+        if (root.id === 'cs-widget' && typeof window.__csCurrentCode === 'function') {
+            code = window.__csCurrentCode();          // editable: what's in the editor now
+        } else {
+            var pre = root.querySelector('pre.cs-code'); // read-only: the submitted code
+            code = pre ? pre.textContent : '';
+        }
+        var wrap = root.querySelector('[data-cs-preview-wrap]');
+        var frame = wrap.querySelector('[data-cs-frame]');
+        var con = wrap.querySelector('[data-cs-console]');
+        con.textContent = '';
+        con.style.display = 'none';
+        wrap.style.display = 'block';
+        frame.srcdoc = buildDoc(kind, code, root.getAttribute('data-cs-start') || '');
+    });
+
+    window.addEventListener('message', function (e) {
+        var d = e.data;
+        if (!d || d.csConsole !== 1) return;
+        // Only accept messages from one of our own preview frames.
+        var frames = document.querySelectorAll('[data-cs-frame]');
+        for (var i = 0; i < frames.length; i++) {
+            if (frames[i].contentWindow === e.source) {
+                var con = frames[i].parentNode.querySelector('[data-cs-console]');
+                var line = document.createElement('div');
+                line.className = 'cs-c-' + d.t;
+                line.textContent = (d.t === 'log' ? '' : d.t + ': ') + String(d.m).slice(0, 500);
+                con.appendChild(line);
+                con.style.display = 'block';
+                return;
+            }
+        }
+    });
+})();
+</script>
 <?php if (!$readonly): ?>
 <script>
 (function () {
@@ -249,6 +426,8 @@ $is_open_timed = !$readonly && $timer && $timer['phase'] === 'open';
         return ta ? ta.value : '';
     }
 
+    window.__csCurrentCode = currentCode; // read by the shared Preview handler above
+
     // An untouched starter template is not "attached code".
     window.getWidgetState = function () {
         let code = currentCode();
@@ -280,6 +459,13 @@ $is_open_timed = !$readonly && $timer && $timer['phase'] === 'open';
     if (timer && timer.phase === 'waiting' && waitingClock) {
         const turnInBtn = document.getElementById('turn-in-btn');
         if (turnInBtn) turnInBtn.style.display = 'none';
+
+        if (timer.start_ts === null) {
+            // The instructor hasn't pressed Start, so there is no start time to
+            // count down to — poll by reloading; the server decides when it opens.
+            setTimeout(function () { location.reload(); }, 5000);
+            return;
+        }
 
         const startMs = timer.start_ts * 1000;
         const tickWaiting = function () {

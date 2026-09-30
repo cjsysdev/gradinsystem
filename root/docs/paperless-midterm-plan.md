@@ -680,6 +680,23 @@ patterns. Build 6 reusable widgets, not 16 custom interfaces.
   the column; a `field_exists()` guard in `snippet_batches()` tells the admin
   to (re-)run `WidgetsController/install` if it hasn't happened yet on that
   database.
+- **Web languages** (2026-09-30): `given.language` may also be `php`, `html`,
+  `css` or `javascript` (default/unknown = `c`, so old assessments are
+  unchanged). `Widgets_model::code_snippet_language()` is the ONE place a
+  language turns into the CodeMirror mode, the input/output labels and the
+  `web` / `preview` flags. For a web problem `sample_output` is authored HTML
+  shown in a Rendered/Source card (rendered pane = `<iframe sandbox="" srcdoc>`:
+  no scripts, forms or same-origin) — except a php `sample_output` with no tags,
+  which is a plain result-message box. `sample_input` is the starting HTML
+  (css/javascript) or, for php, the submitted form written
+  `field=value, field=value` (`name[]=` repeats for checkboxes), drawn as a
+  disabled HTML form by `Widgets_model::code_snippet_parse_form()`. html/css/javascript get a student
+  **Preview** button (also on the read-only review); that frame is
+  `sandbox="allow-scripts"` and must never gain `allow-same-origin`. PHP has no
+  preview (needs a server): students test on their own XAMPP and the instructor
+  checks live. Display-only — storage, rubric and scoring are unchanged.
+  CodeMirror modes: `assets/codemirror-{xml,javascript,css,htmlmixed,php}.min.js`
+  loaded by `views/footer.php`.
 
 ## 5. Full Session-to-Widget Mapping (Weeks 1–8)
 

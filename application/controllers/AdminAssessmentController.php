@@ -981,28 +981,28 @@ class AdminAssessmentController extends Admin_Controller
                 return;
             }
 
-            // batch_start_N / batch_end_N, N = 1, 2, 3... — stops at the first
-            // gap, so "Add batch" on the form is just appending another N.
+            // batch_minutes_N (+ hidden batch_start_N carrying an already
+            // pressed Start), N = 1, 2, 3... — stops at the first gap, so
+            // "Add batch" on the form is just appending another N. A batch
+            // with no start is unstarted; its clock is stamped by
+            // start_snippet_batch(). Editing the minutes of a running batch
+            // moves its end (start + minutes), which is how you extend it.
             $batches = [];
             $n = 1;
-            while (isset($post['batch_start_' . $n]) || isset($post['batch_end_' . $n])) {
-                $start = trim((string) ($post['batch_start_' . $n] ?? ''));
-                $end   = trim((string) ($post['batch_end_' . $n] ?? ''));
-                if ($start === '' || $end === '') {
-                    $this->session->set_flashdata('error', "Batch $n needs both a start and an end time.");
+            while (isset($post['batch_minutes_' . $n])) {
+                $minutes = (int) $post['batch_minutes_' . $n];
+                if ($minutes < 1 || $minutes > 600) {
+                    $this->session->set_flashdata('error', "Batch $n needs a length between 1 and 600 minutes.");
                     redirect('AdminAssessmentController/snippet_batches/' . $section_id);
                     return;
                 }
-                // <input type="datetime-local"> posts "Y-m-d\THH:MM" — normalize
-                // to the DATETIME string format everything else here uses.
-                $start_ts = strtotime($start);
-                $end_ts   = strtotime($end);
-                if ($start_ts === false || $end_ts === false || $end_ts <= $start_ts) {
-                    $this->session->set_flashdata('error', "Batch $n's end time must be after its start time.");
-                    redirect('AdminAssessmentController/snippet_batches/' . $section_id);
-                    return;
+                $start_ts = strtotime(trim((string) ($post['batch_start_' . $n] ?? '')));
+                $batch = ['minutes' => $minutes, 'start' => null, 'end' => null];
+                if ($start_ts) {
+                    $batch['start'] = date('Y-m-d H:i:s', $start_ts);
+                    $batch['end']   = date('Y-m-d H:i:s', $start_ts + $minutes * 60);
                 }
-                $batches[] = ['start' => date('Y-m-d H:i:s', $start_ts), 'end' => date('Y-m-d H:i:s', $end_ts)];
+                $batches[] = $batch;
                 $n++;
             }
 
@@ -1046,6 +1046,44 @@ class AdminAssessmentController extends Admin_Controller
             'batches'    => $timer_config['batches'] ?? [],
             'members'    => $timer_config['members'] ?? [],
         ]);
+    }
+
+    // Start / reset one batch's clock (AJAX, from the snippet_batches screen).
+    // Start stamps start = now and end = now + minutes on the SERVER clock, so
+    // the instructor doesn't have to predict when the class will begin;
+    // reset returns the batch to "not started". Operates on the SAVED config
+    // only — the screen disables Start on unsaved rows.
+    public function start_snippet_batch($section_id = null, $n = null)
+    {
+        header('Content-Type: application/json');
+        $section_id = (int) $section_id;
+        $n = (int) $n;
+        $action = $this->input->post('action') === 'reset' ? 'reset' : 'start';
+
+        $assessment = $this->assessments->as_array()->get($section_id);
+        if (!$assessment) {
+            echo json_encode(['ok' => false, 'error' => 'Assessment not found.']);
+            return;
+        }
+        $timer_config = json_decode($assessment['timer_config'] ?? '', true) ?: [];
+        $batches = $timer_config['batches'] ?? [];
+        if (!isset($batches[$n - 1])) {
+            echo json_encode(['ok' => false, 'error' => 'Save the batch first.']);
+            return;
+        }
+        $minutes = (int) ($batches[$n - 1]['minutes'] ?? 0);
+        if ($action === 'start' && $minutes < 1) {
+            echo json_encode(['ok' => false, 'error' => 'This batch has no length in minutes — set one and save.']);
+            return;
+        }
+
+        $now = time();
+        $batches[$n - 1]['start'] = $action === 'start' ? date('Y-m-d H:i:s', $now) : null;
+        $batches[$n - 1]['end']   = $action === 'start' ? date('Y-m-d H:i:s', $now + $minutes * 60) : null;
+        $timer_config['batches'] = $batches;
+        $this->assessments->update_section($section_id, ['timer_config' => json_encode($timer_config)]);
+
+        echo json_encode(['ok' => true]);
     }
 
     // Delete button on manage_assessments. Two-step: without `force`, a

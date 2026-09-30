@@ -16,10 +16,11 @@
         <div class="alert alert-info">
             <i class="fa fa-info-circle"></i>
             Split this section into batches (e.g. one PC-limited lab shared across two turns).
-            Each batch gets its own start/end time. A student sees the editor only during their
-            own batch's window; when it ends, whatever they last autosaved is submitted
-            automatically and marked <strong>TIME'S UP</strong>. Leave every batch field blank
-            and save, or use "Remove timer" below, to go back to an untimed assessment.
+            Give each batch a length in minutes, save, then press <strong>Start</strong> when the
+            batch actually begins &mdash; the countdown runs from that moment. A student sees the
+            editor only while their batch is running; when it ends, whatever they last autosaved is
+            submitted automatically and marked <strong>TIME'S UP</strong>. Use "Remove timer" below
+            to go back to an untimed assessment.
         </div>
 
         <form method="post" action="<?= base_url('AdminAssessmentController/snippet_batches/' . $section_id) ?>" id="batchesForm">
@@ -33,9 +34,9 @@
                         <thead>
                             <tr>
                                 <th style="width:5%">#</th>
-                                <th>Start</th>
-                                <th>End</th>
-                                <th style="width:15%"></th>
+                                <th style="width:20%">Minutes</th>
+                                <th>Status</th>
+                                <th style="width:25%"></th>
                             </tr>
                         </thead>
                         <tbody id="batchesBody"></tbody>
@@ -93,21 +94,46 @@
 <script>
 (function () {
     const existingBatches = <?= json_encode(array_values($batches)) ?>;
+    const sectionId = <?= (int) $section_id ?>;
+    const serverNowMs = <?= time() ?> * 1000;
 
-    function toLocalInputValue(mysqlDatetime) {
-        // "2026-09-30 13:00:00" -> "2026-09-30T13:00" for <input type="datetime-local">.
-        if (!mysqlDatetime) return '';
-        return mysqlDatetime.replace(' ', 'T').slice(0, 16);
+    function fmtTime(mysqlDatetime) {
+        // "2026-09-30 13:05:00" -> "1:05 PM"
+        const d = new Date(mysqlDatetime.replace(' ', 'T'));
+        return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
     }
 
-    function batchRowHtml(n, start, end) {
+    function statusHtml(start, end, saved) {
+        if (!saved) return '<span class="text-muted">Unsaved</span>';
+        if (!start) return '<span class="badge badge-secondary">Not started</span>';
+        const running = new Date(end.replace(' ', 'T')).getTime() > serverNowMs;
+        return running
+            ? '<span class="badge badge-success">Running</span> <small class="text-muted">' + fmtTime(start) + ' &ndash; ' + fmtTime(end) + '</small>'
+            : '<span class="badge badge-dark">Ended</span> <small class="text-muted">' + fmtTime(start) + ' &ndash; ' + fmtTime(end) + '</small>';
+    }
+
+    // `b` is a saved batch ({minutes, start, end}) or undefined for a new row.
+    // A legacy batch (explicit start/end, no minutes) gets its length derived.
+    function batchRowHtml(n, b) {
+        const saved = !!b;
+        const start = saved ? (b.start || '') : '';
+        const end = saved ? (b.end || '') : '';
+        let minutes = saved ? (b.minutes || '') : 30;
+        if (saved && !minutes && start && end) {
+            minutes = Math.max(1, Math.round((new Date(end.replace(' ', 'T')) - new Date(start.replace(' ', 'T'))) / 60000));
+        }
+        const startBtn = !saved
+            ? '<button type="button" class="btn btn-sm btn-primary" disabled title="Save the batches first">Start</button>'
+            : (start
+                ? '<button type="button" class="btn btn-sm btn-outline-warning" onclick="startBatch(this, \'reset\')" title="Back to not started (students see the waiting screen again)">Reset</button>'
+                : '<button type="button" class="btn btn-sm btn-primary" onclick="startBatch(this, \'start\')"><i class="fa fa-play"></i> Start</button>');
         return '<tr data-n="' + n + '">' +
             '<td>' + n + '</td>' +
-            '<td><input type="datetime-local" class="form-control form-control-sm" name="batch_start_' + n + '" value="' + toLocalInputValue(start) + '" required></td>' +
-            '<td><input type="datetime-local" class="form-control form-control-sm" name="batch_end_' + n + '" value="' + toLocalInputValue(end) + '" required></td>' +
-            '<td>' +
-                (n > 1 ? '<button type="button" class="btn btn-sm btn-outline-secondary" onclick="continueFromPrevious(' + n + ')" title="Start where the previous batch ends, same length">Continue &rarr;</button> ' : '') +
-                '<button type="button" class="btn btn-sm btn-outline-danger" onclick="removeBatchRow(' + n + ')" title="Remove this batch"><i class="fa fa-times"></i></button>' +
+            '<td><input type="number" min="1" max="600" class="form-control form-control-sm" name="batch_minutes_' + n + '" value="' + minutes + '" required>' +
+                '<input type="hidden" name="batch_start_' + n + '" value="' + start + '"></td>' +
+            '<td>' + statusHtml(start, end, saved) + '</td>' +
+            '<td>' + startBtn + ' ' +
+                '<button type="button" class="btn btn-sm btn-outline-danger" onclick="removeBatchRow(+this.closest(\'tr\').dataset.n)" title="Remove this batch"><i class="fa fa-times"></i></button>' +
             '</td>' +
         '</tr>';
     }
@@ -116,10 +142,24 @@
         return document.querySelectorAll('#batchesBody tr').length;
     }
 
-    window.addBatchRow = function (start, end) {
+    window.addBatchRow = function (b) {
         const n = batchCount() + 1;
-        document.getElementById('batchesBody').insertAdjacentHTML('beforeend', batchRowHtml(n, start || '', end || ''));
+        document.getElementById('batchesBody').insertAdjacentHTML('beforeend', batchRowHtml(n, b));
         renderBatchOptions();
+    };
+
+    // Start/Reset act on the SAVED config, so any unsaved edit (minutes, roster,
+    // added rows) would be lost by the reload — make the admin save first.
+    window.startBatch = function (btn, action) {
+        const n = +btn.closest('tr').dataset.n;
+        if (action === 'start' && !confirm('Start Batch ' + n + ' now? The countdown begins immediately.')) return;
+        const body = new URLSearchParams({ action: action });
+        fetch('<?= base_url('AdminAssessmentController/start_snippet_batch/' . $section_id) ?>/' + n, { method: 'POST', body: body })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (d.ok) location.reload(); else alert(d.error || 'Could not update the batch.');
+            })
+            .catch(function () { alert('Network error — try again.'); });
     };
 
     window.removeBatchRow = function (n) {
@@ -136,28 +176,18 @@
             row.dataset.n = newN;
             row.querySelector('td').textContent = newN;
             row.querySelector('input[name^="batch_start_"]').name = 'batch_start_' + newN;
-            row.querySelector('input[name^="batch_end_"]').name = 'batch_end_' + newN;
+            row.querySelector('input[name^="batch_minutes_"]').name = 'batch_minutes_' + newN;
         });
         document.querySelectorAll('.roster-current-batch').forEach(function (el) {
             if (parseInt(el.value, 10) > remaining.length) el.value = '0';
         });
+        // Row numbers shifted, so the saved config no longer lines up with the
+        // rows — Start/Reset must wait until the admin saves.
+        document.querySelectorAll('#batchesBody button[onclick^="startBatch"]').forEach(function (b) {
+            b.disabled = true;
+            b.title = 'Save the batches first';
+        });
         renderBatchOptions();
-    };
-
-    window.continueFromPrevious = function (n) {
-        const prevRow = document.querySelector('#batchesBody tr[data-n="' + (n - 1) + '"]');
-        const row = document.querySelector('#batchesBody tr[data-n="' + n + '"]');
-        if (!prevRow || !row) return;
-        const prevStart = prevRow.querySelector('input[name^="batch_start_"]').value;
-        const prevEnd = prevRow.querySelector('input[name^="batch_end_"]').value;
-        if (!prevStart || !prevEnd) return;
-        const durMs = new Date(prevEnd) - new Date(prevStart);
-        const newStart = new Date(prevEnd);
-        const newEnd = new Date(newStart.getTime() + durMs);
-        const pad = n => String(n).padStart(2, '0');
-        const fmt = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
-        row.querySelector('input[name^="batch_start_"]').value = fmt(newStart);
-        row.querySelector('input[name^="batch_end_"]').value = fmt(newEnd);
     };
 
     // Renders one radio button per current batch, per roster row — kept in
@@ -200,7 +230,7 @@
 
     // Seed the batches table from the saved config, or one blank batch to start.
     if (existingBatches.length) {
-        existingBatches.forEach(function (b) { window.addBatchRow(b.start, b.end); });
+        existingBatches.forEach(function (b) { window.addBatchRow(b); });
     } else {
         window.addBatchRow();
         window.addBatchRow();

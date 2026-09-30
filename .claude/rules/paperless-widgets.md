@@ -237,3 +237,23 @@ the auto-submission). The flag is display-only; it never touches the
 RUN/EFFORT/ERROR score. `assessment_full` exposes `timer_config` — both the
 column and the view's `CREATE OR REPLACE` live in `Widgets_model::install()`,
 so re-run `WidgetsController/install` after pulling this change.
+**Web languages** (2026-09-30): `given.language` may also be `php`, `html`,
+`css` or `javascript` (default/unknown = `c`, so old assessments are unchanged).
+`Widgets_model::code_snippet_language()` is the ONE place a language turns into
+the CodeMirror mode, the input/output labels, and the `web` / `preview` flags —
+don't re-add a language map to a view. For a web problem `sample_output` is
+authored HTML shown in a Rendered/Source card (the rendered pane is
+`<iframe sandbox="" srcdoc>`: no scripts, forms or same-origin) — except a php
+`sample_output` with no tags, which is a plain result-message box.
+`sample_input` is the starting HTML (css/javascript) or, for php, the
+submitted form written `field=value, field=value` (`name[]=` repeats for
+checkboxes), parsed by `Widgets_model::code_snippet_parse_form()` and drawn as
+a disabled HTML form; text that isn't pure key=value falls back to the plain box.
+html/css/javascript get a student **Preview** button (also on the read-only
+review); that frame is `sandbox="allow-scripts"` and must NEVER gain
+`allow-same-origin`, or student code could read the LMS session. Console output
+reaches the parent via `postMessage`, accepted only from our own frames. PHP has
+no preview (needs a server) — students test on their own XAMPP and the
+instructor checks live. Display-only: no change to storage, rubric or scoring.
+The CodeMirror mode files live in `assets/codemirror-{xml,javascript,css,
+htmlmixed,php}.min.js`, loaded by `views/footer.php` (order matters).

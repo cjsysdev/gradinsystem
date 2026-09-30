@@ -1,0 +1,232 @@
+{
+    "topic": "introduction_to_css",
+    "title": "Introduction to CSS",
+    "description": "How one CSS rule picks elements with a selector and changes them with a declaration.",
+    "congratsText": "You can read and write a CSS rule!",
+    "objectives": [
+        "Write a CSS rule inside a style block",
+        "Predict which elements a selector will change",
+        "Diagnose a broken declaration when the browser shows no error",
+        "Apply the rule shape to write a new rule with two declarations"
+    ],
+    "recap": [
+        "A rule is a selector, then braces with property: value; inside, in a style block in head.",
+        "The selector picks the elements; one rule changes every element it matches.",
+        "A missing colon breaks a declaration, and the browser skips it with no error.",
+        "Every rule shares one shape: selector, braces, and one declaration per line."
+    ],
+    "sections": [
+        {
+            "id": 0,
+            "title": "Build a rule",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "CSS changes how a page looks. In this lab, every rule goes inside a <span class=\"code-inline\">&lt;style></span> block, inside <span class=\"code-inline\">head</span>, right below <span class=\"code-inline\">title</span>.",
+                    "check": {
+                        "question": "Where did the style block go in the lab?",
+                        "options": [
+                            "Inside head",
+                            "Inside body"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "A rule starts with a <span class=\"highlight\">selector</span>. The selector picks the elements. In <span class=\"code-inline\">p { color: red; }</span>, the selector is <span class=\"code-inline\">p</span>.",
+                    "check": {
+                        "question": "In <span class=\"code-inline\">p { color: red; }</span>, what is the selector?",
+                        "options": [
+                            "color",
+                            "p"
+                        ],
+                        "correct": 1
+                    }
+                },
+                {
+                    "text": "Inside the braces is the <span class=\"highlight\">declaration</span>: the declaration says what changes. It is a property, a colon, a value, and a semicolon: <span class=\"code-inline\">color: red;</span>",
+                    "check": {
+                        "question": "What separates the property from the value?",
+                        "options": [
+                            "A colon",
+                            "A space"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "code": "p {\n    color: red;\n}",
+                "question": "Which part of this rule picks the elements to change?",
+                "options": [
+                    "The property color",
+                    "The value red",
+                    "The selector p",
+                    "The semicolon at the end"
+                ],
+                "correct": 2
+            }
+        },
+        {
+            "id": 1,
+            "title": "Every match",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "The page has two paragraphs. After <span class=\"code-inline\">p { color: red; }</span>, both turn red. One rule changes every element its selector matches.",
+                    "check": {
+                        "question": "How many paragraphs did the p rule turn red?",
+                        "options": [
+                            "Only the first",
+                            "Both of them"
+                        ],
+                        "correct": 1
+                    }
+                },
+                {
+                    "text": "Elements the selector does not match keep their normal look. The <span class=\"code-inline\">h1</span> and the list items stayed black.",
+                    "check": {
+                        "question": "Why did the heading stay black?",
+                        "options": [
+                            "h1 is not a p",
+                            "Headings ignore CSS"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Change the selector and you change what gets picked. A copy with <span class=\"code-inline\">li</span> as the selector turns the list items red too.",
+                    "check": {
+                        "question": "What picked the list items in Experiment 3?",
+                        "options": [
+                            "The value red",
+                            "The selector li"
+                        ],
+                        "correct": 1
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "type",
+                "code": "p {\n    color: red;\n}\nli {\n    color: red;\n}\n\n&lt;h1>Welcome to My Page&lt;/h1>\n&lt;p>This is the first paragraph.&lt;/p>\n&lt;p>This is the second paragraph.&lt;/p>\n&lt;ul>\n    &lt;li>Home&lt;/li>\n    &lt;li>About&lt;/li>\n&lt;/ul>",
+                "question": "How many lines of text on this page turn red? Type a number.",
+                "acceptedAnswers": [
+                    "4",
+                    "four",
+                    "Four"
+                ]
+            }
+        },
+        {
+            "id": 2,
+            "title": "Break it: no error",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "In Experiment 2 you deleted one colon: <span class=\"code-inline\">color red;</span>. The paragraphs went back to black.",
+                    "check": {
+                        "question": "What did deleting the colon do to the paragraphs?",
+                        "options": [
+                            "Went back to black",
+                            "Turned dark red"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "The browser showed <span class=\"highlight\">no error message</span>. When it cannot read a declaration, it skips it and goes on.",
+                    "check": {
+                        "question": "Did the browser print an error on the page?",
+                        "options": [
+                            "Yes, at the top",
+                            "No, nothing"
+                        ],
+                        "correct": 1
+                    }
+                },
+                {
+                    "text": "So when a rule seems to do nothing, check the small marks first: the colon, the semicolon, and the braces.",
+                    "check": {
+                        "question": "A rule does nothing. What do you check first?",
+                        "options": [
+                            "The colon and semicolon",
+                            "The browser version"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "arrange",
+                "question": "The broken declaration was color red; — arrange the pieces to fix it.",
+                "tokens": [
+                    "red;",
+                    "color",
+                    ":"
+                ],
+                "correctOrder": [
+                    "color",
+                    ":",
+                    "red;"
+                ]
+            }
+        },
+        {
+            "id": 3,
+            "title": "Same shape, new rule",
+            "callback": true,
+            "refSection": "0, 1 & 2",
+            "chunks": [
+                {
+                    "text": "A rule can hold more than one declaration. Your <span class=\"code-inline\">h1</span> rule has two: <span class=\"code-inline\">color: blue;</span> and <span class=\"code-inline\">font-size: 40px;</span>",
+                    "check": {
+                        "question": "How many declarations are in your h1 rule?",
+                        "options": [
+                            "Two",
+                            "One"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Each declaration ends with its own semicolon. Put each one on its own line so a missing mark is easy to spot.",
+                    "check": {
+                        "question": "Does each declaration need its own semicolon?",
+                        "options": [
+                            "Only the last one",
+                            "Yes, every one"
+                        ],
+                        "correct": 1
+                    }
+                },
+                {
+                    "text": "Every rule has the same shape: a selector, then braces, then <span class=\"highlight\">property: value;</span> inside. Only the words change.",
+                    "check": {
+                        "question": "What stays the same in every rule?",
+                        "options": [
+                            "The shape",
+                            "The selector"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "code": "li {\n    color: green;\n}\np {\n    color green;\n}\n\n&lt;h1>Welcome to My Page&lt;/h1>\n&lt;p>This is the first paragraph.&lt;/p>\n&lt;ul>\n    &lt;li>Home&lt;/li>\n    &lt;li>About&lt;/li>\n&lt;/ul>",
+                "question": "Which text on this page turns green?",
+                "options": [
+                    "Only the one paragraph on the page",
+                    "The paragraph and both list items",
+                    "Only the two list items",
+                    "Everything, including the heading"
+                ],
+                "correct": 2
+            }
+        }
+    ]
+}

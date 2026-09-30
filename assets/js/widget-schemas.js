@@ -142,7 +142,8 @@ window.widgetSchemas = {
                 { key: 'sample_input', type: 'textarea', label: 'Sample input (optional)', rows: 2 },
                 { key: 'sample_output', type: 'textarea', label: 'Expected output (optional)', rows: 2 }
               ] },
-            { key: 'language', type: 'select', label: 'Language', options: ['c', 'cpp', 'java', 'csharp'], default: 'c' },
+            { key: 'language', type: 'select', label: 'Language', options: ['c', 'cpp', 'java', 'csharp', 'php', 'html', 'css', 'javascript'], default: 'c',
+              help: 'php, html, css and javascript make this a web problem: Sample input for php: write the submitted form as field=value, field=value (repeat name[]=x for checkboxes) and students see it drawn as a filled-in form. For css/javascript it is the starting HTML. Expected output: plain text (e.g. a result message) is shown as a result box; if it contains HTML tags it is shown as a rendered page with a Source tab. html, css and javascript get a Preview button; php is tested on each student\'s own XAMPP.' },
             { key: 'starter_code', type: 'textarea', label: 'Starter code (optional)', rows: 5 },
             { key: 'sample_input', type: 'textarea', label: 'Sample input (optional)', rows: 2 },
             { key: 'sample_output', type: 'textarea', label: 'Expected output (optional)', rows: 2 },

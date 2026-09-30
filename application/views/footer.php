@@ -6,6 +6,13 @@
 <!-- CodeMirror JavaScript -->
 <script src="<?= base_url('./assets/codemirror.min.js') ?>"></script>
 <script src="<?= base_url('./assets/clike.min.js') ?>"></script>
+<!-- Web-language modes (code_snippet widget). Order matters: htmlmixed needs
+     xml/javascript/css, and php needs htmlmixed + clike. -->
+<script src="<?= base_url('./assets/codemirror-xml.min.js') ?>"></script>
+<script src="<?= base_url('./assets/codemirror-javascript.min.js') ?>"></script>
+<script src="<?= base_url('./assets/codemirror-css.min.js') ?>"></script>
+<script src="<?= base_url('./assets/codemirror-htmlmixed.min.js') ?>"></script>
+<script src="<?= base_url('./assets/codemirror-php.min.js') ?>"></script>
 
 <script>
     var codeEditorEl = document.getElementById('code-editor');
