@@ -203,8 +203,23 @@ class AdminAssessmentController extends Admin_Controller
         if (!$widget || $widget['widget_key'] !== 'code_snippet') {
             return null;
         }
+        // Problem pool: every entry must have a problem — a blank one would be
+        // skipped by Widgets_model::code_snippet_problems() and shift the
+        // indexes students are pinned to. An empty list (what the visual
+        // builder emits when no pool is authored) means "no pool".
+        if (!empty($config['problems'])) {
+            if (!is_array($config['problems'])) {
+                return 'Widget config not saved — "' . $widget['name'] . '": "problems" must be a list.';
+            }
+            foreach (array_values($config['problems']) as $i => $p) {
+                if (!is_array($p) || trim((string) ($p['problem'] ?? '')) === '') {
+                    return 'Widget config not saved — "' . $widget['name'] . '": problem #' . ($i + 1) . ' needs a non-empty "problem".';
+                }
+            }
+            return null;
+        }
         if (trim((string) ($config['problem'] ?? '')) === '') {
-            return 'Widget config not saved — "' . $widget['name'] . '" needs a non-empty "problem".';
+            return 'Widget config not saved — "' . $widget['name'] . '" needs a non-empty "problem" (or a "problems" list).';
         }
         return null;
     }

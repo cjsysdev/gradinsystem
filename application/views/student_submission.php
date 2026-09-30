@@ -224,6 +224,8 @@
             'readonly'      => true,
             'existing'      => json_decode($classwork['code'] ?? '', true) ?: [],
             'assessment_id' => $classwork['assessment_id'],
+            // Code Snippet only: which pool problem this student got.
+            'student_id'    => $classwork['student_id'],
             // Code Snippet only: lets the widget show the derived RUN/EFFORT/ERROR badge.
             'score'         => $classwork['score'],
             'max_score'     => $classwork['assessments'][0]->max_score,

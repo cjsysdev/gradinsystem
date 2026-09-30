@@ -132,7 +132,16 @@ window.widgetSchemas = {
         title: 'Code Snippet (live check)',
         fields: [
             { key: 'problem', type: 'textarea', label: 'Problem', rows: 4,
-              placeholder: 'What should the program do?', help: 'Required.' },
+              placeholder: 'What should the program do?', help: 'Required, unless you add a problem pool below.' },
+            { key: 'problems', type: 'group_list', label: 'Problem pool (optional)', itemLabel: 'Problem',
+              help: 'Add 2 or more and each student gets ONE at random (stable per student). Overrides "Problem" above. A problem with no starter code uses the shared one below.',
+              fields: [
+                { key: 'title', type: 'text', label: 'Title (optional)', placeholder: 'e.g. Sum 1..N' },
+                { key: 'problem', type: 'textarea', label: 'Problem', rows: 3, placeholder: 'What should the program do?' },
+                { key: 'starter_code', type: 'textarea', label: 'Starter code (optional)', rows: 4 },
+                { key: 'sample_input', type: 'textarea', label: 'Sample input (optional)', rows: 2 },
+                { key: 'sample_output', type: 'textarea', label: 'Expected output (optional)', rows: 2 }
+              ] },
             { key: 'language', type: 'select', label: 'Language', options: ['c', 'cpp', 'java', 'csharp'], default: 'c' },
             { key: 'starter_code', type: 'textarea', label: 'Starter code (optional)', rows: 5 },
             { key: 'sample_input', type: 'textarea', label: 'Sample input (optional)', rows: 2 },

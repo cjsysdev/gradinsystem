@@ -15,10 +15,20 @@
 // deadline decisions are made server-side (Widgets_model::code_snippet_*) —
 // this view only renders what it's told and syncs its clock to the server's.
 //
+// Optional problem pool: give `problems` (a list) instead of `problem` and
+// each student gets ONE of them, picked server-side by Widgets_model::
+// code_snippet_problem_index() (stable per student, pinned into
+// classworks.code on the first save). The admin preview (no $student_id)
+// shows the whole pool.
+//
 // $config — [
-//   'problem'               => '...',             // required
+//   'problem'               => '...',             // required unless 'problems' is given
+//   'problems'              => [                   // optional pool, overrides 'problem'
+//       ['title' => '...', 'problem' => '...', 'starter_code' => '...',
+//        'sample_input' => '...', 'sample_output' => '...'],  // only 'problem' required
+//   ],
 //   'language'              => 'c',               // optional, CodeMirror mode hint, default 'c'
-//   'starter_code'          => '...',             // optional, pre-fills the editor
+//   'starter_code'          => '...',             // optional, pre-fills the editor (pool entries inherit it)
 //   'sample_input'          => '...',             // optional
 //   'sample_output'         => '...',             // optional
 //   'rubric'                => ['run' => 100, 'effort' => 70, 'error' => 40],  // optional, percent of max_score
@@ -31,6 +41,7 @@
 // $timer — Widgets_model::code_snippet_timer()'s return for this student, or
 //          null when the assessment is untimed (or, in readonly mode, when
 //          the caller didn't compute one). {batch, start_ts, end_ts, phase}
+// $student_id — whose problem to show from the pool; null = admin preview
 
 $this->load->model('Widgets_model');
 
@@ -40,11 +51,26 @@ $score         = $score ?? null;
 $max_score     = $max_score ?? null;
 $assessment_id = $assessment_id ?? null;
 $timer         = is_array($timer ?? null) ? $timer : null;
+$student_id    = $student_id ?? null;
 
-$problem       = (string) ($config['problem'] ?? '');
-$starter       = (string) ($config['starter_code'] ?? '');
-$sample_in     = (string) ($config['sample_input'] ?? '');
-$sample_out    = (string) ($config['sample_output'] ?? '');
+$pool          = $this->Widgets_model->code_snippet_problems($config);
+$pool_count    = count($pool);
+$is_preview    = $student_id === null || $student_id === '';
+$problem_idx   = $is_preview ? 0 : $this->Widgets_model->code_snippet_problem_index($config, $existing, $student_id, $assessment_id);
+$active        = $pool[$problem_idx] ?? ['title' => '', 'problem' => '', 'starter_code' => '', 'sample_input' => '', 'sample_output' => ''];
+// Preview lists the whole pool; a real student sees only their own problem.
+$shown         = ($is_preview && $pool_count > 1) ? $pool : [$problem_idx => $active];
+
+// Timed batches: a student must not see their problem (or its starter code)
+// before their batch opens — neither on the waiting page nor by opening the
+// read-only review early. Admins always see it.
+$is_admin      = $this->session->userdata('role') === 'admin';
+$hide_problem  = !$is_admin && $timer && in_array($timer['phase'], ['waiting', 'unassigned'], true);
+if ($hide_problem) {
+    $shown = [];
+}
+
+$starter       = $hide_problem ? '' : $active['starter_code'];
 $allow_code    = !array_key_exists('allow_code_submission', $config) || !empty($config['allow_code_submission']);
 $saved_code    = (string) ($existing['code'] ?? '');
 $cm_modes      = ['c' => 'text/x-csrc', 'cpp' => 'text/x-c++src', 'java' => 'text/x-java', 'csharp' => 'text/x-csharp'];
@@ -96,6 +122,7 @@ $is_open_timed = !$readonly && $timer && $timer['phase'] === 'open';
     .cs-waiting-card { border: 1px dashed #357abd; border-radius: 8px; padding: 24px; text-align: center; background: #f2f7fd; }
     .cs-waiting-card .cs-waiting-clock { font-size: 28px; font-weight: bold; font-variant-numeric: tabular-nums; margin: 10px 0; color: #357abd; }
     .cs-autosave-status { font-size: 12px; color: #6c757d; margin-top: 6px; }
+    .cs-widget .cs-pool-note { font-size: 13px; color: #357abd; background: #f2f7fd; border: 1px dashed #357abd; border-radius: 6px; padding: 8px 12px; margin-bottom: 12px; }
 </style>
 <div class="cs-widget"<?= $readonly ? '' : ' id="cs-widget"' ?>>
     <?php if ($verdict): ?>
@@ -122,19 +149,39 @@ $is_open_timed = !$readonly && $timer && $timer['phase'] === 'open';
         </div>
     <?php endif; ?>
 
-    <div class="cs-problem">
-        <div class="cs-problem-title"><i class="fa fa-code"></i> Problem</div>
-        <?= htmlspecialchars($problem) ?>
-    </div>
-    <?php if ($sample_in !== '' || $sample_out !== ''): ?>
-        <div class="cs-io">
-            <div><div class="cs-io-label">Sample input</div><pre class="cs-io-box"><?= htmlspecialchars($sample_in) ?></pre></div>
-            <div><div class="cs-io-label">Expected output</div><pre class="cs-io-box"><?= htmlspecialchars($sample_out) ?></pre></div>
+    <?php if ($is_preview && $pool_count > 1): ?>
+        <div class="cs-pool-note"><i class="fa fa-random"></i> Problem pool: each student is given ONE of these <?= $pool_count ?> problems.</div>
+    <?php endif; ?>
+    <?php foreach ($shown as $idx => $p):
+        // Only a pooled assessment numbers its problems; students never see
+        // the other problems' titles, just their own.
+        $p_label = 'Problem' . ($pool_count > 1 && ($is_preview || $readonly) ? ' ' . ($idx + 1) . ' of ' . $pool_count : '')
+            . ($p['title'] !== '' ? ' — ' . $p['title'] : '');
+    ?>
+        <div class="cs-problem">
+            <div class="cs-problem-title"><i class="fa fa-code"></i> <?= htmlspecialchars($p_label) ?></div>
+            <?= htmlspecialchars($p['problem']) ?>
+        </div>
+        <?php if ($p['sample_input'] !== '' || $p['sample_output'] !== ''): ?>
+            <div class="cs-io">
+                <div><div class="cs-io-label">Sample input</div><pre class="cs-io-box"><?= htmlspecialchars($p['sample_input']) ?></pre></div>
+                <div><div class="cs-io-label">Expected output</div><pre class="cs-io-box"><?= htmlspecialchars($p['sample_output']) ?></pre></div>
+            </div>
+        <?php endif; ?>
+    <?php endforeach; ?>
+    <?php if ($hide_problem && $readonly): ?>
+        <div class="cs-waiting-card mb-3">
+            <i class="fa fa-lock"></i>
+            <?php if ($timer['phase'] === 'waiting'): ?>
+                Your problem will be shown when Batch <?= (int) $timer['batch'] ?> starts at <?= htmlspecialchars(date('g:i A', $timer['start_ts'])) ?>.
+            <?php else: ?>
+                Your problem will be shown once your instructor assigns you to a batch.
+            <?php endif; ?>
         </div>
     <?php endif; ?>
 
     <?php if ($readonly): ?>
-        <?php if ($allow_code): ?>
+        <?php if ($allow_code && !$hide_problem): ?>
             <div class="cs-optional">Submitted code</div>
             <?php if (trim($saved_code) !== ''): ?>
                 <pre class="cs-code"><?= htmlspecialchars($saved_code) ?></pre>
@@ -146,7 +193,7 @@ $is_open_timed = !$readonly && $timer && $timer['phase'] === 'open';
         <div class="cs-waiting-card" id="cs-waiting-card">
             <div><i class="fa fa-hourglass-half"></i> Batch <?= (int) $timer['batch'] ?> hasn't started yet</div>
             <div class="cs-waiting-clock" id="cs-waiting-clock">--:--:--</div>
-            <div class="text-muted small">Starts at <?= htmlspecialchars(date('g:i A', $timer['start_ts'])) ?>. This page will open automatically.</div>
+            <div class="text-muted small">Starts at <?= htmlspecialchars(date('g:i A', $timer['start_ts'])) ?>. Your problem will appear and this page will open automatically.</div>
         </div>
     <?php elseif ($allow_code): ?>
         <div class="cs-optional"><i class="fa fa-paperclip"></i> Your code <em>(optional &mdash; your instructor checks it live, and you can add it later)</em></div>

@@ -384,13 +384,27 @@ const widgetExamples = {
         }
     },
     code_snippet: {
-        hint: 'A coding problem you check LIVE on each student\'s PC and mark RUN / EFFORT / ERROR (three one-tap buttons on the submissions page). Every enrolled student gets a submission row automatically, so absent students simply stay ungraded. "rubric" values are percent of Max Score (default 100 / 70 / 40). Students may attach or update their code anytime, even after grading; it never changes the score. Set "allow_code_submission" to false for a problem-only activity. "problem" is required.',
+        hint: 'A coding problem you check LIVE on each student\'s PC and mark RUN / EFFORT / ERROR (three one-tap buttons on the submissions page). Every enrolled student gets a submission row automatically, so absent students simply stay ungraded. "rubric" values are percent of Max Score (default 100 / 70 / 40). Students may attach or update their code anytime, even after grading; it never changes the score. Set "allow_code_submission" to false for a problem-only activity. "problem" is required — OR give a "problems" list [{title, problem, starter_code, sample_input, sample_output}] and each student gets ONE of them at random (stable per student; pool entries inherit the top-level starter_code).',
         example: {
-            problem: 'Write a C program that reads a positive integer N and prints the sum of all integers from 1 to N.\nUse a loop; do not use the formula n(n+1)/2.',
+            // Problem pool: each student is given ONE of these at random.
+            // For a single shared problem, use "problem" (+ sample_input /
+            // sample_output) at the top level instead of "problems".
+            problems: [
+                {
+                    title: 'Sum 1 to N',
+                    problem: 'Write a C program that reads a positive integer N and prints the sum of all integers from 1 to N.\nUse a loop; do not use the formula n(n+1)/2.',
+                    sample_input: '5',
+                    sample_output: '15'
+                },
+                {
+                    title: 'Count the Even Numbers',
+                    problem: 'Write a C program that reads a positive integer N and prints how many even numbers there are from 1 to N.\nUse a loop and the % operator; do not compute it as N/2.',
+                    sample_input: '7',
+                    sample_output: '3'
+                }
+            ],
             language: 'c',
             starter_code: '#include <stdio.h>\n\nint main() {\n    int n;\n\n    return 0;\n}',
-            sample_input: '5',
-            sample_output: '15',
             rubric: { run: 100, effort: 70, error: 40 },
             allow_code_submission: true
         }

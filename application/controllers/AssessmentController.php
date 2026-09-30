@@ -306,6 +306,17 @@ class AssessmentController extends CI_Controller
                         }
                         $code_data['state'] = $this->Widgets_model->code_snippet_submit_state($timer);
                         $code_data['saved_at'] = date('Y-m-d H:i:s');
+                        // Pin the pool problem this student was shown — resolved
+                        // server-side from the stored row, never from the post.
+                        $prior_row = $this->classworks->where([
+                            'student_id' => $student_id, 'assessment_id' => $assessment_id,
+                        ])->get();
+                        $code_data['problem'] = $this->Widgets_model->code_snippet_problem_index(
+                            json_decode($assessment['given'] ?? '', true) ?: [],
+                            $prior_row ? $prior_row->code : null,
+                            $student_id,
+                            $assessment_id
+                        );
                         $submission_data['code'] = json_encode($code_data);
                     } else {
                         $submission_data['code'] = $post['code'];
@@ -443,6 +454,12 @@ class AssessmentController extends CI_Controller
         }
         $code_data['state'] = 'draft';
         $code_data['saved_at'] = date('Y-m-d H:i:s');
+        $code_data['problem'] = $this->Widgets_model->code_snippet_problem_index(
+            json_decode($assessment['given'] ?? '', true) ?: [],
+            $current,
+            $student_id,
+            $assessment_id
+        );
 
         $this->classworks->update(['code' => json_encode($code_data)], $existing->classwork_id);
 

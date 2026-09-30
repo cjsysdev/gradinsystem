@@ -202,6 +202,68 @@ class Widgets_model extends CI_Model
         return 'custom';
     }
 
+    // ── Code Snippet problem pool ───────────────────────────────────────
+    // A config may carry a `problems` list instead of (or besides) the single
+    // top-level `problem`; each student then gets ONE problem from the pool.
+    // Legacy single-problem configs read back as a one-item pool, so every
+    // caller can go through code_snippet_problems() unconditionally.
+
+    /**
+     * Normalized pool: a list of {title, problem, starter_code, sample_input,
+     * sample_output}. A problem entry with a blank/missing starter_code inherits
+     * the top-level one. Blank problems are skipped (save-time validation
+     * rejects them, so stored indexes stay aligned with the authored list).
+     */
+    public function code_snippet_problems($config)
+    {
+        $config = is_array($config) ? $config : [];
+        $raw = !empty($config['problems']) && is_array($config['problems'])
+            ? array_values($config['problems'])
+            : [$config];
+
+        $pool = [];
+        foreach ($raw as $p) {
+            if (!is_array($p) || trim((string) ($p['problem'] ?? '')) === '') {
+                continue;
+            }
+            $starter = (string) ($p['starter_code'] ?? '');
+            $pool[] = [
+                'title'         => trim((string) ($p['title'] ?? '')),
+                'problem'       => (string) $p['problem'],
+                'starter_code'  => $starter !== '' ? $starter : (string) ($config['starter_code'] ?? ''),
+                'sample_input'  => (string) ($p['sample_input'] ?? ''),
+                'sample_output' => (string) ($p['sample_output'] ?? ''),
+            ];
+        }
+        return $pool;
+    }
+
+    /**
+     * Which pool index this student works on. Once a save has pinned it into
+     * classworks.code (`problem`), that wins — so editing the pool later never
+     * swaps a student's problem out from under their code. Before that, it is
+     * a stable pseudo-random pick seeded by section + student, so every page
+     * (student, review, admin list) agrees without storing anything.
+     *
+     * @param  array             $config      assessments.given, decoded
+     * @param  string|array|null $code_json   the student's classworks.code
+     * @param  int|string        $student_id
+     * @param  int|string        $section_id  assessment_section_id
+     */
+    public function code_snippet_problem_index($config, $code_json, $student_id, $section_id)
+    {
+        $n = count($this->code_snippet_problems($config));
+        if ($n <= 1) {
+            return 0;
+        }
+        $data = is_array($code_json) ? $code_json : (json_decode((string) $code_json, true) ?: []);
+        if (isset($data['problem']) && is_numeric($data['problem'])
+            && (int) $data['problem'] >= 0 && (int) $data['problem'] < $n) {
+            return (int) $data['problem'];
+        }
+        return hexdec(substr(md5($section_id . ':' . $student_id), 0, 7)) % $n;
+    }
+
     // ── Code Snippet timed batches ──────────────────────────────────────
     // The PC lab only fits half a section at once, so a timed Code Snippet
     // run is split into batches, each with its own admin-set start/end

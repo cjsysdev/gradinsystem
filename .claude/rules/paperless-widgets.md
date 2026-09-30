@@ -202,6 +202,19 @@ for it. Student code is an optional `{"code": "..."}` attachment that may be
 added or updated after grading and regardless of the due date —
 `AssessmentController::submit_classwork()` updates only `code` in that case,
 never the score. Individual only (no grouping support).
+**Optional problem pool** (2026-09-30): `given` may carry `problems:
+[{title, problem, starter_code, sample_input, sample_output}]` instead of
+`problem`; each student sees ONE. `Widgets_model::code_snippet_problems()`
+normalizes both shapes (legacy = one-item pool; empty `problems: []` = no
+pool) and `code_snippet_problem_index()` is the only picker: the index pinned
+in `classworks.code.problem` wins, otherwise an md5(section:student) pick.
+Submit and autosave stamp `problem` server-side (never client-posted). The
+admin preview (no `$student_id`) lists the whole pool; the submissions page
+shows a "Problem N of M" badge per card. On a timed assessment a
+non-admin sees no problem text or starter code while their batch is
+`waiting`/`unassigned` (neither the waiting page nor the read-only review
+renders it, and the starter isn't in the page JS); it appears on the
+auto-reload when the batch opens.
 **Optional timed batches** (2026-09, outside the original spec): for a
 PC-limited lab, `AdminAssessmentController::snippet_batches()`
 (`views/admin/snippet_batches.php`) splits a section's roster into batches,

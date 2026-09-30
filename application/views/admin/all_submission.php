@@ -217,6 +217,9 @@
                                             'config'   => $widget_config,
                                             'readonly' => true,
                                             'existing' => json_decode($row['code'] ?? '', true) ?: [],
+                                            // Code Snippet: which pool problem this student got.
+                                            'student_id'    => $row['trans_no'],
+                                            'assessment_id' => $selected_assessment_id,
                                         ]); ?>
                                     </template>
                                 <?php endif; ?>
@@ -228,6 +231,9 @@
                                     $cs_now = $this->Widgets_model->code_snippet_verdict($widget_config, $row['max_score'], $row['score']);
                                     $cs_code_decoded = json_decode($row['code'] ?? '', true) ?: [];
                                     $cs_has_code = trim((string) ($cs_code_decoded['code'] ?? '')) !== '';
+                                    // Problem pool: which problem this student was given.
+                                    $cs_pool = $this->Widgets_model->code_snippet_problems($widget_config);
+                                    $cs_pidx = $this->Widgets_model->code_snippet_problem_index($widget_config, $cs_code_decoded, $row['trans_no'], $selected_assessment_id);
                                     // Timed batches: per-student, since each student can be in a
                                     // different batch with a different window.
                                     $cs_timer = !empty($widget_timer_config)
@@ -237,6 +243,13 @@
                                     $cs_timer_labels = ['submitted' => ['On time', 'success'], 'timesup' => ["TIME'S UP", 'danger'], 'draft' => ['In progress', 'secondary']];
                                 ?>
                                     <div class="cs-grade" data-classwork-id="<?= $row['classwork_id'] ?>">
+                                        <?php if (count($cs_pool) > 1): ?>
+                                            <div class="mb-1">
+                                                <span class="badge badge-info" style="font-size:0.9em;">
+                                                    <i class="fa fa-code"></i> Problem <?= $cs_pidx + 1 ?> of <?= count($cs_pool) ?><?= $cs_pool[$cs_pidx]['title'] !== '' ? ': ' . htmlspecialchars($cs_pool[$cs_pidx]['title']) : '' ?>
+                                                </span>
+                                            </div>
+                                        <?php endif; ?>
                                         <?php if ($cs_timer): ?>
                                             <div class="mb-1">
                                                 <?php if (!empty($cs_timer['batch'])): ?>
