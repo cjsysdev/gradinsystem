@@ -30,6 +30,10 @@ class SecureQuizController extends CI_Controller
             return;
         }
 
+        // Reachable directly by URL, not only through AssessmentController's
+        // redirect — so the clearance gate has to be here too.
+        if (clearance_gate($assessment)) return;
+
         $config = json_decode($assessment->given ?? '', true) ?: [];
         $query_max_items = $assessment->max_score;
         $data['max_items'] = $query_max_items;
@@ -72,6 +76,9 @@ class SecureQuizController extends CI_Controller
 
     public function submit($assessment_id)
     {
+        // An uncleared student must not be able to POST an attempt either.
+        if (clearance_gate($assessment_id)) return;
+
         $session_key = 'shuffled_questions_' . $assessment_id;
         $questions = $this->session->userdata($session_key) ?: [];
         $userAnswers = $this->input->post('answers') ?: [];
@@ -89,18 +96,35 @@ class SecureQuizController extends CI_Controller
         if (!$value) {
             // Defensive: grade_quiz() bounds the score by question count, but
             // clamp anyway in case an admin edited max_score to be smaller.
-            $this->classworks->insert([
+            $row = [
                 'student_id' => $this->session->student_id,
                 'assessment_id' => $assessment_id,
                 'score' => $this->classworks->clamp_score_for_assessment($assessment_id, $graded['score']),
                 'code' => json_encode($graded['results'], JSON_PRETTY_PRINT)
-            ]);
+            ];
+
+            // Tab-switch count. secure_quiz_view.php counts window blurs during
+            // the attempt and posts the tally as `blur_count`; until now nothing
+            // read it. It is a client-reported number and trivially forgeable, so
+            // it is a soft proctoring signal for the instructor to eyeball, never
+            // an input to the score. Clamped into the SMALLINT UNSIGNED column;
+            // skipped entirely if an admin hasn't run WidgetsController/install
+            // yet, so a missing column can never cost a student their submission.
+            if ($this->classworks->has_switch_count()) {
+                $row['switch_count'] = min(65535, max(0, (int) $this->input->post('blur_count')));
+            }
+
+            $this->classworks->insert($row);
         }
 
         $data['score'] = $graded['score'];
         $data['total'] = count($questions);
         $data['results'] = $graded['results'];
         $data['assessment_id'] = $assessment_id;
+        // quiz_result.php then renders the missed items only — never the full
+        // question/answer list (same rule as the readonly widget review in
+        // widgets/secure_quiz.php).
+        $data['show_review'] = true;
         $this->load->view('quiz_result', $data);
     }
 
@@ -152,6 +176,7 @@ class SecureQuizController extends CI_Controller
         $data['results'] = $graded['results'];
         $data['assessment_id'] = null;
         $data['test_mode'] = true;
+        $data['show_review'] = true;
         $this->load->view('quiz_result', $data);
     }
 }

@@ -1,0 +1,232 @@
+{
+    "topic": "ci3_sessions_load_set_use_destroy",
+    "title": "CI3 Sessions — Load, Set, Use, Destroy",
+    "description": "The four basic session moves in CodeIgniter 3, and the $_SESSION global underneath them.",
+    "congratsText": "You mastered the CI3 session basics!",
+    "objectives": [
+        "Load the session library before touching the session",
+        "Set a value with set_userdata and read it back with userdata",
+        "Say where CI3 keeps the values ($_SESSION)",
+        "Clear a session with sess_destroy"
+    ],
+    "recap": [
+        "Load: $this->load->library('session'); in every method that uses it.",
+        "Set: set_userdata('key', value) — setting the same key again replaces it.",
+        "Use: userdata('key') reads it back anywhere, returns NULL if unused, and is the same value as PHP's $_SESSION['key'].",
+        "Destroy: sess_destroy() empties the box, no arguments, no undo."
+    ],
+    "sections": [
+        {
+            "id": 0,
+            "title": "Loading the Session",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "A <span class=\"highlight\">session</span> is a small box of values the server keeps for one browser, even after the page is gone.",
+                    "check": {
+                        "question": "Who holds the values in a session?",
+                        "options": [
+                            "The server does",
+                            "The form file does"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Nothing works until you load it: <span class=\"code-inline\">$this->load->library('session');</span>",
+                    "check": {
+                        "question": "What is the very first session step?",
+                        "options": [
+                            "Load the session library",
+                            "Set a value in the box"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "That load line goes in <span class=\"highlight\">every method</span> that touches the session &mdash; <span class=\"code-inline\">check()</span>, <span class=\"code-inline\">home()</span>, <span class=\"code-inline\">logout()</span>. No shortcut.",
+                    "check": {
+                        "question": "How many methods need the load line?",
+                        "options": [
+                            "Every one that uses it",
+                            "Only the first one to run"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "code": "public function home()\n{\n    var_dump($this->session->userdata('username'));\n}",
+                "question": "This method is missing its load line. What appears on screen?",
+                "options": [
+                    "The stored name, because check() already loaded the library earlier",
+                    "An error saying Undefined property: Auth::$session",
+                    "NULL, because the session box was quietly emptied out",
+                    "Nothing at all, since a missing load line is simply skipped"
+                ],
+                "correct": 1
+            }
+        },
+        {
+            "id": 1,
+            "title": "Setting a Value",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "<span class=\"code-inline\">$this->session->set_userdata('username', 'maria');</span> puts a value in the box. First part is the <span class=\"highlight\">key</span>, second is the value.",
+                    "check": {
+                        "question": "Which part is the key?",
+                        "options": [
+                            "'username'",
+                            "'maria'"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "The value usually comes from the form: <span class=\"code-inline\">login()</span> shows it with <span class=\"code-inline\">$this->load->view('login_form');</span>, then <span class=\"code-inline\">check()</span> reads it with <span class=\"code-inline\">$this->input->post('username');</span>.",
+                    "check": {
+                        "question": "Which method stores the typed name?",
+                        "options": [
+                            "check()",
+                            "login()"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Set the same key twice and the second value <span class=\"highlight\">replaces</span> the first. The box keeps one value per key.",
+                    "check": {
+                        "question": "Store juan, then store maria. What is in the box?",
+                        "options": [
+                            "maria only",
+                            "juan and maria"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "type",
+                "code": "$this->session->set_userdata('username', 'juan');\n$this->session->set_userdata('username', 'maria');",
+                "question": "Type the value stored under 'username' after these two lines run.",
+                "acceptedAnswers": [
+                    "maria",
+                    "'maria'",
+                    "\"maria\""
+                ]
+            }
+        },
+        {
+            "id": 2,
+            "title": "Using the Value",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "<span class=\"code-inline\">$this->session->userdata('username')</span> reads the value back. It returns <span class=\"highlight\">NULL</span> when that key holds nothing.",
+                    "check": {
+                        "question": "What comes back for an unused key?",
+                        "options": [
+                            "NULL",
+                            "An empty form"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "It works in any method, even one the form never reached. <span class=\"code-inline\">home()</span> has no post data at all, yet it still prints the name.",
+                    "check": {
+                        "question": "Does home() need the form to get the name?",
+                        "options": [
+                            "No, it reads the box",
+                            "Yes, it reads the post"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "CI3 keeps that box in PHP's own global array, <span class=\"highlight\">$_SESSION</span>. So <span class=\"code-inline\">$_SESSION['username']</span> holds the exact same value as <span class=\"code-inline\">userdata('username')</span>.",
+                    "check": {
+                        "question": "Where does CI3 actually keep the values?",
+                        "options": [
+                            "In the $_SESSION global",
+                            "In a private CI3 file"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "arrange",
+                "question": "Arrange the tokens into a working home() body.",
+                "tokens": [
+                    "var_dump($this->session->userdata('username'));",
+                    "$this->load->library('session');",
+                    "echo \"home        : \";"
+                ],
+                "correctOrder": [
+                    "$this->load->library('session');",
+                    "echo \"home        : \";",
+                    "var_dump($this->session->userdata('username'));"
+                ]
+            }
+        },
+        {
+            "id": 3,
+            "title": "Destroying the Session",
+            "callback": true,
+            "refSection": "0, 1 & 2",
+            "chunks": [
+                {
+                    "text": "<span class=\"code-inline\">$this->session->sess_destroy();</span> throws the whole box away. It takes no arguments and it cannot be undone.",
+                    "check": {
+                        "question": "What do you pass to sess_destroy()?",
+                        "options": [
+                            "Nothing at all",
+                            "The key to remove"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "<span class=\"code-inline\">logout()</span> is just the two basics in order: load the library, then destroy.",
+                    "check": {
+                        "question": "Can logout() skip the load line?",
+                        "options": [
+                            "No, it uses the box",
+                            "Yes, check() loaded it"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "After that, <span class=\"code-inline\">userdata('username')</span> gives <span class=\"highlight\">NULL</span> and <span class=\"code-inline\">$_SESSION</span> is empty again.",
+                    "check": {
+                        "question": "What does home() show after logout?",
+                        "options": [
+                            "NULL",
+                            "The last name saved"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "code": "$this->load->library('session');\n$this->session->set_userdata('email', 'maria@cmc.edu');\n$this->session->sess_destroy();\nvar_dump($_SESSION['email']);",
+                "question": "What happens on the last line?",
+                "options": [
+                    "It prints the stored email, since destroy only clears userdata keys",
+                    "It prints the stored email, because $_SESSION is a separate global box",
+                    "The key is gone, so there is no email left to print",
+                    "It prints an empty string, which destroy leaves behind for every key"
+                ],
+                "correct": 2
+            }
+        }
+    ]
+}

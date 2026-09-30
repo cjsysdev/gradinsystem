@@ -1,7 +1,7 @@
 <?php
-// Widget J — Case Dossier Rating (root/docs/paperless-midterm-plan.md #4).
+// Widget J — Case Dossier (root/docs/paperless-midterm-plan.md #4).
 // Hook question -> read-only framework explainer -> multiple parallel case
-// dossiers (each rated 1-5 per factor, with a cited-evidence text field) ->
+// dossiers (each factor answered by citing a fact from that dossier) ->
 // reflection questions. Not auto-graded — same manual-score-entry pattern as
 // Worksheet Form/Lab Worksheet/Case Study Worksheet.
 //
@@ -14,7 +14,7 @@
 //       'name'    => 'GCash',
 //       'accent'  => 'mango',   // free-form CSS class hint, purely cosmetic
 //       'dossier' => ['title' => '...', 'facts' => ['...', '...'], 'source' => '...'],
-//       'factors' => [ ['title' => 'TECH', 'question' => 'Did the technology work?'], ... ],
+//       'factors' => [ ['title' => 'TECH', 'question' => 'Did the technology work?', 'evidence_label' => '...', 'placeholder' => '...', 'rows' => 2], ... ],
 //     ],
 //     ...
 //   ],
@@ -28,7 +28,7 @@
 // $readonly — bool
 // $existing — [
 //   'hook_answers'       => { '<flat question index>' => <value shaped per type> },
-//   'group_ratings'      => { '<group index>' => { '<factor index>' => {'score' => 1-5|null, 'evidence' => '...'} } },
+//   'group_ratings'      => { '<group index>' => { '<factor index>' => {'evidence' => '...'} } },
 //   'reflection_answers' => { '<flat question index>' => <value shaped per type> },
 // ] or []
 
@@ -167,12 +167,9 @@ $accent_map = [
     #case-dossier-widget .cd-rating-row:first-of-type { border-top: none; margin-top: 8px; padding-top: 0; }
     #case-dossier-widget .cd-rf-name { font-weight: 700; font-size: 13px; }
     #case-dossier-widget .cd-rf-q { font-size: 13px; color: #6c757d; margin-left: 6px; }
-    #case-dossier-widget .cd-rate-scale { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
-    #case-dossier-widget .cd-rate-scale button { font-weight: 700; font-size: 14px; width: 34px; height: 34px; border-radius: 6px; border: 1.5px solid #e3e1da; background: #fdfcf9; color: #6c757d; cursor: pointer; }
-    #case-dossier-widget .cd-rate-scale button.picked { background: #357abd; border-color: #357abd; color: #fff; }
-    #case-dossier-widget .cd-evidence-label { font-size: 12px; color: #6c757d; margin-bottom: 2px; }
-    #case-dossier-widget .cd-evidence-input { width: 100%; border: none; border-bottom: 1px dotted #e3e1da; background: transparent; padding: 6px 4px; }
-    #case-dossier-widget .cd-evidence-input:focus { outline: none; border-bottom: 1.5px solid #357abd; }
+    #case-dossier-widget .cd-evidence-label { font-size: 12px; color: #6c757d; margin: 8px 0 4px; }
+    #case-dossier-widget .cd-evidence-input { width: 100%; font-size: 13px; border: 1px solid #e3e1da; border-radius: 6px; background: #fdfcf9; padding: 8px 10px; resize: vertical; }
+    #case-dossier-widget .cd-evidence-input:focus { outline: none; border-color: #357abd; background: #fff; }
 </style>
 <div id="case-dossier-widget">
     <?php if (!empty($meta)): ?>
@@ -246,7 +243,6 @@ $accent_map = [
             <?php foreach ($group['factors'] ?? [] as $fi => $factor): ?>
                 <?php
                 $rating   = $ratings[$fi] ?? [];
-                $score    = isset($rating['score']) && is_numeric($rating['score']) ? (int) $rating['score'] : null;
                 $evidence = is_string($rating['evidence'] ?? null) ? $rating['evidence'] : '';
                 ?>
                 <div class="cd-rating-row" data-group="<?= $gi ?>" data-factor="<?= $fi ?>">
@@ -254,18 +250,11 @@ $accent_map = [
                     <span class="cd-rf-q">&mdash; <?= htmlspecialchars($factor['question'] ?? '') ?></span>
 
                     <?php if ($readonly): ?>
-                        <div class="cd-answer">
-                            <?= $score !== null ? 'Rating: ' . $score . '/5' : '<span class="text-muted">No rating.</span>' ?>
-                            <?php if ($evidence !== ''): ?><br>Evidence: <?= htmlspecialchars($evidence) ?><?php endif; ?>
-                        </div>
+                        <div class="cd-answer"><?= $evidence !== '' ? nl2br(htmlspecialchars($evidence)) : '<span class="text-muted">No answer.</span>' ?></div>
                     <?php else: ?>
-                        <div class="cd-rate-scale">
-                            <?php for ($n = 1; $n <= 5; $n++): ?>
-                                <button type="button" class="cd-rate-btn<?= $score === $n ? ' picked' : '' ?>" data-score="<?= $n ?>"><?= $n ?></button>
-                            <?php endfor; ?>
-                        </div>
-                        <div class="cd-evidence-label">Cite 1 dossier fact as evidence:</div>
-                        <input type="text" class="cd-evidence-input" value="<?= htmlspecialchars($evidence) ?>">
+                        <div class="cd-evidence-label"><?= htmlspecialchars($factor['evidence_label'] ?? 'Cite 1 dossier fact that answers this:') ?></div>
+                        <textarea class="cd-evidence-input" rows="<?= (int) ($factor['rows'] ?? 2) ?>"
+                                  placeholder="<?= htmlspecialchars($factor['placeholder'] ?? 'Quote or paraphrase the fact from the dossier above...') ?>"><?= htmlspecialchars($evidence) ?></textarea>
                     <?php endif; ?>
                 </div>
             <?php endforeach; ?>
@@ -319,16 +308,6 @@ $accent_map = [
         });
     });
 
-    widget.querySelectorAll('.cd-rating-row').forEach(row => {
-        row.querySelectorAll('.cd-rate-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                row.querySelectorAll('.cd-rate-btn').forEach(b => b.classList.remove('picked'));
-                btn.classList.add('picked');
-                updateProgress();
-            });
-        });
-    });
-
     function updateProgress() {
         if (!progressCount) return;
         let done = 0, total = 0;
@@ -348,7 +327,8 @@ $accent_map = [
 
         widget.querySelectorAll('.cd-rating-row').forEach(row => {
             total++;
-            if (row.querySelector('.cd-rate-btn.picked')) done++;
+            const ev = row.querySelector('.cd-evidence-input');
+            if (ev && ev.value.trim() !== '') done++;
         });
 
         progressCount.textContent = done;
@@ -379,13 +359,9 @@ $accent_map = [
         widget.querySelectorAll('.cd-rating-row').forEach(row => {
             const gi = row.dataset.group;
             const fi = row.dataset.factor;
-            const picked = row.querySelector('.cd-rate-btn.picked');
             const evidenceInput = row.querySelector('.cd-evidence-input');
             if (!ratings[gi]) ratings[gi] = {};
-            ratings[gi][fi] = {
-                score: picked ? parseInt(picked.dataset.score, 10) : null,
-                evidence: evidenceInput ? evidenceInput.value : ''
-            };
+            ratings[gi][fi] = { evidence: evidenceInput ? evidenceInput.value : '' };
         });
         return ratings;
     }
@@ -432,9 +408,6 @@ $accent_map = [
             const fi = row.dataset.factor;
             const r = (groupRatings[gi] || {})[fi];
             if (!r) return;
-            row.querySelectorAll('.cd-rate-btn').forEach(b => {
-                b.classList.toggle('picked', r.score !== null && parseInt(b.dataset.score, 10) === parseInt(r.score, 10));
-            });
             const evidenceInput = row.querySelector('.cd-evidence-input');
             if (evidenceInput && r.evidence !== undefined) evidenceInput.value = r.evidence;
         });

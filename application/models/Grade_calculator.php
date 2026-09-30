@@ -27,7 +27,9 @@ defined('BASEPATH') or exit('No direct script access allowed');
  *     sections. Do not "simplify" that join.
  *
  * Invariants deliberately corrected:
- *   - The roster is keyed on class_student.schedule_id in the active semester,
+ *   - The roster is keyed on class_student.schedule_id (a schedule belongs to
+ *     exactly one semester, so archived semesters work the same way; entry
+ *     points that resolve schedules take an optional $semester_id, default active),
  *     accepting status='enrolled' OR status IS NULL. The old
  *     `cs.section = sched.section` join pulled in prior-semester rows (90
  *     students rendered on a 51-student section). status IS NULL is
@@ -178,6 +180,114 @@ class Grade_calculator extends CI_Model
     }
 
     /**
+     * The "grade so far" — the same weighted sum as term_grade(), but
+     * renormalised over only the components that actually have assessments.
+     *
+     * This is the ONE place renormalisation is allowed, and it exists solely so
+     * a monitoring sheet can answer "where does this student stand today"
+     * mid-semester. It is NOT a term grade and must never be reported as one:
+     * term_grade() remains the only official answer, still INC, still
+     * un-renormalised. Every caller renders this behind an explicit
+     * display mode and labels it provisional.
+     *
+     * Renormalising is what makes the number readable. Without it a student
+     * with 90% in the only recorded component (weight 30) scores 27 and the
+     * whole sheet reads as failing, which is worse than showing INC.
+     *
+     * A component counts as recorded only when it has an assessment AND a
+     * measurable percentage — an assessment with max_score 0 yields a NULL
+     * percentage, and letting its weight into the denominator would silently
+     * drag the result toward zero.
+     */
+    public function provisional_grade(array $components, $passing_rate)
+    {
+        $covered = 0.0; // weight of the components that have been recorded
+        $earned  = 0.0; // their weighted_grade contributions
+        $pending = 0;
+
+        foreach ($components as $c) {
+            $pending += (int) ($c['n_ungraded'] ?? 0);
+
+            if (empty($c['n_assessments']) || ($c['percentage'] ?? null) === null) {
+                continue;
+            }
+            $covered += (float) ($c['iotype_percentage'] ?? 0);
+            $earned  += (float) ($c['weighted_grade'] ?? 0);
+        }
+
+        if ($covered <= 0) {
+            return [
+                'status'         => 'none',
+                'reason'         => 'nothing_recorded',
+                'percentage'     => null,
+                'grade_point'    => null,
+                'weight_covered' => 0.0,
+                'pending_count'  => $pending,
+            ];
+        }
+
+        $percentage = round($earned * (100 / $covered), 2);
+
+        return [
+            'status'         => 'provisional',
+            'reason'         => null,
+            'percentage'     => $percentage,
+            'grade_point'    => $this->transmute($percentage, $passing_rate),
+            'weight_covered' => round($covered, 2),
+            'pending_count'  => $pending,
+        ];
+    }
+
+    /**
+     * The provisional counterpart of final_grade(): blend whichever terms have
+     * a percentage, renormalised across their term weights.
+     *
+     * Takes two nullable percentages rather than term blocks so it stays a pure
+     * function of the policy — the caller decides what each term's effective
+     * percentage is (see _effective_percentage()).
+     *
+     * Deliberately does NOT apply grading_fail_as_inc_above. That rule exists so
+     * an official sheet never reports a failing number; this function exists so
+     * a teacher can see the failing number and act on it before it becomes
+     * official. Suppressing it here would make the mode pointless for exactly
+     * the students it is meant to surface.
+     */
+    public function provisional_final_grade($midterm_pct, $final_pct, $passing_rate)
+    {
+        $weights = $this->cfg('grading_term_weights');
+
+        $covered = 0.0;
+        $acc     = 0.0;
+        foreach (['midterm' => $midterm_pct, 'final' => $final_pct] as $term => $pct) {
+            if ($pct === null || !is_numeric($pct)) {
+                continue;
+            }
+            $acc     += (float) $pct * (float) $weights[$term];
+            $covered += (float) $weights[$term];
+        }
+
+        if ($covered <= 0) {
+            return [
+                'status'         => 'none',
+                'reason'         => 'nothing_recorded',
+                'percentage'     => null,
+                'grade_point'    => null,
+                'weight_covered' => 0.0,
+            ];
+        }
+
+        $percentage = round($acc / $covered, 2);
+
+        return [
+            'status'         => 'provisional',
+            'reason'         => null,
+            'percentage'     => $percentage,
+            'grade_point'    => $this->transmute($percentage, $passing_rate),
+            'weight_covered' => round($covered * 100, 2),
+        ];
+    }
+
+    /**
      * Blend the two term grades into the overall grade.
      *
      * INC in either term propagates. A single configurable cutoff replaces the
@@ -239,13 +349,43 @@ class Grade_calculator extends CI_Model
         return $this->io_types;
     }
 
-    private function required_iotypes()
+    /**
+     * The io_types a term must contain before it can be graded at all.
+     * Public because the front-end estimator has to apply the same INC rule as
+     * term_grade() does — see policy().
+     */
+    public function required_iotypes()
     {
         $configured = $this->cfg('grading_required_iotypes');
         if (is_array($configured)) {
             return array_map('intval', $configured);
         }
         return array_keys($this->io_types());
+    }
+
+    /**
+     * Every tunable the POLICY layer reads, in one serialisable bundle.
+     *
+     * Exists so the read-only front-end estimator (assets/js/grade-estimator.js)
+     * can mirror transmute()/component()/term_grade()/final_grade() without
+     * hardcoding a single constant of its own. Nothing here is a new rule — it
+     * is the same config/grading.php values these methods already use, exposed
+     * so there remains exactly ONE place a rule is defined.
+     *
+     * Change a rule in config/grading.php and the estimator follows it; the
+     * estimator must never carry a literal that could drift from this.
+     */
+    public function policy()
+    {
+        return [
+            'point_floor'          => (float) $this->cfg('grading_point_floor'),
+            'point_passing'        => (float) $this->cfg('grading_point_passing'),
+            'point_ceiling'        => (float) $this->cfg('grading_point_ceiling'),
+            'term_weights'         => $this->cfg('grading_term_weights'),
+            'fail_as_inc_above'    => $this->cfg('grading_fail_as_inc_above'),
+            'passing_rate_fallback'=> (float) $this->cfg('grading_passing_rate_fallback'),
+            'required_iotypes'     => $this->required_iotypes(),
+        ];
     }
 
     /**
@@ -269,7 +409,8 @@ class Grade_calculator extends CI_Model
     }
 
     /**
-     * Enrolled students on a schedule, in the active semester.
+     * Enrolled students on a schedule. The schedule fixes the semester, so
+     * this works for archived semesters too.
      *
      * Keyed on class_student.schedule_id — the same roster definition already
      * used by classworks::get_missing_submissions() and
@@ -284,7 +425,6 @@ class Grade_calculator extends CI_Model
                    cs.is_cleared
             FROM class_student cs
             JOIN class_schedule sched ON sched.schedule_id = cs.schedule_id
-            JOIN semester_master sem  ON sem.trans_no = sched.semester_id AND sem.is_active = 1
             JOIN student_master sm    ON sm.trans_no = cs.student_id
             WHERE cs.schedule_id = ?
               AND (cs.status = 'enrolled' OR cs.status IS NULL)
@@ -312,7 +452,6 @@ class Grade_calculator extends CI_Model
                    SUM(CASE WHEN c.score IS NULL THEN 1 ELSE 0 END) AS n_ungraded
             FROM class_student cs
             JOIN class_schedule sched ON sched.schedule_id = cs.schedule_id
-            JOIN semester_master sem  ON sem.trans_no = sched.semester_id AND sem.is_active = 1
             JOIN assessment_full a    ON a.schedule_id = sched.schedule_id AND a.term = ?
             LEFT JOIN classworks c    ON c.assessment_id = a.assessment_id
                                      AND c.student_id = cs.student_id
@@ -343,7 +482,7 @@ class Grade_calculator extends CI_Model
                              att.date) > ?)    AS lates
             FROM attendance att
             JOIN class_schedule sched ON sched.schedule_id = att.schedule_id
-            JOIN semester_master sem  ON sem.trans_no = sched.semester_id AND sem.is_active = 1
+            JOIN semester_master sem  ON sem.trans_no = sched.semester_id
             WHERE att.schedule_id = ?
               AND DATE(att.date) >= sem.class_started
             GROUP BY att.student_id
@@ -411,6 +550,12 @@ class Grade_calculator extends CI_Model
                 $components[$iotype_id] = $c;
             }
 
+            // The official grade and the "so far" grade travel together on the
+            // same block, so choosing between them is a rendering decision at
+            // the call site rather than a second trip through the engine.
+            $term = $this->term_grade($components, $required, $passing_rate);
+            $term['provisional'] = $this->provisional_grade($components, $passing_rate);
+
             $students[$sid] = [
                 'student_id' => $sid,
                 'student_no' => $s['student_no'],
@@ -419,7 +564,7 @@ class Grade_calculator extends CI_Model
                 'middlename' => $s['middlename'],
                 'is_cleared' => $s['is_cleared'],
                 'components' => $components,
-                'term'       => $this->term_grade($components, $required, $passing_rate),
+                'term'       => $term,
                 'attendance' => $attendance[$sid] ?? ['present' => 0, 'absent' => 0, 'late' => 0],
             ];
         }
@@ -432,6 +577,35 @@ class Grade_calculator extends CI_Model
             'required_iotypes' => $required,
             'students'         => $students,
         ];
+    }
+
+    /**
+     * final_grade() with its provisional counterpart attached, so both overall
+     * views are built the same way wherever an overall grade is produced.
+     */
+    public function overall_grade(array $midterm, array $final, $passing_rate)
+    {
+        $overall = $this->final_grade($midterm, $final, $passing_rate);
+        $overall['provisional'] = $this->provisional_final_grade(
+            $this->effective_percentage($midterm),
+            $this->effective_percentage($final),
+            $passing_rate
+        );
+        return $overall;
+    }
+
+    /**
+     * The percentage a term contributes in provisional mode: its own when the
+     * term is complete, otherwise its renormalised "so far" figure, and NULL
+     * when the term has nothing recorded at all (so an unstarted final term
+     * drops out of the blend instead of counting as a zero).
+     */
+    private function effective_percentage(array $term)
+    {
+        if (($term['status'] ?? '') === 'ok') {
+            return $term['percentage'];
+        }
+        return $term['provisional']['percentage'] ?? null;
     }
 
     /**
@@ -459,7 +633,7 @@ class Grade_calculator extends CI_Model
                 'attendance'  => $m['attendance'],
                 'midterm'     => $m['term'],
                 'final'       => $f_term,
-                'overall'     => $this->final_grade($m['term'], $f_term, $passing_rate),
+                'overall'     => $this->overall_grade($m['term'], $f_term, $passing_rate),
             ];
         }
 
@@ -476,18 +650,20 @@ class Grade_calculator extends CI_Model
      * enrolment rather than reading $this->session->section — the old query
      * used the session directly and silently returned nothing when it was stale.
      */
-    public function for_student($student_id, $schedule_id = null)
+    public function for_student($student_id, $schedule_id = null, $semester_id = null)
     {
         if ($schedule_id === null) {
+            $this->load->model('Semester_model');
+            $semester_id = $this->Semester_model->resolve_id($semester_id);
             $row = $this->db->query("
                 SELECT cs.schedule_id
                 FROM class_student cs
                 JOIN class_schedule sched ON sched.schedule_id = cs.schedule_id
-                JOIN semester_master sem  ON sem.trans_no = sched.semester_id AND sem.is_active = 1
                 WHERE cs.student_id = ? AND (cs.status = 'enrolled' OR cs.status IS NULL)
+                  AND sched.semester_id = ?
                 ORDER BY cs.schedule_id
                 LIMIT 1
-            ", [$student_id])->row_array();
+            ", [$student_id, $semester_id])->row_array();
 
             if (!$row) {
                 return null;
@@ -509,50 +685,125 @@ class Grade_calculator extends CI_Model
             'schedule_id'        => (int) $schedule_id,
             'passing_rate'       => $midterm['passing_rate'],
             'io_types'           => $midterm['io_types'],
+            'required_iotypes'   => $midterm['required_iotypes'],
+            'policy'             => $this->policy(),
             'midterm_components' => $m['components'],
             'final_components'   => $f['components'] ?? [],
             'midterm'            => $m['term'],
             'final'              => $f_term,
-            'overall'            => $this->final_grade($m['term'], $f_term, $midterm['passing_rate']),
+            'overall'            => $this->overall_grade($m['term'], $f_term, $midterm['passing_rate']),
         ];
+    }
+
+    /** Every schedule in a semester (default: active), for the all-sections sheet. */
+    public function schedules_for_semester($semester_id = null)
+    {
+        $this->load->model('Semester_model');
+        $semester_id = $this->Semester_model->resolve_id($semester_id);
+        return $this->db->query("
+            SELECT sched.schedule_id, sched.section, sched.type,
+                   sched.time_start, sched.time_end, sched.day,
+                   cl.class_id, cl.class_code, cl.class_name
+            FROM class_schedule sched
+            JOIN classes cl ON cl.class_id = sched.class_id
+            WHERE sched.semester_id = ?
+            ORDER BY sched.section, sched.schedule_id
+        ", [$semester_id])->result_array();
     }
 
     /** Every active schedule, for the all-sections sheet. */
     public function active_schedules()
     {
-        return $this->db->query("
-            SELECT sched.schedule_id, sched.section, sched.type,
-                   sched.time_start, sched.time_end, sched.day,
-                   cl.class_id, cl.class_code, cl.class_name
-            FROM class_schedule sched
-            JOIN semester_master sem ON sem.trans_no = sched.semester_id AND sem.is_active = 1
-            JOIN classes cl ON cl.class_id = sched.class_id
-            ORDER BY sched.section, sched.schedule_id
-        ")->result_array();
+        return $this->schedules_for_semester(null);
     }
 
-    /** Resolve a section name to its schedule(s) in the active semester. */
-    public function schedules_for_section($section)
+    /** Resolve a section name to its schedule(s) in a semester (default: active). */
+    public function schedules_for_section($section, $semester_id = null)
     {
+        $this->load->model('Semester_model');
+        $semester_id = $this->Semester_model->resolve_id($semester_id);
         return $this->db->query("
             SELECT sched.schedule_id, sched.section, sched.type,
                    sched.time_start, sched.time_end, sched.day,
                    cl.class_id, cl.class_code, cl.class_name
             FROM class_schedule sched
-            JOIN semester_master sem ON sem.trans_no = sched.semester_id AND sem.is_active = 1
             JOIN classes cl ON cl.class_id = sched.class_id
-            WHERE sched.section = ?
+            WHERE sched.section = ? AND sched.semester_id = ?
             ORDER BY sched.schedule_id
-        ", [$section])->result_array();
+        ", [$section, $semester_id])->result_array();
+    }
+
+    /**
+     * Every schedule a student was enrolled in, grouped by semester (newest
+     * first), each with its own grade result. Feeds the academic-history view.
+     * Grades are always computed through for_student()/for_schedule().
+     */
+    public function history_for_student($student_id, $only_released = false)
+    {
+        $this->load->model('Semester_model');
+        $rows = $this->db->query("
+            SELECT cs.schedule_id, sched.semester_id, sched.section, sched.type,
+                   sched.time_start, sched.time_end, sched.day,
+                   cl.class_code, cl.class_name
+            FROM class_student cs
+            JOIN class_schedule sched ON sched.schedule_id = cs.schedule_id
+            JOIN classes cl ON cl.class_id = sched.class_id
+            WHERE cs.student_id = ? AND (cs.status = 'enrolled' OR cs.status IS NULL)
+            GROUP BY cs.schedule_id
+            ORDER BY sched.semester_id DESC, cl.class_code, sched.type
+        ", [$student_id])->result_array();
+
+        $out = [];
+        foreach ($rows as $r) {
+            $sid = (int) $r['semester_id'];
+            if ($only_released && !$this->Semester_model->is_released($sid)) {
+                continue;
+            }
+            if (!isset($out[$sid])) {
+                $out[$sid] = ['semester' => $this->Semester_model->get($sid), 'courses' => []];
+            }
+            $r['schedule_label'] = $this->format_schedule($r);
+            $r['grade']          = $this->for_student($student_id, $r['schedule_id']);
+            $out[$sid]['courses'][] = $r;
+        }
+        return $out;
+    }
+
+    /**
+     * The schedules one student is actually enrolled in this semester.
+     *
+     * Same roster rule as roster() — schedule_id + enrolment status + active
+     * semester — so a student profile can show a grade block per schedule
+     * without falling back to the section string. for_student() resolves only
+     * the first of these when no schedule is given.
+     */
+    public function schedules_for_student($student_id, $semester_id = null)
+    {
+        $this->load->model('Semester_model');
+        $semester_id = $this->Semester_model->resolve_id($semester_id);
+        return $this->db->query("
+            SELECT sched.schedule_id, sched.section, sched.type,
+                   sched.time_start, sched.time_end, sched.day,
+                   cl.class_id, cl.class_code, cl.class_name
+            FROM class_student cs
+            JOIN class_schedule sched ON sched.schedule_id = cs.schedule_id
+            JOIN classes cl           ON cl.class_id = sched.class_id
+            WHERE cs.student_id = ? AND sched.semester_id = ?
+              AND (cs.status = 'enrolled' OR cs.status IS NULL)
+            GROUP BY sched.schedule_id, sched.section, sched.type,
+                     sched.time_start, sched.time_end, sched.day,
+                     cl.class_id, cl.class_code, cl.class_name
+            ORDER BY cl.class_code, sched.schedule_id
+        ", [(int) $student_id, (int) $semester_id])->result_array();
     }
 
     /**
      * All active schedules' final grades, flattened for the all-sections sheet.
      */
-    public function for_all_schedules_final()
+    public function for_all_schedules_final($semester_id = null)
     {
         $out = [];
-        foreach ($this->active_schedules() as $sched) {
+        foreach ($this->schedules_for_semester($semester_id) as $sched) {
             $result = $this->for_schedule_final($sched['schedule_id']);
             foreach ($result['students'] as $sid => $student) {
                 $student['section']    = $sched['section'];
@@ -580,13 +831,52 @@ class Grade_calculator extends CI_Model
     // Display helpers — so views never do arithmetic
     // ==================================================================
 
-    /** Render a term/overall grade block as either a number or 'INC'. */
-    public function display_grade_point(array $grade, $decimals = 2)
+    /** The two ways an incomplete grade may be rendered. */
+    const MODE_INC     = 'inc';     // official: an incomplete term reads 'INC'
+    const MODE_CURRENT = 'current'; // monitoring: fall back to the "so far" grade
+
+    /**
+     * Render a term/overall grade block as either a number or 'INC'.
+     *
+     * $mode defaults to MODE_INC, which is the official rendering and the only
+     * one any grade-submission sheet may use. MODE_CURRENT falls back to the
+     * block's provisional figure when the official grade is not 'ok' — a
+     * teacher-facing view of where the student stands today. It still returns
+     * 'INC' when nothing has been recorded, because there is no standing to
+     * report yet.
+     *
+     * Callers using MODE_CURRENT must label the result as provisional; see
+     * is_provisional() for deciding which values need the label.
+     */
+    public function display_grade_point(array $grade, $decimals = 2, $mode = self::MODE_INC)
     {
-        if (($grade['status'] ?? '') !== 'ok' || $grade['grade_point'] === null) {
-            return 'INC';
+        if (($grade['status'] ?? '') === 'ok' && $grade['grade_point'] !== null) {
+            return number_format($grade['grade_point'], $decimals);
         }
-        return number_format($grade['grade_point'], $decimals);
+
+        if ($mode === self::MODE_CURRENT) {
+            $gp = $grade['provisional']['grade_point'] ?? null;
+            if ($gp !== null) {
+                return number_format($gp, $decimals);
+            }
+        }
+
+        return 'INC';
+    }
+
+    /**
+     * TRUE when display_grade_point() would fall back to the provisional figure
+     * for this block — i.e. the rendered number is not the official grade.
+     */
+    public function is_provisional(array $grade, $mode = self::MODE_INC)
+    {
+        if ($mode !== self::MODE_CURRENT) {
+            return FALSE;
+        }
+        if (($grade['status'] ?? '') === 'ok' && $grade['grade_point'] !== null) {
+            return FALSE;
+        }
+        return ($grade['provisional']['grade_point'] ?? null) !== null;
     }
 
     public function display_percentage(array $grade, $decimals = 2)
@@ -595,5 +885,58 @@ class Grade_calculator extends CI_Model
             return 'INC';
         }
         return number_format($grade['percentage'], $decimals);
+    }
+
+    /**
+     * Passed / Failed / INC for a term or overall block.
+     *
+     * The cutoff is grading_point_passing (the transmutation of exactly the
+     * passing rate), so this stays in step with transmute() instead of being a
+     * second 3.0 hardcoded into a view. Anything that is not an 'ok' grade is
+     * INC — a slip must never label an incomplete term as Failed.
+     *
+     * @return array ['key' => 'passed'|'failed'|'inc', 'label' => string]
+     */
+    public function remark(array $grade)
+    {
+        if (($grade['status'] ?? '') !== 'ok' || ($grade['grade_point'] ?? null) === null) {
+            return ['key' => 'inc', 'label' => 'INC'];
+        }
+
+        $passing = (float) $this->cfg('grading_point_passing');
+
+        return ((float) $grade['grade_point'] <= $passing)
+            ? ['key' => 'passed', 'label' => 'Passed']
+            : ['key' => 'failed', 'label' => 'Failed'];
+    }
+
+    /**
+     * Human-readable explanation of why a term or overall grade is not 'ok'.
+     * Empty string when it is.
+     *
+     * $io_types is optional — it exists so a caller that already has the map
+     * from for_schedule() can pass it instead of re-reading the table.
+     */
+    public function inc_reason(array $grade, array $io_types = null)
+    {
+        if (($grade['status'] ?? '') === 'ok') {
+            return '';
+        }
+
+        if (($grade['reason'] ?? '') === 'missing_components' && !empty($grade['missing_iotypes'])) {
+            $io_types = ($io_types === null) ? $this->io_types() : $io_types;
+
+            $names = [];
+            foreach ($grade['missing_iotypes'] as $id) {
+                $names[] = $io_types[$id]['type'] ?? "io_type $id";
+            }
+            return 'No ' . implode(', ', $names) . ' recorded yet';
+        }
+
+        if (($grade['reason'] ?? '') === 'below_passing') {
+            return 'Below passing';
+        }
+
+        return 'Incomplete';
     }
 }

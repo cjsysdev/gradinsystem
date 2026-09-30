@@ -41,6 +41,19 @@ class ClassworkController extends CI_Controller
     public function submit_classwork()
     {
         $post = $this->input->post();
+
+        // Only the active semester accepts submissions; archived ones are read-only.
+        $this->load->model('Semester_model');
+        if (!$this->Semester_model->is_active($this->Semester_model->assessment_semester_id($post['assessment_id'] ?? 0))) {
+            $this->session->set_flashdata('error', 'That classwork belongs to a past semester and is read-only.');
+            redirect('classwork');
+            return;
+        }
+
+        // Same gate as AssessmentController::submit_classwork() — this is the
+        // second POST path into classworks. See clearance_helper.php.
+        if (clearance_gate($post['assessment_id'] ?? null, 'classwork')) return;
+
         $value = $this->classworks->where(
             [
                 'student_id' => $this->session->student_id,
@@ -103,16 +116,43 @@ class ClassworkController extends CI_Controller
     public function student_submission($classwork_id)
     {
         $submission = $this->classworks->with_assessments()->as_array()->get($classwork_id);
+        if (!$submission) {
+            show_404();
+        }
+
+        // Students may open only their own submissions, and only for a
+        // semester that is active or released. Admins may open any.
+        if ($this->session->role !== 'admin') {
+            $this->load->model('Semester_model');
+            $sem_id = $this->Semester_model->assessment_semester_id($submission['assessment_id']);
+            if ((int) $submission['student_id'] !== (int) $this->session->student_id
+                || !$this->Semester_model->is_released($sem_id)) {
+                show_404();
+            }
+        }
 
         $widget = null;
+        $timer = null;
         if (!empty($submission['assessments'][0]->widget_id)) {
             $this->load->model('Widgets_model');
             $widget = $this->Widgets_model->get($submission['assessments'][0]->widget_id);
+
+            // Code Snippet timed batches — computed for the SUBMISSION'S OWN
+            // student (not the viewing session), so an admin opening this page
+            // sees the same badge the student would. Widgets_model::
+            // code_snippet_timer() returns null for an untimed assessment.
+            if ($widget && $widget['widget_key'] === 'code_snippet' && !empty($submission['assessments'][0]->timer_config)) {
+                $timer = $this->Widgets_model->code_snippet_timer(
+                    $submission['assessments'][0]->timer_config,
+                    $submission['student_id']
+                );
+            }
         }
 
         $data = [
             'classwork' => $submission,
             'widget' => $widget,
+            'widget_timer' => $timer,
         ];
 
         $this->load->view('student_submission', $data);
@@ -130,6 +170,13 @@ class ClassworkController extends CI_Controller
         }
 
         $classwork_id = $input['classwork_id'];
+
+        $cw = $this->classworks->as_array()->get($classwork_id);
+        $this->load->model('Semester_model');
+        if ($cw && !$this->Semester_model->is_active($this->Semester_model->assessment_semester_id($cw['assessment_id']))) {
+            echo json_encode(['success' => false, 'message' => 'Past-semester work is read-only.']);
+            return;
+        }
 
         $this->db->where('classwork_id', $classwork_id);
         $deleted = $this->db->delete('classworks');

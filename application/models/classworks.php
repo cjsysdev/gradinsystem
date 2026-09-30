@@ -26,12 +26,36 @@ class classworks extends MY_Model
         parent::__construct();
     }
 
+    // Whether classworks.switch_count exists yet. The column is added by
+    // Widgets_model::install() (run via WidgetsController/install), so on any
+    // database where that hasn't been run since the tab-switch tracking landed
+    // it is simply absent — and selecting or inserting a missing column would
+    // take down submission saving and every submissions page with it. Every
+    // read and write of switch_count is gated on this. CI3 caches field data
+    // per table per request, so repeat calls are free.
+    public function has_switch_count()
+    {
+        return $this->db->field_exists('switch_count', 'classworks');
+    }
+
     public function get_all_submissions($assessment_id)
     {
-        $sql = "SELECT c.classwork_id, s.trans_no, c.score, s.firstname,
-        s.lastname, c.code, c.file_upload, c.created_at, a.max_score, a.iotype_id
+        // Aliased to NULL when the column is missing so callers get the same
+        // result shape either way (NULL already means "not recorded").
+        $switch_count = $this->has_switch_count() ? 'c.switch_count' : 'NULL AS switch_count';
+
+        // student_master is LEFT joined for the same reason as
+        // get_missing_submissions(): a submission whose student_master row was
+        // deleted is still a real submission with a real score to enter, and an
+        // INNER JOIN made those cards vanish from this page entirely while
+        // manage_assessments still counted them in its submission badge.
+        $sql = "SELECT c.classwork_id, c.student_id AS trans_no, c.score,
+        COALESCE(s.firstname, '') AS firstname,
+        COALESCE(s.lastname, CONCAT('[no student record #', c.student_id, ']')) AS lastname,
+        c.code, c.file_upload, c.created_at, a.max_score, a.iotype_id,
+        $switch_count
                 FROM classworks c
-                JOIN student_master s ON s.trans_no = c.student_id
+                LEFT JOIN student_master s ON s.trans_no = c.student_id
                 JOIN assessment_full a ON a.assessment_id = c.assessment_id
                 JOIN class_schedule cs ON cs.schedule_id = a.schedule_id
                 JOIN semester_master sem ON cs.semester_id = sem.trans_no
@@ -51,20 +75,31 @@ class classworks extends MY_Model
 
     // Enrolled students (for the assessment's schedule) who have no
     // classworks row for this assessment yet — i.e. haven't submitted.
+    //
+    // student_master is LEFT joined on purpose: a `class_student` row whose
+    // student_master row was deleted is still an enrolled roster slot, and an
+    // INNER JOIN silently dropped those from this list while
+    // assessments::get_all_for_admin()'s roster arithmetic still counted them
+    // — the manage_assessments badge said 4 missing where this modal listed 1.
+    // The roster is class_student; a missing name is drift to surface, not a
+    // reason to shrink the count.
     public function get_missing_submissions($assessment_id)
     {
-        $sql = "SELECT s.trans_no, s.firstname, s.lastname
+        $sql = "SELECT cst.student_id AS trans_no,
+                       COALESCE(s.firstname, '') AS firstname,
+                       COALESCE(s.lastname, CONCAT('[no student record #', cst.student_id, ']')) AS lastname
                 FROM class_student cst
-                JOIN student_master s ON s.trans_no = cst.student_id
+                LEFT JOIN student_master s ON s.trans_no = cst.student_id
                 JOIN assessment_full a ON a.schedule_id = cst.schedule_id
                 WHERE a.assessment_id = ?
                 AND cst.status = 'enrolled'
+                AND cst.student_id IS NOT NULL
                 AND NOT EXISTS (
                     SELECT 1 FROM classworks c
                     WHERE c.assessment_id = a.assessment_id
                     AND c.student_id = cst.student_id
                 )
-                ORDER BY s.lastname, s.firstname";
+                ORDER BY lastname, firstname";
 
         $query = $this->db->query($sql, [$assessment_id]);
 
@@ -75,6 +110,71 @@ class classworks extends MY_Model
         }
 
         return $query->result_array();
+    }
+
+    /**
+     * Per-(student, term, io_type) count of assessments on a schedule the
+     * student handed nothing in for, for the Section Monitoring sheet.
+     *
+     * Missing is not the same as ungraded: a submitted-but-unscored row still
+     * exists, still counts as 0 in Grade_calculator, and is reported there as
+     * pending. This counts only assessments with no `classworks` row at all.
+     *
+     * The due date is deliberately ignored, as is `assessment_section.status`:
+     * this answers "what has this student not handed in", and a due date that
+     * was never set, or was left at a placeholder after the work was actually
+     * given, would otherwise hide the whole assessment from the sheet. A closed
+     * assessment nobody submitted is exactly the case the Missing columns exist
+     * to surface. The cost is that work genuinely still ahead of its due date is
+     * counted too, so a tally here is "outstanding", not "late".
+     *
+     * Split by term because each grade column on that sheet answers for one
+     * term: an unsubmitted midterm Performance Task has nothing to say about
+     * the tentative-final column. The Missing columns themselves show the
+     * all-terms total, which AdminController sums back up.
+     *
+     * Nothing here feeds a grade — Grade_calculator is still the only place a
+     * grade is computed, and it never reads this. AdminController uses it for a
+     * display-only INC override on the monitoring sheet; see
+     * AdminController::_missing_blocks_grade().
+     *
+     * @param  int   $schedule_id
+     * @return array [student_id => [term => [iotype_id => count]]]
+     */
+    public function missing_counts_for_schedule($schedule_id)
+    {
+        $sql = "
+            SELECT cs.student_id,
+                   a.term,
+                   a.iotype_id,
+                   COUNT(*) AS n_missing
+            FROM class_student cs
+            JOIN class_schedule sched ON sched.schedule_id = cs.schedule_id
+            JOIN semester_master sem  ON sem.trans_no = sched.semester_id AND sem.is_active = 1
+            JOIN assessment_full a    ON a.schedule_id = sched.schedule_id
+            LEFT JOIN classworks c    ON c.assessment_id = a.assessment_id
+                                     AND c.student_id = cs.student_id
+            WHERE cs.schedule_id = ?
+              AND (cs.status = 'enrolled' OR cs.status IS NULL)
+              AND c.classwork_id IS NULL
+            GROUP BY cs.student_id, a.term, a.iotype_id
+        ";
+
+        $query = $this->db->query($sql, [(int) $schedule_id]);
+
+        if ($query === false) {
+            $error = $this->db->error();
+            log_message('error', 'Database error: ' . $error['message']);
+            return [];
+        }
+
+        $out = [];
+        foreach ($query->result_array() as $r) {
+            $out[(int) $r['student_id']][(string) $r['term']][(int) $r['iotype_id']]
+                = (int) $r['n_missing'];
+        }
+
+        return $out;
     }
 
     /**
@@ -255,8 +355,76 @@ class classworks extends MY_Model
     // prior-semester and non-enrolled rows. This model now owns submission
     // CRUD only — it does not compute grades.
 
-    public function get_submissions_by_student($student_id)
+    /**
+     * Assessments assigned to this student that have no classworks row at all.
+     *
+     * The mirror image of get_submissions_by_student(): that one starts from
+     * classworks and can only ever show what was handed in, so a student who
+     * submitted nothing looked identical to one with nothing assigned.
+     *
+     * Roster rule as per Grade_calculator::roster() — keyed on
+     * class_student.schedule_id in the active semester, accepting
+     * status='enrolled' OR status IS NULL (NULL is a backfill gap from the bulk
+     * import, not a "not enrolled" marker). get_missing_submissions() above
+     * filters on 'enrolled' alone, which is why it reports nothing for
+     * legacy-imported sections.
+     *
+     * assessment_full.status is NOT filtered here, deliberately: that column is
+     * the open/closed submission toggle, not draft/published. Closed
+     * assessments are the ones a student can no longer make up, so filtering on
+     * status = 1 would hide exactly the work that matters — and only 38 of 388
+     * rows are open at any time. Grade_calculator::raw_components() ignores it
+     * for the same reason, so this list matches what the grade actually counts.
+     *
+     * @param  int   $student_id
+     * @return array one row per unsubmitted assessment, ordered by due date
+     */
+    public function get_unsubmitted_by_student($student_id, $semester_id = null)
     {
+        $this->load->model('Semester_model');
+        $semester_id = $this->Semester_model->resolve_id($semester_id);
+        $sql = "
+            SELECT DISTINCT
+                a.assessment_id,
+                a.title,
+                a.max_score,
+                a.iotype_id,
+                a.term,
+                a.due
+            FROM
+                class_student cst
+            JOIN
+                class_schedule sched ON sched.schedule_id = cst.schedule_id
+            JOIN
+                semester_master sem ON sem.trans_no = sched.semester_id AND sem.trans_no = ?
+            JOIN
+                assessment_full a ON a.schedule_id = sched.schedule_id
+            LEFT JOIN
+                classworks c ON c.assessment_id = a.assessment_id
+                            AND c.student_id = cst.student_id
+            WHERE
+                cst.student_id = ?
+                AND (cst.status = 'enrolled' OR cst.status IS NULL)
+                AND c.classwork_id IS NULL
+            ORDER BY
+                a.due ASC, a.title ASC
+        ";
+
+        $query = $this->db->query($sql, [$semester_id, $student_id]);
+
+        if ($query === false) {
+            $error = $this->db->error();
+            log_message('error', 'Database error: ' . $error['message']);
+            return [];
+        }
+
+        return $query->result_array();
+    }
+
+    public function get_submissions_by_student($student_id, $semester_id = null)
+    {
+        $this->load->model('Semester_model');
+        $semester_id = $this->Semester_model->resolve_id($semester_id);
         $sql = "
             SELECT 
                 c.*, 
@@ -278,14 +446,14 @@ class classworks extends MY_Model
             JOIN
                 class_schedule cs ON a.schedule_id = cs.schedule_id
             JOIN
-                semester_master sem ON cs.semester_id = sem.trans_no AND sem.is_active = 1
+                semester_master sem ON cs.semester_id = sem.trans_no AND sem.trans_no = ?
             WHERE 
                 c.student_id = ?
             ORDER BY 
                 c.created_at ASC, c.submitted_at ASC
         ";
 
-        $query = $this->db->query($sql, [$student_id]);
+        $query = $this->db->query($sql, [$semester_id, $student_id]);
 
         return $query->result_array();
     }

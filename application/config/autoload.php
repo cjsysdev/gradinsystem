@@ -89,7 +89,9 @@ $autoload['drivers'] = array();
 |
 |	$autoload['helper'] = array('url', 'file');
 */
-$autoload['helper'] = array('conversion', 'url');
+// `clearance` is autoloaded because the exam gate has to be callable from every
+// controller that can open or submit an assessment — see clearance_helper.php.
+$autoload['helper'] = array('conversion', 'url', 'clearance');
 
 /*
 | -------------------------------------------------------------------

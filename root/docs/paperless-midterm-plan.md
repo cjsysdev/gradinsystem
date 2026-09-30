@@ -394,7 +394,7 @@ patterns. Build 6 reusable widgets, not 16 custom interfaces.
       {
         "name": "GCash", "accent": "mango",
         "dossier": {"title": "Case Dossier — GCash", "facts": ["...", "..."], "source": "Sources: ..."},
-        "factors": [{"title": "TECH", "question": "Did the technology work?"}]
+        "factors": [{"title": "TECH", "question": "Did the technology work?", "evidence_label": "Cite 1 dossier fact that answers this:", "placeholder": "...", "rows": 2}]
       }
     ],
     "reflection": {"label": "Reflection", "timing": "...", "questions": [ {"type": "text", "badge": "core", "prompt": "...", "rows": 3, "placeholder": "..."} ]}
@@ -403,19 +403,23 @@ patterns. Build 6 reusable widgets, not 16 custom interfaces.
   `hook`/`reflection` questions reuse Widget I's `text`/`list`/`choice`
   field names exactly. `framework` and `groups[].dossier` are pure
   admin-authored display content, no answer captured. `groups[].factors` is
-  the new interaction: each renders a 1–5 rating scale + an evidence text
-  input.
+  the new interaction: each renders a single evidence textarea in which the
+  student cites the dossier fact that answers that factor's question.
+  `evidence_label`/`placeholder`/`rows` are optional per-factor overrides.
 - **Submission (`classworks.code`):**
   ```json
   {
     "hook_answers": {"0": ["line one", "line two", "line three"]},
-    "group_ratings": {"0": {"0": {"score": 4, "evidence": "cited number/fact"}}},
+    "group_ratings": {"0": {"0": {"evidence": "cited number/fact"}}},
     "reflection_answers": {"0": "...", "1": 2}
   }
   ```
   `hook_answers`/`reflection_answers` are flat, index-keyed-object maps
   (same convention as every other widget). `group_ratings` is keyed
-  `group index → factor index → {score, evidence}` (`score` 1–5 or `null`).
+  `group index → factor index → {evidence}`. (Key name is legacy: an
+  earlier build also captured a 1–5 `score` per factor, dropped in favour of
+  citing the fact directly. Old submissions still carrying `score` render
+  fine — the view reads `evidence` only.)
 - **Not auto-graded** — manual score entry, same as every worksheet-style
   widget so far.
 - **Implemented:** `application/views/widgets/case_dossier.php`. No shared
@@ -508,6 +512,174 @@ patterns. Build 6 reusable widgets, not 16 custom interfaces.
   — using only the `grid`/`text` step types already built for Worksheet 1,
   confirming no widget code changes are needed per worksheet. Worksheets
   3–10 remain unauthored — see the pack's docx for their content.
+
+### Widget L — File Upload (added outside original scope)
+- **Why:** plenty of classwork is genuinely a file — a C program's `.c`/`.h`
+  sources, a `.docx` write-up, a `.txt` output log, a screenshot, a PDF. The
+  legacy no-widget "Upload File" dropdown in `assessment_view_code.php` takes
+  one file, has no type/size rules, doesn't work for groups, and grading it
+  means opening a raw `uploads/classworks/` link. This widget gives
+  multi-file upload with per-assessment rules, individual **or** group
+  submission, and inline preview for the instructor.
+- **Config (`assessments.given`):**
+  ```json
+  {
+    "instructions": "Upload your C program source file(s)...",
+    "allowed_extensions": ["c", "h", "txt", "pdf", "docx"],
+    "max_files": 5,
+    "max_size_mb": 10,
+    "note_label": "How to compile/run it, and anything unfinished (optional)",
+    "require_note": false
+  }
+  ```
+  All keys optional. `allowed_extensions` `[]`/omitted = any type except the
+  always-blocked server-script/executable list
+  (`WidgetFileController::BLOCKED_EXTENSIONS`); `max_size_mb` defaults to 10
+  and is capped at 50 (same ceiling as `submit_classwork()`); `note_label`
+  `""` hides the note box.
+- **Submission (`classworks.code`):**
+  `{"files": {"<id>": {"id", "name", "size", "ext", "path", "uploaded_at",
+  "uploaded_by", "removed": 0|1}}, "note": "..."}`. `files` is id-keyed (not
+  a list) and a removed file stays as a `removed: 1` tombstone, because
+  `group_workspace.php` syncs by merging changed leaf paths — list indexes
+  would collide when two members upload at once, and a deleted key would
+  never reach teammates.
+- **Upload flow:** files are *not* posted with the Turn In form. Each is sent
+  over AJAX to `WidgetFileController::upload/{assessment_id}` when picked,
+  which validates type/size, refuses once graded, and stores it at
+  `uploads/widget_files/{assessment_id}/{owner}/{id}.upload` (+ `{id}.json`
+  sidecar with the original name). `{owner}` is `s{student_id}` for solo or
+  `g{group_id}` for a grouping assessment, so teammates share a folder. Only
+  the returned metadata enters the widget state, so `submit_classwork()` and
+  `submit_group()` are unchanged, as for every widget.
+- **Download/preview:** only through `WidgetFileController::download/{path}`
+  — admins see everything, a student only their own `s…` folder or a `g…`
+  folder of a group they belong to. The folder gets a deny-all `.htaccess`
+  and files keep a neutral `.upload` extension, so an uploaded `.php`/`.html`
+  can never execute or render on the LMS origin. `?inline=1` serves images /
+  PDFs inline and code/text as `text/plain` (sandboxed CSP), which the
+  widget's Preview button shows in a code block — so the instructor can read
+  a student's `.c` file without downloading it.
+- **Individual vs group:** no widget setting — turn on Groupings for the
+  assessment as usual. Solo renders inline in `assessment_view_code.php`;
+  grouping renders in `group_workspace.php`, where every member can add or
+  remove files and the list syncs live.
+- **Grading:** not auto-graded — same manual-score-entry pattern as
+  Worksheet Form.
+- **Files:** `application/views/widgets/file_upload.php`,
+  `application/controllers/WidgetFileController.php`, registry row in
+  `Widgets_model::install()`, example in `assets/js/widget-examples.js`.
+  Run `WidgetsController/install` once to add the `file_upload` row.
+
+### Widget M — Code Snippet, live-checked (added outside original scope)
+- **Why:** individual coding classwork (CC104 / C programming) is graded by
+  the instructor walking the lab and checking each program run on the
+  student's own PC. It works like participation: everyone on the roster gets a
+  verdict whether or not they turned anything in. The student's code is an
+  optional attachment they can add later, not a requirement for grading.
+- **Verdict rubric (instructor-only):**
+  - **RUN**: compiles, runs completely and solves the problem.
+  - **EFFORT**: close, but has a bug or a few errors.
+  - **ERROR**: doesn't compile or run, or is far from the answer.
+- **Config (`assessments.given`):**
+  ```json
+  {
+    "problem": "Write a program that reads N and prints the sum of 1..N.",
+    "language": "c",
+    "starter_code": "#include <stdio.h>\nint main() {\n\n}",
+    "sample_input": "5",
+    "sample_output": "15",
+    "rubric": { "run": 100, "effort": 70, "error": 40 },
+    "allow_code_submission": true
+  }
+  ```
+  Only `problem` is required. `rubric` values are **percent of `max_score`**
+  (defaults 100 / 70 / 40). `allow_code_submission` (default true) shows the
+  optional code editor to students; false turns the widget into problem-only.
+- **Submission (`classworks.code`):** `{"code": "..."}`, or NULL / `""` when
+  the student never attached code. That is normal, not an error.
+- **Roster rows:** saving an assessment with this widget always creates a
+  blank row for every enrolled student (the existing
+  `classworks::create_blank_for_schedule()`, forced on regardless of the
+  "auto-create submissions" checkbox). Every student then has a card on the
+  submissions page to receive a verdict, with no student action needed.
+- **Grading:** each submission card on `admin/all_submission.php` gets three
+  large **RUN / EFFORT / ERROR** buttons (sized for grading from a phone while
+  walking the lab). A click writes `round(pct × max_score / 100, 2)` through
+  `classworks::set_score()`, the only sanctioned score write path. Manual
+  entry still works. **No verdict column:** the label is derived from the
+  score by matching it against the three rubric values; anything else shows
+  as "Custom", so a label and a score can never disagree. An ungraded student
+  stays NULL (counts as 0 and shows as pending, per CLAUDE.md).
+- **Student view:** problem + sample I/O, optional CodeMirror editor
+  pre-filled with `starter_code`; the review page shows their code (or "No
+  code attached") plus the verdict badge once graded. Turn In does not require
+  code.
+- **Submit code later:** unlike every other widget, a graded submission can
+  still be updated with code. `submit_classwork()` gets a `code_snippet`
+  exception: when `score` is already set it updates **only `code`**, never
+  `score`/`status`. The "Edit / Continue" link in `student_submission.php`
+  stays visible for this widget after grading. **The due date does not gate
+  this widget.** Checking is live, so attaching code works before or after
+  `due`.
+- **Absent students:** no ABSENT button. They are simply left ungraded (NULL).
+- **Implemented:** registry row + `code_snippet_points()` /
+  `code_snippet_verdict()` in `Widgets_model` (the ONE place the
+  rubric-to-points and score-to-verdict derivation lives, shared by the admin
+  cards and the student review page);
+  `application/views/widgets/code_snippet.php` (input + readonly; takes
+  optional `$score`/`$max_score` for the badge; an untouched starter template
+  is saved as no code); RUN/EFFORT/ERROR buttons + live badge refresh in
+  `admin/all_submission.php` (they call the existing `addScore()` →
+  `add_score`, so `classworks::set_score()` stays the write path); forced
+  blank-row creation and a non-empty `problem` check in
+  `AdminAssessmentController` (`save_assessment()`, `assign_master()`,
+  `update_class_assessment_master()`); the code-only update exception in
+  `AssessmentController::submit_classwork()`; "Add / Update my code" and no
+  Unsubmit (it would delete the roster row) in `student_submission.php`;
+  example in `widget-examples.js`; builder schema in `widget-schemas.js`
+  (plus a nested `group` field type in `widget-builder.js` for `rubric`).
+  Run `WidgetsController/install` once to add the `code_snippet` row.
+  Blank config is **not** allowed: the problem text is required.
+- **Deviation:** not supported as a *grouping* assessment (individual only).
+- **Optional timed batches (added outside original scope, 2026-09):** for a
+  section whose lab only has enough PCs for half the class at once. The admin
+  splits the roster into batches (Batch 1, Batch 2, ...), each with its own
+  start/end window, via `AdminAssessmentController::snippet_batches()`
+  (`views/admin/snippet_batches.php`, linked from `all_submissions` and
+  `manage_assessments` when the widget is `code_snippet`). Stored as
+  `assessment_section.timer_config` (a JSON `{"batches":[{"start","end"},...],
+  "members":{"<student_id>":<batch_no>}}`) — **per SECTION, not on the shared
+  master** (`assessments.given`), since the PC/batch split is a per-section
+  fact, same as `due`/`status`. `NULL`/no batches = untimed, today's original
+  behavior, unchanged. Every phase/deadline decision (`unassigned` | `waiting`
+  | `open` | `closed`, plus the accept/reject and draft/submitted/timesup
+  state a submit gets stamped with) is computed ONLY by
+  `Widgets_model::code_snippet_timer()` / `code_snippet_can_submit()` /
+  `code_snippet_submit_state()` / `code_snippet_effective_state()` — always
+  off the SERVER clock (`time()`/`strtotime()`), never the client's, so a
+  wrong PC clock can't affect a deadline. `classworks.code` gains `state`
+  (`draft`/`submitted`/`timesup`) and `saved_at` alongside `code`, for a timed
+  submission only. The widget view renders one of three modes for the current
+  student's phase: `waiting` (a countdown-to-start card, no editor, Turn In
+  hidden), `open` (the normal editor plus a sticky countdown bar, a 20s AJAX
+  autosave to `AssessmentController::snippet_autosave()`, and an automatic
+  `submitForm()` call at 0:00 — the state that submit lands with, `timesup` vs
+  `submitted`, is still decided server-side from the deadline, not by a client
+  flag), or `closed` (`assessment_view_code()` redirects straight to the
+  read-only review). A `draft` state whose window has since closed is read
+  back as `timesup` too (`code_snippet_effective_state()`), covering a
+  tab/PC that died before the client-side auto-submit could fire — the last
+  autosave IS the auto-submission. Once closed, the code is locked: the
+  can_submit() gate in `submit_classwork()` (and `snippet_autosave()`) refuses
+  any further write regardless of graded state, which is also why
+  `student_submission.php` stops offering "Add / Update my code" once closed.
+  The TIME'S UP flag is display-only — it never affects the RUN/EFFORT/ERROR
+  score. `assessment_full` (the compat view) exposes `timer_config` alongside
+  `due`/`status` — re-created by `Widgets_model::install()`, which also adds
+  the column; a `field_exists()` guard in `snippet_batches()` tells the admin
+  to (re-)run `WidgetsController/install` if it hasn't happened yet on that
+  database.
 
 ## 5. Full Session-to-Widget Mapping (Weeks 1–8)
 

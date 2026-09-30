@@ -12,6 +12,30 @@
         <div class="alert alert-danger"><?= $this->session->flashdata('error') ?></div>
     <?php endif; ?>
 
+    <?php // Own number lives on student_master, not in the contacts list below —
+          // it's how the school reaches the student directly for announcements. ?>
+    <div class="card mb-4 border-primary">
+        <div class="card-body py-3">
+            <h6 class="mb-2"><i class="fa fa-mobile-alt"></i> My Mobile Number</h6>
+            <form action="<?= base_url('save_my_number') ?>" method="POST">
+                <div class="input-group">
+                    <input type="text" name="contact_no" class="form-control"
+                           value="<?= htmlspecialchars($student['contact_no'] ?? '') ?>"
+                           placeholder="09171234567" inputmode="tel">
+                    <div class="input-group-append">
+                        <button type="submit" class="btn btn-primary">Save</button>
+                    </div>
+                </div>
+                <small class="form-text text-muted">
+                    <?php if (empty($student['contact_no'])): ?>
+                        <span class="text-danger">No number on file.</span>
+                    <?php endif; ?>
+                    Used for class announcements sent by text message.
+                </small>
+            </form>
+        </div>
+    </div>
+
     <?php if (!empty($contacts)): ?>
         <div class="mb-4">
             <?php foreach ($contacts as $c): ?>

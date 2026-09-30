@@ -29,6 +29,48 @@ class Widgets_model extends CI_Model
         $this->_add_column_if_missing('assessments', 'given', 'LONGTEXT DEFAULT NULL');
         $this->_add_column_if_missing('assessments', 'widget_id', 'INT UNSIGNED DEFAULT NULL');
 
+        // Tab-switch count for the Timed/Secure Quiz widget. secure_quiz_view.php
+        // has always counted window blurs and posted them as `blur_count`, but no
+        // controller read it, so the number was discarded at submit — this column
+        // is where SecureQuizController::submit() now parks it.
+        // Nullable with no default on purpose: NULL means "not recorded" (every
+        // pre-existing row, and every non-secure-quiz widget), which is a
+        // different fact from 0 = "recorded, never left the tab". Adding a
+        // nullable column touches no existing row's data; readers must still
+        // tolerate the column being absent until an admin runs
+        // WidgetsController/install (see classworks::has_switch_count()).
+        $this->_add_column_if_missing('classworks', 'switch_count', 'SMALLINT UNSIGNED DEFAULT NULL');
+
+        // Code Snippet timed batches: per-SECTION timer config (batches +
+        // start/end times + student->batch assignment), so the shared master
+        // (assessments.given) stays common across sections while each
+        // section's PC-limited class can run its own batch schedule. Lives on
+        // assessment_section (not assessments) because the schedule is a
+        // per-section fact, same as due/status — see
+        // AdminAssessmentController::snippet_batches().
+        if ($this->db->table_exists('assessment_section')) {
+            $this->_add_column_if_missing('assessment_section', 'timer_config', 'LONGTEXT DEFAULT NULL');
+
+            // assessment_full is the read-only compat view nearly every query
+            // site reads through (see Assessment_normalize_model + CLAUDE.md)
+            // — re-create it here to also expose timer_config, so readers see
+            // it without bypassing the view. Mirrors the view definition from
+            // Assessment_normalize_model::install() Step 6 exactly, plus
+            // s.timer_config. CREATE OR REPLACE VIEW is safe to re-run.
+            $this->db->query("
+                CREATE OR REPLACE VIEW assessment_full AS
+                SELECT s.assessment_section_id AS assessment_id,
+                       m.assessment_id AS master_id,
+                       m.class_id,
+                       s.schedule_id,
+                       m.iotype_id, m.term, m.title, m.description, m.max_score,
+                       m.widget_id, m.given, m.pdf_file_path, m.json_file_path,
+                       s.status, s.is_groupings, s.due, s.timer_config, s.created_at, s.updated_at
+                FROM assessment_section s
+                JOIN assessments m ON m.assessment_id = s.assessment_id
+            ");
+        }
+
         // widget_key rows get added when their input_view actually exists, so
         // the admin dropdown never offers a widget with no view behind it.
         $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
@@ -76,12 +118,16 @@ class Widgets_model extends CI_Model
         // manual-score-entry pattern as Worksheet Form/Lab Worksheet.
         $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
             VALUES ('case_study', 'Case Study Worksheet', 'widgets/case_study', NULL)");
-        // Case Dossier Rating: hook question -> read-only framework explainer
-        // -> multiple parallel case dossiers, each rated 1-5 per factor with a
-        // cited-evidence text field -> reflection questions. Not auto-graded,
+        // Case Dossier: hook question -> read-only framework explainer ->
+        // multiple parallel case dossiers, each factor answered by citing a
+        // fact from that dossier -> reflection questions. Not auto-graded,
         // same manual-score-entry pattern as the other worksheet-style widgets.
         $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
-            VALUES ('case_dossier', 'Case Dossier Rating', 'widgets/case_dossier', NULL)");
+            VALUES ('case_dossier', 'Case Dossier', 'widgets/case_dossier', NULL)");
+        // Renamed from 'Case Dossier Rating' when the 1-5 scale was dropped —
+        // INSERT IGNORE above can't update an already-seeded row.
+        $this->db->query("UPDATE widgets SET name = 'Case Dossier'
+            WHERE widget_key = 'case_dossier' AND name = 'Case Dossier Rating'");
         // Timed/Secure Quiz: same {question, choices, answer} config/grading as
         // the 'quiz' widget above, but students take it in a dedicated
         // fullscreen/timer/tab-switch-lockdown page (SecureQuizController)
@@ -106,6 +152,215 @@ class Widgets_model extends CI_Model
         // manual-score-entry pattern as Worksheet Form/Case Study Worksheet.
         $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
             VALUES ('project_proposal', 'Project Proposal', 'widgets/project_proposal', NULL)");
+        // File Upload: students attach files (C source, documents, text,
+        // images, PDFs...) plus an optional note, individually or as a group
+        // (renders in group_workspace.php like any widget; the file list syncs
+        // through the shared draft). Files go through WidgetFileController
+        // over AJAX; only their metadata is stored in classworks.code. Not
+        // auto-graded, same manual-score-entry pattern as Worksheet Form.
+        $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
+            VALUES ('file_upload', 'File Upload', 'widgets/file_upload', NULL)");
+        // Code Snippet: a coding problem the instructor checks live on the
+        // student's PC and marks RUN / EFFORT / ERROR. Students may attach
+        // their code (optionally, even after grading). Participation-style:
+        // a blank submission row is created for every enrolled student.
+        $this->db->query("INSERT IGNORE INTO widgets (widget_key, name, input_view, admin_config_view)
+            VALUES ('code_snippet', 'Code Snippet', 'widgets/code_snippet', NULL)");
+    }
+
+    // ── Code Snippet rubric ─────────────────────────────────────────────
+    // The RUN / EFFORT / ERROR verdict is NOT stored: it is derived from
+    // classworks.score against the rubric, so a label can never disagree
+    // with the score. This is the one place that derivation lives.
+    const CODE_SNIPPET_DEFAULT_RUBRIC = ['run' => 100, 'effort' => 70, 'error' => 40];
+
+    /** Points awarded per verdict: percent of $max_score, rounded to 2 dp. */
+    public function code_snippet_points($config, $max_score)
+    {
+        $rubric = is_array($config['rubric'] ?? null) ? $config['rubric'] : [];
+        $points = [];
+        foreach (self::CODE_SNIPPET_DEFAULT_RUBRIC as $key => $default_pct) {
+            $pct = isset($rubric[$key]) && is_numeric($rubric[$key]) && $rubric[$key] >= 0
+                ? (float) $rubric[$key]
+                : $default_pct;
+            $points[$key] = round($pct * (float) $max_score / 100, 2);
+        }
+        return $points;
+    }
+
+    /** 'run' | 'effort' | 'error' | 'custom' | null (ungraded). */
+    public function code_snippet_verdict($config, $max_score, $score)
+    {
+        if ($score === null || $score === '') {
+            return null;
+        }
+        foreach ($this->code_snippet_points($config, $max_score) as $key => $pts) {
+            if (abs((float) $score - $pts) < 0.005) {
+                return $key;
+            }
+        }
+        return 'custom';
+    }
+
+    // ── Code Snippet problem pool ───────────────────────────────────────
+    // A config may carry a `problems` list instead of (or besides) the single
+    // top-level `problem`; each student then gets ONE problem from the pool.
+    // Legacy single-problem configs read back as a one-item pool, so every
+    // caller can go through code_snippet_problems() unconditionally.
+
+    /**
+     * Normalized pool: a list of {title, problem, starter_code, sample_input,
+     * sample_output}. A problem entry with a blank/missing starter_code inherits
+     * the top-level one. Blank problems are skipped (save-time validation
+     * rejects them, so stored indexes stay aligned with the authored list).
+     */
+    public function code_snippet_problems($config)
+    {
+        $config = is_array($config) ? $config : [];
+        $raw = !empty($config['problems']) && is_array($config['problems'])
+            ? array_values($config['problems'])
+            : [$config];
+
+        $pool = [];
+        foreach ($raw as $p) {
+            if (!is_array($p) || trim((string) ($p['problem'] ?? '')) === '') {
+                continue;
+            }
+            $starter = (string) ($p['starter_code'] ?? '');
+            $pool[] = [
+                'title'         => trim((string) ($p['title'] ?? '')),
+                'problem'       => (string) $p['problem'],
+                'starter_code'  => $starter !== '' ? $starter : (string) ($config['starter_code'] ?? ''),
+                'sample_input'  => (string) ($p['sample_input'] ?? ''),
+                'sample_output' => (string) ($p['sample_output'] ?? ''),
+            ];
+        }
+        return $pool;
+    }
+
+    /**
+     * Which pool index this student works on. Once a save has pinned it into
+     * classworks.code (`problem`), that wins — so editing the pool later never
+     * swaps a student's problem out from under their code. Before that, it is
+     * a stable pseudo-random pick seeded by section + student, so every page
+     * (student, review, admin list) agrees without storing anything.
+     *
+     * @param  array             $config      assessments.given, decoded
+     * @param  string|array|null $code_json   the student's classworks.code
+     * @param  int|string        $student_id
+     * @param  int|string        $section_id  assessment_section_id
+     */
+    public function code_snippet_problem_index($config, $code_json, $student_id, $section_id)
+    {
+        $n = count($this->code_snippet_problems($config));
+        if ($n <= 1) {
+            return 0;
+        }
+        $data = is_array($code_json) ? $code_json : (json_decode((string) $code_json, true) ?: []);
+        if (isset($data['problem']) && is_numeric($data['problem'])
+            && (int) $data['problem'] >= 0 && (int) $data['problem'] < $n) {
+            return (int) $data['problem'];
+        }
+        return hexdec(substr(md5($section_id . ':' . $student_id), 0, 7)) % $n;
+    }
+
+    // ── Code Snippet timed batches ──────────────────────────────────────
+    // The PC lab only fits half a section at once, so a timed Code Snippet
+    // run is split into batches, each with its own admin-set start/end
+    // window (assessment_section.timer_config — see
+    // AdminAssessmentController::snippet_batches()). Every phase/deadline
+    // decision lives HERE, and only here, so the student page, the submit
+    // endpoint, the autosave endpoint and the admin submission list can never
+    // disagree about whether a batch is open. Always driven by the server's
+    // own clock (PHP time()) — a wrong PC clock must never affect the result.
+    //
+    // Grace window after a batch's `end`: lets an auto-submit fired by the
+    // client's own countdown (which necessarily reaches 0 a moment before the
+    // server-computed deadline, network latency being what it is) still land
+    // as an on-time-ish submit instead of being rejected outright.
+    const CODE_SNIPPET_GRACE_SECONDS = 30;
+
+    /**
+     * Decodes timer_config and resolves ONE student's phase against it.
+     *
+     * @param  string|array|null $timer_config assessment_section.timer_config
+     * @param  int|string        $student_id
+     * @param  int|null          $now          unix timestamp; defaults to time()
+     * @return array|null {batch, start_ts, end_ts, phase} where phase is one
+     *                     of 'unassigned' | 'waiting' | 'open' | 'closed', or
+     *                     NULL when the assessment has no timer at all
+     *                     (untimed — today's behavior, no gating).
+     */
+    public function code_snippet_timer($timer_config, $student_id, $now = null)
+    {
+        $config = is_array($timer_config) ? $timer_config : (json_decode((string) $timer_config, true) ?: null);
+        $batches = $config['batches'] ?? null;
+        if (empty($config) || empty($batches) || !is_array($batches)) {
+            return null; // untimed
+        }
+
+        $now = $now ?? time();
+        $batch_no = $config['members'][(string) $student_id] ?? null;
+        $def = $batch_no ? ($batches[$batch_no - 1] ?? null) : null;
+
+        if (!$batch_no || !$def || empty($def['start']) || empty($def['end'])) {
+            return ['batch' => null, 'start_ts' => null, 'end_ts' => null, 'phase' => 'unassigned'];
+        }
+
+        $start_ts = strtotime($def['start']);
+        $end_ts   = strtotime($def['end']);
+        $phase    = $now < $start_ts ? 'waiting' : ($now <= $end_ts ? 'open' : 'closed');
+
+        return ['batch' => (int) $batch_no, 'start_ts' => $start_ts, 'end_ts' => $end_ts, 'phase' => $phase];
+    }
+
+    /**
+     * The state a student's submission should be READ as, reconciling the
+     * stored `code` blob's own {"state": ...} against the timer. A `draft`
+     * (or missing state — pre-timer data) whose window has already closed is
+     * reported as 'timesup': the last autosave IS the auto-submission, for a
+     * student whose tab/PC died before the timer's own auto-submit could fire.
+     *
+     * @param  string|array|null $code_json  classworks.code
+     * @param  array|null        $timer      code_snippet_timer()'s return
+     * @return string|null  'draft' | 'submitted' | 'timesup', or NULL when
+     *                       $timer is null (untimed — no state to report).
+     */
+    public function code_snippet_effective_state($code_json, $timer)
+    {
+        if (!$timer) {
+            return null;
+        }
+        $data  = is_array($code_json) ? $code_json : (json_decode((string) $code_json, true) ?: []);
+        $state = $data['state'] ?? null;
+
+        if ($timer['phase'] === 'closed' && $state !== 'submitted' && $state !== 'timesup') {
+            return 'timesup';
+        }
+        return $state ?: 'draft';
+    }
+
+    /** Whether a code_snippet submit should be accepted right now. */
+    public function code_snippet_can_submit($timer, $now = null)
+    {
+        if (!$timer) {
+            return true; // untimed — unchanged behavior
+        }
+        if ($timer['phase'] === 'unassigned') {
+            return false;
+        }
+        $now = $now ?? time();
+        return $now >= $timer['start_ts'] && $now <= $timer['end_ts'] + self::CODE_SNIPPET_GRACE_SECONDS;
+    }
+
+    /** The state a currently-accepted submit should be stamped with. */
+    public function code_snippet_submit_state($timer, $now = null)
+    {
+        if (!$timer) {
+            return 'submitted';
+        }
+        $now = $now ?? time();
+        return $now > $timer['end_ts'] ? 'timesup' : 'submitted';
     }
 
     public function get_all()
@@ -225,8 +480,9 @@ class Widgets_model extends CI_Model
     }
 
     // Mirrors widgets/case_dossier.php's updateProgress(): hook questions +
-    // each group's per-factor rating (answered when a 1-5 score is picked,
-    // matching the bar's .cd-rate-btn.picked check) + reflection questions.
+    // each group's per-factor evidence citation (answered when the evidence
+    // text is non-blank, matching the bar's .cd-evidence-input check) +
+    // reflection questions.
     private function _progress_case_dossier($config, $answers)
     {
         $hook       = $config['hook'] ?? [];
@@ -249,8 +505,8 @@ class Widgets_model extends CI_Model
             $ratings = $group_ratings[$gi] ?? [];
             foreach ($group['factors'] ?? [] as $fi => $factor) {
                 $total++;
-                $score = $ratings[$fi]['score'] ?? null;
-                if (is_numeric($score)) $done++;
+                $evidence = $ratings[$fi]['evidence'] ?? null;
+                if (is_string($evidence) && trim($evidence) !== '') $done++;
             }
         }
 
@@ -372,6 +628,264 @@ class Widgets_model extends CI_Model
         return ['score' => $score, 'results' => $results];
     }
 
+    // Class-wide item analysis over a set of quiz submissions — "which questions
+    // is everyone getting wrong, and what are they picking instead". Lives here
+    // next to grade_quiz() because this is the model that owns the quiz result
+    // shape; keeping the reader beside the writer is what stops the two drifting.
+    // Serves both quiz widgets (`quiz` and `secure_quiz`) — grade_quiz() is the
+    // single writer for both, so the stored blobs are byte-identical in shape.
+    //
+    // $result_lists: array of decoded classworks.code blobs, each a grade_quiz()
+    //                results array [{question,user_answer,correct_answer,is_correct}].
+    // $config:       decoded assessments.given, used only to order items by their
+    //                position in the current bank and to spot bank drift.
+    //
+    // Aggregation is keyed on the TRIMMED QUESTION TEXT, which looks crude but is
+    // the only stable identifier available: the config carries no question ids,
+    // and SecureQuizController::index() shuffles the bank and slices it to
+    // max_score per student, then destroys the drawn set at submit. Array
+    // position therefore means nothing across two submissions, and an item's
+    // denominator is "how many submissions contained it", never "how many
+    // students sat the quiz".
+    //
+    // The stored is_correct is trusted as-is and never recomputed against the
+    // current config: it was graded server-side at submit time, and re-deriving
+    // it would silently rewrite history whenever an instructor edits the bank
+    // afterwards, as well as disagree with the already-recorded classworks.score.
+    //
+    // Note this is descriptive statistics over booleans, not grading — no
+    // transmutation, no weighting, no score is produced or written. Grade
+    // arithmetic stays in Grade_calculator (see CLAUDE.md).
+    public function quiz_item_stats(array $result_lists, $config = [])
+    {
+        $bank = $this->quiz_questions($config);
+
+        // Bank order, so items an instructor recognises stay findable, and so
+        // questions never drawn can be reported separately.
+        $bank_index = [];
+        foreach ($bank as $i => $q) {
+            $key = trim((string) ($q['question'] ?? ''));
+            // Two bank entries with identical text collapse into one row; first
+            // occurrence wins the index.
+            if ($key !== '' && !isset($bank_index[$key])) $bank_index[$key] = $i;
+        }
+
+        $items       = [];
+        $submissions = 0;
+        $score_dist  = [];
+
+        foreach ($result_lists as $results) {
+            if (!is_array($results)) continue; // null / malformed code column
+            $submissions++;
+            $student_correct = 0;
+
+            foreach ($results as $r) {
+                if (!is_array($r)) continue;
+                $key = trim((string) ($r['question'] ?? ''));
+                if ($key === '') continue;
+
+                if (!isset($items[$key])) {
+                    $items[$key] = [
+                        'question'       => $key,
+                        'correct_answer' => (string) ($r['correct_answer'] ?? ''),
+                        'bank_index'     => $bank_index[$key] ?? null,
+                        'shown'          => 0,
+                        'correct'        => 0,
+                        'wrong'          => 0,
+                        'no_answer'      => 0,
+                        'answers'        => [],
+                    ];
+                }
+
+                $answer     = (string) ($r['user_answer'] ?? '');
+                $is_correct = !empty($r['is_correct']);
+                // 'No answer' is the literal sentinel grade_quiz() writes for an
+                // item the student never touched. On a timed quiz "ran out of
+                // time" and "picked the wrong option" are different diagnoses,
+                // so it counts as a miss but is kept out of the wrong/distractor
+                // tallies.
+                $skipped = ($answer === 'No answer');
+
+                $items[$key]['shown']++;
+                if ($is_correct)      $items[$key]['correct']++;
+                elseif ($skipped)     $items[$key]['no_answer']++;
+                else                  $items[$key]['wrong']++;
+
+                if (!$skipped) {
+                    if (!isset($items[$key]['answers'][$answer])) {
+                        $items[$key]['answers'][$answer] = ['answer' => $answer, 'count' => 0, 'is_correct' => $is_correct];
+                    }
+                    $items[$key]['answers'][$answer]['count']++;
+                }
+
+                if ($is_correct) $student_correct++;
+            }
+
+            $score_dist[$student_correct] = ($score_dist[$student_correct] ?? 0) + 1;
+        }
+
+        $total_answers = 0;
+        $total_correct = 0;
+
+        foreach ($items as $key => $item) {
+            $shown = $item['shown'];
+            $items[$key]['miss_rate'] = $shown > 0
+                ? round((($shown - $item['correct']) / $shown) * 100, 1)
+                : 0.0;
+
+            // Distractors, most-picked first — this is the "what are they
+            // choosing instead" readout.
+            $answers = array_values($item['answers']);
+            usort($answers, function ($a, $b) { return $b['count'] <=> $a['count']; });
+            foreach ($answers as $i => $a) {
+                $answers[$i]['pct'] = $shown > 0 ? round(($a['count'] / $shown) * 100, 1) : 0.0;
+            }
+            $items[$key]['answers'] = $answers;
+
+            $total_answers += $shown;
+            $total_correct += $item['correct'];
+        }
+
+        // Worst first — the whole point of the page.
+        $items = array_values($items);
+        usort($items, function ($a, $b) {
+            if ($a['miss_rate'] === $b['miss_rate']) return $b['shown'] <=> $a['shown'];
+            return $b['miss_rate'] <=> $a['miss_rate'];
+        });
+
+        // Bank questions that no submission ever contained. Expected and normal
+        // when the bank is bigger than max_score, since each student is served a
+        // random slice — but worth showing, because an item with no data is not
+        // the same as an item everybody got right.
+        $seen        = array_column($items, 'question');
+        $never_shown = [];
+        foreach ($bank as $i => $q) {
+            $key = trim((string) ($q['question'] ?? ''));
+            if ($key !== '' && !in_array($key, $seen, true)) {
+                $never_shown[] = ['bank_index' => $i, 'question' => $key];
+            }
+        }
+
+        ksort($score_dist);
+
+        return [
+            'submission_count' => $submissions,
+            'bank_count'       => count($bank),
+            'items'            => $items,
+            'never_shown'      => $never_shown,
+            'score_dist'       => $score_dist,
+            'totals'           => [
+                'answers'  => $total_answers,
+                'correct'  => $total_correct,
+                'accuracy' => $total_answers > 0 ? round(($total_correct / $total_answers) * 100, 1) : 0.0,
+            ],
+        ];
+    }
+
+    // Per-student score ranking over the same submissions quiz_item_stats()
+    // aggregates anonymously — "who topped this quiz, and who needs a second
+    // look". Sits beside it (and grade_quiz()) for the same reason: this reads
+    // the result shape that model writes, and split files drift.
+    //
+    // $submissions: rows from classworks::get_all_submissions(), optionally with
+    //               a 'section' label added by the caller when several sections
+    //               of one master are pooled.
+    //
+    // Returns the WHOLE cohort ranked, not a top-N slice — the instructor wants
+    // to find one named student as often as to see who topped the quiz, and a
+    // 51-row table is cheap.
+    //
+    // Ranking is on the RECORDED classworks.score, not on a recount of the
+    // stored results: the score is what the student's grade is actually built
+    // from, and an instructor may have adjusted it. Only when the score is NULL
+    // (never graded — shouldn't happen for the auto-graded quiz widgets, but
+    // possible on a hand-made row) does it fall back to counting is_correct,
+    // and that entry is flagged so the view can say so.
+    //
+    // Descriptive only — no transmutation, no weighting, nothing written. Grade
+    // arithmetic stays in Grade_calculator (see CLAUDE.md).
+    public function quiz_score_ranking(array $submissions)
+    {
+        $entries = [];
+
+        foreach ($submissions as $row) {
+            $results = json_decode($row['code'] ?? '', true);
+            if (!is_array($results)) $results = [];
+
+            $correct    = 0;
+            $unanswered = 0;
+            foreach ($results as $r) {
+                if (!is_array($r)) continue;
+                if (!empty($r['is_correct']))                            $correct++;
+                elseif (($r['user_answer'] ?? '') === 'No answer')       $unanswered++;
+            }
+
+            $graded = isset($row['score']) && $row['score'] !== null && $row['score'] !== '';
+            $score  = $graded ? (float) $row['score'] : (float) $correct;
+            $max    = (float) ($row['max_score'] ?? 0);
+
+            $entries[] = [
+                'name'         => trim(($row['lastname'] ?? '') . ', ' . ($row['firstname'] ?? '')),
+                'section'      => $row['section'] ?? null,
+                'score'        => $score,
+                'max_score'    => $max,
+                'percent'      => $max > 0 ? round(($score / $max) * 100, 1) : null,
+                'correct'      => $correct,
+                'items'        => count($results),
+                'unanswered'   => $unanswered,
+                'graded'       => $graded,
+                'switch_count' => isset($row['switch_count']) && $row['switch_count'] !== null
+                    ? (int) $row['switch_count'] : null,
+            ];
+        }
+
+        if (!$entries) {
+            return [
+                'count'     => 0,
+                'students'  => [],
+                'average'   => 0.0, 'median' => 0.0, 'highest' => 0.0, 'lowest' => 0.0,
+                'max_score' => 0.0,
+            ];
+        }
+
+        // Highest first. Ties break on fewer unanswered items then name, so the
+        // order is stable between page loads instead of following row order.
+        usort($entries, function ($a, $b) {
+            if ($a['score'] != $b['score'])           return $b['score'] <=> $a['score'];
+            if ($a['unanswered'] != $b['unanswered']) return $a['unanswered'] <=> $b['unanswered'];
+            return strcasecmp($a['name'], $b['name']);
+        });
+
+        $count = count($entries);
+
+        // Competition ranking: equal scores share a rank and the next one skips
+        // (1, 2, 2, 4). Sequential numbering would claim an order between two
+        // students who scored exactly the same, which the data doesn't support.
+        // 'tied' lets the view mark a shared rank instead of looking like a bug.
+        $rank = 0;
+        foreach ($entries as $i => $e) {
+            $same = $i > 0 && $e['score'] == $entries[$i - 1]['score'];
+            if (!$same) $rank = $i + 1;
+            $entries[$i]['rank'] = $rank;
+            $entries[$i]['tied'] = $same
+                || ($i + 1 < $count && $e['score'] == $entries[$i + 1]['score']);
+        }
+
+        $scores = array_column($entries, 'score');
+        sort($scores);
+        $mid = (int) floor($count / 2);
+
+        return [
+            'count'     => $count,
+            'students'  => $entries,
+            'average'   => round(array_sum($scores) / $count, 2),
+            'median'    => $count % 2 ? $scores[$mid] : round(($scores[$mid - 1] + $scores[$mid]) / 2, 2),
+            'highest'   => $scores[$count - 1],
+            'lowest'    => $scores[0],
+            'max_score' => (float) $entries[0]['max_score'],
+        ];
+    }
+
     private function _add_column_if_missing($table, $column, $definition)
     {
         $exists = $this->db->query(
@@ -380,8 +894,28 @@ class Widgets_model extends CI_Model
             [$table, $column]
         )->num_rows() > 0;
 
-        if (!$exists) {
-            $this->db->query("ALTER TABLE `$table` ADD COLUMN `$column` $definition");
+        if ($exists) {
+            return true;
         }
+
+        // db_debug is FALSE, so a failed ALTER returns quietly and install()
+        // would still report success — the exact failure mode that lost 464
+        // group memberships and led to Schema_guard (see that library's header).
+        // Log it loudly instead.
+        $result = $this->db->query("ALTER TABLE `$table` ADD COLUMN `$column` $definition");
+        $error  = $this->db->error();
+
+        if ($result === false || !empty($error['code'])) {
+            log_message('error', sprintf(
+                'Widgets_model::install() could not add `%s`.`%s` [%s] %s',
+                $table,
+                $column,
+                isset($error['code']) ? $error['code'] : '?',
+                isset($error['message']) ? $error['message'] : 'unknown error'
+            ));
+            return false;
+        }
+
+        return true;
     }
 }

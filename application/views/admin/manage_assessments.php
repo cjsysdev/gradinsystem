@@ -119,7 +119,7 @@
                     <th>Widget</th>
                     <th>Term</th>
                     <th>Max Score</th>
-                    <th>Due</th>
+                    <th title="Earliest student submission for this assessment">First Submission</th>
                     <th>Submissions</th>
                     <th>Status</th>
                     <th>Actions</th>
@@ -131,7 +131,10 @@
                         <?php $is_group_head = isset($a['_rowspan']); ?>
                         <tr class="<?= (int) $a['sibling_count'] > 1 ? 'table-shared-group' : '' ?>">
                             <td><?= $a['assessment_id'] ?></td>
-                            <td><span class="badge badge-secondary"><?= htmlspecialchars($a['section']) ?></span></td>
+                            <td>
+                                <?php $sectionHue = abs(crc32($a['section'] . '|' . $a['class_code'])) % 360; ?>
+                                <span class="badge text-white" style="background-color: hsl(<?= $sectionHue ?>, 55%, 42%);"><?= htmlspecialchars($a['section']) ?></span>
+                            </td>
                             <?php if ($is_group_head): ?>
                                 <td rowspan="<?= (int) $a['_rowspan'] ?>">
                                     <?= htmlspecialchars($a['title']) ?>
@@ -141,10 +144,17 @@
                                         </small>
                                     <?php endif; ?>
                                 </td>
-                                <td rowspan="<?= (int) $a['_rowspan'] ?>"><?= htmlspecialchars($a['iotype']) ?></td>
+                                <td rowspan="<?= (int) $a['_rowspan'] ?>">
+                                    <?php
+                                    $iotypeBadges = [1 => 'badge-info', 2 => 'badge-primary', 3 => 'badge-danger', 4 => 'badge-warning'];
+                                    $iotypeBadge = $iotypeBadges[(int) $a['iotype_id']] ?? 'badge-secondary';
+                                    ?>
+                                    <span class="badge <?= $iotypeBadge ?>"><?= htmlspecialchars($a['iotype']) ?></span>
+                                </td>
                                 <td rowspan="<?= (int) $a['_rowspan'] ?>">
                                     <?php if (!empty($a['widget_name'])): ?>
-                                        <span class="badge badge-primary"><?= htmlspecialchars($a['widget_name']) ?></span>
+                                        <?php $widgetHue = abs(crc32($a['widget_name'])) % 360; ?>
+                                        <span class="badge text-white" style="background-color: hsl(<?= $widgetHue ?>, 60%, 40%);"><?= htmlspecialchars($a['widget_name']) ?></span>
                                     <?php else: ?>
                                         <span class="text-muted">&mdash;</span>
                                     <?php endif; ?>
@@ -157,7 +167,15 @@
                                 </td>
                                 <td rowspan="<?= (int) $a['_rowspan'] ?>"><?= $a['max_score'] ?></td>
                             <?php endif; ?>
-                            <td><?= date('M j, y, D', strtotime($a['due'])) ?></td>
+                            <td class="text-nowrap">
+                                <?php if (!empty($a['first_submission']) && $a['first_submission'] !== '0000-00-00 00:00:00'): ?>
+                                    <?php $firstSub = new DateTime($a['first_submission']); ?>
+                                    <?= $firstSub->format('M j, Y') ?>
+                                    <br><small class="text-muted"><?= $firstSub->format('g:i A') ?></small>
+                                <?php else: ?>
+                                    <span class="text-muted" title="No submissions yet">&mdash;</span>
+                                <?php endif; ?>
+                            </td>
                             <td>
                                 <span class="badge badge-info"><?= $a['submission_count'] ?></span>
                                 <?php $missing_count = max(0, (int) $a['enrolled_count'] - (int) $a['submitted_student_count']); ?>
@@ -170,12 +188,13 @@
                             </td>
                             <td>
                                 <?php $statusValue = is_numeric($a['status']) ? (int)$a['status'] : ($a['status'] === 'open' ? 1 : 0); ?>
-                                <select class="form-control form-control-sm"
+                                <button type="button"
+                                        class="btn btn-sm <?= $statusValue === 1 ? 'btn-success' : 'btn-secondary' ?>"
                                         data-id="<?= $a['assessment_id'] ?>"
-                                        onchange="updateStatus(this)">
-                                    <option value="1" <?= $statusValue === 1 ? 'selected' : '' ?>>Open</option>
-                                    <option value="0" <?= $statusValue === 0 ? 'selected' : '' ?>>Closed</option>
-                                </select>
+                                        data-status="<?= $statusValue ?>"
+                                        onclick="toggleStatus(this)">
+                                    <?= $statusValue === 1 ? 'Open' : 'Closed' ?>
+                                </button>
                             </td>
                             <td class="text-nowrap">
                                 <button class="btn btn-sm btn-outline-primary"
@@ -194,6 +213,13 @@
                                        class="btn btn-sm btn-outline-secondary"
                                        title="View all assessments for this class">
                                         <i class="fas fa-layer-group"></i>
+                                    </a>
+                                <?php endif; ?>
+                                <?php if (($a['widget_key'] ?? null) === 'code_snippet'): ?>
+                                    <a href="<?= base_url('AdminAssessmentController/snippet_batches/' . $a['assessment_id']) ?>"
+                                       class="btn btn-sm btn-outline-primary"
+                                       title="Batches &amp; Timer">
+                                        <i class="fa fa-clock"></i>
                                     </a>
                                 <?php endif; ?>
                                 <button class="btn btn-sm btn-outline-danger"
@@ -746,6 +772,7 @@ let lastAutoFilledExample = null;
 let lastAutoFilledTitle = null;
 let lastAutoFilledDescription = null;
 let lastAutoFilledSlug = null;
+let lastAutoFilledMaxScore = null;
 
 // Turns a pasted topic's "title" into a slug candidate matching the server's
 // ^[a-z0-9_]{1,100}$ requirement (_save_pasted_topic_json()).
@@ -850,6 +877,67 @@ function autofillIqTopicMeta(topic) {
     }
 }
 
+// Reads one of the given key paths ('a.b' walks into nested objects) out of a
+// parsed config, flattened to plain text — client-side twin of the $pick()
+// closure in AdminController::_widget_config_meta().
+function pickConfigMeta(data, paths) {
+    for (const path of paths) {
+        let value = data;
+        let found = true;
+        for (const key of path.split('.')) {
+            if (!value || typeof value !== 'object' || value[key] === undefined) {
+                found = false;
+                break;
+            }
+            value = value[key];
+        }
+        if (!found || (typeof value !== 'string' && typeof value !== 'number')) continue;
+
+        const text = String(value).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+        if (text) return text;
+    }
+    return '';
+}
+
+// Fills Title/Description/Max Score from a widget config JSON that names
+// itself — configs written by the generator skills carry their own title,
+// description, and (for quiz-shaped ones) score, so there's nothing to retype.
+// Mirrors AdminController::_widget_config_meta() + _fill_blank_fields(), which
+// does the same on save for configs that never passed through this modal.
+// Same "don't clobber typed content" guard as autofillIqMetaFromJson(), except
+// a key the config doesn't carry leaves its field alone instead of blanking it
+// — this runs on every keystroke in the textarea, where the JSON is usually
+// half-typed.
+function autofillMetaFromWidgetConfig(text) {
+    let data;
+    try { data = JSON.parse(text); } catch (e) { return; }
+    if (!data || typeof data !== 'object') return;
+
+    const title = pickConfigMeta(data, ['title', 'meta.title', 'story.title']).substring(0, 64);
+    const description = pickConfigMeta(data, ['description', 'subtitle', 'meta.sub', 'prompt']);
+    const maxScore = parseInt(pickConfigMeta(data, ['max_score', 'total_points', 'points']), 10);
+
+    const titleInput = document.getElementById('modal_title');
+    const descInput = document.getElementById('modal_description');
+    const scoreInput = document.getElementById('modal_max_score');
+
+    if (title && (!titleInput.value.trim() || titleInput.value === lastAutoFilledTitle)) {
+        titleInput.value = title;
+        lastAutoFilledTitle = title;
+    }
+    if (description && (!descInput.value.trim() || descInput.value === lastAutoFilledDescription)) {
+        descInput.value = description;
+        lastAutoFilledDescription = description;
+    }
+    // Never touches Max Score for the topic-file widgets — applyIqMaxScoreLock()
+    // owns that field there (read-only, derived from the topic's item count).
+    if (maxScore > 0 && !selectedTopicFormat()
+        && (!scoreInput.value.trim() || scoreInput.value === lastAutoFilledMaxScore)) {
+        scoreInput.value = maxScore;
+        lastAutoFilledMaxScore = String(maxScore);
+    }
+}
+
 // Max Score isn't hand-entered for the topic-file widgets — it's the topic's
 // own item count (1 point per question for Interactive Discussion/Quiz, 1 per
 // micro-check + 1 per checkpoint for Microlearning Quiz, matching the
@@ -911,6 +999,7 @@ function toggleGivenWrap() {
     // config JSON. Falls back to raw-JSON-only for widgets without a schema.
     if (typeof initWidgetConfigUI === 'function') initWidgetConfigUI();
 
+    autofillMetaFromWidgetConfig(textarea.value);
     fetchWidgetPreview();
 }
 
@@ -928,7 +1017,7 @@ function applyCopyFrom() {
     document.getElementById('modal_title').value = src.title || '';
     document.getElementById('modal_description').value = src.description || '';
     document.getElementById('modal_max_score').value = src.max_score || '';
-    document.getElementById('modal_term').value = src.term || 'midterm';
+    document.getElementById('modal_term').value = src.term || 'final';
     document.getElementById('modal_due').value = src.due ? src.due.replace(' ', 'T').substring(0, 16) : '';
     document.getElementById('modal_is_groupings').checked = parseInt(src.is_groupings) === 1;
     refreshGroupingSetOptions();
@@ -940,6 +1029,7 @@ function applyCopyFrom() {
     lastAutoFilledTitle = null;
     lastAutoFilledDescription = null;
     lastAutoFilledSlug = null;
+    lastAutoFilledMaxScore = null;
 
     let givenTopic = '';
     if (src.given) {
@@ -1093,6 +1183,7 @@ document.getElementById('modal_given_file').addEventListener('change', function 
         const textarea = document.getElementById('modal_given');
         textarea.value = JSON.stringify(parsed, null, 2);
         lastAutoFilledExample = null; // real config now — switching widgets must not clobber it
+        autofillMetaFromWidgetConfig(textarea.value);
         fetchWidgetPreview();
     };
     reader.readAsText(file);
@@ -1165,7 +1256,10 @@ document.getElementById('assessmentForm').addEventListener('submit', function (e
 
     const raw = document.getElementById('modal_given').value.trim();
     let problem = '';
-    if (!raw) {
+    if (!raw && selectedWidgetKey() === 'file_upload') {
+        // Every File Upload option has a default — blank config is valid.
+        document.getElementById('modal_given').value = '{}';
+    } else if (!raw) {
         problem = 'the config is empty';
     } else {
         try {
@@ -1185,7 +1279,10 @@ document.getElementById('modal_schedule_id').addEventListener('change', () => { 
 document.getElementById('modal_class_id').addEventListener('change', () => { refreshIqTopicOptions(); refreshCopyFromOptions(); });
 document.getElementById('modal_is_groupings').addEventListener('change', toggleGroupingSetWrap);
 document.getElementById('modal_widget_id').addEventListener('change', toggleGivenWrap);
-document.getElementById('modal_given').addEventListener('input', refreshWidgetPreviewDebounced);
+document.getElementById('modal_given').addEventListener('input', function () {
+    autofillMetaFromWidgetConfig(this.value);
+    refreshWidgetPreviewDebounced();
+});
 document.getElementById('modal_iq_topic').addEventListener('change', syncIqTopicToGiven);
 document.getElementById('modal_iq_source_existing').addEventListener('change', toggleIqSource);
 document.getElementById('modal_iq_source_new').addEventListener('change', toggleIqSource);
@@ -1207,7 +1304,7 @@ function openAddModal() {
     document.getElementById('modal_title').value = '';
     document.getElementById('modal_description').value = '';
     document.getElementById('modal_max_score').value = '';
-    document.getElementById('modal_term').value = 'midterm';
+    document.getElementById('modal_term').value = 'final';
     document.getElementById('modal_status').value = '0';
     document.getElementById('modal_due').value = '';
     document.getElementById('modal_is_groupings').checked = false;
@@ -1223,6 +1320,7 @@ function openAddModal() {
     lastAutoFilledTitle = null;
     lastAutoFilledDescription = null;
     lastAutoFilledSlug = null;
+    lastAutoFilledMaxScore = null;
     toggleGivenWrap();
     document.getElementById('modal_auto_create_submissions').checked = false;
     document.getElementById('modal_submit_btn').textContent = 'Add Assessment';
@@ -1257,6 +1355,7 @@ function openEditModal(a) {
     lastAutoFilledTitle = null;
     lastAutoFilledDescription = null;
     lastAutoFilledSlug = null;
+    lastAutoFilledMaxScore = null;
     let givenTopic = '';
     if (a.given) {
         try { givenTopic = JSON.parse(a.given).topic || ''; } catch (e) {}
@@ -1332,10 +1431,12 @@ function deleteAssessment(id, title) {
     .catch(() => alert('Request failed.'));
 }
 
-function updateStatus(select) {
-    const assessment_id = select.dataset.id;
-    const status = select.value;
-    const original = status === '1' ? '0' : '1';
+function toggleStatus(btn) {
+    const assessment_id = btn.dataset.id;
+    const original = btn.dataset.status;
+    const status = original === '1' ? '0' : '1';
+
+    btn.disabled = true;
 
     fetch('<?= base_url('update_assessment_status') ?>', {
         method: 'POST',
@@ -1344,15 +1445,17 @@ function updateStatus(select) {
     })
     .then(r => r.json())
     .then(data => {
-        if (!data.success) {
+        if (data.success) {
+            btn.dataset.status = status;
+            btn.textContent = status === '1' ? 'Open' : 'Closed';
+            btn.classList.toggle('btn-success', status === '1');
+            btn.classList.toggle('btn-danger', status === '0');
+        } else {
             alert('Failed to update status.');
-            select.value = original;
         }
     })
-    .catch(() => {
-        alert('Request failed.');
-        select.value = original;
-    });
+    .catch(() => alert('Request failed.'))
+    .finally(() => { btn.disabled = false; });
 }
 </script>
 

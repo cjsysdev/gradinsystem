@@ -223,21 +223,45 @@ if (!empty($assessment_id)) {
             <?php endif; ?>
 
             <div class="card-body">
-                <?php if (!$this->session->exam_term && false): ?>
-                    <?php foreach ($results as $index => $result): ?>
-                        <div class="mb-4">
-                            <p class="fw-bold"><b>Question <?= $index + 1 ?>: </b><?= nl2br(htmlspecialchars($result['question'])) ?></p>
-                            <p>Your answer: <span class="<?= $result['is_correct'] ? 'correct' : 'incorrect' ?>"><?= $result['user_answer'] ?></span></p>
-                            <p>Correct answer: <?= $result['correct_answer'] ?></p>
-                        </div>
-                        <hr>
-                    <?php endforeach; ?>
-                <?php endif; ?>
                 <div class="text-center">
                     <a href="<?= site_url('attendance') ?>" class="btn btn-outline-dark btn-block">Exit</a>
                 </div>
             </div>
         </div>
+
+        <?php
+        // Post-attempt review. Only the items the student got WRONG are shown —
+        // never the full question/answer list, which would hand out the whole
+        // answer key for a quiz other sections have yet to take. Opt-in per
+        // controller ($show_review, set by SecureQuizController); the legacy
+        // QuizController path leaves it unset and shows no review at all.
+        $show_review = !empty($show_review) && !$this->session->exam_term;
+        $missed = $show_review
+            ? array_filter($results, function ($r) { return empty($r['is_correct']); })
+            : [];
+        ?>
+        <?php if ($show_review): ?>
+            <div class="card-body">
+                <?php if (empty($missed)): ?>
+                    <p class="text-center correct mb-0">
+                        <strong>Perfect score</strong> &mdash; nothing to review.
+                    </p>
+                <?php else: ?>
+                    <h5 class="text-center mb-1">Review &mdash; items you missed</h5>
+                    <p class="text-muted text-center small mb-4">
+                        Showing <?= count($missed) ?> of <?= count($results) ?> item(s). Items you answered correctly are not listed.
+                    </p>
+                    <?php foreach ($missed as $index => $result): ?>
+                        <div class="mb-4 text-left">
+                            <p class="fw-bold"><b>Question <?= $index + 1 ?>: </b><?= nl2br(htmlspecialchars($result['question'])) ?></p>
+                            <p>Your answer: <span class="incorrect"><?= htmlspecialchars((string) $result['user_answer']) ?></span></p>
+                            <p>Correct answer: <span class="correct"><?= htmlspecialchars((string) $result['correct_answer']) ?></span></p>
+                        </div>
+                        <hr>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
         <?php if (!empty($top_students)): ?>
             <div class="mt-4">
                 <h3 class="text-center">Top 10 Students</h3>

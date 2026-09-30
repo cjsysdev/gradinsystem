@@ -20,7 +20,7 @@
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Submissions"><i class="fa fa-file-alt"></i></a> -->
         <a href="<?= base_url(
                         'view_attendance'
-                    ) ?>" class="btn btn-outline-secondary col m-2" title="Attendance"><i class="fa fa-calendar-check"></i></a>
+                    ) ?>" class="btn btn-outline-secondary col m-2" title="Section Monitoring"><i class="fa fa-calendar-check"></i></a>
         <a href="<?= base_url(
                         'admin/emergency_contacts'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Emergency Contacts"><i class="fa fa-phone"></i></a>
@@ -65,6 +65,13 @@
         <a href="<?= base_url(
                         'admin/worksheet_generator'
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Worksheet Generator"><i class="fa fa-wand-magic-sparkles"></i></a>
+        <a href="<?= base_url(
+                        'admin/announcements'
+                    ) ?>" class="btn btn-outline-secondary col m-2" title="SMS Announcements"><i class="fa fa-bullhorn"></i></a>
+        <!-- fa-folder-tree, not fa-folder-open: that one already means Classwork above. -->
+        <a href="<?= base_url(
+                        'admin/materials'
+                    ) ?>" class="btn btn-outline-secondary col m-2" title="Class Materials"><i class="fa fa-folder-tree"></i></a>
         <?php $over_max_count = $this->classworks->count_scores_exceeding_max(); ?>
         <!-- <a href="<?= base_url(
                         'admin/score_integrity'
@@ -73,8 +80,8 @@
                 <span class="badge badge-danger position-absolute" style="top:0; right:0; transform:translate(25%,-25%);"><?= $over_max_count ?></span>
             <?php endif; ?>
         </a> -->
-        <!-- <a href="<?= base_url(
+        <a href="<?= base_url(
                         'uncleared_students'
-                    ) ?>" class="btn btn-outline-secondary col m-2" title="Uncleared Students"><i class="fa fa-user-times"></i></a> -->
+                    ) ?>" class="btn btn-outline-secondary col m-2" title="Uncleared Students"><i class="fa fa-user-times"></i></a>
     </div>
 </div>

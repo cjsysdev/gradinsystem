@@ -1,0 +1,232 @@
+{
+    "topic": "ci3_sessions_part_2_check_remove_flash",
+    "title": "CI3 Sessions Part 2 — Check, Remove, Flash",
+    "description": "Beyond load/set/use/destroy: checking a key exists, removing just one, and one-time flashdata messages.",
+    "congratsText": "You handled the rest of the session toolkit!",
+    "objectives": [
+        "Test whether a key exists with has_userdata before printing it",
+        "Remove a single key with unset_userdata instead of destroying everything",
+        "Store a one-time message with set_flashdata and read it with flashdata",
+        "Choose the right call for a given job"
+    ],
+    "recap": [
+        "has_userdata('key') returns TRUE or FALSE, so NULL never reaches the page.",
+        "unset_userdata('key') drops one key; sess_destroy() drops them all.",
+        "set_flashdata('key', value) lasts for the next request only, then CI3 clears it.",
+        "Lasting value: set_userdata. One-time notice: set_flashdata. Sign out: sess_destroy."
+    ],
+    "sections": [
+        {
+            "id": 0,
+            "title": "Checking Before You Use",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "Last time <span class=\"code-inline\">userdata('username')</span> gave <span class=\"highlight\">NULL</span> when nothing was stored. Printing NULL on a page looks broken to a visitor.",
+                    "check": {
+                        "question": "What does an unused key give back?",
+                        "options": [
+                            "NULL",
+                            "An empty form"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "<span class=\"code-inline\">$this->session->has_userdata('username')</span> answers yes or no instead. It returns <span class=\"highlight\">TRUE or FALSE</span>, never the value.",
+                    "check": {
+                        "question": "What does has_userdata give you?",
+                        "options": [
+                            "TRUE or FALSE",
+                            "The stored value"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "So a page can decide: <span class=\"code-inline\">if ($this->session->has_userdata('username'))</span> show the name, otherwise send them to <span class=\"code-inline\">login()</span>.",
+                    "check": {
+                        "question": "Why check before you print?",
+                        "options": [
+                            "So NULL never reaches the page",
+                            "So the session loads much faster"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "code": "$this->session->set_userdata('username', 'maria');\nvar_dump($this->session->has_userdata('username'));\nvar_dump($this->session->has_userdata('email'));",
+                "question": "What do the two var_dump lines print, in order?",
+                "options": [
+                    "maria and then NULL, since has_userdata returns the stored value",
+                    "TRUE and then FALSE, since only one of the keys was ever set",
+                    "TRUE and then TRUE, because the session box itself exists",
+                    "FALSE and then FALSE, because has_userdata needs two arguments"
+                ],
+                "correct": 1
+            }
+        },
+        {
+            "id": 1,
+            "title": "Removing One Key",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "<span class=\"code-inline\">$this->session->sess_destroy();</span> empties the whole box. Sometimes you only want <span class=\"highlight\">one key</span> gone.",
+                    "check": {
+                        "question": "What does sess_destroy() clear?",
+                        "options": [
+                            "Everything in the box",
+                            "Only the newest key"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "<span class=\"code-inline\">$this->session->unset_userdata('username');</span> removes that one key. Every other key stays exactly where it was.",
+                    "check": {
+                        "question": "Does unset_userdata touch the other keys?",
+                        "options": [
+                            "No, only the named one",
+                            "Yes, it clears them too"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "It is the same idea as PHP's own <span class=\"code-inline\">unset($_SESSION['username'])</span>, because that global <span class=\"highlight\">is</span> the session box.",
+                    "check": {
+                        "question": "Why does unset on $_SESSION do the same job?",
+                        "options": [
+                            "It is the very same box",
+                            "It is a backup of the box"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "arrange",
+                "question": "Arrange the tokens into a logout() that keeps 'theme' but drops the login.",
+                "tokens": [
+                    "$this->session->unset_userdata('username');",
+                    "$this->load->library('session');",
+                    "echo \"logout      : username removed\";"
+                ],
+                "correctOrder": [
+                    "$this->load->library('session');",
+                    "$this->session->unset_userdata('username');",
+                    "echo \"logout      : username removed\";"
+                ]
+            }
+        },
+        {
+            "id": 2,
+            "title": "Flashdata: Here Once, Then Gone",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "A 'Saved!' message should appear once. With <span class=\"code-inline\">set_userdata</span> it would sit there on <span class=\"highlight\">every</span> page load afterwards.",
+                    "check": {
+                        "question": "What is wrong with a normal key here?",
+                        "options": [
+                            "The message never goes away",
+                            "The message is never stored"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "<span class=\"code-inline\">$this->session->set_flashdata('msg', 'Saved!');</span> stores it for the <span class=\"highlight\">next request only</span>. CI3 clears it after that on its own.",
+                    "check": {
+                        "question": "How long does flashdata last?",
+                        "options": [
+                            "One more request",
+                            "One whole hour"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "You read it the same way: <span class=\"code-inline\">$this->session->flashdata('msg')</span>. Refresh a second time and it is <span class=\"highlight\">NULL</span>.",
+                    "check": {
+                        "question": "Refresh twice. What is in msg?",
+                        "options": [
+                            "NULL",
+                            "Saved!"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "type",
+                "code": "// in check()\n$this->session->set_flashdata('msg', 'Saved!');\n\n// in home(), after two refreshes\nvar_dump($this->session->flashdata('msg'));",
+                "question": "Type what the var_dump prints on the second refresh.",
+                "acceptedAnswers": [
+                    "NULL",
+                    "null",
+                    "Null"
+                ]
+            }
+        },
+        {
+            "id": 3,
+            "title": "Picking the Right One",
+            "callback": true,
+            "refSection": "0, 1 & 2",
+            "chunks": [
+                {
+                    "text": "Name that should last the whole visit? Plain <span class=\"code-inline\">set_userdata</span>. One-time notice? <span class=\"code-inline\">set_flashdata</span>.",
+                    "check": {
+                        "question": "Which one for a 'Profile updated' notice?",
+                        "options": [
+                            "set_flashdata",
+                            "set_userdata"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Signing out for good? <span class=\"code-inline\">sess_destroy</span>. Dropping a single key and keeping the rest? <span class=\"code-inline\">unset_userdata</span>.",
+                    "check": {
+                        "question": "Which one keeps the other keys?",
+                        "options": [
+                            "unset_userdata",
+                            "sess_destroy"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "And before you print anything a visitor might not have, ask <span class=\"code-inline\">has_userdata</span> first.",
+                    "check": {
+                        "question": "What does has_userdata protect against?",
+                        "options": [
+                            "Printing NULL on the page",
+                            "Loading the library twice"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "code": "$this->load->library('session');\n$this->session->set_userdata('theme', 'dark');\n$this->session->set_flashdata('msg', 'Saved!');\n$this->session->unset_userdata('theme');",
+                "question": "On the very next request, what is still readable?",
+                "options": [
+                    "Both theme and msg, since neither call removed anything yet",
+                    "theme only, because unset_userdata just marks it for later",
+                    "msg only, because flashdata survives exactly one more request",
+                    "Neither one, because unset_userdata empties the whole box out"
+                ],
+                "correct": 2
+            }
+        }
+    ]
+}

@@ -1,0 +1,205 @@
+{
+	"questions": [
+		{
+			"question": "Which folder holds Model files in a CodeIgniter project?",
+			"code": "",
+			"choices": [
+				"application\/views",
+				"application\/models",
+				"application\/config",
+				"application\/helpers"
+			],
+			"answer": "application\/models",
+			"topic": "Model Basics",
+			"type": "Remember"
+		},
+		{
+			"question": "A Model class must extend which built-in class?",
+			"code": "",
+			"choices": ["CI_View", "CI_Loader", "CI_Model", "CI_Controller"],
+			"answer": "CI_Model",
+			"topic": "Creating the File",
+			"type": "Remember"
+		},
+		{
+			"question": "What is the main job of a Model?",
+			"code": "",
+			"choices": [
+				"To show the finished page layout to the site visitor",
+				"To handle the data, like reading rows from a table",
+				"To catch the URL request and send it to the right method",
+				"To store the HTML that the browser will end up displaying"
+			],
+			"answer": "To handle the data, like reading rows from a table",
+			"topic": "Model Basics",
+			"type": "Understand"
+		},
+		{
+			"question": "Why do we put database code in the Model instead of the Controller?",
+			"code": "",
+			"choices": [
+				"Because the Controller is not allowed to hold any code at all",
+				"Because the Model runs faster than the Controller on every request",
+				"Because the database only accepts calls that come from a Model file",
+				"Because it keeps the Controller short and lets others reuse the code"
+			],
+			"answer": "Because it keeps the Controller short and lets others reuse the code",
+			"topic": "Model Basics",
+			"type": "Understand"
+		},
+		{
+			"question": "Two different pages both need the same list of students. What is the better way?",
+			"code": "",
+			"choices": [
+				"Let both pages call the same method in one Model",
+				"Copy the same query into each of the two Controllers",
+				"Write the query inside each View so the pages stay apart",
+				"Make one Model file for every page that needs the list"
+			],
+			"answer": "Let both pages call the same method in one Model",
+			"topic": "Model Basics",
+			"type": "Analyze"
+		},
+		{
+			"question": "The file is named Student_model.php. What must the class inside be named?",
+			"code": "",
+			"choices": ["student", "StudentModel", "Student_model", "student_model"],
+			"answer": "Student_model",
+			"topic": "Creating the File",
+			"type": "Understand"
+		},
+		{
+			"question": "Which line correctly declares a Model class?",
+			"code": "",
+			"choices": [
+				"class Student_model extends CI_Model {",
+				"class Student_model extends CI_Controller {",
+				"class Student_model implements CI_Model {",
+				"function Student_model extends CI_Model {"
+			],
+			"answer": "class Student_model extends CI_Model {",
+			"topic": "Creating the File",
+			"type": "Apply"
+		},
+		{
+			"question": "Which line correctly loads a Model inside a Controller?",
+			"code": "",
+			"choices": [
+				"$this->load->view('student_model');",
+				"$this->load->helper('student_model');",
+				"$this->load->model('student_model');",
+				"$this->load->library('student_model');"
+			],
+			"answer": "$this->load->model('student_model');",
+			"topic": "Loading a Model",
+			"type": "Apply"
+		},
+		{
+			"question": "After the Model is loaded, how do you reach it inside the Controller?",
+			"code": "",
+			"choices": [
+				"$this->student_model",
+				"$student_model->get()",
+				"Student_model::load()",
+				"$this->load->student_model"
+			],
+			"answer": "$this->student_model",
+			"topic": "Loading a Model",
+			"type": "Understand"
+		},
+		{
+			"question": "What happens when a Controller uses a Model but forgets to load it first?",
+			"code": "",
+			"choices": [
+				"CodeIgniter loads the Model on its own without any warning",
+				"The page still works but the returned data comes back empty",
+				"The Model file is created automatically inside the folder",
+				"An error appears saying the property could not be found"
+			],
+			"answer": "An error appears saying the property could not be found",
+			"topic": "Loading a Model",
+			"type": "Analyze"
+		},
+		{
+			"question": "Which config file holds your database connection details?",
+			"code": "",
+			"choices": ["routes.php", "config.php", "database.php", "constants.php"],
+			"answer": "database.php",
+			"topic": "Model Config",
+			"type": "Remember"
+		},
+		{
+			"question": "Which setting tells CodeIgniter the name of the database to use?",
+			"code": "$db['default']['hostname'] = 'localhost';\n$db['default']['username'] = 'root';\n$db['default']['password'] = '';\n$db['default']['database'] = '???';",
+			"choices": ["password", "database", "hostname", "username"],
+			"answer": "database",
+			"topic": "Model Config",
+			"type": "Apply"
+		},
+		{
+			"question": "A page shows a database connection error. What is the most likely cause?",
+			"code": "",
+			"choices": [
+				"The Model file was saved using the wrong class name",
+				"The table has no rows in it yet so nothing was found",
+				"The View was not loaded after the Controller method ran",
+				"The details in database.php do not match the real setup"
+			],
+			"answer": "The details in database.php do not match the real setup",
+			"topic": "Model Config",
+			"type": "Analyze"
+		},
+        {
+			"question": "Which tag wraps the fields so that they are all sent together on submit?",
+			"code": "",
+			"choices": [
+				"<form>, which groups the fields into one submission",
+				"<input>, which marks the start of the field group",
+				"<label>, which names the group of fields for the user",
+				"<div>, which holds the group of fields on the page"
+			],
+			"answer": "<form>, which groups the fields into one submission",
+			"topic": "HTML Forms",
+			"type": "Remember"
+		},
+		{
+			"question": "Which two attributes does a <form> need before its data can reach the right place?",
+			"code": "",
+			"choices": [
+				"id and class, which name the form for styling",
+				"name and value, which label the data being sent",
+				"action and method, which set where and how it is sent",
+				"type and required, which set the kind of field used"
+			],
+			"answer": "action and method, which set where and how it is sent",
+			"topic": "HTML Forms",
+			"type": "Understand"
+		},
+		{
+			"question": "A page holds two separate forms. You fill in both, then submit only the first one. What gets sent?",
+			"code": "",
+			"choices": [
+				"All the fields on the page, since they share one page",
+				"Only the fields inside the form that you submitted",
+				"Only the very first field of each form on the page",
+				"Nothing, because two forms on one page cancel out"
+			],
+			"answer": "Only the fields inside the form that you submitted",
+			"topic": "HTML Forms",
+			"type": "Analyze"
+		},
+		{
+			"question": "What does the action attribute tell the browser?",
+			"code": "",
+			"choices": [
+				"The name to save the collected data under",
+				"The message to show once the data is sent",
+				"The button that will act as the submit button",
+				"The address to send the data to on submit"
+			],
+			"answer": "The address to send the data to on submit",
+			"topic": "Form Action",
+			"type": "Understand"
+		}
+	]
+}

@@ -62,8 +62,8 @@ $route['forgot_password'] = 'AuthenticationController/forgot_password';
 $route['forgot_password/submit'] = 'AuthenticationController/submit_forgot_password';
 
 // Password Reset Routes (admin — confirm & issue temporary credentials)
-$route['admin/password_resets'] = 'AdminController/password_resets';
-$route['admin/process_password_reset'] = 'AdminController/process_password_reset';
+$route['admin/password_resets'] = 'AdminStudentController/password_resets';
+$route['admin/process_password_reset'] = 'AdminStudentController/process_password_reset';
 
 // Student Routes
 $route['student_info'] = 'StudentController/student_info';
@@ -75,12 +75,21 @@ $route['emergency_contacts'] = 'StudentController/emergency_contacts';
 $route['save_emergency_contact'] = 'StudentController/save_emergency_contact';
 $route['delete_emergency_contact/(:num)'] = 'StudentController/delete_emergency_contact/$1';
 $route['set_primary_contact/(:num)'] = 'StudentController/set_primary_contact/$1';
+$route['save_my_number'] = 'StudentController/save_my_number';
 $route['student/get-discussion-mode'] = 'StudentController/get_discussion_mode';
 $route['student/add_section'] = 'StudentController/add_section';
 $route['student/section'] = 'StudentController/section';
+// Class Materials, student side. Admin side lives in the Admin block below.
+$route['materials'] = 'StudentController/materials';
+
+// Grade audit harness (admin-only / CLI). Makes the /grade_audit/... URLs the
+// docblocks and CLAUDE.md refer to actually resolve.
+$route['grade_audit/(:any)/(:any)'] = 'GradeAuditController/$1/$2';
+$route['grade_audit/(:any)'] = 'GradeAuditController/$1';
 
 // Grades Routes
 $route['grades'] = 'GradesController/grades';
+$route['my_records'] = 'GradesController/records';
 $route['grades/all'] = 'GradesController/AllSectionGrades';
 $route['sectiongrades/(:any)'] = 'GradesController/sectionGrades/$1';
 $route['sectionFinalGrades/(:any)'] = 'GradesController/sectionFinalGrades/$1';
@@ -99,11 +108,11 @@ $route['leaving_pass/submit'] = 'StudentController/submit_leaving_pass';
 $route['leaving_pass/cancel/(:num)'] = 'StudentController/cancel_leaving_pass/$1';
 
 // Student Request Routes (admin — unified view)
-$route['admin/student_requests'] = 'AdminController/student_requests';
-$route['admin/process_student_request'] = 'AdminController/process_student_request';
+$route['admin/student_requests'] = 'AdminStudentController/student_requests';
+$route['admin/process_student_request'] = 'AdminStudentController/process_student_request';
 // Legacy redirects so old bookmarks still work
-$route['admin/advance_excuses'] = 'AdminController/student_requests';
-$route['admin/leaving_passes'] = 'AdminController/student_requests';
+$route['admin/advance_excuses'] = 'AdminStudentController/student_requests';
+$route['admin/leaving_passes'] = 'AdminStudentController/student_requests';
 
 // Attendance Routes
 $route['attendance'] = 'AttendanceController/attendance_main';
@@ -169,6 +178,7 @@ $route['project_log/save'] = 'ProjectLogController/save';
 $route['project_log/update/(:num)'] = 'ProjectLogController/update/$1';
 $route['project_log/delete/(:num)'] = 'ProjectLogController/delete/$1';
 $route['project_log/install'] = 'ProjectLogController/install';
+$route['project_log/set_status/(:num)'] = 'ProjectLogController/set_status/$1';
 $route['project_log/(:num)'] = 'ProjectLogController/index/$1'; // keep after the specific routes above
 $route['admin/project_logs'] = 'AdminController/project_logs';
 $route['admin/save_project_log_groupings'] = 'AdminController/save_project_log_groupings';
@@ -183,42 +193,144 @@ $route['input_submit'] = 'Main/input_submit';
 $route['output_upload'] = 'Main/output_upload';
 
 // Admin Routes
-$route['manage_assessments'] = 'AdminController/manage_assessments';
-$route['class_assessments'] = 'AdminController/class_assessments';
-$route['save_assessment'] = 'AdminController/save_assessment';
-$route['update_assessment_status'] = 'AdminController/update_assessment_status';
+// AdminController was split into five controllers (see application/core/
+// MY_Controller.php); the URLs below are unchanged, only their targets moved.
 $route['dashboard'] = 'AdminController/dashboard';
-$route['manage_json_files'] = 'AdminController/manage_json_files';
-$route['all_submissions/(:num)'] = 'AdminController/all_submissions/$1';
-$route['group_submissions/(:num)'] = 'AdminController/group_submissions/$1';
-$route['student_submissions/(:num)'] = 'AdminController/view_student_submissions/$1';
-$route['view_attendance'] = 'AdminController/view_attendance';
+// The attendance sheet is now Section Monitoring (grades + attendance,
+// filtered by schedule, exportable). The old URL is kept pointing at it so the
+// nav bar, student_attendance.php's back-link and student_attendance()'s two
+// guard redirects all keep working untouched — only the target method moved.
+$route['view_attendance'] = 'AdminController/section_monitoring';
+$route['admin/section_monitoring'] = 'AdminController/section_monitoring';
+$route['admin/export_section_monitoring'] = 'AdminController/export_section_monitoring';
+// Printable half-sheet Grade & Attendance slips for the same section. A brand
+// new method on AdminController, so it needs no $legacy_admin_routes entry.
+$route['admin/print_slips'] = 'AdminController/print_slips';
 $route['admin/student_attendance/(:num)'] = 'AdminController/student_attendance/$1';
-$route['active_participation/(:num)'] = 'AdminController/active_participation/$1';
-$route['admin/check_new_submissions_by_assessment/(:num)'] = 'AdminController/check_new_submissions_by_assessment/$1';
-$route['admin/emergency_contacts'] = 'AdminController/emergency_contacts';
-$route['admin/export_emergency_contacts'] = 'AdminController/export_emergency_contacts';
-$route['admin/student_violations'] = 'AdminController/student_violations';
-$route['admin/score_integrity'] = 'AdminController/score_integrity';
-$route['admin/fix_score/(:num)'] = 'AdminController/fix_score/$1';
-$route['admin/add_violation'] = 'AdminController/add_violation';
-$route['admin/update_violation_status'] = 'AdminController/update_violation_status';
-$route['admin/search_students'] = 'AdminController/search_students';
-$route['uncleared_students'] = 'AdminController/uncleared_students_overview';
-$route['uncleared_students/clear/(:num)/(:any)'] = 'AdminController/clear_student/$1/$2';
-$route['uncleared_students/(:any)'] = 'AdminController/uncleared_students/$1';
-$route['admin/students_by_section'] = 'AdminController/students_by_section';
-$route['admin/student_summary/(:num)'] = 'AdminController/student_summary/$1';
-$route['admin/register_student'] = 'AdminController/register_student';
-$route['admin/check_student_no'] = 'AdminController/check_student_no';
-$route['admin/check_username'] = 'AdminController/check_username';
-$route['admin/semesters'] = 'AdminController/semesters';
-$route['admin/save_semester'] = 'AdminController/save_semester';
-$route['admin/activate_semester/(:num)'] = 'AdminController/activate_semester/$1';
-$route['admin/worksheet_generator'] = 'AdminController/worksheet_generator';
-$route['admin/worksheet_generate'] = 'AdminController/worksheet_generate';
-$route['admin/worksheet_assessments_for_schedule'] = 'AdminController/worksheet_assessments_for_schedule';
-$route['admin/worksheet_source_from_assessment'] = 'AdminController/worksheet_source_from_assessment';
+
+$route['manage_assessments'] = 'AdminAssessmentController/manage_assessments';
+$route['class_assessments'] = 'AdminAssessmentController/class_assessments';
+$route['save_assessment'] = 'AdminAssessmentController/save_assessment';
+$route['update_assessment_status'] = 'AdminAssessmentController/update_assessment_status';
+
+$route['all_submissions/(:num)'] = 'AdminSubmissionController/all_submissions/$1';
+$route['group_submissions/(:num)'] = 'AdminSubmissionController/group_submissions/$1';
+$route['student_submissions/(:num)'] = 'AdminSubmissionController/view_student_submissions/$1';
+$route['active_participation/(:num)'] = 'AdminSubmissionController/active_participation/$1';
+$route['admin/check_new_submissions_by_assessment/(:num)'] = 'AdminSubmissionController/check_new_submissions_by_assessment/$1';
+$route['admin/score_integrity'] = 'AdminSubmissionController/score_integrity';
+$route['admin/fix_score/(:num)'] = 'AdminSubmissionController/fix_score/$1';
+// Per-item quiz statistics (quiz / secure_quiz widgets). The 2-arg form carries
+// the pooling scope ('section' | 'all'); listed first so it wins over the
+// 1-arg form.
+$route['admin/quiz_stats/(:num)/(:any)'] = 'AdminSubmissionController/quiz_stats/$1/$2';
+$route['admin/quiz_stats/(:num)'] = 'AdminSubmissionController/quiz_stats/$1';
+// All Submissions randomizer turn tracker (randomizer_picks / randomizer_rounds).
+// These methods are new to AdminSubmissionController — they never lived on
+// AdminController, so there is no legacy URL to preserve below.
+$route['admin/randomizer_install'] = 'AdminSubmissionController/randomizer_install';
+$route['admin/randomizer/state/(:num)'] = 'AdminSubmissionController/randomizer_state/$1';
+$route['admin/randomizer/draw/(:num)'] = 'AdminSubmissionController/randomizer_draw/$1';
+$route['admin/randomizer/reset/(:num)'] = 'AdminSubmissionController/randomizer_reset/$1';
+
+$route['admin/emergency_contacts'] = 'AdminStudentController/emergency_contacts';
+$route['admin/export_emergency_contacts'] = 'AdminStudentController/export_emergency_contacts';
+$route['admin/student_violations'] = 'AdminStudentController/student_violations';
+$route['admin/add_violation'] = 'AdminStudentController/add_violation';
+$route['admin/update_violation_status'] = 'AdminStudentController/update_violation_status';
+$route['admin/search_students'] = 'AdminStudentController/search_students';
+$route['uncleared_students'] = 'AdminStudentController/uncleared_students_overview';
+$route['uncleared_students/install'] = 'AdminStudentController/student_clearance_install';
+// $1 is student_master.trans_no (not the class_student row id) — clearance is
+// per student/semester/term, and the semester + term ride in the query string.
+$route['uncleared_students/clear/(:num)/(:any)'] = 'AdminStudentController/clear_student/$1/$2';
+$route['uncleared_students/unclear/(:num)/(:any)'] = 'AdminStudentController/unclear_student/$1/$2';
+$route['uncleared_students/(:any)'] = 'AdminStudentController/uncleared_students/$1';
+$route['admin/students_by_section'] = 'AdminStudentController/students_by_section';
+$route['admin/student_summary/(:num)'] = 'AdminStudentController/student_summary/$1';
+$route['admin/assign_officer'] = 'AdminStudentController/assign_officer';
+$route['admin/export_officers'] = 'AdminStudentController/export_officers';
+$route['admin/section_officers_install'] = 'AdminStudentController/section_officers_install';
+$route['admin/student_clearance_install'] = 'AdminStudentController/student_clearance_install';
+$route['admin/register_student'] = 'AdminStudentController/register_student';
+$route['admin/check_student_no'] = 'AdminStudentController/check_student_no';
+$route['admin/check_username'] = 'AdminStudentController/check_username';
+// SMS announcements (PhilSMS). A brand-new controller, so no $legacy_admin_routes
+// entry is needed — none of these ever lived at AdminController/*.
+$route['admin/announcements'] = 'AdminSmsController/announcements';
+$route['admin/sms_preview'] = 'AdminSmsController/preview';
+$route['admin/sms_start_send'] = 'AdminSmsController/start_send';
+$route['admin/sms_send_chunk'] = 'AdminSmsController/send_chunk';
+$route['admin/sms_finish_send'] = 'AdminSmsController/finish_send';
+$route['admin/sms_test'] = 'AdminSmsController/test_send';
+$route['admin/sms_history/(:num)'] = 'AdminSmsController/history/$1';
+$route['admin/sms_history'] = 'AdminSmsController/history';
+$route['admin/sms_install'] = 'AdminSmsController/install';
+
+$route['admin/semesters'] = 'AdminStudentController/semesters';
+$route['admin/save_semester'] = 'AdminStudentController/save_semester';
+$route['admin/activate_semester/(:num)'] = 'AdminStudentController/activate_semester/$1';
+$route['admin/toggle_semester_release/(:num)'] = 'AdminStudentController/toggle_semester_release/$1';
+
+// Class Materials. Admin uploads course/demo files into assets/materials/
+// {CLASS_CODE}/ and assigns them to class_schedule sections; students see only
+// the ones assigned to a section they are enrolled in (student route below, in
+// the Student block). Brand-new controller, so no $legacy_admin_routes entry is
+// needed — none of these ever lived at AdminController/*.
+// Specific routes before the bare one, per the house habit (cf. quiz_stats).
+$route['admin/materials_install']      = 'AdminMaterialController/install';
+$route['admin/upload_material']        = 'AdminMaterialController/upload_material';
+$route['admin/update_material']        = 'AdminMaterialController/update_material';
+$route['admin/delete_material/(:num)'] = 'AdminMaterialController/delete_material/$1';
+$route['admin/materials']              = 'AdminMaterialController/manage_materials';
+
+$route['manage_json_files'] = 'AdminContentController/manage_json_files';
+$route['admin/worksheet_generator'] = 'AdminContentController/worksheet_generator';
+$route['admin/worksheet_generate'] = 'AdminContentController/worksheet_generate';
+$route['admin/worksheet_assessments_for_schedule'] = 'AdminContentController/worksheet_assessments_for_schedule';
+$route['admin/worksheet_source_from_assessment'] = 'AdminContentController/worksheet_source_from_assessment';
+
+// Legacy AdminController/* URLs.
+//
+// Most admin URLs never had a route entry — they resolved through CI's default
+// Controller/method routing, and the views still hardcode them
+// (base_url('AdminController/preview_widget') and friends), as do a handful of
+// in-code redirects and any bookmark an admin has saved. Those URLs must keep
+// working, so every method that moved out of AdminController is re-pointed at
+// its new home below.
+//
+// The (:any) tiers cover the same argument counts default routing used to pass
+// through, so behaviour is identical for every method regardless of arity — the
+// deepest is add_group_score/{assessment}/{group}/{score}. Add a method's name
+// here whenever you move one between admin controllers, or its old URL 404s.
+$legacy_admin_routes = [
+    'AdminSubmissionController' => 'all_submissions|group_submissions|add_group_score'
+        . '|view_student_submissions|student_submissions|active_participation'
+        . '|check_new_submissions_by_assessment|increment_randomized_count|add_score'
+        . '|add_rand_score_incremental|score_integrity|fix_score|quiz_stats',
+    'AdminAssessmentController' => 'manage_assessments|save_assessment|assign_master'
+        . '|class_assessments|update_class_assessment_master|backfill_assessment_class_id'
+        . '|delete_class_assessment|preview_widget|update_assessment_status'
+        . '|bulk_update_assessment_status|delete_assessment',
+    'AdminStudentController' => 'emergency_contacts|export_emergency_contacts'
+        . '|uncleared_students_overview|uncleared_students|clear_student|unclear_student'
+        . '|student_clearance_install|student_violations'
+        . '|add_violation|update_violation_status|students_by_section|student_summary'
+        . '|login_as_student|register_student|check_student_no|check_username'
+        . '|student_requests|process_student_request|password_resets|process_password_reset'
+        . '|search_students|semesters|save_semester|activate_semester'
+        . '|assign_officer|export_officers|section_officers_install',
+    'AdminContentController' => 'manage_json_files|manage_discussions|save_discussion'
+        . '|delete_discussion|worksheet_generator|worksheet_assessments_for_schedule'
+        . '|worksheet_source_from_assessment|worksheet_generate',
+];
+foreach ($legacy_admin_routes as $legacy_target => $legacy_methods) {
+    $route['AdminController/(' . $legacy_methods . ')'] = $legacy_target . '/$1';
+    $route['AdminController/(' . $legacy_methods . ')/(:any)'] = $legacy_target . '/$1/$2';
+    $route['AdminController/(' . $legacy_methods . ')/(:any)/(:any)'] = $legacy_target . '/$1/$2/$3';
+    $route['AdminController/(' . $legacy_methods . ')/(:any)/(:any)/(:any)'] = $legacy_target . '/$1/$2/$3/$4';
+}
+unset($legacy_admin_routes, $legacy_target, $legacy_methods);
 
 // Poll Routes (Mentimeter-like module)
 $route['poll/install']                   = 'PollController/install';

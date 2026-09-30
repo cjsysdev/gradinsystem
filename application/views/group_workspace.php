@@ -69,6 +69,7 @@ if (empty($widget) && ($assessment['iotype_id'] == '4' || $assessment['iotype_id
                                 'config'   => $widget_config,
                                 'readonly' => false,
                                 'existing' => json_decode($state['content'] ?? '', true) ?: null,
+                                'assessment_id' => $assessment['assessment_id'],
                             ]); ?>
                         <?php else: ?>
                             <textarea id="shared-draft" class="form-control" rows="14"

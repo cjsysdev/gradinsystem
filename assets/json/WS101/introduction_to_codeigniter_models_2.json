@@ -1,0 +1,234 @@
+{
+    "topic": "introduction_to_codeigniter_models_2",
+    "title": "Introduction to CodeIgniter Models",
+    "description": "A beginner-friendly walkthrough of what Models are for, how to create the file, how to load one, and how to set up the database connection.",
+    "congratsText": "You've got the fundamentals of CodeIgniter Models!",
+    "objectives": [
+        "Explain what a Model is responsible for in a CodeIgniter application",
+        "Create a Model file that follows CodeIgniter's naming and structure rules",
+        "Load a Model inside a Controller so its methods become available",
+        "Configure the database connection settings a Model needs in order to run"
+    ],
+    "recap": [
+        "A Model holds the data logic — the database work lives there, not in the Controller",
+        "Model files sit in application/models, start with a capital letter, and extend CI_Model",
+        "$this->load->model('name') makes a Model available as $this->name inside a Controller",
+        "Your database hostname, username, password, and name are set in config/database.php"
+    ],
+    "sections": [
+        {
+            "id": 0,
+            "title": "What a Model Is For",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "A <span class=\"highlight\">Model</span> is the part of your app that deals with data — usually reading from and writing to the database.",
+                    "check": {
+                        "question": "What does a Model mainly deal with?",
+                        "options": [
+                            "Data",
+                            "Page design"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Keeping database code in the Model means your <span class=\"highlight\">Controller</span> stays short and easy to read.",
+                    "check": {
+                        "question": "Where should database code live?",
+                        "options": [
+                            "In the Model",
+                            "In the Controller"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "If two different pages need the same list of students, both can call the <span class=\"highlight\">same</span> Model method instead of repeating the query.",
+                    "check": {
+                        "question": "Can several Controllers reuse one Model?",
+                        "options": [
+                            "Yes, that's the point",
+                            "No, one each only"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "question": "What is a Model responsible for in a CodeIgniter application?",
+                "options": [
+                    "Deciding which page layout the browser should end up showing",
+                    "Handling the data, such as database reads and writes",
+                    "Receiving the incoming URL request and routing it to a method",
+                    "Storing the HTML markup that gets displayed to the site visitor"
+                ],
+                "correct": 1
+            }
+        },
+        {
+            "id": 1,
+            "title": "Creating a Model File",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "Model files go in the <span class=\"highlight\">application/models</span> folder, and the filename starts with a capital letter, like <span class=\"code-inline\">Student_model.php</span>.",
+                    "check": {
+                        "question": "Which folder holds Model files?",
+                        "options": [
+                            "application/models",
+                            "application/library"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Inside the file, the class <span class=\"highlight\">extends CI_Model</span> so it inherits everything CodeIgniter provides.",
+                    "check": {
+                        "question": "A Model class extends what?",
+                        "options": [
+                            "CI_Model",
+                            "CI_Controller"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "The class name must <span class=\"highlight\">match the filename</span> exactly — <span class=\"code-inline\">Student_model.php</span> must contain <span class=\"code-inline\">class Student_model</span>.",
+                    "check": {
+                        "question": "Must the class name match the filename?",
+                        "options": [
+                            "Yes, exactly",
+                            "No, any name works"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "arrange",
+                "question": "Arrange the tokens to declare a Model class correctly.",
+                "tokens": [
+                    "CI_Model",
+                    "class",
+                    "extends",
+                    "Student_model"
+                ],
+                "correctOrder": [
+                    "class",
+                    "Student_model",
+                    "extends",
+                    "CI_Model"
+                ]
+            }
+        },
+        {
+            "id": 2,
+            "title": "Loading a Model",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "A Model does nothing until a Controller loads it with <span class=\"code-inline\">$this->load->model('student_model')</span>.",
+                    "check": {
+                        "question": "What must happen before you use a Model?",
+                        "options": [
+                            "It must be loaded",
+                            "It loads by itself"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Once loaded, the Model becomes available as a <span class=\"highlight\">property</span> — you reach it with <span class=\"code-inline\">$this->student_model</span>.",
+                    "check": {
+                        "question": "After loading, how do you reach the Model?",
+                        "options": [
+                            "$this->student_model",
+                            "$student_model()"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Forgetting to load it gives an <span class=\"highlight\">undefined property</span> error, which is the most common beginner mistake here.",
+                    "check": {
+                        "question": "Skipping the load causes what?",
+                        "options": [
+                            "An error",
+                            "A blank success"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "code": "class Students extends CI_Controller {\n    public function index() {\n        // load the model here\n        $rows = $this->student_model->get_all();\n    }\n}",
+                "question": "Which line belongs on the comment line so this code works?",
+                "options": [
+                    "$this->load->library('student_model');",
+                    "$this->student_model = new Student_model();",
+                    "$this->load->model('student_model');",
+                    "$this->load->database('student_model');"
+                ],
+                "correct": 2
+            }
+        },
+        {
+            "id": 3,
+            "title": "Model Config",
+            "callback": true,
+            "refSection": 2,
+            "chunks": [
+                {
+                    "text": "Before a Model can read any table, CodeIgniter needs your connection details, and those live in <span class=\"highlight\">application/config/database.php</span>.",
+                    "check": {
+                        "question": "Which file holds the connection details?",
+                        "options": [
+                            "database.php",
+                            "routes.php"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "You fill in four settings inside <span class=\"code-inline\">$db['default']</span>: <span class=\"highlight\">hostname</span>, <span class=\"highlight\">username</span>, <span class=\"highlight\">password</span>, and <span class=\"highlight\">database</span>.",
+                    "check": {
+                        "question": "Which setting names your database?",
+                        "options": [
+                            "database",
+                            "hostname"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "On a normal WAMP setup the hostname is <span class=\"code-inline\">localhost</span> and the username is <span class=\"code-inline\">root</span> — a wrong value here gives a <span class=\"highlight\">connection error</span>.",
+                    "check": {
+                        "question": "Wrong details here cause what?",
+                        "options": [
+                            "A connection error",
+                            "An empty table"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "type",
+                "code": "// application/config/???\n$db['default']['hostname'] = 'localhost';\n$db['default']['database'] = 'school';",
+                "question": "Type the name of the config file where these settings belong.",
+                "acceptedAnswers": [
+                    "database.php",
+                    "database",
+                    "application/config/database.php",
+                    "config/database.php"
+                ]
+            }
+        }
+    ]
+}

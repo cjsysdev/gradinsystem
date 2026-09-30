@@ -17,7 +17,27 @@
                 }
             }
         }
+        // The randomizer's round comes from the DB (randomizer_picks /
+        // randomizer_rounds) so it survives a refresh and is the same on every
+        // machine. Defensive default: the page must still render if the
+        // controller didn't supply it.
+        $randomizer = isset($randomizer) && is_array($randomizer)
+            ? $randomizer
+            : ['installed' => false, 'round' => 1, 'picked' => [], 'history' => []];
+        $picked_ids = array_flip(array_map('intval', $randomizer['picked']));
         ?>
+
+        <?php if (empty($randomizer['installed'])): ?>
+            <div class="alert alert-warning mt-4">
+                <strong>Randomizer tracker isn't installed on this database.</strong>
+                Drawing still works, but turns won't be saved — the round will reset on refresh.
+                <form method="get" action="<?= base_url('admin/randomizer_install') ?>" class="d-inline">
+                    <button type="submit" class="btn btn-sm btn-primary ml-2">
+                        <i class="fa fa-wrench"></i> Set up randomizer tables
+                    </button>
+                </form>
+            </div>
+        <?php endif; ?>
         <!-- Dropdown to select an assessment -->
         <div class="row justify-content-center mt-5">
             <div class="col-md-6">
@@ -39,6 +59,15 @@
                             </div>
                         </div>
                         <div id="turnStatus" class="text-muted small text-center mb-2"></div>
+                        <?php // Plain JS toggle rather than Bootstrap's collapse: this page
+                        // mixes BS4 and BS5 data-attributes and only one of them is live. ?>
+                        <div class="text-center mb-2">
+                            <a href="#" class="small text-muted" id="calledListToggle"
+                               onclick="toggleCalledList(); return false;">Who's been called &#9662;</a>
+                        </div>
+                        <div id="calledList" style="display:none;max-height:220px;overflow-y:auto;">
+                            <ol id="calledListItems" class="small text-muted text-left pl-4 mb-2"></ol>
+                        </div>
                         <div class="row justify-content-center mt-3">
                             <div class="col text-center">
                                 <button type="button" class="btn btn-secondary mb-4 mr-2" onclick="randomizeStudent()"><i class="fa fa-shuffle" aria-hidden="true"></i></button>
@@ -96,10 +125,26 @@
                             <span class="badge badge-secondary p-2">Missing: 0</span>
                         <?php endif; ?>
                     </div>
+                    <?php // Both quiz widgets store per-question results in classworks.code,
+                    // so the class-wide item analysis is available for either. ?>
+                    <?php if (!empty($widget) && in_array($widget['widget_key'], ['quiz', 'secure_quiz'], true)): ?>
+                        <div class="mb-3">
+                            <a href="<?= base_url('admin/quiz_stats/' . $selected_assessment_id) ?>" class="btn btn-sm btn-outline-primary">
+                                <i class="fa fa-chart-bar"></i> Item statistics &mdash; which questions were missed most &rarr;
+                            </a>
+                        </div>
+                    <?php endif; ?>
                     <?php if (!empty($selected_assessment) && !empty($selected_assessment['is_groupings'])): ?>
                         <div class="mb-3">
                             <a href="<?= base_url('group_submissions/' . $selected_assessment_id) ?>" class="btn btn-sm btn-outline-info">
                                 <i class="fa fa-user-group"></i> This is a group assessment — grade by group &rarr;
+                            </a>
+                        </div>
+                    <?php endif; ?>
+                    <?php if (!empty($widget) && $widget['widget_key'] === 'code_snippet'): ?>
+                        <div class="mb-3">
+                            <a href="<?= base_url('AdminAssessmentController/snippet_batches/' . $selected_assessment_id) ?>" class="btn btn-sm btn-outline-primary">
+                                <i class="fa fa-clock"></i> Batches &amp; Timer &mdash; PC-limited lab? Split this into timed batches &rarr;
                             </a>
                         </div>
                     <?php endif; ?>
@@ -137,9 +182,29 @@
                             data-has-score="<?= isset($row['score']) && $row['score'] !== null ? 'true' : 'false' ?>"
                             data-student-name="<?= htmlspecialchars(strtolower($row['lastname'] . ' ' . $row['firstname']), ENT_QUOTES, 'UTF-8') ?>"
                             data-classwork-id="<?= $row['classwork_id'] ?>"
+                            data-student-id="<?= (int) $row['trans_no'] ?>"
                             data-max-score="<?= htmlspecialchars($row['max_score'], ENT_QUOTES, 'UTF-8') ?>">
                             <div class="card-body">
-                                <h3 class="card-title mb-1"><?= $row['classwork_id'] . " - " . $row['lastname'] . ", " . $row['firstname'] ?></h3>
+                                <h3 class="card-title mb-1">
+                                    <?= $row['classwork_id'] . " - " . $row['lastname'] . ", " . $row['firstname'] ?>
+                                    <?php // Already drawn in the current randomizer round. Server-rendered
+                                    // so it is correct on first paint; randomizeStudent() adds it live. ?>
+                                    <span class="badge badge-success align-middle called-badge" style="font-size:0.5em;<?= isset($picked_ids[(int) $row['trans_no']]) ? '' : 'display:none;' ?>"
+                                          title="Already called in this randomizer round">
+                                        <i class="fa fa-check"></i> called
+                                    </span>
+                                    <?php // Tab switches recorded during a Timed/Secure Quiz attempt.
+                                    // NULL = not tracked (any older submission, or a widget that
+                                    // doesn't measure it); 0 = tracked and clean, so only a
+                                    // positive count is worth a badge. Client-reported, so this is
+                                    // a nudge to look closer — never an input to the score. ?>
+                                    <?php if (!empty($row['switch_count'])): ?>
+                                        <span class="badge badge-warning align-middle" style="font-size:0.5em;"
+                                              title="Left the quiz tab <?= (int) $row['switch_count'] ?> time(s) during the attempt (client-reported)">
+                                            <i class="fa fa-eye"></i> <?= (int) $row['switch_count'] ?> tab switch<?= $row['switch_count'] > 1 ? 'es' : '' ?>
+                                        </span>
+                                    <?php endif; ?>
+                                </h3>
                                 <hr>
                                 <p class="card-text mb-3"><?= $row['created_at'] , " " , $row['file_upload'], " - " ?><span class="current-score"><?= isset($row['score']) ? $row['score'] : 'No score yet' ?></span></p>
                                 <!-- Button to open modal -->
@@ -152,8 +217,68 @@
                                             'config'   => $widget_config,
                                             'readonly' => true,
                                             'existing' => json_decode($row['code'] ?? '', true) ?: [],
+                                            // Code Snippet: which pool problem this student got.
+                                            'student_id'    => $row['trans_no'],
+                                            'assessment_id' => $selected_assessment_id,
                                         ]); ?>
                                     </template>
+                                <?php endif; ?>
+                                <?php if ($widget && $widget['widget_key'] === 'code_snippet'):
+                                    // Live-check grading: three one-tap verdicts. Points are the
+                                    // rubric % of max_score; the verdict itself is never stored —
+                                    // it is derived from the score (Widgets_model::code_snippet_verdict).
+                                    $cs_pts = $this->Widgets_model->code_snippet_points($widget_config, $row['max_score']);
+                                    $cs_now = $this->Widgets_model->code_snippet_verdict($widget_config, $row['max_score'], $row['score']);
+                                    $cs_code_decoded = json_decode($row['code'] ?? '', true) ?: [];
+                                    $cs_has_code = trim((string) ($cs_code_decoded['code'] ?? '')) !== '';
+                                    // Problem pool: which problem this student was given.
+                                    $cs_pool = $this->Widgets_model->code_snippet_problems($widget_config);
+                                    $cs_pidx = $this->Widgets_model->code_snippet_problem_index($widget_config, $cs_code_decoded, $row['trans_no'], $selected_assessment_id);
+                                    // Timed batches: per-student, since each student can be in a
+                                    // different batch with a different window.
+                                    $cs_timer = !empty($widget_timer_config)
+                                        ? $this->Widgets_model->code_snippet_timer($widget_timer_config, $row['trans_no'])
+                                        : null;
+                                    $cs_timer_state = $cs_timer ? $this->Widgets_model->code_snippet_effective_state($cs_code_decoded, $cs_timer) : null;
+                                    $cs_timer_labels = ['submitted' => ['On time', 'success'], 'timesup' => ["TIME'S UP", 'danger'], 'draft' => ['In progress', 'secondary']];
+                                ?>
+                                    <div class="cs-grade" data-classwork-id="<?= $row['classwork_id'] ?>">
+                                        <?php if (count($cs_pool) > 1): ?>
+                                            <div class="mb-1">
+                                                <span class="badge badge-info" style="font-size:0.9em;">
+                                                    <i class="fa fa-code"></i> Problem <?= $cs_pidx + 1 ?> of <?= count($cs_pool) ?><?= $cs_pool[$cs_pidx]['title'] !== '' ? ': ' . htmlspecialchars($cs_pool[$cs_pidx]['title']) : '' ?>
+                                                </span>
+                                            </div>
+                                        <?php endif; ?>
+                                        <?php if ($cs_timer): ?>
+                                            <div class="mb-1">
+                                                <?php if (!empty($cs_timer['batch'])): ?>
+                                                    <span class="badge badge-secondary">Batch <?= (int) $cs_timer['batch'] ?></span>
+                                                <?php else: ?>
+                                                    <span class="badge badge-light border" title="No batch assigned">Unassigned</span>
+                                                <?php endif; ?>
+                                                <?php if ($cs_timer_state && isset($cs_timer_labels[$cs_timer_state])): ?>
+                                                    <span class="badge badge-<?= $cs_timer_labels[$cs_timer_state][1] ?>"><?= $cs_timer_labels[$cs_timer_state][0] ?></span>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endif; ?>
+                                        <div class="mb-2">
+                                            <span class="cs-verdict-badge badge badge-<?= ['run' => 'success', 'effort' => 'warning', 'error' => 'danger', 'custom' => 'secondary'][$cs_now] ?? 'light' ?>" style="font-size:0.95em;">
+                                                <?= $cs_now ? strtoupper($cs_now) : 'NOT CHECKED' ?>
+                                            </span>
+                                            <small class="text-muted ml-1"><i class="fa fa-paperclip"></i> <?= $cs_has_code ? 'code attached' : 'no code attached' ?></small>
+                                        </div>
+                                        <div class="d-flex mb-3">
+                                            <?php foreach (['run' => 'success', 'effort' => 'warning', 'error' => 'danger'] as $k => $cls): ?>
+                                                <button type="button" class="btn btn-<?= $cls ?> flex-fill mr-2 font-weight-bold cs-verdict-btn<?= $cs_now === $k ? ' active' : '' ?>"
+                                                        style="padding:14px 6px;font-size:16px;line-height:1.1;"
+                                                        data-verdict="<?= $k ?>" data-points="<?= $cs_pts[$k] ?>"
+                                                        onclick="addScore(<?= $row['classwork_id'] ?>, <?= $cs_pts[$k] ?>)">
+                                                    <?= strtoupper($k) ?><small class="d-block font-weight-normal" style="opacity:.85"><?= $cs_pts[$k] ?> pts</small>
+                                                </button>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    </div>
                                 <?php endif; ?>
                                 <div class="score-entry" data-classwork-id="<?= $row['classwork_id'] ?>">
                                     <div class="input-group mb-3">
@@ -193,7 +318,12 @@
                 <?php if (!empty($missing_students)): ?>
                     <ul class="list-group">
                         <?php foreach ($missing_students as $student): ?>
-                            <li class="list-group-item"><?= htmlspecialchars($student['lastname'] . ', ' . $student['firstname']) ?></li>
+                            <?php // firstname is empty for a roster row whose student_master
+                            // record is gone; lastname then carries the "[no student record #id]"
+                            // placeholder, so don't append a dangling comma. ?>
+                            <li class="list-group-item"><?= htmlspecialchars(trim($student['firstname']) !== ''
+                                ? $student['lastname'] . ', ' . $student['firstname']
+                                : $student['lastname']) ?></li>
                         <?php endforeach; ?>
                     </ul>
                 <?php else: ?>
@@ -394,50 +524,47 @@
         document.getElementById('studentSearchInput').focus();
     }
 
-    // Draw-without-replacement pool: every eligible student must be picked
-    // once before anyone repeats. Persisted in localStorage per assessment so
-    // the round survives a page reload; once the pool empties (everyone's
-    // had a turn) it resets and the whole class goes through again.
-    function randomizerPoolKey() {
-        return `randomizerPool_${assessmentId}`;
-    }
+    // Draw-without-replacement: every eligible student must be called once
+    // before anyone repeats, and the round lives in the DATABASE
+    // (randomizer_picks / randomizer_rounds via Randomizer_model), not in this
+    // browser. That is what makes a refresh — or a different machine — keep the
+    // round instead of starting everyone over, and what records who actually
+    // had a turn. The draw itself happens server-side in
+    // AdminSubmissionController::randomizer_draw(); this file only animates it.
+    //
+    // randomizerState is seeded from PHP at render time, so the counter and the
+    // called-list are already correct before any AJAX runs.
+    const randomizerState = <?= json_encode($randomizer) ?>;
+    const pickedIds = new Set((randomizerState.picked || []).map(String));
 
-    function getRandomizedPicks() {
-        try {
-            return new Set(JSON.parse(localStorage.getItem(randomizerPoolKey()) || '[]'));
-        } catch (e) {
-            return new Set();
-        }
-    }
-
-    function saveRandomizedPicks(picked) {
-        localStorage.setItem(randomizerPoolKey(), JSON.stringify(Array.from(picked)));
-    }
-
-    // Students still in play this round (not yet scored to max).
+    // Students still in play this round (not yet scored to max). Mirrors
+    // AdminSubmissionController::_randomizer_eligible(); the server owns the
+    // pool it draws from, this copy only drives the counter and the flash
+    // animation so neither needs a round trip.
     function eligibleStudents() {
         return allStudents.filter(s =>
             s.score === null || parseFloat(s.score) < parseFloat(s.max_score)
         );
     }
 
-    // Renders "N called · M remaining" for the round in both the main card and
-    // the fullscreen overlay. Reads the persisted picked set so the count is
-    // correct immediately after a page refresh (the round is never lost).
+    // Renders "Round N · X called · Y remaining" in both the main card and the
+    // fullscreen overlay. Computed locally from the eligible list + pickedIds
+    // so it also updates the instant a score is saved.
     function updateTurnStatus() {
         const eligible = eligibleStudents();
-        const picked = getRandomizedPicks();
-        const called = picked.size;
-        const remaining = eligible.filter(s => !picked.has(String(s.classwork_id))).length;
+        const called = pickedIds.size;
+        const remaining = eligible.filter(s => !pickedIds.has(String(s.student_id))).length;
+        const round = `Round ${randomizerState.round} · `;
 
         let text;
         if (eligible.length === 0) {
             text = 'No eligible students.';
         } else if (remaining === 0) {
-            text = `🔄 All ${called} called — next draw starts a new round`;
+            text = `${round}🔄 All ${called} called — next draw starts a new round`;
         } else {
-            text = `✅ ${called} called · ${remaining} remaining`;
+            text = `${round}✅ ${called} called · ${remaining} remaining`;
         }
+        if (!randomizerState.installed) text += ' (not saved)';
 
         const mainEl = document.getElementById('turnStatus');
         if (mainEl) mainEl.textContent = text;
@@ -445,22 +572,76 @@
         if (fsEl) fsEl.textContent = text;
     }
 
+    // "Who's been called", in call order, for the current round.
+    function renderCalledList() {
+        const list = document.getElementById('calledListItems');
+        if (!list) return;
+        const history = randomizerState.history || [];
+        list.innerHTML = history.length
+            ? history.map(h => `<li>${h.name} <span class="text-muted">— ${(h.picked_at || '').slice(11, 16)}</span></li>`).join('')
+            : '<li class="list-unstyled text-muted">Nobody called yet this round.</li>';
+    }
+
+    function toggleCalledList() {
+        const list = document.getElementById('calledList');
+        const open = list.style.display === 'none';
+        list.style.display = open ? 'block' : 'none';
+        document.getElementById('calledListToggle').innerHTML =
+            open ? "Who's been called &#9652;" : "Who's been called &#9662;";
+    }
+
+    // Marks a student's card as already drawn this round.
+    function markCalled(studentId) {
+        const card = document.querySelector('.submission-card[data-student-id="' + studentId + '"]');
+        if (!card) return;
+        const badge = card.querySelector('.called-badge');
+        if (badge) badge.style.display = '';
+    }
+
+    function clearCalledBadges() {
+        document.querySelectorAll('.submission-card .called-badge')
+            .forEach(b => b.style.display = 'none');
+    }
+
+    // Applies whatever the server says the round now is. One place so a draw
+    // and a reset can't disagree about the local copy.
+    function applyRoundState(round, picked, history) {
+        randomizerState.round = round;
+        randomizerState.history = history;
+        pickedIds.clear();
+        (picked || []).forEach(id => pickedIds.add(String(id)));
+        clearCalledBadges();
+        pickedIds.forEach(id => markCalled(id));
+        renderCalledList();
+        updateTurnStatus();
+    }
+
     // Manual reset so a new class session starts everyone fresh (the round
     // otherwise survives refresh and only auto-resets once everyone's called).
+    // Nothing is deleted — past picks keep their old round number, so the
+    // record of who was called and when survives every reset.
     function resetRandomizerRound() {
-        if (!confirm('Reset the round? Every student goes back into the pool.')) return;
-        localStorage.removeItem(randomizerPoolKey());
-        const nameEl = document.getElementById('student_name');
-        if (nameEl) nameEl.textContent = 'lastname, firstname';
-        const fsName = document.getElementById('fsNameDisplay');
-        if (fsName) {
-            fsName.style.animation = 'none';
-            fsName.style.color = '#fff';
-            fsName.textContent = 'Ready';
-        }
-        const fsBadge = document.getElementById('fsBadgeArea');
-        if (fsBadge) fsBadge.innerHTML = '';
-        updateTurnStatus();
+        if (!confirm('Reset the round? Every student goes back into the pool. (Past picks stay on record.)')) return;
+
+        fetch('<?= base_url('admin/randomizer/reset/') ?>' + assessmentId, { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) { showScoreAlert(false, 'Could not reset the round.'); return; }
+                applyRoundState(data.round, [], []);
+
+                const nameEl = document.getElementById('student_name');
+                if (nameEl) nameEl.textContent = 'lastname, firstname';
+                const fsName = document.getElementById('fsNameDisplay');
+                if (fsName) {
+                    fsName.style.animation = 'none';
+                    fsName.style.color = '#fff';
+                    fsName.textContent = 'Ready';
+                }
+                const fsBadge = document.getElementById('fsBadgeArea');
+                if (fsBadge) fsBadge.innerHTML = '';
+                showScoreAlert(true, `Round ${data.round} started.`);
+            })
+            .catch(() => showScoreAlert(false, 'Error resetting the round.'));
     }
 
     function openFullscreenRandomizer() {
@@ -481,7 +662,14 @@
         document.getElementById('randomizerOverlay').style.display = 'none';
     }
 
+    // The main card's shuffle button has no element to disable, so a flag
+    // guards both entry points: a double-click must not burn two turns.
+    let randomizerBusy = false;
+
     function randomizeStudent(isFullscreen = false) {
+        if (randomizerBusy) return;
+        randomizerBusy = true;
+
         const students = eligibleStudents();
 
         const nameElem  = isFullscreen ? document.getElementById('fsNameDisplay')  : document.getElementById('student_name');
@@ -491,30 +679,30 @@
         if (students.length === 0) {
             nameElem.style.color = isFullscreen ? '#fc8181' : '';
             nameElem.textContent = 'No eligible students.';
+            randomizerBusy = false;
             return;
         }
 
-        // Keep the full round history (including students already scored to max
-        // since their draw) so the "N called" counter stays accurate. Ineligible
-        // ids never affect the pool, which is computed from the eligible list;
-        // once every eligible student has been drawn we start a fresh round.
-        let picked = getRandomizedPicks();
-
-        let pool = students.filter(s => !picked.has(String(s.classwork_id)));
-        let isNewRound = false;
-        if (pool.length === 0) {
-            picked = new Set();
-            pool = students;
-            isNewRound = true;
-        }
-
+        // The real draw is the server's — it is the only place that knows the
+        // whole round, and its INSERT is what stops two open tabs calling the
+        // same student. It is fired now and runs while the names flash by, so
+        // the animation costs nothing; the reveal waits for both to finish.
         if (btn) { btn.disabled = true; }
         if (badgeArea) badgeArea.innerHTML = '';
+
+        const drawn = fetch('<?= base_url('admin/randomizer/draw/') ?>' + assessmentId, { method: 'POST' })
+            .then(r => r.json());
+
+        // Flashed names only: which students are still uncalled is the server's
+        // answer, but a locally-stale list here would at worst flash a name
+        // that isn't finally picked.
+        const pool = students.filter(s => !pickedIds.has(String(s.student_id)));
+        const flashPool = pool.length ? pool : students;
 
         let animationCount = 20, currentFrame = 0, interval = 30;
 
         function animate() {
-            const s = pool[Math.floor(Math.random() * pool.length)];
+            const s = flashPool[Math.floor(Math.random() * flashPool.length)];
 
             if (isFullscreen) {
                 nameElem.style.animation = 'none';
@@ -532,14 +720,48 @@
 
             if (currentFrame < animationCount) {
                 setTimeout(animate, interval);
-            } else {
-                const pick = pool[Math.floor(Math.random() * pool.length)];
-                picked.add(String(pick.classwork_id));
-                saveRandomizedPicks(picked);
-                updateTurnStatus();
-                showFinalPick(pick, nameElem, badgeArea, isFullscreen, isNewRound);
-                if (btn) btn.disabled = false;
+                return;
             }
+
+            drawn.then(data => {
+                if (btn) btn.disabled = false;
+                randomizerBusy = false;
+
+                if (!data.success) {
+                    nameElem.style.color = isFullscreen ? '#fc8181' : '';
+                    nameElem.textContent = data.message || 'No eligible students.';
+                    showScoreAlert(false, data.message || 'Could not draw a student.');
+                    return;
+                }
+
+                const pick = data.student;
+
+                // A new round wipes the called set; otherwise this one name is
+                // added to it.
+                if (data.new_round) {
+                    randomizerState.round = data.round;
+                    pickedIds.clear();
+                    randomizerState.history = [];
+                    clearCalledBadges();
+                }
+                pickedIds.add(String(pick.student_id));
+                markCalled(pick.student_id);
+                randomizerState.history = (randomizerState.history || []).concat([{
+                    name: `${pick.lastname}, ${pick.firstname}`,
+                    picked_at: pick.picked_at,
+                }]);
+                renderCalledList();
+                updateTurnStatus();
+
+                showFinalPick(pick, nameElem, badgeArea, isFullscreen, data.new_round);
+            })
+            .catch(() => {
+                if (btn) btn.disabled = false;
+                randomizerBusy = false;
+                nameElem.style.color = isFullscreen ? '#fc8181' : '';
+                nameElem.textContent = 'Draw failed.';
+                showScoreAlert(false, 'Error drawing a student.');
+            });
         }
         animate();
     }
@@ -636,6 +858,26 @@
         setTimeout(() => { $(alertDiv).alert('close'); }, 2000);
     }
 
+    // Code Snippet cards only: re-derive the RUN/EFFORT/ERROR badge and the
+    // pressed button from the saved score, mirroring
+    // Widgets_model::code_snippet_verdict() (match a rubric value, else custom).
+    function refreshVerdictUI(card, score) {
+        const badge = card.querySelector('.cs-verdict-badge');
+        if (!badge) return;
+        const btns = card.querySelectorAll('.cs-verdict-btn');
+        let verdict = 'custom';
+        btns.forEach(b => {
+            b.classList.remove('active');
+            if (Math.abs(parseFloat(score) - parseFloat(b.dataset.points)) < 0.005 && verdict === 'custom') {
+                verdict = b.dataset.verdict;
+                b.classList.add('active');
+            }
+        });
+        const cls = { run: 'success', effort: 'warning', error: 'danger', custom: 'secondary' }[verdict];
+        badge.className = 'cs-verdict-badge badge badge-' + cls;
+        badge.textContent = verdict.toUpperCase();
+    }
+
     function addRandScoreIncremental(classwork_id, points = 2) {
         fetch('<?= base_url('AdminController/add_rand_score_incremental/') ?>' + classwork_id + '/' + points, {
                 method: 'POST'
@@ -653,6 +895,7 @@
                     if (currentScoreEl) currentScoreEl.textContent = data.score;
                     const manualInput = card.querySelector('.manual-score-input');
                     if (manualInput) manualInput.value = data.score;
+                    refreshVerdictUI(card, data.score);
                 }
                 const student = allStudents.find(s => String(s.classwork_id) === String(classwork_id));
                 if (student) student.score = data.score;
@@ -684,6 +927,7 @@
                     if (currentScoreEl) currentScoreEl.textContent = score;
                     const manualInput = card.querySelector('.manual-score-input');
                     if (manualInput) manualInput.value = score;
+                    refreshVerdictUI(card, score);
                 }
                 const student = allStudents.find(s => String(s.classwork_id) === String(classwork_id));
                 if (student) student.score = score;
@@ -750,8 +994,10 @@
     const assessmentId = <?= json_encode($selected_assessment_id) ?>;
 
     // Reflect the persisted round immediately on load, so a refresh visibly
-    // keeps the "N called" progress instead of looking like it reset.
+    // keeps the "N called" progress instead of looking like it reset. Both
+    // read randomizerState, which PHP rendered from randomizer_picks.
     updateTurnStatus();
+    renderCalledList();
 
     function checkNewSubmissions() {
         console.log("checking");

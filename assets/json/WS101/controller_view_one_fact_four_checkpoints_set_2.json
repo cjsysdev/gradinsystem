@@ -1,0 +1,233 @@
+{
+    "topic": "controller_view_one_fact_four_checkpoints_set_2",
+    "title": "Controller & View — One Fact, Four Checkpoints (Set 2)",
+    "description": "A second mastery pass on the same Controller-View core fact, approached through new scenarios: stacked views, captured output, broken flows, and the full round trip.",
+    "coreFact": "The Controller receives the request, runs the logic, and calls $this->load->view() to hand data to a View, which renders the HTML. Logic stays in the Controller; presentation stays in the View.",
+    "congratsText": "Four new angles, same one truth — the Controller drives, the View displays.",
+    "objectives": [
+        "Explain how a Controller can load several Views in sequence to build one page",
+        "Choose between sending a View to the browser and capturing it as a string",
+        "Diagnose a request flow that fails because the Controller never loaded a View",
+        "Trace the full round trip from URL to rendered HTML and back"
+    ],
+    "recap": [
+        "A Controller may call the view loader several times, and the output stacks in call order",
+        "Passing TRUE as the third argument returns the View's HTML as a string instead of sending it",
+        "A blank page usually means the Controller method ran but never loaded a View",
+        "The round trip is always URL to Controller to logic to View to HTML back to the browser"
+    ],
+    "sections": [
+        {
+            "id": 0,
+            "title": "One Page, Several Views",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "A Controller can call the view loader <span class=\"highlight\">more than once</span>, which is how a page gets a shared header and footer.",
+                    "check": {
+                        "question": "How many Views can one Controller method load?",
+                        "options": [
+                            "As many as needed",
+                            "Exactly one only"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "The output stacks in <span class=\"highlight\">call order</span> — the header View must be loaded before the body View.",
+                    "check": {
+                        "question": "What decides the order of the output?",
+                        "options": [
+                            "The order of calls",
+                            "Alphabetical filename"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Each loaded View still only knows the data the Controller <span class=\"highlight\">passed to it</span> on that particular call.",
+                    "check": {
+                        "question": "Does a View see data passed to a different View?",
+                        "options": [
+                            "No, only its own",
+                            "Yes, all of it"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "arrange",
+                "question": "Arrange the Controller lines so the page renders header, then content, then footer.",
+                "tokens": [
+                    "$this->load->view('footer');",
+                    "$this->load->view('header');",
+                    "$this->load->view('content', $data);"
+                ],
+                "correctOrder": [
+                    "$this->load->view('header');",
+                    "$this->load->view('content', $data);",
+                    "$this->load->view('footer');"
+                ]
+            }
+        },
+        {
+            "id": 1,
+            "title": "Sending Output vs. Capturing It",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "By default the view loader <span class=\"highlight\">sends</span> the rendered HTML straight into the response the browser receives.",
+                    "check": {
+                        "question": "By default, where does the HTML go?",
+                        "options": [
+                            "Into the response",
+                            "Into a variable"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Passing <span class=\"code-inline\">TRUE</span> as the third argument makes the loader <span class=\"highlight\">return</span> that HTML as a string instead.",
+                    "check": {
+                        "question": "What does the third argument TRUE do?",
+                        "options": [
+                            "Returns a string",
+                            "Reloads the page"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Either way the <span class=\"highlight\">Controller</span> stays in charge — it decides whether the markup is sent or stored.",
+                    "check": {
+                        "question": "Who decides send versus capture?",
+                        "options": [
+                            "The Controller",
+                            "The View"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "code": "$html = $this->load->view('invoice', $data, TRUE);",
+                "question": "What does $html contain after this line runs?",
+                "options": [
+                    "The rendered HTML of the invoice View, as a string",
+                    "A reference pointing back to the invoice View file on disk",
+                    "The $data array exactly as it was passed into the view loader",
+                    "Nothing, because the markup was already flushed to the browser"
+                ],
+                "correct": 0
+            }
+        },
+        {
+            "id": 2,
+            "title": "When the Flow Breaks",
+            "callback": true,
+            "refSection": 0,
+            "chunks": [
+                {
+                    "text": "If a Controller method runs but never loads a View, the browser receives a <span class=\"highlight\">blank page</span>, not an error.",
+                    "check": {
+                        "question": "No view loaded means what?",
+                        "options": [
+                            "A blank page",
+                            "A 404 error"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "An <span class=\"highlight\">Unable to load</span> error instead means the filename in the loader does not match any file in the views folder.",
+                    "check": {
+                        "question": "That error points to a problem with the what?",
+                        "options": [
+                            "View filename",
+                            "Database table"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "An <span class=\"highlight\">undefined variable</span> notice inside a View means the Controller forgot to pass that key.",
+                    "check": {
+                        "question": "Who forgot to supply the variable?",
+                        "options": [
+                            "The Controller",
+                            "The View"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "code": "class Report extends CI_Controller {\n    public function index() {\n        $data['rows'] = $this->db->get('sales')->result();\n    }\n}",
+                "question": "Visiting this Controller shows a completely blank page. Why?",
+                "options": [
+                    "The method never loads a View, so nothing is rendered",
+                    "The query returned no rows, so the page had nothing at all to display",
+                    "The $data array was never converted into individual page variables first",
+                    "The method name index is reserved and cannot produce any output at all"
+                ],
+                "correct": 0
+            }
+        },
+        {
+            "id": 3,
+            "title": "The Full Round Trip",
+            "callback": true,
+            "refSection": "0, 1 & 2",
+            "chunks": [
+                {
+                    "text": "Every request starts at a <span class=\"highlight\">URL</span> that routing maps onto one Controller method.",
+                    "check": {
+                        "question": "What does routing map a URL to?",
+                        "options": [
+                            "A Controller method",
+                            "A View file"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "That method gathers whatever it needs, then calls the loader to hand off to a <span class=\"highlight\">View</span>.",
+                    "check": {
+                        "question": "The handoff happens through what?",
+                        "options": [
+                            "The view loader",
+                            "A redirect"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "The View turns that data into <span class=\"highlight\">HTML</span>, and the response travels back to the browser.",
+                    "check": {
+                        "question": "What does the View produce?",
+                        "options": [
+                            "HTML output",
+                            "A new request"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "type",
+                "question": "In one word, name the part of the round trip that runs the logic and decides which View to load.",
+                "acceptedAnswers": [
+                    "controller",
+                    "Controller",
+                    "the controller",
+                    "The Controller"
+                ]
+            }
+        }
+    ]
+}

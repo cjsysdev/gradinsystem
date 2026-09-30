@@ -1,0 +1,233 @@
+{
+    "topic": "inserting_data_with_query_part_3",
+    "title": "Inserting Data with query() (Part 3)",
+    "description": "A beginner walkthrough of writing INSERT statements inside a Model using $this->db->query(), passing values safely with bindings, and confirming the insert worked.",
+    "congratsText": "You can now save new records into the database from a Model!",
+    "objectives": [
+        "Use $this->db->query() to run an INSERT statement inside a Model",
+        "Pass values safely into a query using question mark bindings",
+        "Return the result of an insert so the Controller knows what happened",
+        "Check whether an insert actually saved a new row"
+    ],
+    "recap": [
+        "$this->db->query() runs any SQL you write, including INSERT statements",
+        "Question marks stand in for values, and the second argument supplies them in order",
+        "Bindings keep user input from breaking or attacking your SQL",
+        "query() returns TRUE or FALSE on an insert, and affected_rows() confirms the save"
+    ],
+    "sections": [
+        {
+            "id": 0,
+            "title": "Running SQL with query()",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "<span class=\"code-inline\">$this->db->query()</span> lets you write the <span class=\"highlight\">SQL yourself</span> instead of building it piece by piece.",
+                    "check": {
+                        "question": "What does query() let you write?",
+                        "options": [
+                            "Your own SQL",
+                            "Only HTML"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "It works for any statement — SELECT, <span class=\"highlight\">INSERT</span>, UPDATE, or DELETE.",
+                    "check": {
+                        "question": "Can query() run an INSERT?",
+                        "options": [
+                            "Yes, any statement",
+                            "No, only SELECT"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Like all database work, this belongs inside the <span class=\"highlight\">Model</span>, not the Controller.",
+                    "check": {
+                        "question": "Where does the query() call belong?",
+                        "options": [
+                            "In the Model",
+                            "In the View"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "question": "What does $this->db->query() do?",
+                "options": [
+                    "It opens a brand new connection to the database server",
+                    "It runs the SQL statement that you pass into it",
+                    "It builds a SQL statement without ever running it",
+                    "It creates a new table using the name you give it"
+                ],
+                "correct": 1
+            }
+        },
+        {
+            "id": 1,
+            "title": "Writing the INSERT",
+            "callback": true,
+            "refSection": 0,
+            "chunks": [
+                {
+                    "text": "An INSERT names the <span class=\"highlight\">table</span>, then the columns, then the values: <span class=\"code-inline\">INSERT INTO students (name, age) VALUES (?, ?)</span>",
+                    "check": {
+                        "question": "What comes right after INSERT INTO?",
+                        "options": [
+                            "The table name",
+                            "The column values"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Each <span class=\"code-inline\">?</span> is a placeholder that stands in for one <span class=\"highlight\">value</span> you will supply.",
+                    "check": {
+                        "question": "What does a ? stand for?",
+                        "options": [
+                            "One value",
+                            "One table"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "The number of question marks must <span class=\"highlight\">match</span> the number of columns you listed.",
+                    "check": {
+                        "question": "Three columns need how many ?",
+                        "options": [
+                            "Three",
+                            "One"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "arrange",
+                "question": "Arrange the parts of an INSERT statement in the correct order.",
+                "tokens": [
+                    "VALUES (?, ?)",
+                    "INSERT INTO",
+                    "(name, age)",
+                    "students"
+                ],
+                "correctOrder": [
+                    "INSERT INTO",
+                    "students",
+                    "(name, age)",
+                    "VALUES (?, ?)"
+                ]
+            }
+        },
+        {
+            "id": 2,
+            "title": "Passing Values Safely",
+            "callback": false,
+            "refSection": null,
+            "chunks": [
+                {
+                    "text": "The values go in an <span class=\"highlight\">array</span> as the second argument: <span class=\"code-inline\">$this->db->query($sql, $values)</span>.",
+                    "check": {
+                        "question": "Where do the values go?",
+                        "options": [
+                            "Second argument",
+                            "Inside the SQL"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "They fill the question marks <span class=\"highlight\">in order</span> — the first value goes into the first placeholder.",
+                    "check": {
+                        "question": "How are the values matched up?",
+                        "options": [
+                            "In order",
+                            "By column name"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "This is called <span class=\"highlight\">binding</span>, and it protects your database from harmful input typed into a form.",
+                    "check": {
+                        "question": "Why use bindings instead of pasting values?",
+                        "options": [
+                            "It is safer",
+                            "It is shorter"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "mcq",
+                "code": "$sql = \"INSERT INTO students (name, age) VALUES (?, ?)\";\n$this->db->query($sql, array('Ana', 19));",
+                "question": "What value ends up in the age column?",
+                "options": [
+                    "The text Ana",
+                    "The number 19",
+                    "Both values joined",
+                    "Nothing at all"
+                ],
+                "correct": 1
+            }
+        },
+        {
+            "id": 3,
+            "title": "Knowing the Insert Worked",
+            "callback": true,
+            "refSection": "1 & 2",
+            "chunks": [
+                {
+                    "text": "On an INSERT, <span class=\"code-inline\">query()</span> gives back <span class=\"highlight\">TRUE</span> if it ran and FALSE if it failed.",
+                    "check": {
+                        "question": "A successful insert returns what?",
+                        "options": [
+                            "TRUE",
+                            "The new row"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "Your Model should <span class=\"highlight\">return</span> that value so the Controller can react to it.",
+                    "check": {
+                        "question": "Who needs to know the result?",
+                        "options": [
+                            "The Controller",
+                            "The database"
+                        ],
+                        "correct": 0
+                    }
+                },
+                {
+                    "text": "<span class=\"code-inline\">$this->db->affected_rows()</span> tells you how many rows were actually <span class=\"highlight\">saved</span>.",
+                    "check": {
+                        "question": "Which call counts the saved rows?",
+                        "options": [
+                            "affected_rows()",
+                            "num_fields()"
+                        ],
+                        "correct": 0
+                    }
+                }
+            ],
+            "quiz": {
+                "type": "type",
+                "code": "public function add_student($name, $age) {\n    $sql = \"INSERT INTO students (name, age) VALUES (?, ?)\";\n    ??? $this->db->query($sql, array($name, $age));\n}",
+                "question": "Type the keyword that sends the result back to the Controller.",
+                "acceptedAnswers": [
+                    "return",
+                    "Return",
+                    "return;"
+                ]
+            }
+        }
+    ]
+}

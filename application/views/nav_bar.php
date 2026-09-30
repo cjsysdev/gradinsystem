@@ -4,7 +4,38 @@
         <div class="form-group row">
             <a href="<?= base_url('attendance') ?>" class="btn btn-outline-secondary col m-2"><i class="fa fa-check-circle" aria-hidden="true"></i> Attendance</a>
             <a href="<?= base_url('classwork') ?>" class="btn btn-outline-success col m-2"><i class="fa fa-book" aria-hidden="true"></i> Classwork</a>
-            <!-- <a href="<?= base_url('project_log') ?>" class="btn btn-outline-info col m-2"><i class="fa fa-diagram-project" aria-hidden="true"></i> Project Log</a> -->
+            <a href="<?= base_url('my_records') ?>" class="btn btn-outline-secondary col m-2"><i class="fa fa-archive" aria-hidden="true"></i> My Records</a>
+            <!-- <?=  var_dump($this->session->section) ?> -->
+            <?php
+            // Only surface the Project Log for students who actually have one:
+            // a course of theirs must have a grouping set designated in
+            // project_log_groupings (admin/project_logs).
+            //
+            // Loaded through get_instance(), NOT $this: Loader::_ci_load()
+            // copies the controller's properties onto $this once, *before*
+            // including this view, so a model loaded here would be set on the
+            // controller and still be null on $this.
+            $CI =& get_instance();
+            $CI->load->model('Project_log_model');
+            $has_project_log = (bool) $CI->Project_log_model->get_designated_courses_for_student($CI->session->student_id);
+            ?>
+            <?php if ($has_project_log): ?>
+                <a href="<?= base_url('project_log') ?>" class="btn btn-outline-info col m-2"><i class="fa fa-diagram-project" aria-hidden="true"></i> Project Log</a>
+            <?php endif; ?>
+            <?php
+            // Class Materials: same get_instance() rule as the Project Log block
+            // above (a model loaded via $this here would land on the controller).
+            // count_for_student() checks table_ready() itself and returns 0 when
+            // the tables are absent — this nav renders on every student page and
+            // they don't exist until admin/materials_install has been run.
+            // It runs the same visibility query as the page itself, so the button
+            // appears exactly when the page would have something in it.
+            $CI->load->model('Class_material');
+            $has_materials = $CI->Class_material->count_for_student($CI->session->student_id) > 0;
+            ?>
+            <?php if ($has_materials): ?>
+                <a href="<?= base_url('materials') ?>" class="btn btn-outline-primary col m-2"><i class="fa fa-folder-open" aria-hidden="true"></i> Materials</a>
+            <?php endif; ?>
             <!-- <a href="<?= base_url('output_upload') ?>" class="btn btn-outline-secondary col m-2">Project</a> -->
             <!-- <a href="<?= base_url('grades') ?>" class="btn btn-outline-secondary col m-2"><i class="fa fa-graduation-cap" aria-hidden="true"></i> Grades</a> -->
             <!-- <a href="<?= base_url('interactive_quiz/topics') ?>" class="btn btn-outline-info col m-2"><i class="fa fa-comments" aria-hidden="true"></i> Topics</a> -->
