@@ -27,7 +27,9 @@ defined('BASEPATH') or exit('No direct script access allowed');
  *     sections. Do not "simplify" that join.
  *
  * Invariants deliberately corrected:
- *   - The roster is keyed on class_student.schedule_id in the active semester,
+ *   - The roster is keyed on class_student.schedule_id (a schedule belongs to
+ *     exactly one semester, so archived semesters work the same way; entry
+ *     points that resolve schedules take an optional $semester_id, default active),
  *     accepting status='enrolled' OR status IS NULL. The old
  *     `cs.section = sched.section` join pulled in prior-semester rows (90
  *     students rendered on a 51-student section). status IS NULL is
@@ -407,7 +409,8 @@ class Grade_calculator extends CI_Model
     }
 
     /**
-     * Enrolled students on a schedule, in the active semester.
+     * Enrolled students on a schedule. The schedule fixes the semester, so
+     * this works for archived semesters too.
      *
      * Keyed on class_student.schedule_id — the same roster definition already
      * used by classworks::get_missing_submissions() and
@@ -422,7 +425,6 @@ class Grade_calculator extends CI_Model
                    cs.is_cleared
             FROM class_student cs
             JOIN class_schedule sched ON sched.schedule_id = cs.schedule_id
-            JOIN semester_master sem  ON sem.trans_no = sched.semester_id AND sem.is_active = 1
             JOIN student_master sm    ON sm.trans_no = cs.student_id
             WHERE cs.schedule_id = ?
               AND (cs.status = 'enrolled' OR cs.status IS NULL)
@@ -450,7 +452,6 @@ class Grade_calculator extends CI_Model
                    SUM(CASE WHEN c.score IS NULL THEN 1 ELSE 0 END) AS n_ungraded
             FROM class_student cs
             JOIN class_schedule sched ON sched.schedule_id = cs.schedule_id
-            JOIN semester_master sem  ON sem.trans_no = sched.semester_id AND sem.is_active = 1
             JOIN assessment_full a    ON a.schedule_id = sched.schedule_id AND a.term = ?
             LEFT JOIN classworks c    ON c.assessment_id = a.assessment_id
                                      AND c.student_id = cs.student_id
@@ -481,7 +482,7 @@ class Grade_calculator extends CI_Model
                              att.date) > ?)    AS lates
             FROM attendance att
             JOIN class_schedule sched ON sched.schedule_id = att.schedule_id
-            JOIN semester_master sem  ON sem.trans_no = sched.semester_id AND sem.is_active = 1
+            JOIN semester_master sem  ON sem.trans_no = sched.semester_id
             WHERE att.schedule_id = ?
               AND DATE(att.date) >= sem.class_started
             GROUP BY att.student_id
@@ -649,18 +650,20 @@ class Grade_calculator extends CI_Model
      * enrolment rather than reading $this->session->section — the old query
      * used the session directly and silently returned nothing when it was stale.
      */
-    public function for_student($student_id, $schedule_id = null)
+    public function for_student($student_id, $schedule_id = null, $semester_id = null)
     {
         if ($schedule_id === null) {
+            $this->load->model('Semester_model');
+            $semester_id = $this->Semester_model->resolve_id($semester_id);
             $row = $this->db->query("
                 SELECT cs.schedule_id
                 FROM class_student cs
                 JOIN class_schedule sched ON sched.schedule_id = cs.schedule_id
-                JOIN semester_master sem  ON sem.trans_no = sched.semester_id AND sem.is_active = 1
                 WHERE cs.student_id = ? AND (cs.status = 'enrolled' OR cs.status IS NULL)
+                  AND sched.semester_id = ?
                 ORDER BY cs.schedule_id
                 LIMIT 1
-            ", [$student_id])->row_array();
+            ", [$student_id, $semester_id])->row_array();
 
             if (!$row) {
                 return null;
@@ -692,33 +695,78 @@ class Grade_calculator extends CI_Model
         ];
     }
 
+    /** Every schedule in a semester (default: active), for the all-sections sheet. */
+    public function schedules_for_semester($semester_id = null)
+    {
+        $this->load->model('Semester_model');
+        $semester_id = $this->Semester_model->resolve_id($semester_id);
+        return $this->db->query("
+            SELECT sched.schedule_id, sched.section, sched.type,
+                   sched.time_start, sched.time_end, sched.day,
+                   cl.class_id, cl.class_code, cl.class_name
+            FROM class_schedule sched
+            JOIN classes cl ON cl.class_id = sched.class_id
+            WHERE sched.semester_id = ?
+            ORDER BY sched.section, sched.schedule_id
+        ", [$semester_id])->result_array();
+    }
+
     /** Every active schedule, for the all-sections sheet. */
     public function active_schedules()
     {
-        return $this->db->query("
-            SELECT sched.schedule_id, sched.section, sched.type,
-                   sched.time_start, sched.time_end, sched.day,
-                   cl.class_id, cl.class_code, cl.class_name
-            FROM class_schedule sched
-            JOIN semester_master sem ON sem.trans_no = sched.semester_id AND sem.is_active = 1
-            JOIN classes cl ON cl.class_id = sched.class_id
-            ORDER BY sched.section, sched.schedule_id
-        ")->result_array();
+        return $this->schedules_for_semester(null);
     }
 
-    /** Resolve a section name to its schedule(s) in the active semester. */
-    public function schedules_for_section($section)
+    /** Resolve a section name to its schedule(s) in a semester (default: active). */
+    public function schedules_for_section($section, $semester_id = null)
     {
+        $this->load->model('Semester_model');
+        $semester_id = $this->Semester_model->resolve_id($semester_id);
         return $this->db->query("
             SELECT sched.schedule_id, sched.section, sched.type,
                    sched.time_start, sched.time_end, sched.day,
                    cl.class_id, cl.class_code, cl.class_name
             FROM class_schedule sched
-            JOIN semester_master sem ON sem.trans_no = sched.semester_id AND sem.is_active = 1
             JOIN classes cl ON cl.class_id = sched.class_id
-            WHERE sched.section = ?
+            WHERE sched.section = ? AND sched.semester_id = ?
             ORDER BY sched.schedule_id
-        ", [$section])->result_array();
+        ", [$section, $semester_id])->result_array();
+    }
+
+    /**
+     * Every schedule a student was enrolled in, grouped by semester (newest
+     * first), each with its own grade result. Feeds the academic-history view.
+     * Grades are always computed through for_student()/for_schedule().
+     */
+    public function history_for_student($student_id, $only_released = false)
+    {
+        $this->load->model('Semester_model');
+        $rows = $this->db->query("
+            SELECT cs.schedule_id, sched.semester_id, sched.section, sched.type,
+                   sched.time_start, sched.time_end, sched.day,
+                   cl.class_code, cl.class_name
+            FROM class_student cs
+            JOIN class_schedule sched ON sched.schedule_id = cs.schedule_id
+            JOIN classes cl ON cl.class_id = sched.class_id
+            WHERE cs.student_id = ? AND (cs.status = 'enrolled' OR cs.status IS NULL)
+            GROUP BY cs.schedule_id
+            ORDER BY sched.semester_id DESC, cl.class_code, sched.type
+        ", [$student_id])->result_array();
+
+        $out = [];
+        foreach ($rows as $r) {
+            $sid = (int) $r['semester_id'];
+            if ($only_released && !$this->Semester_model->is_released($sid)) {
+                continue;
+            }
+            if (!isset($out[$sid])) {
+                $out[$sid] = ['semester' => $this->Semester_model->get($sid), 'courses' => []];
+            }
+            $r['schedule_label'] = $this->format_schedule($r);
+            $r['grade']          = $this->for_student($student_id, $r['schedule_id']);
+            $out[$sid]['courses'][] = $r;
+        }
+        return $out;
     }
 
     /**
@@ -729,32 +777,33 @@ class Grade_calculator extends CI_Model
      * without falling back to the section string. for_student() resolves only
      * the first of these when no schedule is given.
      */
-    public function schedules_for_student($student_id)
+    public function schedules_for_student($student_id, $semester_id = null)
     {
+        $this->load->model('Semester_model');
+        $semester_id = $this->Semester_model->resolve_id($semester_id);
         return $this->db->query("
             SELECT sched.schedule_id, sched.section, sched.type,
                    sched.time_start, sched.time_end, sched.day,
                    cl.class_id, cl.class_code, cl.class_name
             FROM class_student cs
             JOIN class_schedule sched ON sched.schedule_id = cs.schedule_id
-            JOIN semester_master sem  ON sem.trans_no = sched.semester_id AND sem.is_active = 1
             JOIN classes cl           ON cl.class_id = sched.class_id
-            WHERE cs.student_id = ?
+            WHERE cs.student_id = ? AND sched.semester_id = ?
               AND (cs.status = 'enrolled' OR cs.status IS NULL)
             GROUP BY sched.schedule_id, sched.section, sched.type,
                      sched.time_start, sched.time_end, sched.day,
                      cl.class_id, cl.class_code, cl.class_name
             ORDER BY cl.class_code, sched.schedule_id
-        ", [(int) $student_id])->result_array();
+        ", [(int) $student_id, (int) $semester_id])->result_array();
     }
 
     /**
      * All active schedules' final grades, flattened for the all-sections sheet.
      */
-    public function for_all_schedules_final()
+    public function for_all_schedules_final($semester_id = null)
     {
         $out = [];
-        foreach ($this->active_schedules() as $sched) {
+        foreach ($this->schedules_for_semester($semester_id) as $sched) {
             $result = $this->for_schedule_final($sched['schedule_id']);
             foreach ($result['students'] as $sid => $student) {
                 $student['section']    = $sched['section'];

@@ -16,29 +16,35 @@ class student_master extends MY_Model
         parent::__construct();
     }
 
-    public function get_student_classworks($student_id)
+    public function get_student_classworks($student_id, $semester_id = null)
     {
+        $this->load->model('Semester_model');
+        $semester_id = (int) $this->Semester_model->resolve_id($semester_id);
+        $student_id  = (int) $student_id;
         $sql = "SELECT student_id, asm.assessment_id, score, cw.created_at, iotype_id,
                 title, max_score, section, is_active
                 FROM classworks cw
                 JOIN assessment_full asm ON asm.assessment_id = cw.assessment_id
                 JOIN class_schedule cs ON cs.schedule_id = asm.schedule_id
                 JOIN semester_master sem ON sem.trans_no = cs.semester_id
-                WHERE student_id = $student_id AND sem.is_active = 1";
+                WHERE student_id = $student_id AND sem.trans_no = $semester_id";
 
         return $this->db->query($sql)->result_array();
     }
 
     // Fetch absences with dates and reasons
-    public function get_absences($student_id)
+    public function get_absences($student_id, $semester_id = null)
     {
+        $this->load->model('Semester_model');
+        $semester_id = (int) $this->Semester_model->resolve_id($semester_id);
+        $student_id  = (int) $student_id;
         $sql = "SELECT c.class_name AS course, a.date, a.reason, a.status
                 FROM attendance a
                 JOIN class_schedule cs ON a.schedule_id = cs.schedule_id
                 JOIN semester_master sem ON cs.semester_id = sem.trans_no
                 JOIN classes c ON cs.class_id = c.class_id
                 WHERE a.student_id = $student_id
-                AND sem.is_active = 1
+                AND sem.trans_no = $semester_id
                 AND (a.status = 'absent' OR a.reason IS NOT NULL)
                 ORDER BY DATE(a.date) DESC";
 
@@ -88,8 +94,10 @@ class student_master extends MY_Model
         return $student;
     }
 
-    public function get_attendance_summary($student_id)
+    public function get_attendance_summary($student_id, $semester_id = null)
     {
+        $this->load->model('Semester_model');
+        $semester_id = $this->Semester_model->resolve_id($semester_id);
         $sql = "
             SELECT
                 SUM(a.status = 'present') AS present_count,
@@ -98,10 +106,10 @@ class student_master extends MY_Model
                 SUM(a.status = 'excuse')  AS excuse_count
             FROM attendance a
             JOIN class_schedule cs  ON a.schedule_id = cs.schedule_id
-            JOIN semester_master sem ON cs.semester_id = sem.trans_no AND sem.is_active = 1
+            JOIN semester_master sem ON cs.semester_id = sem.trans_no AND sem.trans_no = ?
             WHERE a.student_id = ?
         ";
-        $row = $this->db->query($sql, [$student_id])->row_array();
+        $row = $this->db->query($sql, [$semester_id, $student_id])->row_array();
         return $row ?: ['present_count' => 0, 'absent_count' => 0, 'late_count' => 0, 'excuse_count' => 0];
     }
 

@@ -379,8 +379,10 @@ class classworks extends MY_Model
      * @param  int   $student_id
      * @return array one row per unsubmitted assessment, ordered by due date
      */
-    public function get_unsubmitted_by_student($student_id)
+    public function get_unsubmitted_by_student($student_id, $semester_id = null)
     {
+        $this->load->model('Semester_model');
+        $semester_id = $this->Semester_model->resolve_id($semester_id);
         $sql = "
             SELECT DISTINCT
                 a.assessment_id,
@@ -394,7 +396,7 @@ class classworks extends MY_Model
             JOIN
                 class_schedule sched ON sched.schedule_id = cst.schedule_id
             JOIN
-                semester_master sem ON sem.trans_no = sched.semester_id AND sem.is_active = 1
+                semester_master sem ON sem.trans_no = sched.semester_id AND sem.trans_no = ?
             JOIN
                 assessment_full a ON a.schedule_id = sched.schedule_id
             LEFT JOIN
@@ -408,7 +410,7 @@ class classworks extends MY_Model
                 a.due ASC, a.title ASC
         ";
 
-        $query = $this->db->query($sql, [$student_id]);
+        $query = $this->db->query($sql, [$semester_id, $student_id]);
 
         if ($query === false) {
             $error = $this->db->error();
@@ -419,8 +421,10 @@ class classworks extends MY_Model
         return $query->result_array();
     }
 
-    public function get_submissions_by_student($student_id)
+    public function get_submissions_by_student($student_id, $semester_id = null)
     {
+        $this->load->model('Semester_model');
+        $semester_id = $this->Semester_model->resolve_id($semester_id);
         $sql = "
             SELECT 
                 c.*, 
@@ -442,14 +446,14 @@ class classworks extends MY_Model
             JOIN
                 class_schedule cs ON a.schedule_id = cs.schedule_id
             JOIN
-                semester_master sem ON cs.semester_id = sem.trans_no AND sem.is_active = 1
+                semester_master sem ON cs.semester_id = sem.trans_no AND sem.trans_no = ?
             WHERE 
                 c.student_id = ?
             ORDER BY 
                 c.created_at ASC, c.submitted_at ASC
         ";
 
-        $query = $this->db->query($sql, [$student_id]);
+        $query = $this->db->query($sql, [$semester_id, $student_id]);
 
         return $query->result_array();
     }

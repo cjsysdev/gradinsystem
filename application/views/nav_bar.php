@@ -4,6 +4,7 @@
         <div class="form-group row">
             <a href="<?= base_url('attendance') ?>" class="btn btn-outline-secondary col m-2"><i class="fa fa-check-circle" aria-hidden="true"></i> Attendance</a>
             <a href="<?= base_url('classwork') ?>" class="btn btn-outline-success col m-2"><i class="fa fa-book" aria-hidden="true"></i> Classwork</a>
+            <a href="<?= base_url('my_records') ?>" class="btn btn-outline-secondary col m-2"><i class="fa fa-archive" aria-hidden="true"></i> My Records</a>
             <!-- <?=  var_dump($this->session->section) ?> -->
             <?php
             // Only surface the Project Log for students who actually have one:

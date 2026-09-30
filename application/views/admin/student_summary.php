@@ -37,12 +37,14 @@
         </div>
     </div>
 
+    <?php $this->load->view('semester_switcher'); ?>
+
     <!-- Grades -->
     <?php $grades = $grades ?? []; ?>
     <h5 class="mt-4">Grades</h5>
     <?php if (empty($grades)): ?>
         <div class="alert alert-info py-2">
-            No enrollment in the active semester, so there is nothing to grade yet.
+            No enrollment in this semester, so there is nothing to grade yet.
         </div>
     <?php else: ?>
         <?php
@@ -166,7 +168,11 @@
     <?php endif; ?>
 
     <!-- Attendance summary -->
-    <h5 class="mt-4">Attendance</h5>
+    <h5 class="mt-4">Attendance
+        <?php if (!empty($viewed_semester)): ?>
+            <small class="text-muted"><?= htmlspecialchars($viewed_semester['description'] ?: $viewed_semester['semcode']) ?></small>
+        <?php endif; ?>
+    </h5>
     <div class="row">
         <div class="col-6 col-md-3 mb-3">
             <div class="card text-center shadow-sm">
@@ -348,6 +354,10 @@
             see the Grades section above for the official standing.
         </small>
     <?php endif; ?>
+
+    <!-- Academic history (grades per semester) -->
+    <h5 class="mt-4">Academic History</h5>
+    <?php $this->load->view('semester_history'); ?>
 
     <!-- Emergency contacts -->
     <h5 class="mt-4">Emergency Contacts</h5>

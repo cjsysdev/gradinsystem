@@ -987,11 +987,13 @@ class AdminController extends Admin_Controller
             return;
         }
 
-        $active_semester = $this->db->where('is_active', 1)->get('semester_master')->row_array();
+        $this->load->model('Semester_model');
+        $sem_id = $this->Semester_model->resolve_id($this->input->get('sem'));
 
+        $data = $this->Semester_model->view_data($student_id, $sem_id);
         $data['student']         = $student;
-        $data['active_semester'] = $active_semester;
-        $data['records']         = $this->attendance->get_student_attendance_full($student_id);
+        $data['active_semester'] = $data['viewed_semester'];
+        $data['records']         = $this->attendance->get_student_attendance_full($student_id, $sem_id);
 
         $this->load->view('admin/student_attendance', $data);
     }

@@ -539,7 +539,11 @@ class AdminStudentController extends Admin_Controller
 
         $account = $this->accounts->as_array()->get(['student_id' => $student_id]);
 
-        $this->load->model('classworks');
+        $this->load->model(['classworks', 'Semester_model', 'Grade_calculator']);
+        $sem_id = $this->Semester_model->resolve_id($this->input->get('sem'));
+        $data = $this->Semester_model->view_data($student_id, $sem_id);
+        $data['history']           = $this->Grade_calculator->history_for_student($student_id);
+        $data['history_link_base'] = base_url('admin/student_summary/' . (int) $student_id);
         $data['student']      = $student;
         $data['profile_pic']  = $account ? $account['profile_pic'] : null;
         // Anything that isn't an admin is a student: most accounts predate the
@@ -548,17 +552,17 @@ class AdminStudentController extends Admin_Controller
         // same way (only 'admin' is special-cased), so requiring the literal
         // string here hid this button for every bulk-imported section.
         $data['has_account']  = $account && $account['role'] !== 'admin';
-        $data['attendance']   = $this->student_master->get_attendance_summary($student_id);
-        $data['classworks']   = $this->classworks->get_submissions_by_student($student_id);
+        $data['attendance']   = $this->student_master->get_attendance_summary($student_id, $sem_id);
+        $data['classworks']   = $this->classworks->get_submissions_by_student($student_id, $sem_id);
         // Assessments with no submission row at all. Kept as a separate list
         // rather than merged into $classworks so the submitted-work percentage
         // in the view keeps its existing meaning (scored / max over work handed
         // in) instead of silently gaining every missing assessment's max_score.
-        $data['unsubmitted']  = $this->classworks->get_unsubmitted_by_student($student_id);
+        $data['unsubmitted']  = $this->classworks->get_unsubmitted_by_student($student_id, $sem_id);
         $data['violations']   = $this->violation->get_all_violations(['student_id' => $student_id]);
         $data['vio_summary']  = $this->violation->get_violation_summary_by_student($student_id);
         $data['contacts']     = $this->emergency_contact->get_by_student($student_id);
-        $data['grades']       = $this->_student_grade_blocks($student_id);
+        $data['grades']       = $this->_student_grade_blocks($student_id, $sem_id);
 
         $this->load->view('admin/student_summary', $data);
     }
@@ -573,14 +577,14 @@ class AdminStudentController extends Admin_Controller
      * INC, exactly as on Section Monitoring, and the view labels it as such —
      * it is never presented as the term grade.
      */
-    private function _student_grade_blocks($student_id)
+    private function _student_grade_blocks($student_id, $semester_id = null)
     {
         $this->load->model('Grade_calculator');
         $gc = $this->Grade_calculator;
 
         $blocks = [];
 
-        foreach ($gc->schedules_for_student($student_id) as $sched) {
+        foreach ($gc->schedules_for_student($student_id, $semester_id) as $sched) {
             $g = $gc->for_student($student_id, $sched['schedule_id']);
             if (!$g) {
                 continue;
@@ -1024,6 +1028,22 @@ class AdminStudentController extends Admin_Controller
         $this->db->update('semester_master', ['is_active' => null]);
         $this->db->where('trans_no', (int)$id)->update('semester_master', ['is_active' => 1]);
         $this->session->set_flashdata('success', 'Semester activated. Students without an enrollment record for this semester will be prompted to enroll on next login.');
+        redirect('admin/semesters');
+    }
+
+    // Toggle whether students may see a past semester's grades/submissions.
+    public function toggle_semester_release($id)
+    {
+        $this->load->model('Semester_model');
+        $sem = $this->Semester_model->get($id);
+        if (!$sem) {
+            redirect('admin/semesters');
+        }
+        if ($this->Semester_model->set_released($id, empty($sem['grades_released']))) {
+            $this->session->set_flashdata('success', 'Release setting updated.');
+        } else {
+            $this->session->set_flashdata('error', 'Run scripts/semester_release_migration.sql first.');
+        }
         redirect('admin/semesters');
     }
 }

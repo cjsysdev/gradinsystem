@@ -89,6 +89,7 @@ $route['grade_audit/(:any)'] = 'GradeAuditController/$1';
 
 // Grades Routes
 $route['grades'] = 'GradesController/grades';
+$route['my_records'] = 'GradesController/records';
 $route['grades/all'] = 'GradesController/AllSectionGrades';
 $route['sectiongrades/(:any)'] = 'GradesController/sectionGrades/$1';
 $route['sectionFinalGrades/(:any)'] = 'GradesController/sectionFinalGrades/$1';
@@ -269,6 +270,7 @@ $route['admin/sms_install'] = 'AdminSmsController/install';
 $route['admin/semesters'] = 'AdminStudentController/semesters';
 $route['admin/save_semester'] = 'AdminStudentController/save_semester';
 $route['admin/activate_semester/(:num)'] = 'AdminStudentController/activate_semester/$1';
+$route['admin/toggle_semester_release/(:num)'] = 'AdminStudentController/toggle_semester_release/$1';
 
 // Class Materials. Admin uploads course/demo files into assets/materials/
 // {CLASS_CODE}/ and assigns them to class_schedule sections; students see only
