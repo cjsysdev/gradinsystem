@@ -559,6 +559,15 @@ class AdminStudentController extends Admin_Controller
         // in the view keeps its existing meaning (scored / max over work handed
         // in) instead of silently gaining every missing assessment's max_score.
         $data['unsubmitted']  = $this->classworks->get_unsubmitted_by_student($student_id, $sem_id);
+        // iotype_id => [abbr, name] for the classwork Type column; the full
+        // name rides along as the cell's tooltip.
+        $data['iotype_labels'] = [];
+        foreach ($this->Grade_calculator->io_types() as $iotype_id => $io) {
+            $data['iotype_labels'][$iotype_id] = [
+                'abbr' => $this->_iotype_abbrev($io['type']),
+                'name' => $io['type'],
+            ];
+        }
         $data['violations']   = $this->violation->get_all_violations(['student_id' => $student_id]);
         $data['vio_summary']  = $this->violation->get_violation_summary_by_student($student_id);
         $data['contacts']     = $this->emergency_contact->get_by_student($student_id);

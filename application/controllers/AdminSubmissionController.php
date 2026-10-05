@@ -412,44 +412,36 @@ class AdminSubmissionController extends Admin_Controller
             redirect('AdminController/dashboard');
         }
 
-        // Fetch student details
-        $data['student'] = $this->accounts->as_array()->get(['student_id' => $student_id]);
+        // student_master, not accounts: a bulk-imported student may have no
+        // login yet, and the summary page that links here keys on trans_no.
+        $data['student'] = $this->student_master->get_student_info($student_id);
 
         if (!$data['student']) {
             $this->session->set_flashdata('error', 'Student not found.');
             redirect('AdminController/dashboard');
         }
 
-        // Fetch all classworks (submitted and missing) for the student
-        $this->load->model('classworks');
-        $this->load->model('assessments');
-        $submitted_classworks = $this->classworks->get_submissions_by_student($student_id);
-        $all_assessments = $this->assessments->get_all_assessments();
+        // Same semester-scoped pair student_summary() uses: work handed in,
+        // plus the student's own sections' assessments with no classworks row.
+        $this->load->model(['classworks', 'Semester_model']);
+        $sem_id      = $this->Semester_model->resolve_id($this->input->get('sem'));
+        $submitted   = $this->classworks->get_submissions_by_student($student_id, $sem_id);
+        $unsubmitted = $this->classworks->get_unsubmitted_by_student($student_id, $sem_id);
 
-        // Merge submitted classworks with missing ones
-        $classworks = [];
-        foreach ($all_assessments as $assessment) {
-            $found = false;
-            foreach ($submitted_classworks as $submission) {
-                if ($submission['assessment_id'] == $assessment['assessment_id']) {
-                    $classworks[] = $submission;
-                    $found = true;
-                    break;
-                }
-            }
-            if (!$found) {
-                $classworks[] = [
-                    'assessment_id' => $assessment['assessment_id'],
-                    'title' => $assessment['title'],
-                    'classwork_id' => null,
-                    'score' => null,
-                    'created_at' => null,
-                    'status' => 'missing',
-                ];
-            }
+        foreach ($unsubmitted as $a) {
+            $submitted[] = [
+                'assessment_id' => $a['assessment_id'],
+                'title'         => $a['title'],
+                'max_score'     => $a['max_score'],
+                'classwork_id'  => null,
+                'student_id'    => $student_id,
+                'score'         => null,
+                'created_at'    => null,
+                'status'        => 'missing',
+            ];
         }
 
-        $data['classworks'] = $classworks;
+        $data['submissions'] = $submitted;
 
         // Load the view
         $this->load->view('admin/student_submissions', $data);

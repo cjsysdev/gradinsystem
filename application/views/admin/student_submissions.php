@@ -17,7 +17,14 @@
     </form>
 
     <?php if (!empty($submissions)): ?>
-        <h2><?= $submissions[0]['firstname'] . ' ' . $submissions[0]['lastname'] . ' - ' . $submissions[0]['student_id'] ?></h2>
+        <?php
+        // A missing-only row carries no name, so prefer the student record
+        // view_student_submissions() passes; the search flow has only rows.
+        $who = !empty($student)
+            ? $student['firstname'] . ' ' . $student['lastname'] . ' - ' . $student['trans_no']
+            : $submissions[0]['firstname'] . ' ' . $submissions[0]['lastname'] . ' - ' . $submissions[0]['student_id'];
+        ?>
+        <h2><?= htmlspecialchars($who) ?></h2>
         <table class="table table-bordered">
             <thead>
                 <tr>

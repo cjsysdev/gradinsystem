@@ -263,6 +263,18 @@ class AdminController extends Admin_Controller
 
         $f = $this->_monitoring_filters();
 
+        // Viewing another semester is read-only and never touches is_active
+        // (see CLAUDE.md). Every query below is keyed on schedule_id, and a
+        // schedule belongs to exactly one semester, so picking the semester
+        // only decides which sections the dropdown offers. A schedule_id from
+        // a different semester (e.g. the semester was just switched) is
+        // dropped so the sheet never shows a section the dropdown doesn't.
+        $data['schedules'] = $this->Grade_calculator->schedules_for_semester($f['sem']);
+        if ($f['schedule_id']
+            && !in_array($f['schedule_id'], array_map('intval', array_column($data['schedules'], 'schedule_id')), TRUE)) {
+            $f['schedule_id'] = 0;
+        }
+
         // Guard here, not inside _monitoring_rows(): schedule_id 0 would
         // otherwise run three full grade passes over an empty roster.
         $rows = $f['schedule_id']
@@ -281,7 +293,10 @@ class AdminController extends Admin_Controller
             $rows, $columns, $f['only_with_values']
         );
 
-        $data['schedules']        = $this->class_schedule->get_all_active();
+        $data['semester_options'] = $this->Semester_model->all();
+        $data['viewed_semester']  = $this->Semester_model->get($f['sem']);
+        $data['viewing_archived'] = !$this->Semester_model->is_active($f['sem']);
+        $data['sem']              = $f['sem'];
         $data['schedule_id']      = $f['schedule_id'];
         $data['show_grades']      = $f['show_grades'];
         $data['show_attendance']  = $f['show_attendance'];
@@ -294,6 +309,7 @@ class AdminController extends Admin_Controller
         // Built here rather than reassembled in the view, so the Export link
         // can never disagree with the filters the table was rendered from.
         $data['export_query'] = [
+            'sem'              => $f['sem'],
             'schedule_id'      => $f['schedule_id'],
             'filters_applied'  => 1,
             'show_grades'      => $f['show_grades'] ? 1 : 0,
@@ -415,7 +431,7 @@ class AdminController extends Admin_Controller
         $slips = $this->_slip_rows($schedule_id, $term, $student_id ?: NULL);
         if (empty($slips)) {
             $this->session->set_flashdata('error', $student_id
-                ? 'That student is not enrolled on this section for the active semester.'
+                ? 'That student is not enrolled on this section.'
                 : 'No enrolled students on that section.');
             redirect('view_attendance?schedule_id=' . $schedule_id);
             return;
@@ -453,8 +469,12 @@ class AdminController extends Admin_Controller
     protected function _monitoring_filters()
     {
         $submitted = $this->input->get('filters_applied') !== NULL;
+        $this->load->model('Semester_model');
 
         return [
+            // ?sem=<trans_no>, the same param as the other semester switchers;
+            // anything unknown resolves to the active semester.
+            'sem'              => $this->Semester_model->resolve_id($this->input->get('sem')),
             'schedule_id'      => (int) $this->input->get('schedule_id'),
             'show_grades'      => $submitted ? ($this->input->get('show_grades') === '1') : TRUE,
             'show_attendance'  => $submitted ? ($this->input->get('show_attendance') === '1') : TRUE,
@@ -480,20 +500,19 @@ class AdminController extends Admin_Controller
      * (lastname, firstname — Grade_calculator::roster() already sorts it, and
      * for_schedule() preserves that insertion order, so no usort is needed).
      *
-     * Three for_schedule() passes is deliberate: for_schedule_final() covers
-     * midterm + final + overall but never touches 'tentative-final', and the
-     * alternative — one bespoke multi-term query — would be a fourth copy of
-     * the weighting rules, which is exactly what Grade_calculator exists to
-     * prevent. $with_attendance is FALSE on all of them: it saves three
-     * redundant queries and keeps the grading-derived `late` out of the data
-     * entirely, so the raw ENUM counts can't be confused with it.
+     * The Tentative Final column is the 'final' term on its own — the grade
+     * the final period stands at so far — taken from the same
+     * for_schedule_final() pass. It used to read the 'tentative-final'
+     * assessment term, but no assessment is ever tagged with it, so the column
+     * was INC in both modes. $with_attendance is FALSE: it saves redundant
+     * queries and keeps the grading-derived `late` out of the data entirely,
+     * so the raw ENUM counts can't be confused with it.
      */
     protected function _monitoring_rows($schedule_id, $grade_mode = Grade_calculator::MODE_INC)
     {
         $gc = $this->Grade_calculator;
 
         $finals    = $gc->for_schedule_final($schedule_id, FALSE);
-        $tentative = $gc->for_schedule($schedule_id, 'tentative-final', FALSE);
         $counts    = $this->attendance->status_counts_for_schedule($schedule_id);
         // One grouped query for the whole section, fetched unconditionally like
         // the attendance counts: _monitoring_row() always carries every field,
@@ -505,19 +524,10 @@ class AdminController extends Admin_Controller
         $rows = [];
         $n    = 0;
         foreach ($finals['students'] as $sid => $s) {
-            // Same roster on all three passes, so this fallback should never
-            // fire; it carries grade_point because display_grade_point() reads
-            // that key once the status check lets it through, and no
-            // 'provisional' key so MODE_CURRENT falls through to 'INC' rather
-            // than inventing a standing for a student we have no data for.
-            $t = isset($tentative['students'][$sid]['term'])
-                ? $tentative['students'][$sid]['term']
-                : ['status' => 'inc', 'grade_point' => NULL];
-
             $rows[] = $this->_monitoring_row(
                 ++$n,
                 $s,
-                $t,
+                $s['final'],
                 isset($counts[$sid]) ? $counts[$sid] : NULL,
                 $grade_mode,
                 isset($missing[$sid]) ? $missing[$sid] : []
@@ -533,7 +543,7 @@ class AdminController extends Admin_Controller
      * each consumer escapes for its own medium.
      *
      * $s comes from for_schedule_final() and carries 'midterm', 'final' and
-     * 'overall'; $tentative is the 'tentative-final' term block. The Final
+     * 'overall'; $tentative is the 'final' term block on its own. The Final
      * Grade column is `overall` (the midterm/final blend), not the 'final'
      * term on its own.
      *
@@ -567,12 +577,12 @@ class AdminController extends Admin_Controller
         $decimals = self::MONITORING_GRADE_DECIMALS;
 
         // Which columns the override blacks out. 'tentative' reports the
-        // tentative-final term; 'overall' is the midterm/final blend, so
+        // final term; 'overall' is the midterm/final blend, so
         // unsubmitted work in EITHER of those terms blocks it — the same way
         // Grade_calculator::final_grade() propagates an INC from either term.
         $blocked = [
             'midterm'   => $this->_missing_blocks_grade($missing, ['midterm'], $grade_mode),
-            'tentative' => $this->_missing_blocks_grade($missing, ['tentative-final'], $grade_mode),
+            'tentative' => $this->_missing_blocks_grade($missing, ['final'], $grade_mode),
             'overall'   => $this->_missing_blocks_grade($missing, ['midterm', 'final'], $grade_mode),
         ];
 
@@ -762,39 +772,6 @@ class AdminController extends Admin_Controller
     }
 
     /**
-     * Short heading for an io_type. Display only — nothing keys off it.
-     *
-     * The four current components get hand-picked forms; anything added later
-     * falls back to initials (or the first three letters of a single word) so a
-     * new io_type still gets a usable column head without an edit here.
-     */
-    protected function _iotype_abbrev($type)
-    {
-        $known = [
-            'activity'         => 'ACT',
-            'performance task' => 'PT',
-            'major exam'       => 'EXM',
-            'quiz'             => 'QZ',
-        ];
-
-        $key = strtolower(trim($type));
-        if (isset($known[$key])) {
-            return $known[$key];
-        }
-
-        $words = preg_split('/[^a-z0-9]+/', $key, -1, PREG_SPLIT_NO_EMPTY);
-        if (count($words) > 1) {
-            $initials = '';
-            foreach ($words as $w) {
-                $initials .= $w[0];
-            }
-            return strtoupper($initials);
-        }
-
-        return strtoupper(substr($key, 0, 3));
-    }
-
-    /**
      * Drops the students who have nothing outstanding — every 'attention'
      * column in the current spec (the Missing tallies and Absent) sits at zero.
      *
@@ -852,7 +829,7 @@ class AdminController extends Admin_Controller
         $this->load->model('Grade_calculator');
 
         $sched = $this->db->query("
-            SELECT sched.schedule_id, sched.section, sched.type, sched.day,
+            SELECT sched.schedule_id, sched.semester_id, sched.section, sched.type, sched.day,
                    sched.time_start, sched.time_end,
                    cl.class_code, cl.class_name, cl.instructor
             FROM class_schedule sched
@@ -866,7 +843,9 @@ class AdminController extends Admin_Controller
 
         // Read, never hardcoded: section_grades.php prints a literal
         // "2nd Semester, S.Y 2024 - 2025" that has been wrong for two years.
-        $sched['semester'] = $this->db->where('is_active', 1)
+        // The schedule's own semester, not the active one, so a slip or export
+        // of an archived section is headed with the semester it belongs to.
+        $sched['semester'] = $this->db->where('trans_no', (int) $sched['semester_id'])
             ->get('semester_master')->row_array() ?: [];
 
         $sched['schedule_text'] = $this->Grade_calculator->format_schedule($sched);

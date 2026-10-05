@@ -275,6 +275,21 @@
     $pct = $total_max > 0 ? round(($total_score / $total_max) * 100, 1) : null;
 
     $unsubmitted = $unsubmitted ?? [];
+
+    $iotype_labels = $iotype_labels ?? [];
+    $type_cell = function ($iotype_id) use ($iotype_labels) {
+        $l = $iotype_labels[(int) $iotype_id] ?? null;
+        return $l
+            ? '<span title="' . htmlspecialchars($l['name']) . '">' . htmlspecialchars($l['abbr']) . '</span>'
+            : '<span class="text-muted">—</span>';
+    };
+    $term_cell = function ($term) {
+        $labels = ['midterm' => 'Midterm', 'tentative-final' => 'Tentative Final', 'final' => 'Final'];
+        $term   = (string) $term;
+        return $term === ''
+            ? '<span class="text-muted">—</span>'
+            : htmlspecialchars($labels[$term] ?? ucfirst($term));
+    };
     // Past due vs. still open: a missing assessment that isn't due yet is not
     // the teacher's problem yet, so the two are counted and coloured apart.
     $today   = date('Y-m-d');
@@ -300,9 +315,10 @@
                 <thead class="thead-light">
                     <tr>
                         <th>Title</th>
+                        <th>Type</th>
+                        <th>Term</th>
                         <th>Score</th>
                         <th>Max</th>
-                        <th>Due</th>
                         <th>Submitted</th>
                         <th>Status</th>
                     </tr>
@@ -311,9 +327,10 @@
                     <?php foreach ($classworks as $cw): ?>
                         <tr>
                             <td><?= htmlspecialchars($cw['title']) ?></td>
+                            <td><?= $type_cell($cw['iotype_id'] ?? null) ?></td>
+                            <td><?= $term_cell($cw['term'] ?? '') ?></td>
                             <td><?= $cw['score'] !== null ? $cw['score'] : '<span class="text-muted">—</span>' ?></td>
                             <td><?= $cw['max_score'] ?? '—' ?></td>
-                            <td class="text-muted">—</td>
                             <td><?= $cw['created_at'] ? date('M j, Y', strtotime($cw['created_at'])) : '—' ?></td>
                             <td>
                                 <?php if ($cw['score'] !== null): ?>
@@ -329,13 +346,16 @@
                         <?php
                         $due_date = (!empty($a['due']) && substr($a['due'], 0, 10) > '0000-00-00')
                             ? substr($a['due'], 0, 10) : null;
+                        // Due column is hidden, but the date still decides
+                        // Missing (past due) vs. Not submitted (still open).
                         $is_overdue = $due_date !== null && $due_date < $today;
                         ?>
                         <tr class="<?= $is_overdue ? 'table-danger' : 'table-warning' ?>">
                             <td><?= htmlspecialchars($a['title']) ?></td>
+                            <td><?= $type_cell($a['iotype_id'] ?? null) ?></td>
+                            <td><?= $term_cell($a['term'] ?? '') ?></td>
                             <td><span class="text-muted">—</span></td>
                             <td><?= $a['max_score'] ?? '—' ?></td>
-                            <td><?= $due_date ? date('M j, Y', strtotime($due_date)) : '<span class="text-muted">—</span>' ?></td>
                             <td><span class="text-muted">—</span></td>
                             <td>
                                 <?php if ($is_overdue): ?>
@@ -352,6 +372,12 @@
         <small class="text-muted d-block mb-2">
             The percentage above covers submitted work only and is not a grade —
             see the Grades section above for the official standing.
+            <?php if ($iotype_labels): ?>
+                <br>Type:
+                <?= implode(', ', array_map(function ($l) {
+                    return '<strong>' . htmlspecialchars($l['abbr']) . '</strong> = ' . htmlspecialchars($l['name']);
+                }, $iotype_labels)) ?>.
+            <?php endif; ?>
         </small>
     <?php endif; ?>
 
@@ -383,7 +409,7 @@
 
     <!-- Quick links -->
     <div class="d-flex flex-wrap mb-5" style="gap:.5rem;">
-        <a href="<?= base_url('student_submissions/' . $student['trans_no']) ?>" class="btn btn-outline-primary btn-sm">
+        <a href="<?= base_url('student_submissions/' . $student['trans_no'] . (!empty($viewed_semester) ? '?sem=' . (int) $viewed_semester['trans_no'] : '')) ?>" class="btn btn-outline-primary btn-sm">
             <i class="fa fa-folder-open"></i> View Submissions
         </a>
         <a href="<?= base_url('admin/student_violations?student_id=' . $student['trans_no']) ?>" class="btn btn-outline-warning btn-sm">

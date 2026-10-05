@@ -104,4 +104,39 @@ class Admin_Controller extends CI_Controller
         $this->load->library('widget_meta');
         $this->widget_meta->fill_blank_fields($fields, $meta);
     }
+
+    /**
+     * Short label for an io_type. Display only — nothing keys off it. Shared
+     * so the Section Monitoring headings and the student summary's Type column
+     * always use the same abbreviation.
+     *
+     * The four current components get hand-picked forms; anything added later
+     * falls back to initials (or the first three letters of a single word) so a
+     * new io_type still gets a usable label without an edit here.
+     */
+    protected function _iotype_abbrev($type)
+    {
+        $known = [
+            'activity'         => 'ACT',
+            'performance task' => 'PT',
+            'major exam'       => 'EXM',
+            'quiz'             => 'QZ',
+        ];
+
+        $key = strtolower(trim($type));
+        if (isset($known[$key])) {
+            return $known[$key];
+        }
+
+        $words = preg_split('/[^a-z0-9]+/', $key, -1, PREG_SPLIT_NO_EMPTY);
+        if (count($words) > 1) {
+            $initials = '';
+            foreach ($words as $w) {
+                $initials .= $w[0];
+            }
+            return strtoupper($initials);
+        }
+
+        return strtoupper(substr($key, 0, 3));
+    }
 }

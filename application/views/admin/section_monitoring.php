@@ -23,6 +23,32 @@
              AdminController::_monitoring_filters(). -->
         <input type="hidden" name="filters_applied" value="1">
 
+        <!-- Its own full-width row so the 12-column budget below stays intact.
+             Read-only: picking a semester never changes which one is active.
+             Switching clears the section, since sections belong to one
+             semester; the controller also drops a mismatched schedule_id. -->
+        <div class="col-12 mb-2">
+            <div class="form-inline">
+                <label for="sem" class="mr-2 font-weight-bold"><i class="fa fa-calendar-alt"></i>&nbsp;Semester</label>
+                <select name="sem" id="sem" class="custom-select custom-select-sm mr-2"
+                        onchange="this.form.schedule_id.value = ''; this.form.submit();">
+                    <?php foreach ($semester_options as $opt): ?>
+                        <option value="<?= (int) $opt['trans_no'] ?>" <?= (int) $opt['trans_no'] === (int) $sem ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($opt['description'] ?: $opt['semcode']) ?><?= !empty($opt['is_active']) ? ' (active)' : '' ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <?php if ($viewing_archived && !empty($viewed_semester)): ?>
+                <div class="alert alert-warning py-2 mt-2 mb-0">
+                    <i class="fa fa-archive"></i>
+                    Viewing <strong><?= htmlspecialchars($viewed_semester['description'] ?: $viewed_semester['semcode']) ?></strong>
+                    (not the active semester, read-only).
+                    <a href="<?= base_url('view_attendance') ?>" class="alert-link ml-2">Back to active semester</a>
+                </div>
+            <?php endif; ?>
+        </div>
+
         <div class="col-md-3 mb-2">
             <label for="schedule_id" class="mb-1">Section</label>
             <select name="schedule_id" id="schedule_id" class="form-control">
@@ -103,7 +129,7 @@
             nothing missing and no absences. Untick <em>Only rows with missing / absences</em> to see the full sheet.
         </div>
     <?php elseif (empty($rows)): ?>
-        <div class="alert alert-warning">No students enrolled on this section for the active semester.</div>
+        <div class="alert alert-warning">No students enrolled on this section.</div>
     <?php else: ?>
         <?php if (!$show_grades && !$show_attendance && !$show_missing): ?>
             <div class="alert alert-secondary">Tick Grades, Attendance or Missing to show more columns.</div>
@@ -154,11 +180,11 @@
                                 <td<?= $cell_class ? ' class="' . $cell_class . '"' : '' ?>><?= htmlspecialchars((string) $row[$c['key']]) ?><?= $provisional ? '*' : '' ?></td>
                             <?php endforeach; ?>
                             <td class="text-nowrap">
-                                <a href="<?= base_url('admin/student_summary/' . (int) $row['student_id']) ?>"
+                                <a href="<?= base_url('admin/student_summary/' . (int) $row['student_id'] . '?sem=' . (int) $sem) ?>"
                                    class="btn btn-sm btn-outline-info" title="Attendance, classwork, violations and contacts for this student">
                                     <i class="fas fa-id-card"></i>
                                 </a>
-                                <a href="<?= base_url('admin/student_attendance/' . (int) $row['student_id']) ?>"
+                                <a href="<?= base_url('admin/student_attendance/' . (int) $row['student_id'] . '?sem=' . (int) $sem) ?>"
                                    class="btn btn-sm btn-outline-primary"> <i class="fas fa-edit"></i></a>
                                 <a href="<?= base_url('admin/print_slips?schedule_id=' . (int) $schedule_id . '&student_id=' . (int) $row['student_id']) ?>"
                                    target="_blank" class="btn btn-sm btn-outline-secondary" title="Print this student's slip">

@@ -130,7 +130,7 @@ class classworks extends MY_Model
      *
      * Split by term because each grade column on that sheet answers for one
      * term: an unsubmitted midterm Performance Task has nothing to say about
-     * the tentative-final column. The Missing columns themselves show the
+     * the Tentative Final column (the final term). The Missing columns themselves show the
      * all-terms total, which AdminController sums back up.
      *
      * Nothing here feeds a grade — Grade_calculator is still the only place a
@@ -150,7 +150,7 @@ class classworks extends MY_Model
                    COUNT(*) AS n_missing
             FROM class_student cs
             JOIN class_schedule sched ON sched.schedule_id = cs.schedule_id
-            JOIN semester_master sem  ON sem.trans_no = sched.semester_id AND sem.is_active = 1
+            JOIN semester_master sem  ON sem.trans_no = sched.semester_id
             JOIN assessment_full a    ON a.schedule_id = sched.schedule_id
             LEFT JOIN classworks c    ON c.assessment_id = a.assessment_id
                                      AND c.student_id = cs.student_id
@@ -432,8 +432,9 @@ class classworks extends MY_Model
                 s.firstname, 
                 s.lastname,
                 a.max_score,
-                a.iotype_id 
-            FROM 
+                a.iotype_id,
+                a.term
+            FROM
                 classworks c
             JOIN
                 assessment_full a

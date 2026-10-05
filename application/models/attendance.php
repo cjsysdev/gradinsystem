@@ -216,8 +216,10 @@ class attendance extends MY_Model
     }
 
     /**
-     * Per-student RAW status counts for one schedule, from the active
-     * semester's class_started date. Backs the Section Monitoring sheet
+     * Per-student RAW status counts for one schedule, from its own
+     * semester's class_started date — a schedule belongs to exactly one
+     * semester, so this is correct for archived semesters too (the monitoring
+     * sheet can view them). Backs the Section Monitoring sheet
      * (AdminController::section_monitoring()).
      *
      * Grade_calculator::attendance_for_schedule() also returns a `late`, but
@@ -244,7 +246,7 @@ class attendance extends MY_Model
                    SUM(att.status = 'excuse')  AS n_excuse
             FROM attendance att
             JOIN class_schedule sched ON sched.schedule_id = att.schedule_id
-            JOIN semester_master sem  ON sem.trans_no = sched.semester_id AND sem.is_active = 1
+            JOIN semester_master sem  ON sem.trans_no = sched.semester_id
             WHERE att.schedule_id = ?
               AND DATE(att.date) >= sem.class_started
             GROUP BY att.student_id
@@ -266,7 +268,7 @@ class attendance extends MY_Model
      * The dated 'absent' rows behind status_counts_for_schedule()'s absent
      * tally, per student, for the printable Grade & Attendance slips.
      *
-     * The joins, the active-semester filter and the class_started floor are
+     * The joins, the schedule's-own-semester scope and the class_started floor are
      * copied from status_counts_for_schedule() deliberately and must stay in
      * step with it: the slip prints the count and the list side by side, so a
      * different window here would put a "3 absences" tile above four dates.
@@ -286,7 +288,7 @@ class attendance extends MY_Model
             SELECT att.student_id, att.date, att.reason
             FROM attendance att
             JOIN class_schedule sched ON sched.schedule_id = att.schedule_id
-            JOIN semester_master sem  ON sem.trans_no = sched.semester_id AND sem.is_active = 1
+            JOIN semester_master sem  ON sem.trans_no = sched.semester_id
             WHERE att.schedule_id = ?
               AND att.status = 'absent'
               AND DATE(att.date) >= sem.class_started
