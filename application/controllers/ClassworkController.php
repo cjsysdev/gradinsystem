@@ -50,6 +50,15 @@ class ClassworkController extends CI_Controller
         }
         unset($m);
 
+        // Answerable work first (open, or reopened for this student), then
+        // past due. usort is stable, so the newest-first order holds inside
+        // each group. Submitted cards render after both in the view.
+        usort($missing, function ($a, $b) {
+            $la = $a['locked'] && !$a['grant'];
+            $lb = $b['locked'] && !$b['grant'];
+            return $la <=> $lb;
+        });
+
         foreach ($submitted as &$sub) {
             $sub['was_late'] = $this->student_request->had_approved_late($student_id, $sub['assessment_id']);
         }

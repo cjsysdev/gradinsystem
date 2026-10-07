@@ -32,6 +32,21 @@ class Student_request extends MY_Model
         if (!$idx) {
             $this->db->query("ALTER TABLE `student_requests` ADD KEY `idx_assessment` (`assessment_id`, `student_id`)");
         }
+
+        // `type` was VARCHAR(10), which silently truncated 'late_submission'
+        // to 'late_submi' (db_debug is off, so no error) and made every
+        // type = 'late_submission' lookup miss. Widen it (never narrows), then
+        // repair rows written before the fix.
+        $col = $this->db->query("SHOW COLUMNS FROM `student_requests` LIKE 'type'")->row_array();
+        if ($col && preg_match('/varchar\((\d+)\)/i', $col['Type'], $m) && (int) $m[1] < 20) {
+            $this->db->query("ALTER TABLE `student_requests` MODIFY `type` VARCHAR(20) NOT NULL DEFAULT 'absence'");
+        }
+        $this->db->query("UPDATE `student_requests` SET `type` = 'late_submission' WHERE `type` = 'late_submi'");
+        // Truncated rows approved before the fix never got a window. Give them
+        // the form's default (24h), counted from when they were approved.
+        $this->db->query("UPDATE `student_requests`
+            SET `granted_until` = DATE_ADD(COALESCE(`updated_at`, `created_at`), INTERVAL 1 DAY)
+            WHERE `type` = 'late_submission' AND `status` = 'approved' AND `granted_until` IS NULL");
     }
 
     private function ready()
