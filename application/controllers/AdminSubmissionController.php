@@ -32,6 +32,10 @@ class AdminSubmissionController extends Admin_Controller
             $data['missing_students'] = $this->classworks->get_missing_submissions($assessment_id);
             $data['selected_assessment_id'] = $assessment_id;
 
+            // student_id => true: submitted through an approved late request
+            // (badge only; never an input to the score).
+            $data['late_students'] = $this->student_request->approved_late_students($assessment_id);
+
             $assessment = $this->assessments->as_array()->get($assessment_id);
             $data['widget_timer_config'] = null;
             if (!empty($assessment['widget_id'])) {

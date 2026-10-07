@@ -53,6 +53,8 @@ class assessments extends MY_Model
                 a.due,
                 a.term,
                 a.widget_id,
+                a.status,
+                a.schedule_id,
                 iot.type,
                 cs.section
             FROM
@@ -72,7 +74,7 @@ class assessments extends MY_Model
                 ON cs.semester_id = sem.trans_no
                 AND sem.is_active = 1
             WHERE
-                c.classwork_id IS NULL AND cs.section = ? AND a.status = 1
+                c.classwork_id IS NULL AND cs.section = ?
             ORDER BY
                 a.created_at DESC
         ";

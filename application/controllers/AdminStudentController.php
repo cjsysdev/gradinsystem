@@ -801,6 +801,7 @@ class AdminStudentController extends Admin_Controller
 
     public function student_requests()
     {
+        $this->student_request->install();
         $this->load->library('pagination');
 
         $status   = $this->input->get('status') ?: null;
@@ -875,11 +876,25 @@ class AdminStudentController extends Admin_Controller
             return;
         }
 
-        $this->db->where('request_id', $request_id)->update('student_requests', [
+        $update = [
             'status'      => $action,
             'admin_notes' => $admin_notes,
             'updated_at'  => date('Y-m-d H:i:s'),
-        ]);
+        ];
+
+        // Late-work approval reopens the classwork for this one student until
+        // the instructor-set deadline; submission_lock_helper.php enforces it.
+        if ($request['type'] === 'late_submission' && $action === 'approved') {
+            $until = strtotime((string) ($post['granted_until'] ?? ''));
+            if (!$until || $until <= time()) {
+                $this->session->set_flashdata('error', 'Choose a future date and time to reopen the classwork until.');
+                redirect('admin/student_requests?type=late_submission');
+                return;
+            }
+            $update['granted_until'] = date('Y-m-d H:i:s', $until);
+        }
+
+        $this->db->where('request_id', $request_id)->update('student_requests', $update);
 
         if ($action === 'approved' && $request['type'] === 'absence') {
             $this->db

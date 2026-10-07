@@ -68,9 +68,14 @@ $anav = $CI->Global_setting->nav_flags('admin');
                     ) ?>" class="btn btn-outline-secondary col m-2" title="Semesters"><i class="fa fa-calendar-alt"></i></a>
         <?php endif; ?>
         <?php if ($anav['admin_nav_student_requests']): ?>
+        <?php $req_pending = $this->student_request->count_pending(); ?>
         <a href="<?= base_url(
                         'admin/student_requests'
-                    ) ?>" class="btn btn-outline-secondary col m-2" title="Student Requests"><i class="fa fa-hand"></i></a>
+                    ) ?>" class="btn btn-outline-secondary col m-2 position-relative" title="Student Requests"><i class="fa fa-hand"></i>
+            <?php if ($req_pending > 0): ?>
+                <span class="badge badge-danger position-absolute" style="top:0; right:0; transform:translate(25%,-25%);"><?= $req_pending ?></span>
+            <?php endif; ?>
+        </a>
         <?php endif; ?>
         <?php if ($anav['admin_nav_password_resets']): ?>
         <?php $pw_pending = $this->db->table_exists('password_reset_requests') ? $this->password_reset_request->count_pending() : 0; ?>

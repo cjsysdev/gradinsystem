@@ -35,6 +35,8 @@
                class="btn btn-sm <?= $selected_type === 'absence' ? 'btn-info' : 'btn-outline-info' ?>">Absences</a>
             <a href="<?= $mk('pass', $selected_status) ?>"
                class="btn btn-sm <?= $selected_type === 'pass' ? 'btn-warning' : 'btn-outline-warning' ?>">Passes</a>
+            <a href="<?= $mk('late_submission', $selected_status) ?>"
+               class="btn btn-sm <?= $selected_type === 'late_submission' ? 'btn-primary' : 'btn-outline-primary' ?>">Late Work</a>
             &nbsp;
             <!-- Status filter -->
             <a href="<?= $mk($selected_type, null) ?>"
@@ -73,8 +75,9 @@
                 <?php foreach ($requests as $r): ?>
                     <?php
                     $status_class = $r['status'] === 'approved' ? 'success' : ($r['status'] === 'rejected' ? 'danger' : 'warning');
-                    $type_class   = $r['type'] === 'absence' ? 'info' : 'warning';
-                    $type_label   = $r['type'] === 'absence' ? 'Absence' : 'Pass';
+                    $is_late      = $r['type'] === 'late_submission';
+                    $type_class   = $r['type'] === 'absence' ? 'info' : ($is_late ? 'primary' : 'warning');
+                    $type_label   = $r['type'] === 'absence' ? 'Absence' : ($is_late ? 'Late Work' : 'Pass');
                     ?>
                     <tr>
                         <td><span class="badge badge-<?= $type_class ?>"><?= $type_label ?></span></td>
@@ -88,7 +91,12 @@
                             <small class="text-muted"><?= htmlspecialchars($r['class_name']) ?></small>
                         </td>
                         <td><?= htmlspecialchars($r['section']) ?><br><small><?= htmlspecialchars($r['day']) ?> <?= date('h:i A', strtotime($r['time_start'])) ?></small></td>
-                        <td><?= htmlspecialchars(substr($r['reason'], 0, 60)) ?><?= strlen($r['reason']) > 60 ? '…' : '' ?></td>
+                        <td>
+                            <?php if ($is_late && !empty($r['assessment_title'])): ?>
+                                <strong><?= htmlspecialchars(strip_tags($r['assessment_title'])) ?></strong><br>
+                            <?php endif; ?>
+                            <?= htmlspecialchars(substr($r['reason'], 0, 60)) ?><?= strlen($r['reason']) > 60 ? '…' : '' ?>
+                        </td>
                         <td><span class="badge badge-<?= $status_class ?>"><?= ucfirst($r['status']) ?></span></td>
                         <td><small><?= date('M d, Y', strtotime($r['created_at'])) ?></small></td>
                         <td>
@@ -117,7 +125,7 @@
                                             <p class="font-weight-bold"><?= htmlspecialchars($r['lastname'] . ', ' . $r['firstname']) ?></p>
                                         </div>
                                         <div class="col-6">
-                                            <p class="text-muted small mb-1"><?= $type_label ?> Date</p>
+                                            <p class="text-muted small mb-1"><?= $is_late ? 'Requested' : $type_label . ' Date' ?></p>
                                             <p class="font-weight-bold"><?= date('l, F j, Y', strtotime($r['request_date'])) ?></p>
                                         </div>
                                     </div>
@@ -131,6 +139,17 @@
                                             <p><?= htmlspecialchars($r['section']) ?> &bull; <?= htmlspecialchars($r['day']) ?> <?= date('h:i A', strtotime($r['time_start'])) ?></p>
                                         </div>
                                     </div>
+                                    <?php if ($is_late): ?>
+                                        <div class="mb-2">
+                                            <p class="text-muted small mb-1">Classwork</p>
+                                            <p>
+                                                <?= htmlspecialchars(strip_tags($r['assessment_title'] ?? '(deleted)')) ?>
+                                                <?php if (!empty($r['assessment_due'])): ?>
+                                                    <small class="text-muted">&bull; due <?= date('M j, Y g:i A', strtotime($r['assessment_due'])) ?></small>
+                                                <?php endif; ?>
+                                            </p>
+                                        </div>
+                                    <?php endif; ?>
                                     <div class="mb-2">
                                         <p class="text-muted small mb-1">Reason</p>
                                         <p><?= nl2br(htmlspecialchars($r['reason'])) ?></p>
@@ -140,6 +159,9 @@
                                         <span class="badge badge-<?= $status_class ?>"><?= ucfirst($r['status']) ?></span>
                                         <?php if ($r['admin_notes']): ?>
                                             <p class="mt-1 small"><?= htmlspecialchars($r['admin_notes']) ?></p>
+                                        <?php endif; ?>
+                                        <?php if ($is_late && $r['status'] === 'approved' && !empty($r['granted_until'])): ?>
+                                            <p class="mt-1 small text-success">Reopened until <?= date('M j, Y g:i A', strtotime($r['granted_until'])) ?></p>
                                         <?php endif; ?>
                                     </div>
 
@@ -152,6 +174,13 @@
                                                 <textarea name="admin_notes" class="form-control" rows="2"
                                                           placeholder="Reason for approval or rejection…"></textarea>
                                             </div>
+                                            <?php if ($is_late): ?>
+                                                <div class="form-group">
+                                                    <label class="font-weight-bold">Reopen until <small class="text-muted">(required to approve)</small></label>
+                                                    <input type="datetime-local" name="granted_until" class="form-control"
+                                                           value="<?= date('Y-m-d\TH:i', strtotime('+1 day')) ?>">
+                                                </div>
+                                            <?php endif; ?>
                                             <div class="d-flex justify-content-end">
                                                 <button type="submit" name="action" value="rejected" class="btn btn-danger mr-2">
                                                     <i class="fa fa-times"></i> Reject
@@ -180,7 +209,7 @@
             <i class="fa fa-info-circle"></i> No requests found
             <?php if ($selected_type || $selected_status): ?>
                 for
-                <?= $selected_type ? '<strong>' . ($selected_type === 'absence' ? 'Absences' : 'Passes') . '</strong>' : '' ?>
+                <?= $selected_type ? '<strong>' . ($selected_type === 'absence' ? 'Absences' : ($selected_type === 'late_submission' ? 'Late Work' : 'Passes')) . '</strong>' : '' ?>
                 <?= $selected_status ? 'with status <strong>' . htmlspecialchars($selected_status) . '</strong>' : '' ?>
             <?php endif; ?>.
         </div>

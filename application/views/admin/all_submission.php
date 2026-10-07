@@ -198,6 +198,10 @@
                                     // doesn't measure it); 0 = tracked and clean, so only a
                                     // positive count is worth a badge. Client-reported, so this is
                                     // a nudge to look closer — never an input to the score. ?>
+                                    <?php if (!empty($late_students[(int) $row['trans_no']])): ?>
+                                        <span class="badge badge-warning align-middle" style="font-size:0.5em;"
+                                              title="Submitted through an instructor-approved late request">Late (approved)</span>
+                                    <?php endif; ?>
                                     <?php if (!empty($row['switch_count'])): ?>
                                         <span class="badge badge-warning align-middle" style="font-size:0.5em;"
                                               title="Left the quiz tab <?= (int) $row['switch_count'] ?> time(s) during the attempt (client-reported)">

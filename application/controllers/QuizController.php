@@ -18,6 +18,7 @@ class QuizController extends CI_Controller
         // Same gate as every other assessment entry point — see
         // clearance_helper.php.
         if (clearance_gate($assessment_id)) return;
+        if (submission_gate($assessment_id)) return;
 
         // Fetch the JSON file path for the given assessment_id
         $this->load->database();
@@ -85,6 +86,7 @@ class QuizController extends CI_Controller
     public function submit($assessment_id)
     {
         if (clearance_gate($assessment_id)) return;
+        if (submission_gate($assessment_id)) return;
 
         $session_key = 'shuffled_questions_' . $assessment_id;
         $questions = $this->session->userdata($session_key);

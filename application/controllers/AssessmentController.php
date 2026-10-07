@@ -32,6 +32,7 @@ class AssessmentController extends CI_Controller
         // interactive quiz, a brainstorm or a group activity redirected out of
         // this method before the check ever ran. See clearance_helper.php.
         if (clearance_gate($classwork)) return;
+        if (submission_gate($classwork)) return;
 
         $widget = null;
         if (!empty($classwork['widget_id'])) {
@@ -202,6 +203,7 @@ class AssessmentController extends CI_Controller
         // Gating the page alone would only hide the form — this endpoint is a
         // plain POST anyone can replay. See clearance_helper.php.
         if (clearance_gate($assessment_id, 'classwork')) return;
+        if (submission_gate($assessment_id, 'classwork')) return;
 
         // Initialize submission data
         $submission_data = [
@@ -406,6 +408,7 @@ class AssessmentController extends CI_Controller
         $code = $this->input->post('code');
 
         if (clearance_gate_json($assessment_id)) return;
+        if (submission_gate_json($assessment_id)) return;
 
         if (empty($student_id) || empty($assessment_id)) {
             echo json_encode(['ok' => false, 'error' => 'missing_params']);

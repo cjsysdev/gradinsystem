@@ -122,6 +122,7 @@ $route['add_reason'] = 'AttendanceController/add_reason';
 // Classwork Routes
 $route['classwork'] = 'ClassworkController/classwork';
 $route['submit_classwork'] = 'ClassworkController/submit_classwork';
+$route['classwork/request_access'] = 'ClassworkController/request_access';
 $route['student_submission/(:num)'] = 'ClassworkController/student_submission/$1';
 $route['start_class'] = 'ClassworkController/start_class';
 $route['add_score'] = 'ClassworkController/add_score';
