@@ -89,6 +89,34 @@ $file_it_ans   = $existing['file_it'] ?? [];
     #chapter-worksheet-widget .cw-fileit-field { flex: 1 1 180px; }
     #chapter-worksheet-widget .cw-fileit-field label { font-size: 12px; color: #6c757d; margin-bottom: 2px; display: block; }
     #chapter-worksheet-widget .cw-fileit-check { flex: 0 0 auto; font-size: 13px; padding-bottom: 6px; }
+    #chapter-worksheet-widget .cw-answer, #chapter-worksheet-widget td { overflow-wrap: anywhere; }
+    #chapter-worksheet-widget textarea { resize: vertical; }
+    #chapter-worksheet-widget .cw-grid-table td { min-width: 120px; }
+    #chapter-worksheet-widget .cw-grid-table textarea.cw-cell { min-width: 200px; }
+    /* Phones: tables become one card per row, each cell labelled by its column
+       name (td[data-label]) so inputs get the full screen width instead of a
+       squeezed column. */
+    @media (max-width: 575.98px) {
+        #chapter-worksheet-widget .cw-meta,
+        #chapter-worksheet-widget .cw-section,
+        #chapter-worksheet-widget .cw-callout { padding: 12px; }
+        #chapter-worksheet-widget .form-control,
+        #chapter-worksheet-widget textarea { font-size: 16px; }
+        #chapter-worksheet-widget table.cw-stack { border: 0; }
+        #chapter-worksheet-widget table.cw-stack thead { display: none; }
+        #chapter-worksheet-widget table.cw-stack,
+        #chapter-worksheet-widget table.cw-stack tbody,
+        #chapter-worksheet-widget table.cw-stack tr,
+        #chapter-worksheet-widget table.cw-stack th,
+        #chapter-worksheet-widget table.cw-stack td { display: block; width: 100%; min-width: 0; }
+        #chapter-worksheet-widget table.cw-stack tr { border: 1px solid #dee2e6; border-radius: 6px; margin-bottom: 10px; overflow: hidden; }
+        #chapter-worksheet-widget table.cw-stack th,
+        #chapter-worksheet-widget table.cw-stack td { border: 0; padding: 8px 10px; }
+        #chapter-worksheet-widget table.cw-stack tbody th { background: #f6f5f1; border-bottom: 1px solid #dee2e6; }
+        #chapter-worksheet-widget table.cw-stack td[data-label]::before { content: attr(data-label); display: block; font-size: 12px; font-weight: 600; color: #6c757d; margin-bottom: 4px; }
+        #chapter-worksheet-widget table.cw-stack textarea.cw-cell { min-width: 0; }
+        #chapter-worksheet-widget .cw-choice-btn { flex: 1 1 100%; text-align: left; }
+    }
 </style>
 <div id="chapter-worksheet-widget">
     <?php if (!empty($meta)): ?>
@@ -110,14 +138,14 @@ $file_it_ans   = $existing['file_it'] ?? [];
         <div class="cw-section">
             <div class="cw-section-head"><h5><?= htmlspecialchars($timeline['label'] ?? 'How this session runs') ?></h5></div>
             <div class="table-responsive mt-2">
-                <table class="table table-bordered table-sm cw-timeline-table mb-0">
+                <table class="table table-bordered table-sm cw-timeline-table cw-stack mb-0">
                     <thead><tr><th style="width:90px">Time</th><th style="width:160px">Move</th><th>What you do</th></tr></thead>
                     <tbody>
                         <?php foreach ($timeline['moves'] as $mv): ?>
                             <tr>
-                                <td><?= htmlspecialchars($mv['time'] ?? '') ?></td>
-                                <td><strong><?= htmlspecialchars($mv['move'] ?? '') ?></strong></td>
-                                <td><?= htmlspecialchars($mv['detail'] ?? '') ?></td>
+                                <td data-label="Time"><?= htmlspecialchars($mv['time'] ?? '') ?></td>
+                                <td data-label="Move"><strong><?= htmlspecialchars($mv['move'] ?? '') ?></strong></td>
+                                <td data-label="What you do"><?= htmlspecialchars($mv['detail'] ?? '') ?></td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -156,7 +184,7 @@ $file_it_ans   = $existing['file_it'] ?? [];
                 $grid_val = is_array($answer) ? $answer : [];
             ?>
                 <div class="table-responsive">
-                    <table class="table table-bordered table-sm mb-0">
+                    <table class="table table-bordered table-sm cw-grid-table cw-stack mb-0">
                         <thead><tr><th></th><?php foreach ($columns as $col): ?><th><?= htmlspecialchars($col['name'] ?? '') ?></th><?php endforeach; ?></tr></thead>
                         <tbody>
                             <?php foreach ($grid_rows as $row):
@@ -172,7 +200,7 @@ $file_it_ans   = $existing['file_it'] ?? [];
                                         $ctype = $col['type'] ?? 'text';
                                         $cval = $row_vals[$ci] ?? '';
                                     ?>
-                                        <td data-col="<?= $ci ?>">
+                                        <td data-col="<?= $ci ?>" data-label="<?= htmlspecialchars($col['name'] ?? '') ?>">
                                             <?php if ($readonly): ?>
                                                 <?php if ($ctype === 'checkbox'): ?>
                                                     <?= !empty($cval) ? '&#9745;' : '&#9744;' ?>
@@ -472,9 +500,23 @@ $file_it_ans   = $existing['file_it'] ?? [];
         if (codeField) codeField.value = window.getWidgetState();
     };
 
-    widget.addEventListener('input', updateProgress);
+    // Grow each textarea to fit its text so a long answer is readable in full
+    // (a 2-row box in a narrow column showed only a few letters per line).
+    function autoGrow(ta) {
+        if (!ta.scrollHeight) return; // hidden — leave the rows-based height
+        ta.style.height = 'auto';
+        ta.style.height = (ta.scrollHeight + 2) + 'px';
+    }
+    function growAll() { widget.querySelectorAll('textarea').forEach(autoGrow); }
+
+    const baseSetState = window.setWidgetState;
+    window.setWidgetState = function (content) { baseSetState(content); growAll(); };
+
+    widget.addEventListener('input', e => { if (e.target.tagName === 'TEXTAREA') autoGrow(e.target); updateProgress(); });
     widget.addEventListener('change', updateProgress);
+    window.addEventListener('resize', growAll);
     updateProgress();
+    growAll();
 })();
 </script>
 <?php endif; ?>

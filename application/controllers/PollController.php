@@ -218,7 +218,7 @@ class PollController extends CI_Controller
 
         $is_oe = $question['question_type'] === 'open_ended';
 
-        $this->_json([
+        $payload = [
             'ok'            => true,
             'question_type' => $question['question_type'],
             'results'       => $is_oe
@@ -226,7 +226,11 @@ class PollController extends CI_Controller
                 : $this->Polls->get_mc_results($question_id),
             'total'         => $this->Polls->get_total_responses($question_id),
             'show_results'  => (bool) $question['show_results'],
-        ]);
+        ];
+        if ($is_oe) {
+            $payload['feed'] = $this->Polls->get_oe_feed($question_id);
+        }
+        $this->_json($payload);
     }
 
     // AJAX: returns active poll for attendance banner

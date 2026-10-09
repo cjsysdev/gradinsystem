@@ -170,6 +170,21 @@ $accent_map = [
     #case-dossier-widget .cd-evidence-label { font-size: 12px; color: #6c757d; margin: 8px 0 4px; }
     #case-dossier-widget .cd-evidence-input { width: 100%; font-size: 13px; border: 1px solid #e3e1da; border-radius: 6px; background: #fdfcf9; padding: 8px 10px; resize: vertical; }
     #case-dossier-widget .cd-evidence-input:focus { outline: none; border-color: #357abd; background: #fff; }
+    #case-dossier-widget .cd-answer { overflow-wrap: anywhere; }
+    #case-dossier-widget textarea { resize: vertical; }
+    /* Phones: reclaim the nested padding (section > group > dossier) for the
+       inputs, and use 16px text so it's readable and iOS doesn't zoom on focus. */
+    @media (max-width: 575.98px) {
+        #case-dossier-widget .cd-meta,
+        #case-dossier-widget .cd-section,
+        #case-dossier-widget .cd-group { padding: 12px; }
+        #case-dossier-widget .cd-dossier { padding: 10px; }
+        #case-dossier-widget .cd-rf-q { display: block; margin-left: 0; margin-top: 2px; }
+        #case-dossier-widget .form-control,
+        #case-dossier-widget textarea,
+        #case-dossier-widget .cd-evidence-input { font-size: 16px; }
+        #case-dossier-widget .cd-choice-btn { display: block; width: 100%; text-align: left; margin-right: 0; }
+    }
 </style>
 <div id="case-dossier-widget">
     <?php if (!empty($meta)): ?>
@@ -424,8 +439,21 @@ $accent_map = [
         if (codeField) codeField.value = window.getWidgetState();
     };
 
-    widget.addEventListener('input', updateProgress);
+    // Grow each textarea to fit its text so a long answer is readable in full.
+    function autoGrow(ta) {
+        if (!ta.scrollHeight) return; // hidden — leave the rows-based height
+        ta.style.height = 'auto';
+        ta.style.height = (ta.scrollHeight + 2) + 'px';
+    }
+    function growAll() { widget.querySelectorAll('textarea').forEach(autoGrow); }
+
+    const baseSetState = window.setWidgetState;
+    window.setWidgetState = function (content) { baseSetState(content); growAll(); };
+
+    widget.addEventListener('input', e => { if (e.target.tagName === 'TEXTAREA') autoGrow(e.target); updateProgress(); });
+    window.addEventListener('resize', growAll);
     updateProgress();
+    growAll();
 })();
 </script>
 <?php endif; ?>

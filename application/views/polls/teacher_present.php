@@ -22,17 +22,36 @@
   .waiting-msg { color: #666; font-size: 1.1rem; text-align: center; }
   .controls { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 16px; }
 
-  /* Word cloud */
-  #word-cloud-wrap { width: 100%; max-width: 640px; min-height: 240px; display: flex;
-                     flex-wrap: wrap; gap: 12px 16px; align-items: center; justify-content: center;
-                     padding: 16px; }
-  .wc-word { border-radius: 6px; padding: 4px 12px; font-weight: 700; line-height: 1.3;
-             transition: transform .3s; cursor: default; }
-  .wc-word:hover { transform: scale(1.1); }
-  #oe-list { width: 100%; max-width: 640px; max-height: 180px; overflow-y: auto;
-             display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 12px; }
-  .oe-chip { background: rgba(255,255,255,.1); border-radius: 20px; padding: 4px 12px;
-             font-size: .85rem; color: #ddd; }
+  /* Open-ended comment feed */
+  .cf-wrap { width: 100%; max-width: 680px; margin: 0 auto; text-align: left;
+             background: #0f1a33; border: 1px solid rgba(255,255,255,.08); border-radius: 12px; }
+  .cf-head { display: flex; align-items: center; justify-content: space-between; gap: 8px;
+             padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,.08); flex-wrap: wrap; }
+  .cf-head-title { font-weight: 700; font-size: .95rem; color: #ddd; }
+  .cf-head-title i { color: #e94560; margin-right: 6px; }
+  .cf-sort { display: flex; gap: 4px; }
+  .cf-sort button, .cf-anon { background: transparent; border: 1px solid rgba(255,255,255,.15); color: #aaa;
+                              border-radius: 16px; padding: 3px 12px; font-size: .78rem; cursor: pointer; }
+  .cf-sort button.on, .cf-anon.on { background: #e94560; border-color: #e94560; color: #fff; }
+  #cf-list { max-height: 460px; overflow-y: auto; padding: 8px 4px; }
+  #cf-list::-webkit-scrollbar { width: 6px; }
+  #cf-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 3px; }
+  .cf-item { display: flex; gap: 12px; padding: 10px 12px; border-radius: 10px; }
+  .cf-item.cf-new { animation: cfIn .45s ease-out; }
+  @keyframes cfIn { from { opacity: 0; transform: translateY(-10px); background: rgba(233,69,96,.18); }
+                    to   { opacity: 1; transform: none; background: transparent; } }
+  .cf-avatar { flex: 0 0 40px; height: 40px; border-radius: 50%; display: flex; align-items: center;
+               justify-content: center; font-weight: 700; font-size: .9rem; color: #fff; }
+  .cf-body { flex: 1; min-width: 0; }
+  .cf-bubble { background: rgba(255,255,255,.07); border-radius: 4px 16px 16px 16px; padding: 8px 14px;
+               display: inline-block; max-width: 100%; }
+  .cf-name { font-weight: 700; font-size: .85rem; color: #fff; }
+  .cf-text { font-size: 1.15rem; color: #e6e6e6; line-height: 1.4; word-wrap: break-word; white-space: pre-wrap; }
+  .cf-meta { display: flex; gap: 14px; align-items: center; font-size: .75rem; color: #888;
+             margin: 4px 0 0 6px; }
+  .cf-likes { color: #e94560; font-weight: 700; }
+  .cf-empty { color: #666; text-align: center; padding: 48px 16px; }
+  .cf-empty i { display: block; font-size: 2rem; margin-bottom: 10px; }
   .q-type-label { font-size: .75rem; text-transform: uppercase; letter-spacing: 2px;
                   color: #888; margin-bottom: 8px; text-align: center; }
 </style>
@@ -104,10 +123,21 @@
             <canvas id="results-chart" height="300"></canvas>
           </div>
 
-          <!-- Open-ended word cloud -->
+          <!-- Open-ended comment feed -->
           <div id="oe-cloud-wrap" style="display:none; width:100%">
-            <div id="word-cloud-wrap"></div>
-            <div id="oe-list"></div>
+            <div class="cf-wrap">
+              <div class="cf-head">
+                <span class="cf-head-title"><i class="fas fa-comments"></i><span id="cf-count">0</span> comments</span>
+                <div class="d-flex align-items-center" style="gap:8px">
+                  <div class="cf-sort">
+                    <button type="button" data-sort="new" class="on">Newest</button>
+                    <button type="button" data-sort="top">Top</button>
+                  </div>
+                  <button type="button" class="cf-anon" id="cf-anon"><i class="fas fa-user-secret"></i> Hide names</button>
+                </div>
+              </div>
+              <div id="cf-list"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -173,44 +203,112 @@
     chart.update('active');
   }
 
-  // ── Word Cloud (OE) ────────────────────────────────────────────────────
+  // ── Comment feed (OE) ──────────────────────────────────────────────────
 
-  function renderWordCloud(results) {
-    const wrap = document.getElementById('word-cloud-wrap');
-    const list = document.getElementById('oe-list');
-    wrap.innerHTML = '';
-    list.innerHTML = '';
+  let feedData  = [];
+  let feedSort  = 'new';
+  let feedAnon  = false;
+  let seenIds   = new Set();
 
-    if (!results.length) {
-      wrap.innerHTML = '<span style="color:#555;font-size:1rem">Waiting for responses…</span>';
+  function resetFeed() {
+    feedData = [];
+    seenIds  = new Set();
+    renderFeed();
+  }
+
+  function timeAgo(sec) {
+    sec = Math.max(0, parseInt(sec) || 0);
+    if (sec < 10)    return 'just now';
+    if (sec < 60)    return sec + 's';
+    if (sec < 3600)  return Math.floor(sec / 60) + 'm';
+    if (sec < 86400) return Math.floor(sec / 3600) + 'h';
+    return Math.floor(sec / 86400) + 'd';
+  }
+
+  function avatarColor(seed) {
+    let h = 0;
+    for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
+    return WC_COLORS[Math.abs(h) % WC_COLORS.length];
+  }
+
+  function renderFeed() {
+    const list = document.getElementById('cf-list');
+    document.getElementById('cf-count').textContent = feedData.length;
+
+    if (!feedData.length) {
+      list.innerHTML = '<div class="cf-empty"><i class="far fa-comment-dots"></i>Waiting for responses…</div>';
       return;
     }
 
-    const maxCount = Math.max(...results.map(r => parseInt(r.count)));
+    // "Likes" = how many students posted the same answer (case/space-insensitive)
+    const norm   = t => t.trim().toLowerCase().replace(/\s+/g, ' ');
+    const tally  = {};
+    feedData.forEach(r => { const k = norm(r.response_text); tally[k] = (tally[k] || 0) + 1; });
 
-    results.forEach((r, i) => {
-      const count = parseInt(r.count);
-      const ratio = count / maxCount;
-      // Font size 1rem – 3.5rem based on frequency
-      const size  = (1 + ratio * 2.5).toFixed(2);
-      const span  = document.createElement('span');
-      span.className   = 'wc-word';
-      span.textContent = r.response_text;
-      span.style.fontSize        = size + 'rem';
-      span.style.backgroundColor = WC_COLORS[i % WC_COLORS.length] + '33'; // 20% opacity bg
-      span.style.color           = WC_COLORS[i % WC_COLORS.length];
-      span.title = count + ' response' + (count !== 1 ? 's' : '');
-      wrap.appendChild(span);
+    const rows = feedData.map((r, i) => ({ ...r, likes: tally[norm(r.response_text)], idx: i }));
+    if (feedSort === 'top') rows.sort((a, b) => b.likes - a.likes || a.idx - b.idx);
+
+    const keepScroll = list.scrollTop;
+    list.innerHTML = '';
+
+    rows.forEach(r => {
+      const first = (r.firstname || '').trim();
+      const last  = (r.lastname  || '').trim();
+      const name  = feedAnon ? 'Anonymous' : ((first + ' ' + last).trim() || 'Student');
+      const init  = feedAnon ? '' : ((first[0] || '') + (last[0] || '')).toUpperCase() || '?';
+
+      const item = document.createElement('div');
+      item.className = 'cf-item' + (seenIds.has(r.response_id) ? '' : ' cf-new');
+
+      const av = document.createElement('div');
+      av.className = 'cf-avatar';
+      av.style.background = feedAnon ? '#3a3f58' : avatarColor(name);
+      if (feedAnon) av.innerHTML = '<i class="fas fa-user"></i>'; else av.textContent = init;
+
+      const body   = document.createElement('div');
+      body.className = 'cf-body';
+      const bubble = document.createElement('div');
+      bubble.className = 'cf-bubble';
+      const nm = document.createElement('div');
+      nm.className = 'cf-name';
+      nm.textContent = name;
+      const tx = document.createElement('div');
+      tx.className = 'cf-text';
+      tx.textContent = r.response_text;
+      bubble.append(nm, tx);
+
+      const meta = document.createElement('div');
+      meta.className = 'cf-meta';
+      meta.innerHTML = '<span>' + timeAgo(r.age_sec) + '</span>' +
+        (r.likes > 1
+          ? '<span class="cf-likes"><i class="fas fa-heart"></i> ' + r.likes + ' said this</span>'
+          : '');
+
+      body.append(bubble, meta);
+      item.append(av, body);
+      list.appendChild(item);
     });
 
-    // Show recent individual responses as chips
-    results.slice(0, 30).forEach(r => {
-      const chip = document.createElement('span');
-      chip.className   = 'oe-chip';
-      chip.textContent = r.response_text + (r.count > 1 ? ' ×' + r.count : '');
-      list.appendChild(chip);
-    });
+    feedData.forEach(r => seenIds.add(r.response_id));
+    list.scrollTop = keepScroll;
   }
+
+  document.querySelectorAll('.cf-sort button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      feedSort = btn.dataset.sort;
+      document.querySelectorAll('.cf-sort button').forEach(b => b.classList.toggle('on', b === btn));
+      renderFeed();
+    });
+  });
+
+  document.getElementById('cf-anon').addEventListener('click', function () {
+    feedAnon = !feedAnon;
+    this.classList.toggle('on', feedAnon);
+    this.innerHTML = feedAnon
+      ? '<i class="fas fa-user"></i> Show names'
+      : '<i class="fas fa-user-secret"></i> Hide names';
+    renderFeed();
+  });
 
   // ── Polling ─────────────────────────────────────────────────────────────
 
@@ -235,7 +333,9 @@
         updateToggleBtn();
 
         if (d.question_type === 'open_ended') {
-          renderWordCloud(d.results);
+          if (qid != activeQid) return; // stale response from a previous question
+          feedData = d.feed || [];
+          renderFeed();
         } else {
           updateChart(d.results);
         }
@@ -266,7 +366,7 @@
     document.getElementById('ctrl-row').style.display    = 'flex';
     document.getElementById('active-question-text').textContent = q.question_text;
     document.getElementById('active-type-label').textContent =
-      activeType === 'open_ended' ? 'Open-Ended · Word Cloud' : 'Multiple Choice';
+      activeType === 'open_ended' ? 'Open-Ended · Comments' : 'Multiple Choice';
 
     const mcWrap = document.getElementById('mc-chart-wrap');
     const oeWrap = document.getElementById('oe-cloud-wrap');
@@ -275,7 +375,7 @@
       mcWrap.style.display = 'none';
       oeWrap.style.display = '';
       if (chart) { chart.destroy(); chart = null; }
-      renderWordCloud([]);
+      resetFeed();
     } else {
       oeWrap.style.display = 'none';
       mcWrap.style.display = '';

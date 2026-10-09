@@ -213,6 +213,20 @@ class Polls extends CI_Model
         return $this->db->query($sql, [$question_id])->result_array();
     }
 
+    // Returns individual open-ended responses (newest first) for the presenter comment feed.
+    // age_sec is computed in SQL so it is immune to PHP/MySQL/browser clock or timezone drift.
+    public function get_oe_feed($question_id)
+    {
+        $sql = "SELECT r.response_id, r.response_text,
+                       TIMESTAMPDIFF(SECOND, r.answered_at, NOW()) AS age_sec,
+                       sm.firstname, sm.lastname
+                FROM poll_responses r
+                LEFT JOIN student_master sm ON sm.trans_no = r.student_id
+                WHERE r.question_id = ? AND r.response_text IS NOT NULL AND r.response_text != ''
+                ORDER BY r.answered_at DESC, r.response_id DESC";
+        return $this->db->query($sql, [$question_id])->result_array();
+    }
+
     public function get_total_responses($question_id)
     {
         return $this->db->where('question_id', $question_id)->count_all_results('poll_responses');
