@@ -142,6 +142,25 @@ class AssessmentController extends CI_Controller
             return;
         }
 
+        // Code Snippet problem pool: pin the problem the moment it is first
+        // shown. A difficulty-tagged pick follows the student's standing,
+        // which moves while the instructor scores the lab live — without the
+        // pin, the problem saved on Turn In could differ from the one on screen.
+        // Only `code` is written (score/status untouched), and not while a
+        // timed batch is still waiting (the problem isn't shown yet).
+        if ($widget && $widget['widget_key'] === 'code_snippet' && $prior
+            && !($timer && $timer['phase'] === 'waiting')
+            && !isset($widget_existing['problem'])) {
+            $snippet_config = json_decode($classwork['given'] ?? '', true) ?: [];
+            if (count($this->Widgets_model->code_snippet_problems($snippet_config)) > 1) {
+                $widget_existing = is_array($widget_existing) ? $widget_existing : [];
+                $widget_existing['problem'] = $this->Widgets_model->code_snippet_problem_index(
+                    $snippet_config, $widget_existing, $this->session->student_id, $classwork_id
+                );
+                $this->classworks->update(['code' => json_encode($widget_existing)], $prior->classwork_id);
+            }
+        }
+
         $data = [
             'classwork' => $classwork,
             'is_cleared' => clearance_allows($classwork),

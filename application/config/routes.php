@@ -150,6 +150,7 @@ $route['secure_quiz/test'] = 'SecureQuizController/test';
 $route['secure_quiz/submit_test'] = 'SecureQuizController/submit_test';
 $route['secure_quiz/(:num)'] = 'SecureQuizController/index/$1';
 $route['secure_quiz/submit/(:num)'] = 'SecureQuizController/submit/$1';
+$route['secure_quiz/backup/(:num)'] = 'SecureQuizController/backup/$1';
 
 // Interactive Quiz Routes
 $route['interactive_quiz/topics'] = 'InteractiveQuizController/list_topics';
@@ -279,6 +280,7 @@ $route['admin/toggle_semester_release/(:num)'] = 'AdminStudentController/toggle_
 $route['admin/settings'] = 'AdminController/settings';
 $route['admin/save_nav_settings'] = 'AdminController/save_nav_settings';
 $route['admin/save_past_due_settings'] = 'AdminController/save_past_due_settings';
+$route['admin/save_exam_settings'] = 'AdminController/save_exam_settings';
 
 // Class Materials. Admin uploads course/demo files into assets/materials/
 // {CLASS_CODE}/ and assigns them to class_schedule sections; students see only

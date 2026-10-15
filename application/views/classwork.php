@@ -160,7 +160,7 @@ if (!function_exists('truncate_html_preserve')) {
             </div>
           <?php endforeach; ?>
 
-          <?php if (!$this->session->exam_term): ?>
+          <?php if (!exam_term_on()): ?>
             <?php foreach ($submitted as $row) : ?>
               <div class="card mb-4 submitted-card">
                 <div class="card-header">

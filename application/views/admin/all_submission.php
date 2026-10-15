@@ -134,6 +134,37 @@
                             </a>
                         </div>
                     <?php endif; ?>
+                    <?php // Network-failure fallback: while open, students with no
+                    // submission upload the encrypted backup their phone saved
+                    // at submit (SecureQuizController::backup()). ?>
+                    <?php if (!empty($backup_window)): ?>
+                        <div class="card mb-3 text-left" id="backupWindowCard">
+                            <div class="card-body py-2">
+                                <?php if (empty($backup_window['installed'])): ?>
+                                    <small class="text-muted"><i class="fa fa-cloud-arrow-up"></i> Backup upload needs <code>WidgetsController/install</code> to be re-run.</small>
+                                <?php elseif ($backup_window['open']): ?>
+                                    <div class="d-flex align-items-center flex-wrap">
+                                        <span class="badge badge-success mr-2">Backup upload OPEN</span>
+                                        <small class="mr-2">until <?= date('g:i A', strtotime($backup_window['until'])) ?></small>
+                                        <button type="button" class="btn btn-sm btn-outline-danger ml-auto" onclick="setBackupWindow('close')">Close</button>
+                                    </div>
+                                    <div class="input-group input-group-sm mt-2">
+                                        <input type="text" class="form-control" readonly id="backupUploadUrl" value="<?= base_url('secure_quiz/backup/' . (int) $selected_assessment_id) ?>" onclick="this.select()">
+                                        <div class="input-group-append">
+                                            <button type="button" class="btn btn-outline-secondary" onclick="navigator.clipboard && navigator.clipboard.writeText(document.getElementById('backupUploadUrl').value).then(() => showScoreAlert(true, 'Link copied'))">Copy link</button>
+                                        </div>
+                                    </div>
+                                    <small class="text-muted d-block mt-1">Students without a submission who open this quiz will see the upload page. Each uploaded file is re-graded by the server.</small>
+                                <?php else: ?>
+                                    <div class="d-flex align-items-center flex-wrap">
+                                        <span class="badge badge-secondary mr-2">Backup upload closed</span>
+                                        <small class="text-muted mr-2">Network failed during submit? Let students upload their saved answer file.</small>
+                                        <button type="button" class="btn btn-sm btn-outline-primary ml-auto" onclick="setBackupWindow('open', 30)"><i class="fa fa-cloud-arrow-up"></i> Open for 30 min</button>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    <?php endif; ?>
                     <?php if (!empty($selected_assessment) && !empty($selected_assessment['is_groupings'])): ?>
                         <div class="mb-3">
                             <a href="<?= base_url('group_submissions/' . $selected_assessment_id) ?>" class="btn btn-sm btn-outline-info">
@@ -204,6 +235,12 @@
                                         <span class="badge badge-secondary align-middle" style="font-size:0.5em;"
                                               title="Created by the admin via Auto-submit missing activities — the student did not hand this in">Auto-submitted</span>
                                     <?php endif; ?>
+                                    <?php // Inserted by SecureQuizController::backup() from the student's
+                                    // encrypted backup file after a failed submit (re-graded server-side). ?>
+                                    <?php if (($row['status'] ?? '') === 'backup_upload'): ?>
+                                        <span class="badge badge-info align-middle" style="font-size:0.5em;"
+                                              title="The live submit failed; the student uploaded the backup file their phone saved, and the server re-graded it">Recovered from backup file</span>
+                                    <?php endif; ?>
                                     <?php if (!empty($late_students[(int) $row['trans_no']])): ?>
                                         <span class="badge badge-warning align-middle" style="font-size:0.5em;"
                                               title="Submitted through an instructor-approved late request">Late (approved)</span>
@@ -254,10 +291,21 @@
                                 ?>
                                     <div class="cs-grade" data-classwork-id="<?= $row['classwork_id'] ?>">
                                         <?php if (count($cs_pool) > 1): ?>
-                                            <div class="mb-1">
-                                                <span class="badge badge-info" style="font-size:0.9em;">
-                                                    <i class="fa fa-code"></i> Problem <?= $cs_pidx + 1 ?> of <?= count($cs_pool) ?><?= $cs_pool[$cs_pidx]['title'] !== '' ? ': ' . htmlspecialchars($cs_pool[$cs_pidx]['title']) : '' ?>
-                                                </span>
+                                            <?php // Override the randomizer's pick for this one student (AdminSubmissionController::set_snippet_problem()). ?>
+                                            <div class="mb-1 d-flex align-items-center">
+                                                <i class="fa fa-code text-info mr-1" title="Problem given to this student"></i>
+                                                <select class="form-control form-control-sm cs-problem-select" style="max-width:340px;"
+                                                        data-classwork-id="<?= (int) $row['classwork_id'] ?>"
+                                                        data-current="<?= (int) $cs_pidx ?>"
+                                                        data-has-code="<?= $cs_has_code ? '1' : '0' ?>"
+                                                        onchange="setSnippetProblem(this)">
+                                                    <?php foreach ($cs_pool as $pi => $pp): ?>
+                                                        <option value="<?= $pi ?>" data-difficulty="<?= $pp['difficulty'] ?>"<?= $pi === $cs_pidx ? ' selected' : '' ?>>
+                                                            Problem <?= $pi + 1 ?> of <?= count($cs_pool) ?><?= $pp['title'] !== '' ? ': ' . htmlspecialchars($pp['title']) : '' ?><?= $pp['difficulty'] !== '' ? ' (' . ucfirst($pp['difficulty']) . ')' : '' ?>
+                                                        </option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                                <span class="badge ml-1 cs-difficulty-badge"></span>
                                             </div>
                                         <?php endif; ?>
                                         <?php if ($cs_timer): ?>
@@ -922,6 +970,45 @@
             .catch(() => showScoreAlert(false, 'Error adding score.'));
     }
 
+    // Code Snippet problem pool: the difficulty badge beside each card's
+    // problem dropdown follows the selected option.
+    function refreshDifficultyBadge(select) {
+        const badge = select.parentNode.querySelector('.cs-difficulty-badge');
+        const level = select.options[select.selectedIndex].dataset.difficulty || '';
+        const cls = { easy: 'success', medium: 'warning', hard: 'danger' }[level];
+        badge.className = 'badge ml-1 cs-difficulty-badge' + (cls ? ' badge-' + cls : '');
+        badge.textContent = level ? level.charAt(0).toUpperCase() + level.slice(1) : '';
+    }
+    document.querySelectorAll('.cs-problem-select').forEach(refreshDifficultyBadge);
+
+    // Give one student a different pool problem. Only the pinned problem
+    // changes; their attached code and score are kept.
+    function setSnippetProblem(select) {
+        const previous = select.dataset.current;
+        if (select.dataset.hasCode === '1'
+            && !confirm('This student already attached code for their current problem. The code stays, but it will be filed under the new problem. Switch anyway?')) {
+            select.value = previous;
+            return;
+        }
+        fetch('<?= base_url('AdminSubmissionController/set_snippet_problem/') ?>' + select.dataset.classworkId, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ problem: select.value })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) throw new Error(data.error || 'Failed');
+                select.dataset.current = select.value;
+                refreshDifficultyBadge(select);
+                showScoreAlert(true, 'Problem changed. If the student has the page open, they need to refresh it.');
+            })
+            .catch(err => {
+                select.value = previous;
+                refreshDifficultyBadge(select);
+                showScoreAlert(false, 'Could not change the problem: ' + err.message);
+            });
+    }
+
     // AJAX call to add/update a score via classworks->add_score — works
     // whether the classwork already has a score or not, since add_score()
     // is an unconditional UPDATE, not an insert-if-missing.
@@ -1025,6 +1112,22 @@
     }
 
     const assessmentId = <?= json_encode($selected_assessment_id) ?>;
+
+    // Timed/Secure Quiz backup-upload window (AdminSubmissionController::secure_quiz_backup_window()).
+    function setBackupWindow(action, minutes) {
+        if (action === 'close' && !confirm('Close backup upload? Students will no longer be able to upload their files.')) return;
+        fetch('<?= base_url('AdminSubmissionController/secure_quiz_backup_window/') ?>' + assessmentId, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ action: action, minutes: minutes || '' })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) { showScoreAlert(false, data.message || 'Could not change backup upload.'); return; }
+                location.reload();
+            })
+            .catch(() => showScoreAlert(false, 'Error changing backup upload.'));
+    }
 
     // Reflect the persisted round immediately on load, so a refresh visibly
     // keeps the "N called" progress instead of looking like it reset. Both

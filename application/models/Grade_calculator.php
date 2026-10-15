@@ -599,8 +599,12 @@ class Grade_calculator extends CI_Model
      * term is complete, otherwise its renormalised "so far" figure, and NULL
      * when the term has nothing recorded at all (so an unstarted final term
      * drops out of the blend instead of counting as a zero).
+     *
+     * Public so other callers that need a term's "standing so far" (e.g.
+     * Widgets_model's Code Snippet difficulty matching) reuse this rule
+     * instead of re-deriving it.
      */
-    private function effective_percentage(array $term)
+    public function effective_percentage(array $term)
     {
         if (($term['status'] ?? '') === 'ok') {
             return $term['percentage'];

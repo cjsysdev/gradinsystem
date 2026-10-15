@@ -58,7 +58,7 @@
         } else if (spec.type === 'select') {
             input = el('select', { class: 'form-control form-control-sm' });
             (spec.options || []).forEach(function (opt) {
-                input.appendChild(el('option', { value: opt, text: opt }));
+                input.appendChild(el('option', { value: opt, text: (spec.optionLabels && spec.optionLabels[opt]) || opt }));
             });
             input.value = value != null ? value : (spec.default != null ? spec.default : '');
         } else { // text

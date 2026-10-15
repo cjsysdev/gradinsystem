@@ -681,7 +681,6 @@ class AdminStudentController extends Admin_Controller
             'username'     => $user->username,
             'profile_pic'  => $user->profile_pic,
             'online'       => true,
-            'exam_term'    => false,
             'exam_review'  => false,
         ]);
 

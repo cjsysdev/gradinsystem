@@ -203,6 +203,33 @@ class AdminAssessmentController extends Admin_Controller
         if (!$widget || $widget['widget_key'] !== 'code_snippet') {
             return null;
         }
+        // Difficulty-matching settings (Widgets_model::code_snippet_difficulty_settings()
+        // would quietly fall back to defaults on a bad value — say so instead).
+        if (isset($config['difficulty'])) {
+            $d = $config['difficulty'];
+            $prefix = 'Widget config not saved — "' . $widget['name'] . '": difficulty ';
+            if (!is_array($d)) {
+                return $prefix . 'settings must be an object.';
+            }
+            if (isset($d['basis']) && !in_array($d['basis'], ['overall', 'term'], true)) {
+                return $prefix . '"basis" must be "overall" or "term".';
+            }
+            if (isset($d['mode']) && !in_array($d['mode'], ['rank', 'cutoffs'], true)) {
+                return $prefix . '"mode" must be "rank" or "cutoffs".';
+            }
+            foreach (['medium_at', 'hard_at'] as $k) {
+                if (isset($d[$k]) && (!is_numeric($d[$k]) || $d[$k] < 0 || $d[$k] > 100)) {
+                    return $prefix . '"' . $k . '" must be a percentage from 0 to 100.';
+                }
+            }
+            if (isset($d['medium_at'], $d['hard_at']) && $d['hard_at'] < $d['medium_at']) {
+                return $prefix . '"hard_at" can\'t be lower than "medium_at".';
+            }
+            if (isset($d['no_grade']) && !in_array($d['no_grade'], Widgets_model::CODE_SNIPPET_DIFFICULTIES, true)) {
+                return $prefix . '"no_grade" must be one of ' . implode(', ', Widgets_model::CODE_SNIPPET_DIFFICULTIES) . '.';
+            }
+        }
+
         // Problem pool: every entry must have a problem — a blank one would be
         // skipped by Widgets_model::code_snippet_problems() and shift the
         // indexes students are pinned to. An empty list (what the visual
@@ -214,6 +241,12 @@ class AdminAssessmentController extends Admin_Controller
             foreach (array_values($config['problems']) as $i => $p) {
                 if (!is_array($p) || trim((string) ($p['problem'] ?? '')) === '') {
                     return 'Widget config not saved — "' . $widget['name'] . '": problem #' . ($i + 1) . ' needs a non-empty "problem".';
+                }
+                // A typo would silently read back as "untagged" and change who gets it.
+                $difficulty = strtolower(trim((string) ($p['difficulty'] ?? '')));
+                if ($difficulty !== '' && !in_array($difficulty, Widgets_model::CODE_SNIPPET_DIFFICULTIES, true)) {
+                    return 'Widget config not saved — "' . $widget['name'] . '": problem #' . ($i + 1) . ' has difficulty "' . $p['difficulty']
+                        . '"; use ' . implode(', ', Widgets_model::CODE_SNIPPET_DIFFICULTIES) . ', or leave it blank.';
                 }
             }
             return null;

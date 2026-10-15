@@ -93,6 +93,25 @@ class Global_setting extends CI_Model
         return array_map(function ($l) { return $l['enabled']; }, $this->nav_links($group));
     }
 
+    /**
+     * Exam mode: replaces the student nav bar with a single Exam button and
+     * hides submitted-work/answer review (classwork.php, student_submission.php,
+     * quiz_result.php). '1' = on; a missing row = off. Read per request through
+     * exam_term_on() (exam_mode_helper), not the session, so a toggle reaches
+     * students who are already logged in.
+     */
+    const EXAM_TERM_KEY = 'exam_term';
+
+    public function exam_term()
+    {
+        return $this->get(self::EXAM_TERM_KEY, '0') === '1';
+    }
+
+    public function set_exam_term($on)
+    {
+        $this->set(self::EXAM_TERM_KEY, $on ? '1' : '0');
+    }
+
     const PAST_DUE_TYPES_KEY = 'past_due_classwork_types';
 
     /**

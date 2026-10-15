@@ -262,7 +262,7 @@
 
         <?php if (
           isset($classwork['code']) &&
-          !$this->session->exam_term &&
+          !exam_term_on() &&
           $classwork['status'] !== 'viewed'
         ):
         ?>

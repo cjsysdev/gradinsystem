@@ -51,6 +51,16 @@ class AdminSubmissionController extends Admin_Controller
                 if (!empty($data['widget']) && $data['widget']['widget_key'] === 'code_snippet') {
                     $data['widget_timer_config'] = $assessment['timer_config'] ?? null;
                 }
+                // Timed/Secure Quiz network-failure fallback: the backup-file
+                // upload window (see secure_quiz_backup_window()).
+                if (!empty($data['widget']) && $data['widget']['widget_key'] === 'secure_quiz') {
+                    $this->load->library('Quiz_backup');
+                    $data['backup_window'] = [
+                        'installed' => $this->db->field_exists('backup_upload_until', 'assessment_section'),
+                        'until'     => $this->quiz_backup->window_until($assessment_id),
+                        'open'      => $this->quiz_backup->window_open($assessment_id),
+                    ];
+                }
             }
 
             // The randomizer's round, rendered on first paint so a refresh
@@ -65,6 +75,43 @@ class AdminSubmissionController extends Admin_Controller
         }
 
         $this->load->view('admin/all_submission', $data);
+    }
+
+    // Opens/closes a section's Timed/Secure Quiz backup-file upload window.
+    // While open, students with no submission can upload the encrypted backup
+    // their phone downloaded at submit (SecureQuizController::backup()), and
+    // it is re-graded into a classworks row. Opening sets an END time rather
+    // than a flag, so a forgotten window closes itself.
+    // POST action=open|close, minutes (open only, 5-180, default 30).
+    public function secure_quiz_backup_window($assessment_id)
+    {
+        if ($this->input->method() !== 'post') {
+            show_404();
+            return;
+        }
+
+        if (!$this->db->field_exists('backup_upload_until', 'assessment_section')) {
+            echo json_encode(['success' => false, 'message' => 'Run WidgetsController/install first to add the backup upload column.']);
+            return;
+        }
+
+        $assessment = $this->assessments->as_array()->get($assessment_id);
+        $this->load->model('Widgets_model');
+        $widget = !empty($assessment['widget_id']) ? $this->Widgets_model->get($assessment['widget_id']) : null;
+        if (!$widget || $widget['widget_key'] !== 'secure_quiz') {
+            echo json_encode(['success' => false, 'message' => 'Not a Timed/Secure Quiz.']);
+            return;
+        }
+
+        if ($this->input->post('action') === 'open') {
+            $minutes = min(180, max(5, (int) ($this->input->post('minutes') ?: 30)));
+            $until = date('Y-m-d H:i:s', time() + $minutes * 60);
+        } else {
+            $until = null;
+        }
+
+        $ok = $this->assessments->update_section($assessment_id, ['backup_upload_until' => $until]);
+        echo json_encode(['success' => (bool) $ok, 'until' => $until]);
     }
 
     // Class-wide item analysis for the two quiz widgets — "which questions did
@@ -799,6 +846,43 @@ class AdminSubmissionController extends Admin_Controller
                 ->get('classworks')
                 ->row('score'),
         ]);
+    }
+
+    // Code Snippet problem pool: hand one student a different problem than the
+    // one the randomizer picked (all_submission.php's per-card dropdown).
+    // Rewrites only the pinned `problem` in classworks.code — the student's
+    // attached code, timer state and score are kept as they are.
+    public function set_snippet_problem($classwork_id)
+    {
+        header('Content-Type: application/json');
+
+        $row = $this->db->where('classwork_id', (int) $classwork_id)->get('classworks')->row_array();
+        if (!$row) {
+            echo json_encode(['success' => false, 'error' => 'Submission not found.']);
+            return;
+        }
+
+        $assessment = $this->assessments->as_array()->get($row['assessment_id']);
+        $this->load->model('Widgets_model');
+        $widget = !empty($assessment['widget_id']) ? $this->Widgets_model->get($assessment['widget_id']) : null;
+        if (!$widget || $widget['widget_key'] !== 'code_snippet') {
+            echo json_encode(['success' => false, 'error' => 'Not a Code Snippet assessment.']);
+            return;
+        }
+
+        $pool = $this->Widgets_model->code_snippet_problems(json_decode($assessment['given'] ?? '', true) ?: []);
+        $problem = $this->input->post('problem');
+        if (!is_numeric($problem) || (int) $problem < 0 || (int) $problem >= count($pool)) {
+            echo json_encode(['success' => false, 'error' => 'No such problem in the pool.']);
+            return;
+        }
+
+        $code = json_decode($row['code'] ?? '', true);
+        $code = is_array($code) ? $code : [];
+        $code['problem'] = (int) $problem;
+        $this->classworks->update(['code' => json_encode($code)], $row['classwork_id']);
+
+        echo json_encode(['success' => true, 'problem' => (int) $problem]);
     }
 
     public function add_rand_score_incremental($classwork_id, $points = 2)

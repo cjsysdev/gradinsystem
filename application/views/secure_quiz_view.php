@@ -508,8 +508,19 @@
 
             // Local backup copy — encrypted so the file isn't an answer key in
             // the student's downloads folder. Best-effort by design.
+            // v2 payload: carries who/which quiz so SecureQuizController::backup()
+            // can turn it back into a submission if this POST is lost (format
+            // owned by libraries/Quiz_backup.php; it re-grades, never trusting
+            // is_correct here).
             try {
-                const encrypted = CryptoJS.AES.encrypt(JSON.stringify(results), 'teacherSecret').toString();
+                const backup = {
+                    v: 2,
+                    assessment_id: <?= json_encode(isset($assessment_id) ? (int) $assessment_id : null) ?>,
+                    student_id: <?= json_encode($this->session->student_id !== null ? (int) $this->session->student_id : null) ?>,
+                    switch_count: blurCount,
+                    results: results
+                };
+                const encrypted = CryptoJS.AES.encrypt(JSON.stringify(backup), <?= json_encode(Quiz_backup::PASSPHRASE) ?>).toString();
                 const blob = new Blob([encrypted], {
                     type: "application/json"
                 });

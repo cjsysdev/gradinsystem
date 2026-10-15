@@ -17,7 +17,7 @@
  *   { key, type:'textarea', label, placeholder, help, rows }
  *   { key, type:'number',   label, help, default, min }
  *   { key, type:'checkbox', label, help, default }
- *   { key, type:'select',   label, help, options:[...], default }
+ *   { key, type:'select',   label, help, options:[...], default, optionLabels:{value: 'shown text'} }
  *   { key, type:'list',     label, help, itemLabel, placeholder }   // array of strings
  *   { key, type:'group_list', label, help, itemLabel, fields:[...] } // array of objects
  *   { key, type:'group',      label, help, fields:[...] }            // one nested object
@@ -134,13 +134,29 @@ window.widgetSchemas = {
             { key: 'problem', type: 'textarea', label: 'Problem', rows: 4,
               placeholder: 'What should the program do?', help: 'Required, unless you add a problem pool below.' },
             { key: 'problems', type: 'group_list', label: 'Problem pool (optional)', itemLabel: 'Problem',
-              help: 'Add 2 or more and each student gets ONE at random (stable per student). Overrides "Problem" above. A problem with no starter code uses the shared one below.',
+              help: 'Add 2 or more and each student gets ONE at random (stable per student). Overrides "Problem" above. A problem with no starter code uses the shared one below. Tag difficulties and students are matched by standing: the section is ranked by current grade and higher-ranked students get harder problems.',
               fields: [
                 { key: 'title', type: 'text', label: 'Title (optional)', placeholder: 'e.g. Sum 1..N' },
+                { key: 'difficulty', type: 'select', label: 'Difficulty', options: ['', 'easy', 'medium', 'hard'], default: '',
+                  optionLabels: { '': 'Any (untagged)', easy: 'Easy', medium: 'Medium', hard: 'Hard' },
+                  help: 'Only students in the matching grade band get this problem. Untagged problems can go to any band.' },
                 { key: 'problem', type: 'textarea', label: 'Problem', rows: 3, placeholder: 'What should the program do?' },
                 { key: 'starter_code', type: 'textarea', label: 'Starter code (optional)', rows: 4 },
                 { key: 'sample_input', type: 'textarea', label: 'Sample input (optional)', rows: 2 },
                 { key: 'sample_output', type: 'textarea', label: 'Expected output (optional)', rows: 2 }
+              ] },
+            { key: 'difficulty', type: 'group', label: 'Difficulty matching (only used when pool problems have a difficulty)', fields: [
+                { key: 'basis', type: 'select', label: 'Grade to use', options: ['overall', 'term'], default: 'overall',
+                  optionLabels: { overall: 'Overall so far (midterm + final)', term: "This assessment's term only" } },
+                { key: 'mode', type: 'select', label: 'How students are grouped', options: ['rank', 'cutoffs'], default: 'rank',
+                  optionLabels: { rank: 'Rank within the section (equal groups)', cutoffs: 'Fixed grade cut-offs (below)' } },
+                { key: 'medium_at', type: 'number', label: 'Medium from (%)', default: 75, min: 0,
+                  help: 'Cut-offs mode only. Grade percentage, before transmutation.' },
+                { key: 'hard_at', type: 'number', label: 'Hard from (%)', default: 85, min: 0,
+                  help: 'Cut-offs mode only. Below "Medium from" = Easy.' },
+                { key: 'no_grade', type: 'select', label: 'Student with no grades yet gets', options: ['easy', 'medium', 'hard'], default: 'easy',
+                  optionLabels: { easy: 'Easy', medium: 'Medium', hard: 'Hard' },
+                  help: 'If the pool has no problem at a level, the nearest level is used.' }
               ] },
             { key: 'language', type: 'select', label: 'Language', options: ['c', 'cpp', 'java', 'csharp', 'php', 'html', 'css', 'javascript'], default: 'c',
               help: 'php, html, css and javascript make this a web problem: Sample input for php: write the submitted form as field=value, field=value (repeat name[]=x for checkboxes) and students see it drawn as a filled-in form. For css/javascript it is the starting HTML. Expected output: plain text (e.g. a result message) is shown as a result box; if it contains HTML tags it is shown as a rendered page with a Source tab. html, css and javascript get a Preview button; php is tested on each student\'s own XAMPP.' },

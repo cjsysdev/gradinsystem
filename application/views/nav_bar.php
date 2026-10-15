@@ -1,6 +1,6 @@
 <div class="container" id="nav-bar-container">
     <!-- The navigation bar will be dynamically hidden if discussion mode is activated -->
-    <?php if (!$this->session->exam_term): ?>
+    <?php if (!exam_term_on()): ?>
         <?php
         // Loaded through get_instance(), NOT $this: Loader::_ci_load()
         // copies the controller's properties onto $this once, *before*

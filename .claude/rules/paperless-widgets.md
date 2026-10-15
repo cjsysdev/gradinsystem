@@ -132,6 +132,21 @@ never re-grades against the current config** (the bank may have been edited
 since, and re-deriving would contradict the recorded `classworks.score`); it
 produces descriptive statistics only, never a grade, so `Grade_calculator` stays
 uninvolved.
+**Backup-file fallback** (2026-10-15): at submit, `secure_quiz_view.php`
+downloads a CryptoJS-encrypted copy of the attempt
+(`{v:2, assessment_id, student_id, switch_count, results}`; older files are a
+bare results array). If the POST is lost, the instructor opens a per-section
+window from `admin/all_submission.php` →
+`AdminSubmissionController::secure_quiz_backup_window()`, which sets
+`assessment_section.backup_upload_until` (an end time, so it closes itself;
+added by `Widgets_model::install()`). While it's open,
+`SecureQuizController::index()` shows students without a row the upload page
+(`views/secure_quiz_backup.php`), and `backup()` inserts the row with
+`status='backup_upload'` (badged on the submissions page).
+`libraries/Quiz_backup.php` is the ONE reader of the file format. The
+passphrase is public, so the file's `is_correct`/score are never trusted.
+Items are matched by trimmed question text to the session's drawn set (or the
+bank when the session is gone) and re-graded by `grade_quiz()`.
 A fourth widget, **Case Study Worksheet** (`case_study` widget_key, not in
 the original 6-widget plan — see plan doc §4 "Widget I"), covers narrative
 case-study activities (e.g. "Meet Maria the calamansi farmer," Session 1.2):
@@ -215,6 +230,22 @@ non-admin sees no problem text or starter code while their batch is
 `waiting`/`unassigned` (neither the waiting page nor the read-only review
 renders it, and the starter isn't in the page JS); it appears on the
 auto-reload when the batch opens.
+**Difficulty-matched pool** (2026-10-15): a pool entry may carry
+`difficulty: easy|medium|hard` (validated on save; blank = untagged = any
+band). When any entry is tagged, `code_snippet_problem_index()` matches the
+student to a level via `code_snippet_difficulty_for()`, tuned by the optional
+`given.difficulty` block (`code_snippet_difficulty_settings()`, validated on
+save): `basis` overall (provisional blend) | term (the assessment's own term
+via `Grade_calculator::effective_percentage()`), `mode` rank (equal bands over
+the levels actually used) | cutoffs (`medium_at`/`hard_at` %), and `no_grade`
+(default easy). A level the pool lacks falls to the nearest used one.
+The percentage is only used to rank, never shown. Since standings move while
+the lab is scored live, `assessment_view_code()` pins `problem` into
+`classworks.code` on first open (code only, skipped while a batch is
+`waiting`). Difficulty badges are admin-only, never shown to students.
+The admin can override one student's pick from the submission card's problem
+dropdown → `AdminSubmissionController::set_snippet_problem()`, which rewrites
+only `problem` in `classworks.code` (code, state and score untouched).
 **Optional timed batches** (2026-09, outside the original spec): for a
 PC-limited lab, `AdminAssessmentController::snippet_batches()`
 (`views/admin/snippet_batches.php`) splits a section's roster into batches,

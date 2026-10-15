@@ -51,6 +51,13 @@ class Widgets_model extends CI_Model
         if ($this->db->table_exists('assessment_section')) {
             $this->_add_column_if_missing('assessment_section', 'timer_config', 'LONGTEXT DEFAULT NULL');
 
+            // Timed/Secure Quiz backup-file upload window (per section: a
+            // network failure hits one room). NULL or a past time = closed, so
+            // a window the instructor forgets about closes itself. Read
+            // straight from assessment_section by Quiz_backup::window_until(),
+            // so assessment_full below doesn't need it.
+            $this->_add_column_if_missing('assessment_section', 'backup_upload_until', 'DATETIME DEFAULT NULL');
+
             // assessment_full is the read-only compat view nearly every query
             // site reads through (see Assessment_normalize_model + CLAUDE.md)
             // — re-create it here to also expose timer_config, so readers see
@@ -325,23 +332,40 @@ class Widgets_model extends CI_Model
                 continue;
             }
             $starter = (string) ($p['starter_code'] ?? '');
+            $difficulty = strtolower(trim((string) ($p['difficulty'] ?? '')));
             $pool[] = [
                 'title'         => trim((string) ($p['title'] ?? '')),
                 'problem'       => (string) $p['problem'],
                 'starter_code'  => $starter !== '' ? $starter : (string) ($config['starter_code'] ?? ''),
                 'sample_input'  => (string) ($p['sample_input'] ?? ''),
                 'sample_output' => (string) ($p['sample_output'] ?? ''),
+                'difficulty'    => in_array($difficulty, self::CODE_SNIPPET_DIFFICULTIES, true) ? $difficulty : '',
             ];
         }
         return $pool;
     }
 
+    // Easiest first. A pool entry's optional `difficulty` must be one of these
+    // (anything else reads back as '' = untagged).
+    const CODE_SNIPPET_DIFFICULTIES = ['easy', 'medium', 'hard'];
+
+    /** @var array "schedule_id:overall|midterm|final" => [student_id => percentage so far] */
+    private $code_snippet_standing_cache = [];
+    /** @var array section_id => {schedule_id, term} or null */
+    private $code_snippet_schedule_cache = [];
+
     /**
-     * Which pool index this student works on. Once a save has pinned it into
-     * classworks.code (`problem`), that wins — so editing the pool later never
-     * swaps a student's problem out from under their code. Before that, it is
-     * a stable pseudo-random pick seeded by section + student, so every page
-     * (student, review, admin list) agrees without storing anything.
+     * Which pool index this student works on. Once a save (or the first open,
+     * see AssessmentController::assessment_view_code()) has pinned it into
+     * classworks.code (`problem`), that wins — so editing the pool or a change
+     * in the student's grades never swaps a problem out from under their code.
+     *
+     * Before that: when any pool entry carries a `difficulty`, the student is
+     * matched to a level by their grade (code_snippet_difficulty_for(), tuned
+     * by `given.difficulty`) and picked from that level's problems
+     * (untagged entries count for every level). Otherwise it is a plain pick
+     * over the whole pool. Either way the pick within the candidates is a
+     * stable pseudo-random one seeded by section + student.
      *
      * @param  array             $config      assessments.given, decoded
      * @param  string|array|null $code_json   the student's classworks.code
@@ -350,7 +374,8 @@ class Widgets_model extends CI_Model
      */
     public function code_snippet_problem_index($config, $code_json, $student_id, $section_id)
     {
-        $n = count($this->code_snippet_problems($config));
+        $pool = $this->code_snippet_problems($config);
+        $n = count($pool);
         if ($n <= 1) {
             return 0;
         }
@@ -359,7 +384,141 @@ class Widgets_model extends CI_Model
             && (int) $data['problem'] >= 0 && (int) $data['problem'] < $n) {
             return (int) $data['problem'];
         }
-        return hexdec(substr(md5($section_id . ':' . $student_id), 0, 7)) % $n;
+
+        $candidates = array_keys($pool);
+        $levels = $this->code_snippet_pool_levels($pool);
+        if ($levels) {
+            $level = $this->code_snippet_difficulty_for($config, $levels, $student_id, $section_id);
+            $candidates = [];
+            foreach ($pool as $i => $p) {
+                if ($p['difficulty'] === $level || $p['difficulty'] === '') {
+                    $candidates[] = $i;
+                }
+            }
+        }
+        return $candidates[hexdec(substr(md5($section_id . ':' . $student_id), 0, 7)) % count($candidates)];
+    }
+
+    /** Difficulty levels actually used in a normalized pool, easiest first ([] = no tags). */
+    public function code_snippet_pool_levels(array $pool)
+    {
+        $used = array_column($pool, 'difficulty');
+        return array_values(array_intersect(self::CODE_SNIPPET_DIFFICULTIES, $used));
+    }
+
+    /**
+     * The pool's difficulty-matching settings (`given.difficulty`), with
+     * defaults filled in. Every key is optional; a config without the block
+     * behaves exactly as before the settings existed.
+     *
+     *   basis    'overall' (both terms blended) | 'term' (only this
+     *            assessment's own term; tentative-final reads the final term)
+     *   mode     'rank'    — rank the section, split into equal bands
+     *            'cutoffs' — fixed grade percentages: hard_at and up = hard,
+     *                        medium_at and up = medium, below = easy
+     *   medium_at, hard_at   percentages for 'cutoffs'
+     *   no_grade level for a student with nothing recorded yet
+     */
+    public function code_snippet_difficulty_settings($config)
+    {
+        $d = is_array($config['difficulty'] ?? null) ? $config['difficulty'] : [];
+        $medium_at = is_numeric($d['medium_at'] ?? null) ? (float) $d['medium_at'] : 75.0;
+        $hard_at   = is_numeric($d['hard_at'] ?? null) ? (float) $d['hard_at'] : 85.0;
+        return [
+            'basis'     => ($d['basis'] ?? '') === 'term' ? 'term' : 'overall',
+            'mode'      => ($d['mode'] ?? '') === 'cutoffs' ? 'cutoffs' : 'rank',
+            'medium_at' => $medium_at,
+            'hard_at'   => max($hard_at, $medium_at),
+            'no_grade'  => in_array($d['no_grade'] ?? null, self::CODE_SNIPPET_DIFFICULTIES, true) ? $d['no_grade'] : 'easy',
+        ];
+    }
+
+    /**
+     * Which of $levels (the pool's used levels, easiest first) fits this
+     * student, per code_snippet_difficulty_settings(). In 'rank' mode the
+     * section is split into equal bands over the levels actually used, so
+     * every level stays in use even early in the term when numbers are thin.
+     * In 'cutoffs' mode (and for no_grade) a level the pool doesn't use falls
+     * to the nearest one it does, the easier one on a tie.
+     *
+     * The standing is Grade_calculator's percentage so far — used only to
+     * pick a problem, never shown or stored as a grade.
+     */
+    public function code_snippet_difficulty_for($config, array $levels, $student_id, $section_id)
+    {
+        $s = $this->code_snippet_difficulty_settings($config);
+        $pcts = $this->code_snippet_standings($section_id, $s['basis']);
+        $pct = $pcts[$student_id] ?? null;
+
+        if ($pct === null) {
+            return $this->code_snippet_nearest_level($s['no_grade'], $levels);
+        }
+        if ($s['mode'] === 'cutoffs') {
+            $target = $pct >= $s['hard_at'] ? 'hard' : ($pct >= $s['medium_at'] ? 'medium' : 'easy');
+            return $this->code_snippet_nearest_level($target, $levels);
+        }
+
+        // Percentile: share of the section strictly below; ties share the lower rank.
+        $below = 0;
+        foreach ($pcts as $other) {
+            if ($other < $pct) {
+                $below++;
+            }
+        }
+        $band = min(count($levels) - 1, (int) floor($below / count($pcts) * count($levels)));
+        return $levels[$band];
+    }
+
+    private function code_snippet_nearest_level($target, array $levels)
+    {
+        $order = array_flip(self::CODE_SNIPPET_DIFFICULTIES);
+        $best = $levels[0];
+        foreach ($levels as $level) {
+            if (abs($order[$level] - $order[$target]) < abs($order[$best] - $order[$target])) {
+                $best = $level;
+            }
+        }
+        return $best;
+    }
+
+    /**
+     * student_id => percentage so far, for every student on the section's
+     * roster who has anything recorded (others are absent from the map).
+     * 'overall' = the provisional blend of both terms; 'term' = the
+     * assessment's own term. Computed once per schedule + basis per request.
+     */
+    private function code_snippet_standings($section_id, $basis)
+    {
+        if (!array_key_exists($section_id, $this->code_snippet_schedule_cache)) {
+            $row = $this->db->select('schedule_id, term')
+                ->where('assessment_id', $section_id)
+                ->get('assessment_full')->row_array();
+            $this->code_snippet_schedule_cache[$section_id] = $row
+                ? ['schedule_id' => (int) $row['schedule_id'], 'term' => $row['term'] === 'midterm' ? 'midterm' : 'final']
+                : null;
+        }
+        $section = $this->code_snippet_schedule_cache[$section_id];
+        if (!$section) {
+            return [];
+        }
+
+        $key = $section['schedule_id'] . ':' . ($basis === 'term' ? $section['term'] : 'overall');
+        if (!isset($this->code_snippet_standing_cache[$key])) {
+            $this->load->model('Grade_calculator');
+            $sheet = $this->Grade_calculator->for_schedule_final($section['schedule_id'], FALSE);
+
+            $pcts = [];
+            foreach ($sheet['students'] as $sid => $st) {
+                $pct = $basis === 'term'
+                    ? $this->Grade_calculator->effective_percentage($st[$section['term']])
+                    : ($st['overall']['provisional']['percentage'] ?? null);
+                if ($pct !== null) {
+                    $pcts[$sid] = (float) $pct;
+                }
+            }
+            $this->code_snippet_standing_cache[$key] = $pcts;
+        }
+        return $this->code_snippet_standing_cache[$key];
     }
 
     // ── Code Snippet timed batches ──────────────────────────────────────

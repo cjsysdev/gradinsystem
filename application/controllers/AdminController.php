@@ -233,7 +233,22 @@ class AdminController extends Admin_Controller
         $data['student_nav'] = $this->Global_setting->nav_links('student');
         $data['admin_nav']   = $this->Global_setting->nav_links('admin');
         $data['past_due_types'] = $this->Global_setting->past_due_type_options();
+        $data['exam_term'] = $this->Global_setting->exam_term();
         $this->load->view('admin/settings', $data);
+    }
+
+    // Exam mode on/off (Global_setting::EXAM_TERM_KEY). Read live by
+    // exam_term_on(), so it applies to logged-in students on their next page.
+    public function save_exam_settings()
+    {
+        if ($this->input->method() !== 'post') {
+            redirect('admin/settings');
+        }
+        $this->load->model('Global_setting');
+        $on = (bool) $this->input->post('exam_term');
+        $this->Global_setting->set_exam_term($on);
+        $this->session->set_flashdata('success', 'Exam mode ' . ($on ? 'turned ON.' : 'turned OFF.'));
+        redirect('admin/settings');
     }
 
     // Save which io_types still show on the student Classwork page once past

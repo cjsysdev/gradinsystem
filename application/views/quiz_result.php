@@ -235,7 +235,7 @@ if (!empty($assessment_id)) {
         // answer key for a quiz other sections have yet to take. Opt-in per
         // controller ($show_review, set by SecureQuizController); the legacy
         // QuizController path leaves it unset and shows no review at all.
-        $show_review = !empty($show_review) && !$this->session->exam_term;
+        $show_review = !empty($show_review) && !exam_term_on();
         $missed = $show_review
             ? array_filter($results, function ($r) { return empty($r['is_correct']); })
             : [];

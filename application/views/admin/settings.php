@@ -33,6 +33,26 @@
     ?>
 
     <div class="row mt-3">
+        <div class="col-12 mb-3">
+            <div class="card shadow-sm <?= !empty($exam_term) ? 'border-danger' : '' ?>">
+                <div class="card-header font-weight-bold d-flex align-items-center">
+                    Exam Mode
+                    <span class="badge <?= !empty($exam_term) ? 'badge-danger' : 'badge-secondary' ?> ml-2"><?= !empty($exam_term) ? 'ON' : 'OFF' ?></span>
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted">While on, students see a single Exam button instead of their nav bar, and submitted work and quiz answer reviews are hidden. It takes effect on their next page load, so nobody needs to log in again.</p>
+                    <form method="POST" action="<?= base_url('admin/save_exam_settings') ?>">
+                        <div class="custom-control custom-switch mb-2">
+                            <input type="checkbox" class="custom-control-input" id="exam_term"
+                                   name="exam_term" value="1" <?= !empty($exam_term) ? 'checked' : '' ?>>
+                            <label class="custom-control-label" for="exam_term">Exam mode (exam term)</label>
+                        </div>
+                        <button type="submit" class="btn btn-sm btn-primary">Save</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         <?php foreach ($groups as $group => $g): ?>
             <div class="col-md-6 mb-3">
                 <div class="card shadow-sm h-100">

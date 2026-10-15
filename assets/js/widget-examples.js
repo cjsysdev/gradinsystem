@@ -387,22 +387,44 @@ const widgetExamples = {
         hint: 'A coding problem you check LIVE on each student\'s PC and mark RUN / EFFORT / ERROR (three one-tap buttons on the submissions page). Every enrolled student gets a submission row automatically, so absent students simply stay ungraded. "rubric" values are percent of Max Score (default 100 / 70 / 40). Students may attach or update their code anytime, even after grading; it never changes the score. Set "allow_code_submission" to false for a problem-only activity. "problem" is required — OR give a "problems" list [{title, problem, starter_code, sample_input, sample_output}] and each student gets ONE of them at random (stable per student; pool entries inherit the top-level starter_code). WEB PROBLEMS: set "language" to php, html, css or javascript. "sample_input" for php is the submitted form written as field=value, field=value (repeat subjects[]=WS101, subjects[]=CC104 for checkboxes) and students see it drawn as a filled-in form; for css/javascript it is the starting HTML. "sample_output" is plain text for a result message (shown in a result box) or HTML (shown rendered, plus a Source tab). html/css/javascript give students a Preview button; php cannot run in the browser, so it is tested on each student\'s XAMPP and you check it live. Example: {"problem":"Read ?name and print a greeting in an <h1>.","language":"php","starter_code":"<?php\\n\\n","sample_input":"name=Ana","sample_output":"<h1>Hello, Ana!</h1>"}.',
         example: {
             // Problem pool: each student is given ONE of these at random.
-            // For a single shared problem, use "problem" (+ sample_input /
-            // sample_output) at the top level instead of "problems".
+            // Optional "difficulty" (easy/medium/hard): students are ranked by
+            // their current grade in the section, and higher-ranked students
+            // get harder problems. For a single shared problem, use "problem"
+            // (+ sample_input / sample_output) at the top level instead.
             problems: [
                 {
                     title: 'Sum 1 to N',
+                    difficulty: 'easy',
                     problem: 'Write a C program that reads a positive integer N and prints the sum of all integers from 1 to N.\nUse a loop; do not use the formula n(n+1)/2.',
                     sample_input: '5',
                     sample_output: '15'
                 },
                 {
                     title: 'Count the Even Numbers',
+                    difficulty: 'medium',
                     problem: 'Write a C program that reads a positive integer N and prints how many even numbers there are from 1 to N.\nUse a loop and the % operator; do not compute it as N/2.',
                     sample_input: '7',
                     sample_output: '3'
+                },
+                {
+                    title: 'Prime Check',
+                    difficulty: 'hard',
+                    problem: 'Write a C program that reads a positive integer N and prints "PRIME" if N is prime, otherwise "NOT PRIME".\nUse a loop that stops early once a divisor is found.',
+                    sample_input: '29',
+                    sample_output: 'PRIME'
+                },
+                {
+                    title: 'Reverse the Digits',
+                    difficulty: 'hard',
+                    problem: 'Write a C program that reads a positive integer N and prints its digits in reverse order as a number.\nUse a loop with % and /; do not convert it to a string.',
+                    sample_input: '1203',
+                    sample_output: '3021'
                 }
             ],
+            // How students are matched to a difficulty (all optional).
+            // mode 'rank' splits the section into equal groups; 'cutoffs'
+            // uses hard_at / medium_at grade percentages instead.
+            difficulty: { basis: 'overall', mode: 'rank', medium_at: 75, hard_at: 85, no_grade: 'easy' },
             language: 'c',
             starter_code: '#include <stdio.h>\n\nint main() {\n    int n;\n\n    return 0;\n}',
             rubric: { run: 100, effort: 70, error: 40 },

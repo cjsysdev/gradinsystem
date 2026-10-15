@@ -38,10 +38,19 @@
 							password
 						).toString(CryptoJS.enc.Utf8);
 						if (decrypted) {
-							const results = JSON.parse(decrypted);
+							// Legacy files are a bare results array; v2 files wrap it as
+							// {v, assessment_id, student_id, switch_count, results}.
+							const payload = JSON.parse(decrypted);
+							const results = Array.isArray(payload) ? payload : payload.results || [];
+							const meta = Array.isArray(payload)
+								? ""
+								: "Student ID: " + payload.student_id +
+								  " | Assessment ID: " + payload.assessment_id +
+								  " | Tab switches: " + payload.switch_count + "\n";
 							const correctCount = countCorrectAnswers(results);
 							output.textContent =
-								"Correct answers: " +
+								meta +
+								"Correct answers (as the student's browser saw them): " +
 								correctCount +
 								" out of " +
 								results.length +

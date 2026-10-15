@@ -25,8 +25,9 @@
 //   'problem'               => '...',             // required unless 'problems' is given
 //   'problems'              => [                   // optional pool, overrides 'problem'
 //       ['title' => '...', 'problem' => '...', 'starter_code' => '...',
-//        'sample_input' => '...', 'sample_output' => '...'],  // only 'problem' required
-//   ],
+//        'sample_input' => '...', 'sample_output' => '...',
+//        'difficulty' => 'easy'|'medium'|'hard'],         // only 'problem' required
+//   ],                                                    // tagged pools match difficulty to the student's standing
 //   'language'              => 'c',               // optional, CodeMirror mode hint, default 'c'
 //   'starter_code'          => '...',             // optional, pre-fills the editor (pool entries inherit it)
 //   'sample_input'          => '...',             // optional
@@ -57,7 +58,7 @@ $pool          = $this->Widgets_model->code_snippet_problems($config);
 $pool_count    = count($pool);
 $is_preview    = $student_id === null || $student_id === '';
 $problem_idx   = $is_preview ? 0 : $this->Widgets_model->code_snippet_problem_index($config, $existing, $student_id, $assessment_id);
-$active        = $pool[$problem_idx] ?? ['title' => '', 'problem' => '', 'starter_code' => '', 'sample_input' => '', 'sample_output' => ''];
+$active        = $pool[$problem_idx] ?? ['title' => '', 'problem' => '', 'starter_code' => '', 'sample_input' => '', 'sample_output' => '', 'difficulty' => ''];
 // Preview lists the whole pool; a real student sees only their own problem.
 $shown         = ($is_preview && $pool_count > 1) ? $pool : [$problem_idx => $active];
 
@@ -150,6 +151,10 @@ $is_open_timed = !$readonly && $timer && $timer['phase'] === 'open';
     .cs-widget .cs-console .cs-c-error { color: #f48771; }
     .cs-widget .cs-console .cs-c-warn { color: #e5c07b; }
     .cs-widget .cs-php-note { font-size: 13px; color: #6c757d; margin-top: 6px; }
+    .cs-widget .cs-diff { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 3px; font-size: 11px; letter-spacing: .03em; color: #fff; }
+    .cs-widget .cs-diff-easy   { background: #28a745; }
+    .cs-widget .cs-diff-medium { background: #e0a800; color: #212529; }
+    .cs-widget .cs-diff-hard   { background: #dc3545; }
     .cs-widget .cs-pool-note { font-size: 13px; color: #357abd; background: #f2f7fd; border: 1px dashed #357abd; border-radius: 6px; padding: 8px 12px; margin-bottom: 12px; }
 </style>
 <div class="cs-widget"<?= $readonly ? '' : ' id="cs-widget"' ?><?= $preview_kind ? ' data-cs-preview="' . $preview_kind . '" data-cs-start="' . htmlspecialchars($preview_start, ENT_QUOTES) . '"' : '' ?>>
@@ -178,7 +183,13 @@ $is_open_timed = !$readonly && $timer && $timer['phase'] === 'open';
     <?php endif; ?>
 
     <?php if ($is_preview && $pool_count > 1): ?>
-        <div class="cs-pool-note"><i class="fa fa-random"></i> Problem pool: each student is given ONE of these <?= $pool_count ?> problems.</div>
+        <div class="cs-pool-note"><i class="fa fa-random"></i> Problem pool: each student is given ONE of these <?= $pool_count ?> problems.<?php if ($this->Widgets_model->code_snippet_pool_levels($pool)):
+            $ds = $this->Widgets_model->code_snippet_difficulty_settings($config); ?>
+            Difficulty follows the student's <?= $ds['basis'] === 'term' ? "grade for this assessment's term" : 'overall grade so far' ?>:
+            <?= $ds['mode'] === 'cutoffs'
+                ? 'Hard from ' . $ds['hard_at'] . '%, Medium from ' . $ds['medium_at'] . '%, Easy below'
+                : 'the section is ranked and split into equal groups, highest-ranked get the hardest' ?>.
+            No grades yet: <?= ucfirst($ds['no_grade']) ?>. Untagged problems can go to anyone.<?php endif; ?></div>
     <?php endif; ?>
     <?php foreach ($shown as $idx => $p):
         // Only a pooled assessment numbers its problems; students never see
@@ -187,7 +198,12 @@ $is_open_timed = !$readonly && $timer && $timer['phase'] === 'open';
             . ($p['title'] !== '' ? ' — ' . $p['title'] : '');
     ?>
         <div class="cs-problem">
-            <div class="cs-problem-title"><i class="fa fa-code"></i> <?= htmlspecialchars($p_label) ?></div>
+            <div class="cs-problem-title"><i class="fa fa-code"></i> <?= htmlspecialchars($p_label) ?>
+                <?php /* Difficulty is the instructor's tag — never shown to the student. */ ?>
+                <?php if ($is_admin && $p['difficulty'] !== ''): ?>
+                    <span class="cs-diff cs-diff-<?= $p['difficulty'] ?>"><?= ucfirst($p['difficulty']) ?></span>
+                <?php endif; ?>
+            </div>
             <?= htmlspecialchars($p['problem']) ?>
         </div>
         <?php if ($p['sample_input'] !== '' || $p['sample_output'] !== ''): ?>
