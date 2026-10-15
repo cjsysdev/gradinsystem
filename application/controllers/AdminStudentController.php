@@ -908,6 +908,46 @@ class AdminStudentController extends Admin_Controller
         redirect('admin/student_requests');
     }
 
+    // Edit an already-approved late_submission grant: move its "reopen until"
+    // (action=save, must be in the future) or close it now (action=end).
+    // Used from the auto-submit preview; `return` sends the admin back there.
+    public function update_late_grant()
+    {
+        $return = (string) $this->input->post('return');
+        // Only ever back to one of our own admin pages — never an arbitrary URL.
+        if (!preg_match('#^admin/(auto_submit_missing_activities|student_requests)(\?[^\s]*)?$#', $return)) {
+            $return = 'admin/student_requests?type=late_submission';
+        }
+
+        if ($this->input->method() !== 'post') {
+            redirect($return);
+            return;
+        }
+
+        $request_id = (int) $this->input->post('request_id');
+        $action     = $this->input->post('action');
+
+        if ($action === 'end') {
+            $until = time();
+        } else {
+            $until = strtotime((string) $this->input->post('granted_until'));
+            if (!$until || $until <= time()) {
+                $this->session->set_flashdata('error', 'Choose a future date and time, or use End now to close the late submission.');
+                redirect($return);
+                return;
+            }
+        }
+
+        if (!$request_id || !$this->student_request->set_grant_until($request_id, $until)) {
+            $this->session->set_flashdata('error', 'That approved late submission could not be found.');
+        } else {
+            $this->session->set_flashdata('success', $action === 'end'
+                ? 'Late submission ended. The activity is locked again for that student.'
+                : 'Late submission now open until ' . date('M j, Y g:i A', $until) . '.');
+        }
+        redirect($return);
+    }
+
     public function password_resets()
     {
         $this->password_reset_request->install();

@@ -235,6 +235,10 @@
                                             <div class="input-group mb-2">
                                                 <button type="button" class="btn btn-outline-secondary mr-1 ml-1" onclick="addGroupScore(<?= $g['group_id'] ?>, 5)">Late</button>
                                                 <input type="number" step="any" class="form-control mr-1 ml-1 manual-score-input" placeholder="Enter group score" min="0" value="<?= $has_score ? htmlspecialchars($g['score']) : '' ?>">
+                                                <?php foreach ([40, 70, 90] as $pct): ?>
+                                                    <?php $pct_score = round((float) $g['max_score'] * $pct / 100, 2); ?>
+                                                    <button type="button" class="btn btn-outline-secondary mr-1 ml-1" onclick="addGroupScore(<?= $g['group_id'] ?>, <?= $pct_score ?>)" title="<?= $pct ?>% of max score"><?= $pct_score ?></button>
+                                                <?php endforeach; ?>
                                                 <button type="button" class="btn btn-outline-secondary mr-1 ml-1" onclick="addGroupScore(<?= $g['group_id'] ?>, <?= htmlspecialchars($g['max_score']) ?>)"><?= htmlspecialchars($g['max_score']) ?></button>
                                                 <button type="button" class="btn btn-info mr-1 ml-1" onclick="submitManualGroupScore(this)">Submit to group</button>
                                             </div>

@@ -83,6 +83,20 @@ class Student_request extends MY_Model
         return $row ?: null;
     }
 
+    // Move an approved late_submission grant's window. A time at or before now
+    // ends it (the classwork locks again for that student). Returns FALSE when
+    // the request is not an approved late_submission.
+    public function set_grant_until($request_id, $until)
+    {
+        if (!$this->ready()) return false;
+        $this->db->where(['request_id' => (int) $request_id, 'type' => 'late_submission', 'status' => 'approved'])
+            ->update('student_requests', [
+                'granted_until' => date('Y-m-d H:i:s', $until),
+                'updated_at'    => date('Y-m-d H:i:s'),
+            ]);
+        return $this->db->affected_rows() > 0;
+    }
+
     public function has_open_late_request($student_id, $assessment_id)
     {
         if (!$this->ready()) return false;
@@ -162,7 +176,7 @@ class Student_request extends MY_Model
         if ($status) { $wheres[] = "r.status = ?"; $params[] = $status; }
         if ($type)   { $wheres[] = "r.type = ?";   $params[] = $type;   }
         if ($wheres) $sql .= " WHERE " . implode(' AND ', $wheres);
-        $sql .= " ORDER BY r.request_date ASC, r.created_at DESC";
+        $sql .= " ORDER BY r.request_date DESC, r.created_at DESC";
         if ($limit !== null) {
             $sql .= " LIMIT ? OFFSET ?";
             $params[] = (int)$limit;

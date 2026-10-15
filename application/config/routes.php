@@ -110,6 +110,7 @@ $route['leaving_pass/cancel/(:num)'] = 'StudentController/cancel_leaving_pass/$1
 // Student Request Routes (admin — unified view)
 $route['admin/student_requests'] = 'AdminStudentController/student_requests';
 $route['admin/process_student_request'] = 'AdminStudentController/process_student_request';
+$route['admin/update_late_grant'] = 'AdminStudentController/update_late_grant';
 // Legacy redirects so old bookmarks still work
 $route['admin/advance_excuses'] = 'AdminStudentController/student_requests';
 $route['admin/leaving_passes'] = 'AdminStudentController/student_requests';
@@ -208,6 +209,7 @@ $route['admin/export_section_monitoring'] = 'AdminController/export_section_moni
 // new method on AdminController, so it needs no $legacy_admin_routes entry.
 $route['admin/print_slips'] = 'AdminController/print_slips';
 $route['admin/student_attendance/(:num)'] = 'AdminController/student_attendance/$1';
+$route['admin/auto_submit_missing_activities'] = 'AdminSubmissionController/auto_submit_missing_activities';
 
 $route['manage_assessments'] = 'AdminAssessmentController/manage_assessments';
 $route['class_assessments'] = 'AdminAssessmentController/class_assessments';
@@ -276,6 +278,7 @@ $route['admin/toggle_semester_release/(:num)'] = 'AdminStudentController/toggle_
 // Settings — show/hide student and admin nav-bar links (Global_setting::NAV_LINKS).
 $route['admin/settings'] = 'AdminController/settings';
 $route['admin/save_nav_settings'] = 'AdminController/save_nav_settings';
+$route['admin/save_past_due_settings'] = 'AdminController/save_past_due_settings';
 
 // Class Materials. Admin uploads course/demo files into assets/materials/
 // {CLASS_CODE}/ and assigns them to class_schedule sections; students see only

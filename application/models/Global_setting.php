@@ -93,6 +93,47 @@ class Global_setting extends CI_Model
         return array_map(function ($l) { return $l['enabled']; }, $this->nav_links($group));
     }
 
+    const PAST_DUE_TYPES_KEY = 'past_due_classwork_types';
+
+    /**
+     * Which io_types keep showing on the student Classwork page once they are
+     * past due. Stored as a CSV of iotype_ids under PAST_DUE_TYPES_KEY. A
+     * missing row means every type is shown (the behaviour before this
+     * setting existed); an empty string means none are.
+     *
+     * @return int[]|null  iotype_ids, or NULL for "all types"
+     */
+    public function past_due_types()
+    {
+        $value = $this->get(self::PAST_DUE_TYPES_KEY);
+        if ($value === null) {
+            return null;
+        }
+        return array_values(array_filter(array_map('intval', explode(',', $value))));
+    }
+
+    /** io_type rows with an 'enabled' flag, for the settings form. */
+    public function past_due_type_options()
+    {
+        $enabled = $this->past_due_types();
+        $types   = $this->db->order_by('iotype_id')->get('io_type')->result_array();
+        foreach ($types as &$t) {
+            $t['enabled'] = $enabled === null || in_array((int) $t['iotype_id'], $enabled, true);
+        }
+        unset($t);
+        return $types;
+    }
+
+    /** Save the shown io_types. Ids that aren't real io_types are dropped. */
+    public function save_past_due_types(array $iotype_ids)
+    {
+        $valid = array_map('intval', array_column(
+            $this->db->select('iotype_id')->get('io_type')->result_array(), 'iotype_id'
+        ));
+        $ids = array_values(array_intersect($valid, array_map('intval', $iotype_ids)));
+        $this->set(self::PAST_DUE_TYPES_KEY, implode(',', $ids));
+    }
+
     /**
      * Save one nav bar: every link in $enabled_keys is shown, every other link
      * in that group is hidden. Keys outside the group are ignored.

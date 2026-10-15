@@ -198,6 +198,12 @@
                                     // doesn't measure it); 0 = tracked and clean, so only a
                                     // positive count is worth a badge. Client-reported, so this is
                                     // a nudge to look closer — never an input to the score. ?>
+                                    <?php // Blank row created by Section Monitoring's "Auto-submit missing
+                                    // activities" (classworks::auto_submit_missing), not a real hand-in. ?>
+                                    <?php if (($row['status'] ?? '') === 'auto_submitted'): ?>
+                                        <span class="badge badge-secondary align-middle" style="font-size:0.5em;"
+                                              title="Created by the admin via Auto-submit missing activities — the student did not hand this in">Auto-submitted</span>
+                                    <?php endif; ?>
                                     <?php if (!empty($late_students[(int) $row['trans_no']])): ?>
                                         <span class="badge badge-warning align-middle" style="font-size:0.5em;"
                                               title="Submitted through an instructor-approved late request">Late (approved)</span>
@@ -290,6 +296,10 @@
                                         <input type="number" step="any" class="form-control mr-1 ml-1 manual-score-input" placeholder="Enter score" min="0" value="<?= isset($row['score']) ? $row['score'] : '' ?>">
                                         <button type="button" class="btn btn-outline-secondary mr-1 ml-1" onclick="addRandScoreIncremental(<?= $row['classwork_id'] ?>, 1)">+1</button>
                                         <button type="button" class="btn btn-outline-secondary mr-1 ml-1" onclick="addRandScoreIncremental(<?= $row['classwork_id'] ?>, 2)">+2</button>
+                                        <?php // Lowest score among scored submissions; filled + shown by refreshLowestScore(). ?>
+                                        <button type="button" class="btn btn-outline-secondary mr-1 ml-1 lowest-score-btn" style="display:none;" title="Lowest score in this classwork" onclick="addScore(<?= $row['classwork_id'] ?>, this.dataset.score)">Low: <span class="lowest-score-value"></span></button>
+                                        <?php $half_score = round((float) $row['max_score'] / 2, 2); ?>
+                                        <button type="button" class="btn btn-outline-secondary mr-1 ml-1" onclick="addScore(<?= $row['classwork_id'] ?>, <?= $half_score ?>)" title="50% of max score"><?= $half_score ?></button>
                                         <button type="button" class="btn btn-outline-secondary mr-1 ml-1" onclick="addScore(<?= $row['classwork_id'] ?>, <?= $row['max_score'] ?>)"><?= $row['max_score'] ?></button>
                                         <button type="button" class="btn btn-info mr-1 ml-1" onclick="submitManualScore(this)">Submit</button>
                                     </div>
@@ -903,6 +913,7 @@
                 }
                 const student = allStudents.find(s => String(s.classwork_id) === String(classwork_id));
                 if (student) student.score = data.score;
+                refreshLowestScore();
 
                 showScoreAlert(true, `+${points} point${points !== 1 ? 's' : ''} added!`);
                 filterSubmissions(currentFilterMode);
@@ -935,12 +946,30 @@
                 }
                 const student = allStudents.find(s => String(s.classwork_id) === String(classwork_id));
                 if (student) student.score = score;
+                refreshLowestScore();
 
                 showScoreAlert(true, 'Score saved: ' + score);
                 filterSubmissions(currentFilterMode);
                 updateTurnStatus();
             })
             .catch(() => showScoreAlert(false, 'Error saving score.'));
+    }
+
+    // "Low" button on every card: the lowest score already given in this
+    // classwork. Hidden until at least one submission has a score; recomputed
+    // after every save so it tracks scores entered on this page.
+    function refreshLowestScore() {
+        const scores = allStudents
+            .filter(s => s.score !== null && s.score !== '')
+            .map(s => parseFloat(s.score))
+            .filter(n => !isNaN(n));
+        const low = scores.length ? Math.min(...scores) : null;
+        document.querySelectorAll('.lowest-score-btn').forEach(btn => {
+            if (low === null) { btn.style.display = 'none'; return; }
+            btn.dataset.score = low;
+            btn.querySelector('.lowest-score-value').textContent = low;
+            btn.style.display = '';
+        });
     }
 
     function toggleBulkScore() {
@@ -1002,6 +1031,7 @@
     // read randomizerState, which PHP rendered from randomizer_picks.
     updateTurnStatus();
     renderCalledList();
+    refreshLowestScore();
 
     function checkNewSubmissions() {
         console.log("checking");

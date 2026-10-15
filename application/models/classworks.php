@@ -49,7 +49,7 @@ class classworks extends MY_Model
         // deleted is still a real submission with a real score to enter, and an
         // INNER JOIN made those cards vanish from this page entirely while
         // manage_assessments still counted them in its submission badge.
-        $sql = "SELECT c.classwork_id, c.student_id AS trans_no, c.score,
+        $sql = "SELECT c.classwork_id, c.student_id AS trans_no, c.score, c.status,
         COALESCE(s.firstname, '') AS firstname,
         COALESCE(s.lastname, CONCAT('[no student record #', c.student_id, ']')) AS lastname,
         c.code, c.file_upload, c.created_at, a.max_score, a.iotype_id,
@@ -345,6 +345,166 @@ class classworks extends MY_Model
         }
 
         return count($rows);
+    }
+
+    /**
+     * The preview behind Section Monitoring's "Auto-submit missing activities":
+     * every (enrolled student, assessment of the given io_type(s)) pair on
+     * $schedule_id with no classworks row, each tagged with whether it can be
+     * auto-submitted and, if not, why.
+     *
+     * Same roster as missing_counts_for_schedule() (enrolled OR status NULL),
+     * so the list matches what the Missing columns count.
+     *
+     * Not eligible, deliberately:
+     * - 'open'  — the assessment is not locked (submission_locked() FALSE): the
+     *   student can still hand it in, and a row would block them with
+     *   "already submitted";
+     * - 'grant' — the student holds a live late_submission grant for it and was
+     *   told they may still submit themselves. Overridable: the row carries the
+     *   grant's request_id / granted_until so the preview can edit it, and
+     *   auto_submit_missing() accepts it when the admin ticks it anyway.
+     *
+     * @param  int   $schedule_id
+     * @param  array $iotype_ids
+     * @return array rows: student_id, lastname, firstname, assessment_id, title,
+     *               term, due, max_score, eligible (bool), reason (null|'open'|'grant'),
+     *               grant (the student_requests row when reason is 'grant', else null);
+     *               ordered by student then due date
+     */
+    public function auto_submit_candidates($schedule_id, array $iotype_ids)
+    {
+        $iotype_ids = array_values(array_filter(array_map('intval', $iotype_ids)));
+        if (empty($iotype_ids)) {
+            return [];
+        }
+
+        // student_master LEFT joined, as in get_missing_submissions(): a roster
+        // slot whose student record was deleted is still a missing hand-in.
+        $in  = implode(',', array_fill(0, count($iotype_ids), '?'));
+        $sql = "
+            SELECT DISTINCT cs.student_id,
+                   COALESCE(s.lastname, CONCAT('[no student record #', cs.student_id, ']')) AS lastname,
+                   COALESCE(s.firstname, '') AS firstname,
+                   a.assessment_id, a.title, a.term, a.due, a.max_score,
+                   a.status, a.widget_id
+            FROM class_student cs
+            LEFT JOIN student_master s ON s.trans_no = cs.student_id
+            JOIN assessment_full a ON a.schedule_id = cs.schedule_id
+            LEFT JOIN classworks c ON c.assessment_id = a.assessment_id
+                                  AND c.student_id = cs.student_id
+            WHERE cs.schedule_id = ?
+              AND (cs.status = 'enrolled' OR cs.status IS NULL)
+              AND cs.student_id IS NOT NULL
+              AND a.iotype_id IN ($in)
+              AND c.classwork_id IS NULL
+            ORDER BY lastname, firstname, cs.student_id, a.due, a.title
+        ";
+
+        $query = $this->db->query($sql, array_merge([(int) $schedule_id], $iotype_ids));
+        if ($query === false) {
+            $error = $this->db->error();
+            log_message('error', 'Database error: ' . $error['message']);
+            return [];
+        }
+
+        $this->load->model('student_request');
+
+        $locked = [];
+        $out    = [];
+        foreach ($query->result_array() as $r) {
+            $aid = (int) $r['assessment_id'];
+            $sid = (int) $r['student_id'];
+
+            if (!isset($locked[$aid])) {
+                $locked[$aid] = submission_locked($r);
+            }
+
+            $reason = NULL;
+            $grant  = NULL;
+            if (!$locked[$aid]) {
+                $reason = 'open';
+            } elseif ($grant = $this->student_request->active_late_grant($sid, $aid)) {
+                $reason = 'grant';
+            }
+
+            $r['student_id']    = $sid;
+            $r['assessment_id'] = $aid;
+            $r['eligible']      = $reason === NULL;
+            $r['reason']        = $reason;
+            $r['grant']         = $grant;
+            $out[] = $r;
+        }
+
+        return $out;
+    }
+
+    /**
+     * Creates a blank, unscored classworks row for each selected
+     * (student_id, assessment_id) pair, so the admin gets a submission card to
+     * put a late score on instead of the work sitting as "missing".
+     *
+     * Grades are unchanged by this alone: a NULL score already counts as 0 in
+     * Grade_calculator, it just moves from "missing" to "pending" until scored.
+     *
+     * $pairs comes from a form, so nothing in it is trusted: each pair is
+     * re-checked against auto_submit_candidates() at write time and dropped
+     * unless it is still eligible — a student who submitted, or an activity
+     * that was reopened, since the preview loaded is skipped, never doubled.
+     *
+     * A pair whose student holds a live late-submission grant is an override:
+     * it is accepted (the admin ticked it on purpose — it is never pre-ticked),
+     * and the grant is ended on the spot, since a student who already "has" a
+     * submission can no longer use the reopened window anyway.
+     *
+     * The caller is responsible for the active-semester check.
+     *
+     * @param  int   $schedule_id
+     * @param  array $iotype_ids
+     * @param  array $pairs  "student_id:assessment_id" strings
+     * @return array ['created' => int, 'skipped' => int, 'overridden' => int]
+     */
+    public function auto_submit_missing($schedule_id, array $iotype_ids, array $pairs)
+    {
+        $eligible = [];
+        foreach ($this->auto_submit_candidates($schedule_id, $iotype_ids) as $c) {
+            if ($c['eligible'] || $c['reason'] === 'grant') {
+                $eligible[$c['student_id'] . ':' . $c['assessment_id']] = $c;
+            }
+        }
+
+        $now    = date('Y-m-d H:i:s');
+        $rows   = [];
+        $grants = [];
+        foreach (array_unique(array_map('strval', $pairs)) as $key) {
+            if (!isset($eligible[$key])) {
+                continue;
+            }
+            if ($eligible[$key]['grant']) {
+                $grants[] = (int) $eligible[$key]['grant']['request_id'];
+            }
+            $rows[] = [
+                'student_id'    => $eligible[$key]['student_id'],
+                'assessment_id' => $eligible[$key]['assessment_id'],
+                // Marks the row as admin-created, not a real hand-in.
+                'status'        => 'auto_submitted',
+                'submitted_at'  => $now,
+                'created_at'    => $now,
+            ];
+        }
+
+        if (!empty($rows)) {
+            $this->db->insert_batch('classworks', $rows);
+        }
+        foreach ($grants as $request_id) {
+            $this->student_request->set_grant_until($request_id, time());
+        }
+
+        return [
+            'created'    => count($rows),
+            'skipped'    => count(array_unique($pairs)) - count($rows),
+            'overridden' => count($grants),
+        ];
     }
 
     // NOTE: the four grade-aggregation queries that used to live here

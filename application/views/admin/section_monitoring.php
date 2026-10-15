@@ -16,6 +16,9 @@
     <?php if ($this->session->flashdata('error')): ?>
         <div class="alert alert-danger mt-3"><?= htmlspecialchars($this->session->flashdata('error')) ?></div>
     <?php endif; ?>
+    <?php if ($this->session->flashdata('success')): ?>
+        <div class="alert alert-success mt-3"><?= htmlspecialchars($this->session->flashdata('success')) ?></div>
+    <?php endif; ?>
 
     <form method="GET" action="<?= base_url('view_attendance') ?>" class="form-row align-items-end mt-3 mb-3">
         <!-- Marks the query string as admin-submitted, so an unticked checkbox
@@ -140,6 +143,19 @@
                 <em>Only rows with missing / absences</em> has nothing to filter on while both
                 <strong>Missing</strong> and <strong>Attendance</strong> are hidden, so the whole
                 roster is shown. A row is only ever hidden on a tally the sheet is displaying.
+            </div>
+        <?php endif; ?>
+
+        <?php if (!$viewing_archived): ?>
+            <!-- Opens a preview where students/activities can be unticked; nothing
+                 is written until that page is submitted. See
+                 AdminSubmissionController::auto_submit_missing_activities(). -->
+            <div class="mb-2 text-right">
+                <a href="<?= base_url('admin/auto_submit_missing_activities?' . http_build_query(['schedule_id' => (int) $schedule_id, 'sem' => (int) $sem])) ?>"
+                   class="btn btn-sm btn-outline-warning"
+                   title="Preview missing activities and turn the ones you pick into blank submissions you can put a late score on">
+                    <i class="fas fa-inbox"></i> Auto-submit missing activities
+                </a>
             </div>
         <?php endif; ?>
 

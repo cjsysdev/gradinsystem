@@ -50,6 +50,17 @@ class ClassworkController extends CI_Controller
         }
         unset($m);
 
+        // admin/settings picks which io_types stay listed once past due. Work
+        // reopened for this student (a grant) is answerable, so it always shows.
+        $this->load->model('Global_setting');
+        $past_due_types = $this->Global_setting->past_due_types();
+        if ($past_due_types !== null) {
+            $missing = array_values(array_filter($missing, function ($m) use ($past_due_types) {
+                return !$m['locked'] || $m['grant']
+                    || in_array((int) $m['iotype_id'], $past_due_types, true);
+            }));
+        }
+
         // Answerable work first (open, or reopened for this student), then
         // past due. usort is stable, so the newest-first order holds inside
         // each group. Submitted cards render after both in the view.

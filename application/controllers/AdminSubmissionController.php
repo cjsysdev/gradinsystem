@@ -12,6 +12,9 @@ defined('BASEPATH') or exit('No direct script access allowed');
  */
 class AdminSubmissionController extends Admin_Controller
 {
+    /** io_type 1 = Activity (see the io_type enum in CLAUDE.md). */
+    const IOTYPE_ACTIVITY = 1;
+
     public function all_submissions($assessment_id = null)
     {
         // Fetch all assessments for the dropdown
@@ -405,6 +408,90 @@ class AdminSubmissionController extends Admin_Controller
             'score'         => $stored,
             'updated_count' => $updated,
             'skipped_count' => count($student_ids) - $updated,
+        ]);
+    }
+
+    /**
+     * Section Monitoring's "Auto-submit missing activities": gives selected
+     * students a blank, unscored submission for a closed/past-due Activity they
+     * never handed in, so a late score can be entered on it from the usual
+     * submissions page. See classworks::auto_submit_candidates() / auto_submit_missing().
+     *
+     * GET shows the preview — every missing activity per student, eligible ones
+     * pre-ticked, ineligible ones listed with the reason and no checkbox. POST
+     * creates rows for the ticked pairs only.
+     *
+     * Activities only — Performance Tasks and Major Exams stay missing (and keep
+     * blocking the monitoring sheet's grade as INC) until handled one by one.
+     */
+    public function auto_submit_missing_activities()
+    {
+        $is_post     = $this->input->method() === 'post';
+        $schedule_id = (int) ($is_post ? $this->input->post('schedule_id') : $this->input->get('schedule_id'));
+        $sem         = (int) ($is_post ? $this->input->post('sem') : $this->input->get('sem'));
+        $back        = 'view_attendance?' . http_build_query(['schedule_id' => $schedule_id, 'sem' => $sem]);
+
+        $sched = $schedule_id ? $this->db->query("
+            SELECT sched.schedule_id, sched.semester_id, sched.section, sched.type, cl.class_code
+            FROM class_schedule sched
+            JOIN classes cl ON cl.class_id = sched.class_id
+            WHERE sched.schedule_id = ?
+        ", [$schedule_id])->row_array() : NULL;
+
+        if (!$sched) {
+            $this->session->set_flashdata('error', 'Pick a section first.');
+            redirect('view_attendance');
+            return;
+        }
+
+        $this->load->model('Semester_model');
+        if (!$this->Semester_model->is_active($sched['semester_id'])) {
+            $this->session->set_flashdata('error', 'That section belongs to a past semester and is read-only.');
+            redirect($back);
+            return;
+        }
+
+        if ($is_post) {
+            $pairs = (array) $this->input->post('pairs');
+            if (empty($pairs)) {
+                $this->session->set_flashdata('error', 'No activities were ticked, so nothing was submitted.');
+                redirect($back);
+                return;
+            }
+
+            $r = $this->classworks->auto_submit_missing($schedule_id, [self::IOTYPE_ACTIVITY], $pairs);
+
+            $msg = $r['created'] . ' blank submission' . ($r['created'] === 1 ? '' : 's') . ' created for missing activities.';
+            if ($r['overridden']) {
+                $msg .= ' ' . $r['overridden'] . ' of them overrode an approved late submission, which is now ended.';
+            }
+            if ($r['skipped']) {
+                $msg .= ' ' . $r['skipped'] . ' skipped: no longer eligible (handed in, reopened, or granted a late submission since the preview).';
+            }
+            $this->session->set_flashdata('success', $msg);
+            redirect($back);
+            return;
+        }
+
+        // Grouped per student so the view can give each one a toggle-all box.
+        $students = [];
+        foreach ($this->classworks->auto_submit_candidates($schedule_id, [self::IOTYPE_ACTIVITY]) as $c) {
+            $sid = $c['student_id'];
+            if (!isset($students[$sid])) {
+                $students[$sid] = [
+                    'student_id' => $sid,
+                    'name'       => trim($c['lastname'] . ', ' . $c['firstname'], ', '),
+                    'items'      => [],
+                ];
+            }
+            $students[$sid]['items'][] = $c;
+        }
+
+        $this->load->view('admin/auto_submit_preview', [
+            'sched'    => $sched,
+            'sem'      => $sem,
+            'students' => array_values($students),
+            'back'     => $back,
         ]);
     }
 

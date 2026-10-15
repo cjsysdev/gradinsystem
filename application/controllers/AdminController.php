@@ -232,7 +232,21 @@ class AdminController extends Admin_Controller
         $this->load->model('Global_setting');
         $data['student_nav'] = $this->Global_setting->nav_links('student');
         $data['admin_nav']   = $this->Global_setting->nav_links('admin');
+        $data['past_due_types'] = $this->Global_setting->past_due_type_options();
         $this->load->view('admin/settings', $data);
+    }
+
+    // Save which io_types still show on the student Classwork page once past
+    // due. Unchecked boxes aren't posted, so an empty iotype_ids[] hides all.
+    public function save_past_due_settings()
+    {
+        if ($this->input->method() !== 'post') {
+            redirect('admin/settings');
+        }
+        $this->load->model('Global_setting');
+        $this->Global_setting->save_past_due_types((array) $this->input->post('iotype_ids'));
+        $this->session->set_flashdata('success', 'Past due classwork settings saved.');
+        redirect('admin/settings');
     }
 
     // Save one nav bar's switches. Unchecked boxes aren't posted, so every

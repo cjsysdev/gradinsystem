@@ -58,12 +58,35 @@
                 </div>
             </div>
         <?php endforeach; ?>
+
+        <div class="col-md-6 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-header font-weight-bold">Past Due Classwork</div>
+                <div class="card-body">
+                    <p class="small text-muted">Types of unsubmitted classwork students still see on their Classwork page after it is past due. Open work, and work reopened for a student, always shows.</p>
+                    <form method="POST" action="<?= base_url('admin/save_past_due_settings') ?>">
+                        <?php foreach ($past_due_types as $t): ?>
+                            <div class="custom-control custom-switch mb-2">
+                                <input type="checkbox" class="custom-control-input" id="past_due_<?= (int) $t['iotype_id'] ?>"
+                                       name="iotype_ids[]" value="<?= (int) $t['iotype_id'] ?>" <?= $t['enabled'] ? 'checked' : '' ?>>
+                                <label class="custom-control-label" for="past_due_<?= (int) $t['iotype_id'] ?>"><?= htmlspecialchars($t['type']) ?></label>
+                            </div>
+                        <?php endforeach; ?>
+                        <div class="mt-3">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setAll(this.form, true)">Show all</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setAll(this.form, false)">Hide all</button>
+                            <button type="submit" class="btn btn-sm btn-primary float-right">Save</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
 <script>
     function setAll(form, on) {
-        form.querySelectorAll('input[name="enabled[]"]').forEach(function (cb) { cb.checked = on; });
+        form.querySelectorAll('input[type="checkbox"]').forEach(function (cb) { cb.checked = on; });
     }
 </script>
 
